@@ -1,0 +1,447 @@
+{
+ "id": "node-interview",
+ "title": "Interview Q&A",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-interview-basics",
+   "title": "Node.js Basics Interview Questions",
+   "level": "beginner",
+   "summary": "The fundamentals interviewers ask first: what Node is, single thread, npm, package.json and globals.",
+   "description": "### Rapid-fire answers\n\n**What is Node.js?** A JavaScript runtime built on V8 with libuv providing an event-driven, non-blocking I/O model and a standard library for servers and tools.\n\n**Why is Node good for I/O-heavy apps?** One thread multiplexes thousands of connections. Waiting for disk or network does not block it, because operations are delegated to the OS or libuv and a callback runs on completion.\n\n**Why is it bad for CPU-heavy work?** The JavaScript thread is shared. A long computation delays every other request until it finishes; use worker threads, a queue or another service.\n\n**Is Node multi-threaded?** Your JavaScript runs on one thread, but libuv has a thread pool (default 4) for fs, DNS, crypto and zlib, and you can add `worker_threads` and `cluster`.\n\n**Node vs browser JavaScript?** Same language. Node has no DOM or `window` but has `process`, `fs`, `http`, `Buffer` and modules; the browser has DOM and Web APIs.\n\n**What is `package.json`?** The manifest: name, version, scripts, dependencies, module type and engines. `package-lock.json` pins exact installed versions.\n\n**dependencies vs devDependencies?** Runtime packages versus tooling (tests, linters, build tools). Production installs use `--omit=dev`.\n\n**What is `npx`?** Runs a package binary without installing it globally.\n\n**What does `require` do?** Loads a module synchronously, caches it and returns its `module.exports`.\n\n**What is `__dirname`?** The folder of the current file (CommonJS). In ESM use `import.meta.dirname`.\n\n**What is `process.env`?** An object with environment variables (strings), used for configuration.\n\n**What is a callback?** A function passed to be called later; Node uses error-first callbacks `(err, result)`.\n\n**What is `EventEmitter`?** The base class for event-driven objects: `on`, `once`, `emit`, `off`.\n\n**What is `Buffer`?** Raw binary memory (a `Uint8Array` subclass) for files, sockets and encodings.",
+   "keyPoints": [
+    "Node is a runtime (V8 + libuv + core modules), not a framework or language",
+    "Single JavaScript thread with non-blocking I/O and a helper thread pool",
+    "Great for I/O-bound workloads; offload CPU-bound work",
+    "package.json describes the project, the lock file pins versions",
+    "require loads synchronously and caches modules"
+   ],
+   "pitfalls": [
+    "Saying \"Node is single threaded\" and stopping there",
+    "Calling Node a framework or a language"
+   ],
+   "examples": [
+    {
+     "title": "Quick code check: what prints?",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// Run with node check.cjs\nconst a = { x: 1 };\nconst fn = () => this === module.exports;\nconsole.log(typeof require, typeof module, typeof window);   // function object undefined\nconsole.log(fn());                                            // true (arrow keeps the module's this)\nconsole.log([1, 2, 3].map(parseInt));                         // [ 1, NaN, NaN ]\nconsole.log(typeof null, typeof undefined);                   // object undefined",
+     "explanation": "In a CommonJS module the top-level this is module.exports.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the main components of Node.js?",
+     "a": "V8 (JavaScript engine), libuv (event loop, thread pool, async I/O), the core modules (fs, http, path, crypto and others) and the bindings and npm that tie them together."
+    },
+    {
+     "q": "How can a single-threaded Node server handle many users?",
+     "a": "Requests spend most of their time waiting on I/O. While one request waits, the event loop runs other callbacks, and the OS and thread pool do the waiting work, so the one thread is almost always busy with useful code."
+    },
+    {
+     "q": "What is the difference between Node.js and Express?",
+     "a": "Node is the runtime; Express is a web framework library that runs on Node and adds routing, middleware and helpers on top of the http module."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-event-loop",
+   "title": "Event Loop Interview Questions",
+   "level": "intermediate",
+   "summary": "Phases, nextTick vs promises vs setImmediate, starvation and blocking: the favourite deep-dive topic.",
+   "description": "### Questions and answers\n\n**What is the event loop?** The mechanism that picks queued callbacks and runs them one at a time on the main thread, repeating until no work is left.\n\n**Name the phases.** timers, pending callbacks, idle/prepare, poll, check, close callbacks.\n\n**What runs between callbacks?** The `process.nextTick` queue first, then the promise microtask queue; both drain fully before the loop continues.\n\n**nextTick vs setImmediate?** `nextTick` runs right after the current operation, before the loop proceeds; `setImmediate` runs in the check phase after poll. The names are historically swapped.\n\n**setTimeout(fn, 0) vs setImmediate in the main module?** Order is not guaranteed. Inside an I/O callback `setImmediate` always runs first.\n\n**How can you block the event loop?** Long synchronous loops, sync fs/crypto in handlers, huge `JSON.parse`, catastrophic regexes (ReDoS), or recursive `nextTick`.\n\n**How do you avoid blocking?** Use async APIs, split work with `setImmediate`, stream data, move CPU work to worker threads or a queue.\n\n**What is the libuv thread pool and its size?** Four threads by default (`UV_THREADPOOL_SIZE`), used for fs, dns.lookup, crypto and zlib. Network sockets do not use it.\n\n**Why does the process exit?** When no timers, servers, sockets or pending requests remain. Timers can be `unref()`ed.\n\n**Does `await` block the thread?** No. It suspends the async function and returns control to the event loop; the rest runs later as a microtask.\n\n### Worked example\nIn CommonJS: sync code, then `nextTick`, then promise callbacks, then timers. Code after `await` behaves like a `.then` callback. Inside a nested microtask, a new `nextTick` waits until the whole microtask queue has drained.",
+   "keyPoints": [
+    "Phases: timers, pending, idle/prepare, poll, check, close",
+    "nextTick queue, then microtasks, run between every callback",
+    "setImmediate runs in the check phase; setTimeout in timers",
+    "The thread pool serves fs, dns.lookup, crypto and zlib",
+    "await never blocks the thread"
+   ],
+   "pitfalls": [
+    "Mixing up the names nextTick and setImmediate",
+    "Claiming setTimeout 0 always beats setImmediate"
+   ],
+   "examples": [
+    {
+     "title": "Output question 1",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// puzzle1.cjs\nconsole.log('A');\nsetTimeout(() => console.log('B'), 0);\nPromise.resolve().then(() => console.log('C'));\nprocess.nextTick(() => console.log('D'));\n(async () => {\n  console.log('E');\n  await null;\n  console.log('F');\n})();\nconsole.log('G');\n// Output: A E G D C F B",
+     "explanation": "Sync lines run first (A, E, G). Then nextTick (D), microtasks (C, F) and finally the timer (B).",
+     "lang": "javascript"
+    },
+    {
+     "title": "Output question 2 (nested queues)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// puzzle2.cjs\nsetTimeout(() => console.log('t1'), 0);\n\nPromise.resolve()\n  .then(() => {\n    console.log('p1');\n    process.nextTick(() => console.log('tick inside promise'));\n  })\n  .then(() => console.log('p2'));\n\nprocess.nextTick(() => {\n  console.log('tick1');\n  Promise.resolve().then(() => console.log('promise inside tick'));\n});\n// Output: tick1, p1, promise inside tick, p2, tick inside promise, t1",
+     "explanation": "After the nextTick queue, the whole microtask queue (including promises added meanwhile) runs before a new nextTick can.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the order: nextTick, Promise.then, setTimeout, setImmediate.",
+     "a": "Synchronous code, then process.nextTick callbacks, then promise microtasks, then macrotasks: timers, I/O callbacks and setImmediate in their phases. Inside an I/O callback setImmediate fires before a 0 ms timer."
+    },
+    {
+     "q": "How would you find out the event loop is blocked in production?",
+     "a": "Monitor event loop delay/utilisation with perf_hooks, watch for latency spikes across all endpoints, and take CPU profiles (--cpu-prof or clinic) to see the synchronous function that holds the thread."
+    },
+    {
+     "q": "Does promise code run in the thread pool?",
+     "a": "No. Promises are just a scheduling mechanism on the main thread. Only the underlying native operation (for example a file read or crypto call) may use the thread pool."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-streams",
+   "title": "Streams and Buffer Interview Questions",
+   "level": "intermediate",
+   "summary": "Stream types, backpressure, pipeline, highWaterMark and when to use buffers.",
+   "description": "### Questions and answers\n\n**What are streams?** Interfaces for handling data piece by piece. They keep memory low and allow processing to start before all data arrives.\n\n**Types?** Readable, Writable, Duplex and Transform.\n\n**Examples in core?** `fs.createReadStream`, `http` request (Readable) and response (Writable), `net.Socket` (Duplex), `zlib.createGzip` (Transform), `process.stdout`.\n\n**What is backpressure?** A mechanism where a slow consumer signals the producer to pause: `write()` returns `false`, and the producer waits for `'drain'`.\n\n**What is `highWaterMark`?** The internal buffer size threshold (16 KB default, 64 KB for fs; 16 objects in object mode) that decides when `write()` returns false.\n\n**`pipe` vs `pipeline`?** `pipe` connects streams with backpressure but does not clean up on errors. `pipeline` forwards errors, destroys all streams and offers a callback or promise.\n\n**Flowing vs paused mode?** A Readable in flowing mode pushes data through `'data'` events; in paused mode you pull with `read()`. Async iteration (`for await`) is the simplest modern way.\n\n**How do you read a huge file line by line?** `readline.createInterface({ input: createReadStream(file) })` with `for await`.\n\n**Buffer vs string?** A Buffer holds raw bytes; strings are text. Convert with an encoding (`utf8`, `hex`, `base64`). Concatenate chunks with `Buffer.concat`, not `+`, to avoid corrupting multi-byte characters.\n\n**What is object mode?** Streams whose chunks are arbitrary JavaScript values instead of Buffers or strings, useful for parsing rows or records.\n\n**Web streams?** Node also supports the browser `ReadableStream`/`WritableStream`; convert with `Readable.fromWeb()` and `Readable.toWeb()`.",
+   "keyPoints": [
+    "Four types: Readable, Writable, Duplex, Transform",
+    "Backpressure: write() false means wait for drain",
+    "pipeline handles errors and cleanup; pipe does not",
+    "for await over a Readable is the modern consumption pattern",
+    "Use Buffer.concat for chunks"
+   ],
+   "pitfalls": [
+    "Ignoring the return value of write()",
+    "Concatenating Buffer chunks with string +"
+   ],
+   "examples": [
+    {
+     "title": "Interview coding question: count words in a huge file",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createReadStream } from 'node:fs';\nimport { pipeline } from 'node:stream/promises';\nimport { Transform, Writable } from 'node:stream';\n\nlet words = 0;\nlet leftover = '';\n\nawait pipeline(\n  createReadStream('big.txt', { encoding: 'utf8' }),\n  new Transform({\n    transform(chunk, _enc, cb) {\n      const text = leftover + chunk;\n      const parts = text.split(/\\s+/);\n      leftover = parts.pop();                  // a word may be cut at the chunk edge\n      cb(null, String(parts.filter(Boolean).length));\n    },\n    flush(cb) { cb(null, leftover ? '1' : '0'); },\n  }),\n  new Writable({\n    write(chunk, _enc, cb) { words += Number(chunk.toString()); cb(); },\n  }),\n);\nconsole.log('words:', words);",
+     "explanation": "Keeping the leftover prevents counting a word twice or splitting it at a chunk boundary.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is backpressure and how does Node handle it?",
+     "a": "When the destination is slower than the source, data would pile up in memory. Writable.write() returns false when its buffer is full; the producer must pause until 'drain'. pipe() and pipeline() do this automatically."
+    },
+    {
+     "q": "Why prefer stream.pipeline to pipe?",
+     "a": "pipeline propagates errors from any stream, destroys all the streams to avoid leaks and gives a single completion callback or promise."
+    },
+    {
+     "q": "How would you serve a 2 GB file to many clients?",
+     "a": "Stream it from disk with createReadStream piped to the response using pipeline, set Content-Length and support Range requests; consider letting nginx or a CDN serve it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-modules",
+   "title": "require vs import and Module Questions",
+   "level": "intermediate",
+   "summary": "CommonJS vs ESM, exports vs module.exports, caching, circular dependencies and interop.",
+   "description": "### Questions and answers\n\n**CommonJS vs ES modules?** CJS: `require`/`module.exports`, synchronous, dynamic, copies of values. ESM: `import`/`export`, asynchronous and statically analysed, live bindings, top-level `await`, always strict mode.\n\n**How do you enable ESM?** `\"type\": \"module\"` in `package.json` or `.mjs` files.\n\n**`exports` vs `module.exports`?** `exports` is a shortcut reference to `module.exports`. Reassigning `exports = ...` breaks the link; to export a function or class assign `module.exports = ...`. What `require` returns is always `module.exports`.\n\n**Are modules cached?** Yes, by resolved filename, so a module runs once and acts as a singleton (until `delete require.cache[...]`).\n\n**Circular dependencies?** When A requires B and B requires A, B gets A's partially completed exports. Avoid by restructuring or lazy requiring.\n\n**Can ESM import CommonJS and vice versa?** ESM can import CJS (module.exports becomes the default). CJS can use dynamic `import()`, and recent Node versions also allow `require()` of synchronous ES modules.\n\n**How do you get `__dirname` in ESM?** `import.meta.dirname` (Node 20.11+) or `fileURLToPath(new URL('.', import.meta.url))`.\n\n**Why do ESM relative imports need file extensions?** ESM resolution follows URL rules and does not guess extensions or `index.js`.\n\n**What is `node:` prefix?** It marks built-in modules explicitly: `import fs from 'node:fs'`.\n\n**What is the `exports` field in package.json?** Defines a package's public entry points and conditional exports.\n\n**Dynamic import?** `const m = await import('./x.js')` loads modules lazily at runtime in both systems.",
+   "keyPoints": [
+    "module.exports is what require returns; exports is only a shortcut",
+    "Modules are cached and act as singletons",
+    "ESM has live bindings, top-level await and needs extensions",
+    "Circular imports give partially initialised exports",
+    "import() works in both module systems"
+   ],
+   "pitfalls": [
+    "Assigning exports = {...} and getting an empty module",
+    "Using __dirname in ES modules"
+   ],
+   "examples": [
+    {
+     "title": "Output question 3: exports vs module.exports",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// mod.cjs\nexports.a = 1;\nmodule.exports = { b: 2 };\nexports.c = 3;\n\n// main.cjs\nconst m = require('./mod.cjs');\nconsole.log(m);            // { b: 2 }\nconsole.log(m.a, m.c);     // undefined undefined\nconsole.log(require('./mod.cjs') === m);   // true (cached)",
+     "explanation": "After reassigning module.exports, the old exports object is no longer what require returns.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Circular dependency",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// a.cjs\nexports.loaded = false;\nconst b = require('./b.cjs');\nconsole.log('in a, b.done =', b.done);\nexports.loaded = true;\n\n// b.cjs\nconst a = require('./a.cjs');\nconsole.log('in b, a.loaded =', a.loaded);   // false: a is only partially loaded\nexports.done = true;\n\n// node a.cjs\n// in b, a.loaded = false\n// in a, b.done = true",
+     "explanation": "b receives the exports of a as they were at the moment of the circular require.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between exports and module.exports?",
+     "a": "They initially point to the same object, but require returns module.exports. Adding properties to exports works; reassigning exports does not change what is exported, so use module.exports for functions, classes or whole objects."
+    },
+    {
+     "q": "How do ES module imports differ from require when the value changes?",
+     "a": "ESM imports are live read-only bindings, so you see updates to the exported variable. require returns the value that module.exports had when it was loaded, which does not change if the source variable changes later."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-scaling",
+   "title": "Scaling, Clustering and Architecture Questions",
+   "level": "advanced",
+   "summary": "cluster vs worker_threads vs child_process, stateless design, load balancing and queues.",
+   "description": "### Questions and answers\n\n**How do you scale a Node app?** Vertically (bigger machine) and horizontally: run one process per core with `cluster` or PM2, run many instances behind a load balancer, make servers stateless, add caching and queues, scale the database.\n\n**cluster vs worker_threads vs child_process?**\n* `cluster`: several processes sharing one server port; scales request handling across cores\n* `worker_threads`: threads in one process with message passing; for CPU-heavy tasks\n* `child_process`: run any program or separate Node script; full isolation\n\n**Why can't you keep sessions in memory with cluster?** Each worker has its own memory, so a user routed to another worker loses the session. Use Redis or a database (or JWT).\n\n**What does stateless mean?** No client-specific state in process memory or local disk between requests; any instance can serve any request.\n\n**How would you handle long-running tasks (PDF, video)?** Accept the request, enqueue a job (BullMQ/SQS), return 202 with a job id, process in separate workers and notify or let the client poll.\n\n**How do you do zero-downtime deployments?** Rolling updates behind a load balancer, readiness checks, graceful shutdown on SIGTERM, backward compatible database migrations.\n\n**What is a reverse proxy and why use it?** A server such as nginx in front of Node for TLS, static files, compression, buffering and load balancing.\n\n**Monolith or microservices?** Start with a modular monolith. Split into services when teams, scaling needs or deployment cadence demand it; microservices add network failures and operational cost.\n\n**How do services talk to each other?** HTTP/REST or gRPC for request/response; queues and events (RabbitMQ, Kafka, SQS) for asynchronous communication.\n\n**What are circuit breakers and retries?** Patterns that protect from failing dependencies: retry with backoff for transient errors, and a circuit breaker that stops calling a service that keeps failing, so failures do not cascade.\n\n**How do you scale WebSockets?** Sticky sessions or a pub/sub backbone (Redis adapter) so broadcasts reach clients connected to other instances.",
+   "keyPoints": [
+    "cluster for cores, worker_threads for CPU tasks, child_process for isolation",
+    "Stateless servers plus shared stores enable horizontal scaling",
+    "Queues move heavy work out of requests",
+    "Reverse proxy, health checks and rolling deploys give zero downtime",
+    "Start with a modular monolith"
+   ],
+   "pitfalls": [
+    "Scaling by adding instances while the database stays the bottleneck",
+    "In-memory state in multi-instance deployments"
+   ],
+   "examples": [
+    {
+     "title": "Interview whiteboard: handle a CPU-heavy endpoint",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// Option 1: offload to a worker pool (fast tasks, < a few seconds)\napp.post('/thumbnail', async (req, res) => {\n  const result = await pool.run({ file: req.body.file });   // piscina worker pool\n  res.json(result);\n});\n\n// Option 2: queue it (slow tasks)\napp.post('/report', async (req, res) => {\n  const job = await reportQueue.add('build', { userId: req.user.id });\n  res.status(202).json({ jobId: job.id, status: 'queued' });\n});\n\napp.get('/report/:id', async (req, res) => {\n  const job = await reportQueue.getJob(req.params.id);\n  res.json({ status: await job?.getState(), result: job?.returnvalue });\n});",
+     "explanation": "Short CPU work goes to a pool; long work goes to a queue with a status endpoint.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does Node's cluster module work?",
+     "a": "A primary process forks workers; each worker is a separate Node process running the same code. The primary owns the listening socket and distributes incoming connections (round-robin on most platforms) to the workers."
+    },
+    {
+     "q": "How would you design a Node app for 10x traffic?",
+     "a": "Profile first, then cache hot reads, add indexes and a connection pool, run multiple stateless instances behind a load balancer, offload slow work to queues, use a CDN for static files and scale the database with replicas."
+    },
+    {
+     "q": "Explain the difference between horizontal and vertical scaling.",
+     "a": "Vertical scaling gives one machine more resources; horizontal scaling adds more machines or instances behind a load balancer, which scales further and improves availability but needs stateless design."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-memory",
+   "title": "Memory, Performance and Debugging Questions",
+   "level": "advanced",
+   "summary": "Garbage collection, leaks, profiling and performance tuning questions with crisp answers.",
+   "description": "### Questions and answers\n\n**How does memory management work in Node?** V8 allocates objects on the heap and a generational garbage collector frees unreachable ones: young generation (frequent, fast scavenges) and old generation (mark-sweep-compact). Buffers live outside the V8 heap (`external` memory).\n\n**What causes memory leaks?** Unbounded caches or arrays, forgotten event listeners and timers, closures holding big objects, globals and module-level state, unclosed streams and sockets.\n\n**How do you detect them?** Watch `process.memoryUsage()` for a rising baseline, take heap snapshots before and after load in Chrome DevTools, compare and read the retainer paths.\n\n**What is the default heap limit and how do you change it?** It depends on the Node version and available memory (a few GB on 64-bit machines). Change with `--max-old-space-size=<MB>`, but fix leaks first.\n\n**How do you find slow code?** CPU profile with `--cpu-prof` or clinic flame, measure event loop delay, inspect database queries (`EXPLAIN`) and trace slow downstream calls.\n\n**Common performance improvements?** Use async APIs, stream large data, cache, paginate, add database indexes, reuse connections, compress responses, avoid N+1 queries and run on all cores.\n\n**What is the N+1 problem?** Running one query for a list and then one more query per item. Fix with joins, `IN` queries, `populate`/`include` or batching (DataLoader).\n\n**`rss`, `heapTotal`, `heapUsed`, `external`?** RSS is total memory held by the process; heapTotal the reserved V8 heap; heapUsed the live objects; external is memory used by C++ objects such as Buffers.\n\n**How do you debug a production crash?** Read structured logs and the error tracker, enable diagnostic reports (`--report-on-fatalerror`), reproduce with the same data and versions, and use core dumps or heap snapshots if needed.\n\n**WeakMap and WeakRef?** Hold references that do not prevent garbage collection, useful for caches keyed by objects.",
+   "keyPoints": [
+    "V8 uses a generational GC; Buffers are external memory",
+    "Leaks show as a rising heap baseline; find them with snapshot comparison",
+    "Profile before optimising; fix N+1 queries and missing indexes first",
+    "--max-old-space-size raises the limit but does not cure leaks"
+   ],
+   "pitfalls": [
+    "Raising memory limits instead of finding the leak",
+    "Optimising without measuring"
+   ],
+   "examples": [
+    {
+     "title": "Interview coding question: spot the leak",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const requests = [];                      // grows forever\n\napp.get('/data', (req, res) => {\n  requests.push({ req, res, time: Date.now() });     // keeps every request/response alive\n  res.json({ ok: true });\n});\n\nsetInterval(() => poll(), 1000);          // never cleared if poll creates closures\nemitter.on('tick', () => handle());       // added on every call of this function\n\n// fixes:\n// - do not retain req/res; store only small values and cap the array (ring buffer)\n// - clear intervals when done; unref them\n// - register listeners once, or remove them with off()/AbortSignal",
+     "explanation": "All three lines keep memory reachable so the garbage collector cannot free it.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does garbage collection work in V8?",
+     "a": "V8 frees objects no longer reachable from roots. New objects live in a young generation collected frequently and cheaply (scavenge); survivors are promoted to the old generation, collected by a mark-sweep-compact process, partly concurrent to limit pauses."
+    },
+    {
+     "q": "What is the N+1 query problem and how do you avoid it?",
+     "a": "Fetching a list with one query and then issuing an additional query for each item. Avoid it by fetching related data in one query (join, IN, populate/include) or batching with a tool like DataLoader."
+    },
+    {
+     "q": "How would you investigate a Node process whose memory keeps growing?",
+     "a": "Confirm the trend with metrics, take heap snapshots at intervals under load, use the comparison view to find growing object types, follow retainers to the code, fix (bound caches, remove listeners, close resources) and retest."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-security",
+   "title": "Security Interview Questions",
+   "level": "advanced",
+   "summary": "Authentication, hashing, injection, XSS, CSRF, CORS, rate limiting and dependency risks in short answers.",
+   "description": "### Questions and answers\n\n**How do you store passwords?** With a slow salted hash such as argon2id or bcrypt, verified with the library's compare function. Never encryption or plain SHA.\n\n**JWT vs sessions?** Sessions keep state on the server (revocable, simple). JWTs are stateless signed tokens (good for APIs and microservices) but hard to revoke, so keep them short-lived with refresh tokens.\n\n**Where to store tokens in a browser?** Refresh tokens in `HttpOnly; Secure; SameSite` cookies; access tokens in memory. `localStorage` is exposed to XSS.\n\n**What is XSS and how to prevent it?** Injecting script into pages other users see. Escape output, use templating that auto-escapes, set a Content-Security-Policy, avoid `innerHTML`, sanitise rich text.\n\n**What is CSRF?** A malicious site makes the browser send an authenticated request using cookies. Prevent with `SameSite` cookies, CSRF tokens and checking `Origin`.\n\n**What is CORS?** A browser mechanism restricting cross-origin reads. The server opts in with `Access-Control-Allow-*` headers. It does not protect the API from non-browser clients.\n\n**SQL and NoSQL injection?** Untrusted input changes the query. Use parameterised queries/ORMs, validate types (reject objects with `$ne`), and never concatenate user input.\n\n**Command injection?** User input in a shell string. Use `execFile`/`spawn` with an argument array and validate input.\n\n**What is rate limiting and why?** Limiting requests per client to prevent abuse and brute force; return 429 and use a shared store like Redis.\n\n**What does helmet do?** Sets security headers (CSP, HSTS, nosniff, frame protections).\n\n**How do you manage secrets?** Environment variables from a secret manager, never in git, rotated regularly, different per environment.\n\n**How do you keep dependencies safe?** Lock files, `npm ci`, `npm audit`, Dependabot or Renovate, few trusted packages, review install scripts.\n\n**What is prototype pollution?** User-controlled keys like `__proto__` modify `Object.prototype`. Validate input, avoid unsafe merges, use `Object.create(null)` maps.\n\n**What is SSRF?** Making your server fetch an attacker-chosen URL, reaching internal systems. Allow-list hosts and block private IP ranges.",
+   "keyPoints": [
+    "argon2/bcrypt for passwords, never plain or fast hashes",
+    "HttpOnly SameSite cookies for refresh tokens; keep access tokens short-lived",
+    "Escape output (XSS), parameterise queries (injection), tokens/SameSite (CSRF)",
+    "CORS is a browser rule, not authentication",
+    "Rate limit, validate input, audit dependencies, protect secrets"
+   ],
+   "pitfalls": [
+    "Believing CORS blocks attackers",
+    "Storing JWTs in localStorage for long-lived access"
+   ],
+   "examples": [
+    {
+     "title": "Interview coding question: what is wrong here?",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "app.get('/user', async (req, res) => {\n  const rows = await db.query(`SELECT * FROM users WHERE id = ${req.query.id}`);   // 1. SQL injection\n  res.send(`<h1>Hello ${req.query.name}</h1>`);                                    // 2. reflected XSS\n  exec(`ping ${req.query.host}`);                                                  // 3. command injection\n  res.json(rows[0]);                                                               // 4. leaks password hash, no auth check\n});\n\n// fixes\n// 1. db.query('SELECT id, name FROM users WHERE id = $1', [Number(id)])\n// 2. escape the output or send JSON; set a Content-Security-Policy\n// 3. execFile('ping', ['-c', '1', host]) after validating host against a pattern\n// 4. select only safe columns and verify that the caller may read this user",
+     "explanation": "Four classic vulnerabilities in four lines.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you protect an Express API in production?",
+     "a": "HTTPS, helmet, strict CORS allow-list, input validation, rate limiting, parameterised queries, password hashing, short-lived tokens, authorisation checks on every route, safe error messages, dependency audits and secrets from the environment."
+    },
+    {
+     "q": "What is the difference between authentication and authorisation?",
+     "a": "Authentication proves who you are (login), authorisation decides what you may do (permissions, roles, ownership checks). A route should check both."
+    },
+    {
+     "q": "Why return the same error for wrong email and wrong password?",
+     "a": "Different messages (or timings) reveal which emails have accounts, helping attackers enumerate users. A single generic message hides that information."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-express-apis",
+   "title": "REST, Express and API Design Questions",
+   "level": "intermediate",
+   "summary": "Middleware, routing, status codes, idempotency, pagination and error handling asked in backend interviews.",
+   "description": "### Questions and answers\n\n**What is middleware?** A function `(req, res, next)` in the request pipeline that can modify req/res, end the response or call `next()`. Order of registration matters.\n\n**What are the types of middleware?** Application, router, built-in (`express.json`), third-party (`cors`, `helmet`) and error-handling `(err, req, res, next)`.\n\n**`app.use` vs `app.get`?** `use` matches any method and a path prefix; `get` matches only GET and the exact route.\n\n**`req.params`, `req.query`, `req.body`?** URL segments (`/users/:id`), query string values (`?page=2`), and the parsed body (requires a body parser).\n\n**Common status codes?** 200 OK, 201 Created, 204 No Content, 400 Bad Request, 401 Unauthenticated, 403 Forbidden, 404 Not Found, 409 Conflict, 422 Unprocessable, 429 Too Many Requests, 500 Internal Error, 503 Unavailable.\n\n**PUT vs PATCH vs POST?** POST creates (not idempotent), PUT replaces a whole resource (idempotent), PATCH changes part of it.\n\n**What is idempotency?** Repeating the request gives the same result. GET, PUT and DELETE should be idempotent; for POST use idempotency keys.\n\n**How do you paginate?** Offset (`page`, `limit`) is simple; cursor-based (`after=<id>`) scales better and is stable under inserts. Return total counts or next cursors.\n\n**How do you handle errors centrally?** Throw custom errors, forward with `next(err)` (automatic for async handlers in Express 5), and use one error middleware that maps errors to status codes and a consistent JSON shape.\n\n**How do you version an API?** In the URL (`/api/v1`), a header, or content negotiation; keep old versions working during deprecation.\n\n**REST vs GraphQL?** REST has many resource endpoints and fixed responses; GraphQL has one endpoint where clients select exact fields, which avoids over/under-fetching but adds complexity (caching, N+1).\n\n**How do you validate input?** With schemas (zod, joi) in middleware, returning 400/422 with field messages.\n\n**How do you structure a Node API project?** Routes, controllers, services and repositories, with config, middleware and a separate app/server file.",
+   "keyPoints": [
+    "Middleware runs in order; error middleware has four parameters",
+    "Use correct status codes and consistent error JSON",
+    "PUT replaces, PATCH updates partially, POST creates",
+    "Idempotent methods are safe to retry",
+    "Prefer cursor pagination for large or changing data"
+   ],
+   "pitfalls": [
+    "Returning 200 for every response",
+    "Offset pagination on huge tables"
+   ],
+   "examples": [
+    {
+     "title": "Interview coding question: write a paginated endpoint",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "app.get('/api/v1/posts', async (req, res) => {\n  const limit = Math.min(Number(req.query.limit) || 20, 100);     // cap the page size\n  const after = req.query.after;                                  // cursor = last seen id\n\n  const filter = after ? { _id: { $lt: after } } : {};\n  const items = await Post.find(filter).sort({ _id: -1 }).limit(limit + 1).lean();\n\n  const hasMore = items.length > limit;\n  if (hasMore) items.pop();\n\n  res.json({ items, nextCursor: hasMore ? items.at(-1)._id : null });\n});",
+     "explanation": "Fetching limit + 1 rows reveals whether another page exists without a second count query.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between 401 and 403?",
+     "a": "401 means the request is not authenticated (missing or invalid credentials). 403 means the user is authenticated but not allowed to perform the action."
+    },
+    {
+     "q": "How does Express know a middleware is an error handler?",
+     "a": "By the function having four parameters (err, req, res, next). Express skips it for normal requests and calls it only when next(err) is called or an error is thrown."
+    },
+    {
+     "q": "Why is cursor pagination better than offset for large tables?",
+     "a": "Offset forces the database to skip many rows (slow for big offsets) and results can shift when rows are inserted. A cursor uses an indexed condition (id less than last id), staying fast and stable."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-interview-output-questions",
+   "title": "Output Questions and Tricky Snippets",
+   "level": "intermediate",
+   "summary": "Predict the output: async ordering, closures, forEach with await, exports and this in Node.",
+   "description": "Output questions test whether you understand the runtime, not whether you memorised syntax. Interviewers use them to see how you reason about the event loop, scope and modules. Work through each one **before** reading the answer, and say your reasoning out loud: that matters as much as the final order.\n\n### Rules to remember\n1. Synchronous code runs first, to completion\n2. Then `process.nextTick` callbacks (CommonJS), then promise microtasks\n3. Then timers and I/O (`setTimeout`, `setImmediate`)\n4. Code after `await` is a microtask (like `.then`)\n5. `forEach` ignores promises returned by an async callback\n6. In a CommonJS module, top-level `this` is `module.exports`, and inside a plain function in sloppy mode it is the global object\n7. An ES module is evaluated inside a promise job, so promise callbacks queued at top level run before `nextTick` callbacks\n\n### Tips for the interview\nWrite the queues on paper: *call stack*, *nextTick queue*, *microtask queue*, *timers*, *check queue*. Process them in order and tick off each callback.",
+   "keyPoints": [
+    "Sync first, then nextTick, then promises, then timers and immediates",
+    "await continues in a microtask",
+    "forEach does not wait for async callbacks",
+    "In CommonJS top-level this equals module.exports",
+    "ESM runs top-level code inside a promise job"
+   ],
+   "pitfalls": [
+    "Assuming setTimeout 0 runs before promise callbacks",
+    "Expecting forEach(async) to finish before the next line"
+   ],
+   "examples": [
+    {
+     "title": "Question 1: forEach with await",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// forEach.mjs\n[1, 2, 3].forEach(async (n) => {\n  await null;\n  console.log('forEach', n);\n});\nconsole.log('after forEach');\n// Output:\n// after forEach\n// forEach 1\n// forEach 2\n// forEach 3",
+     "explanation": "forEach does not wait, so the next line runs first; the callbacks resume afterwards as microtasks.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Question 2: closures in loops",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "for (var i = 0; i < 3; i++) setTimeout(() => console.log('var', i), 0);\nfor (let j = 0; j < 3; j++) setTimeout(() => console.log('let', j), 0);\n// Output:\n// var 3\n// var 3\n// var 3\n// let 0\n// let 1\n// let 2",
+     "explanation": "var has one shared binding that is 3 when the timers fire; let creates a new binding per iteration.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Question 3: parallel vs sequential",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// parallel.mjs\nconst a = () => new Promise((res) => setTimeout(() => res('a'), 30));\nconst b = () => new Promise((res) => setTimeout(() => res('b'), 10));\n\nconsole.time('seq');  await a(); await b();                       console.timeEnd('seq');  // ~40ms\nconsole.time('par');  console.log(await Promise.all([a(), b()])); console.timeEnd('par');  // [ 'a', 'b' ] ~30ms",
+     "explanation": "Sequential time is the sum (40 ms), parallel time is the slowest task (30 ms); Promise.all keeps input order.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does [1, 2, 3].map(parseInt) return and why?",
+     "a": "[1, NaN, NaN]. map passes (value, index, array), so parseInt gets the index as the radix: parseInt(2, 1) is NaN and parseInt(3, 2) is NaN because 3 is not a valid binary digit."
+    },
+    {
+     "q": "In a CommonJS file what is console.log(this === module.exports) at the top level?",
+     "a": "true. The module wrapper function calls your code with this bound to module.exports. Inside an ES module, top-level this is undefined."
+    },
+    {
+     "q": "Predict: setTimeout(() => console.log(1)); Promise.resolve().then(() => console.log(2)); console.log(3);",
+     "a": "3, 2, 1. The synchronous log runs first, then the promise microtask, then the timer callback."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

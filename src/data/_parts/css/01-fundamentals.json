@@ -1,0 +1,339 @@
+{
+ "id": "css-fundamentals",
+ "title": "CSS Fundamentals",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "css-intro",
+   "title": "What is CSS and How to Add It",
+   "level": "beginner",
+   "summary": "CSS controls how HTML looks; learn the rule syntax and the three ways to attach styles.",
+   "description": "**CSS (Cascading Style Sheets)** describes how HTML elements are presented: colors, fonts, spacing, layout and animation. HTML gives the page *structure and meaning*; CSS gives it *looks*. Keeping them separate means you can restyle a whole site by editing one file.\n\n### Anatomy of a rule\n\n```css\nselector {\n  property: value;\n  another-property: value;\n}\n```\n\n- **Selector** chooses which elements to style (`h1`, `.card`, `#btn`).\n- **Declaration** is one `property: value;` pair.\n- A rule can hold many declarations inside `{ }`.\n\n### Three ways to add CSS\n\n| Method | Where | When to use |\n|---|---|---|\n| Inline | `style=\"...\"` attribute | Quick tests, dynamic values from JS |\n| Internal | `<style>` in `<head>` | Single page demos |\n| External | `<link rel=\"stylesheet\" href=\"style.css\">` | Real projects (cacheable, reusable) |\n\nExternal CSS is the best choice: the browser caches the file and every page shares it.\n\n### Comments and values\nComments are written as `/* ... */`. Values can be keywords (`red`, `center`), numbers with units (`16px`), colors (`#ff3368`), functions (`rgb()`, `calc()`) and more.\n\n### Why \"Cascading\"?\nWhen several rules target the same element, the browser decides which one wins using the **cascade**: origin, importance, specificity and order. You will study this in detail in the next topics.\n\n### Practice idea\nTake any plain HTML page, link a `style.css` file and change the heading color and the link hover color. That is exactly what the first lesson of this course does: `h1 { color: #ff3368; }` and `#btn:hover { background-color: black; }`.",
+   "keyPoints": [
+    "CSS = selector + declarations (property: value;)",
+    "Three ways: inline, internal <style>, external <link> file",
+    "External stylesheets are cached and reusable - best for real projects",
+    "Comments are /* ... */ (there is no // comment in CSS)",
+    "When rules conflict, the cascade decides the winner"
+   ],
+   "pitfalls": [
+    "Forgetting the semicolon between declarations breaks the next declaration",
+    "Using // for comments - it is invalid in CSS",
+    "Wrong file path in <link href> makes all styles silently disappear"
+   ],
+   "examples": [
+    {
+     "title": "Your first rules",
+     "language": "web",
+     "html": "<h1>Best CSS Course</h1>\n<p class=\"para\">CSS makes HTML beautiful.</p>\n<a href=\"#\" id=\"btn\">Subscribe</a>",
+     "css": "/* element selector */\nh1 { color: #ff3368; }\n/* class selector */\n.para { color: #ff00ff; }\n/* id selector + hover state */\n#btn { background-color: #ff3368; color: #fff; padding: 6px 14px; text-decoration: none; border-radius: 4px; }\n#btn:hover { background-color: black; color: white; }\nh1:hover { color: blue; }",
+     "js": "",
+     "code": "",
+     "explanation": "Element, class and id selectors, plus a :hover state - from the first lesson of the source course."
+    },
+    {
+     "title": "Inline vs internal",
+     "language": "web",
+     "html": "<p style=\"color: tomato; font-size: 20px;\">Inline style (wins over the stylesheet rule)</p>\n<p>Styled by the internal &lt;style&gt; block</p>",
+     "css": "p { color: royalblue; font-family: sans-serif; }",
+     "js": "",
+     "code": "",
+     "explanation": "The inline style overrides the stylesheet rule for the first paragraph."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the three ways to apply CSS?",
+     "a": "Inline (style attribute), internal (<style> tag in head) and external (<link> to a .css file). External is preferred because it is cached and reusable."
+    },
+    {
+     "q": "What does \"Cascading\" mean in CSS?",
+     "a": "It is the algorithm that resolves conflicts when many rules match one element: origin/importance, specificity, then source order."
+    },
+    {
+     "q": "Which is better: <link> or @import?",
+     "a": "<link> is better. @import makes the browser discover and download files one after another (blocking), while <link> files can load in parallel."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/basic/index.html, basic/style.css"
+  },
+  {
+   "id": "css-selectors",
+   "title": "Selectors",
+   "level": "beginner",
+   "summary": "Pick exactly the elements you want: element, class, id, universal, group and attribute selectors.",
+   "description": "A **selector** tells the browser which elements a rule applies to. Choosing the right selector keeps CSS small and predictable.\n\n### Basic selectors\n\n| Selector | Example | Matches |\n|---|---|---|\n| Universal | `*` | every element |\n| Element (type) | `p` | all <p> elements |\n| Class | `.card` | elements with `class=\"card\"` |\n| ID | `#header` | the one element with `id=\"header\"` |\n| Group | `h1, h2, h3` | any of the listed selectors |\n\n### Attribute selectors\n\nMatch elements by their attributes:\n\n```css\na[target]            { }  /* has the attribute */\na[target=\"_blank\"]   { }  /* exact value */\na[href^=\"https\"]     { }  /* starts with */\na[href$=\".pdf\"]      { }  /* ends with */\na[href*=\"google\"]    { }  /* contains */\ninput[type=\"checkbox\"] { }\n```\n\n### Class vs ID\n- A **class** is reusable: many elements, many classes per element.\n- An **id** must be unique per page and has very high specificity, so avoid styling with ids.\n\n### Combining\nYou can chain selectors without spaces to require all conditions: `a.btn.primary` means an <a> that has both classes. With a space (`.nav a`) it means \"an <a> inside `.nav`\" (a descendant combinator - see the Combinators topic).\n\n### Tip\nPrefer **class selectors** for almost everything. They are flexible, have moderate specificity and are easy to override.",
+   "keyPoints": [
+    "Universal *, element p, class .x, id #x, group a, b",
+    "Attribute selectors: [attr], [attr=val], ^=, $=, *=",
+    "Class = reusable, id = unique and heavy",
+    "No space (a.btn) means same element; space means descendant",
+    "Prefer classes for styling"
+   ],
+   "pitfalls": [
+    "Writing .#id or forgetting the dot/hash prefix",
+    "Over-qualifying selectors like div.card ul li a - hard to override",
+    "Using the same id on multiple elements (invalid HTML)"
+   ],
+   "examples": [
+    {
+     "title": "Class, id, group",
+     "language": "web",
+     "html": "<h1>Heading</h1>\n<h2>Sub heading</h2>\n<p class=\"note\">A note paragraph</p>\n<p id=\"special\" class=\"note\">Special note</p>",
+     "css": "body { font-family: sans-serif; }\nh1, h2 { color: #0f2c59; }\n.note { background: #fff3cd; padding: 8px; margin: 6px 0; }\n#special { border-left: 5px solid crimson; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Attribute selectors",
+     "language": "web",
+     "html": "<a href=\"https://example.com\">Secure link</a><br>\n<a href=\"http://old.com\">Normal link</a><br>\n<a href=\"report.pdf\">report.pdf</a><br>\n<input type=\"checkbox\" checked> Accept",
+     "css": "body { font-family: sans-serif; }\na { display: inline-block; margin: 4px 0; }\na[href^=\"https\"] { color: green; }\na[href$=\".pdf\"]::after { content: \" (PDF)\"; color: crimson; }\ninput[type=\"checkbox\"] { accent-color: hotpink; width: 20px; height: 20px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between class and id selectors?",
+     "a": "A class can be reused on many elements and an element can have many classes. An id must be unique in the page and has higher specificity."
+    },
+    {
+     "q": "What does a[href$=\".pdf\"] select?",
+     "a": "All anchor elements whose href ends with \".pdf\"."
+    },
+    {
+     "q": "What is the difference between .a.b and .a .b?",
+     "a": ".a.b matches one element having both classes. \".a .b\" matches a .b element inside an .a element."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/basic/style.css, latestcss/pseudoclass/style.css"
+  },
+  {
+   "id": "css-colors",
+   "title": "Colors",
+   "level": "beginner",
+   "summary": "Named colors, HEX, RGB, HSL, alpha transparency, currentColor and modern color functions.",
+   "description": "CSS lets you write the same color in many notations. Pick the one that is easiest to read and adjust.\n\n### Notations\n\n| Notation | Example | Note |\n|---|---|---|\n| Named | `tomato` | 140+ keywords |\n| HEX | `#ff0000` / `#f00` | most common in design tools |\n| RGB | `rgb(255 0 0)` | red, green, blue 0-255 |\n| RGBA | `rgba(255,0,0,0.5)` | last value is alpha 0-1 |\n| HSL | `hsl(0 100% 50%)` | hue (0-360deg), saturation, lightness |\n| HSLA | `hsl(0 100% 50% / 0.5)` | HSL with alpha |\n\n### Why HSL?\nHSL is human friendly. Keep the hue and change only lightness to get a darker or lighter shade of the same color - perfect for hover states and themes.\n\n### Transparency\n- **alpha** in `rgba()`/`hsla()` only fades that color.\n- **opacity** fades the whole element including children.\n- `transparent` is a keyword for fully transparent (`rgba(0,0,0,0)`).\n\n### currentColor\n`currentColor` takes the current value of the element's `color` property. It is great for borders, icons (SVG `fill: currentColor`) and underline colors so they follow the text color automatically.\n\n### Modern color\nNewer browsers support `oklch()`, `color-mix()` and the `light-dark()` function. `color-mix(in srgb, red 30%, white)` blends colors without a preprocessor.\n\n### Accessibility\nKeep a contrast ratio of at least **4.5:1** for normal text (WCAG AA). Never use color as the only way to show information.",
+   "keyPoints": [
+    "Named, HEX, rgb(), hsl() all produce the same colors",
+    "alpha channel gives transparency to one color only; opacity fades the whole element",
+    "HSL makes shades easy: change only lightness",
+    "currentColor reuses the text color for borders/icons",
+    "Check contrast (4.5:1 for body text)"
+   ],
+   "pitfalls": [
+    "Using opacity on a parent when you only wanted a transparent background - children fade too",
+    "Low contrast text (light gray on white) fails accessibility",
+    "Mixing legacy comma syntax and modern space syntax in the same function"
+   ],
+   "examples": [
+    {
+     "title": "Same color, different notations",
+     "language": "web",
+     "html": "<div class=\"row\">\n  <span class=\"sw a\">name</span><span class=\"sw b\">hex</span><span class=\"sw c\">rgb</span>\n  <span class=\"sw d\">rgba</span><span class=\"sw e\">hsl</span><span class=\"sw f\">hsla</span>\n</div>",
+     "css": ".row { display: flex; gap: 6px; font: 12px sans-serif; color: #fff; }\n.sw { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 8px;\n  background-image: linear-gradient(45deg,#ccc 25%,#fff 25% 50%,#ccc 50% 75%,#fff 75%); background-size: 16px 16px; }\n.a { background-color: red; }\n.b { background-color: #ff0000; }\n.c { background-color: rgb(255, 0, 0); }\n.d { background-color: rgba(255, 0, 0, 0.5); }\n.e { background-color: hsl(0, 100%, 50%); }\n.f { background-color: hsl(0 100% 50% / 0.5); }",
+     "js": "",
+     "code": "",
+     "explanation": "The last two are semi-transparent, so the checkered background shows through."
+    },
+    {
+     "title": "currentColor and HSL shades",
+     "language": "web",
+     "html": "<div class=\"card\">\n  <h3>Card</h3>\n  <button>Primary</button>\n  <button class=\"dark\">Darker</button>\n</div>",
+     "css": ".card { color: hsl(226 84% 35%); border: 3px solid currentColor; padding: 12px; font-family: sans-serif; width: 220px; border-radius: 8px; }\nbutton { background: hsl(226 84% 50%); color: #fff; border: 0; padding: 8px 14px; border-radius: 6px; }\nbutton.dark { background: hsl(226 84% 30%); }",
+     "js": "",
+     "code": "",
+     "explanation": "The border uses currentColor, so it follows the card text color. The second button only changes lightness."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between rgb() and rgba()?",
+     "a": "rgba() adds a fourth alpha channel (0 to 1) for transparency. In modern CSS rgb() also accepts alpha with a slash: rgb(255 0 0 / 50%)."
+    },
+    {
+     "q": "How do you make text fully transparent?",
+     "a": "color: transparent (or rgba(0,0,0,0)). Often used with background-clip: text for gradient text."
+    },
+    {
+     "q": "What is currentColor?",
+     "a": "A keyword that equals the element's computed color value, so borders, outlines and SVG fills can follow the text color automatically."
+    },
+    {
+     "q": "opacity vs rgba background?",
+     "a": "opacity changes the whole element and its children. rgba only changes that one color."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/colors/color-style.css"
+  },
+  {
+   "id": "css-units",
+   "title": "Units: px, %, em, rem, vw, vh",
+   "level": "beginner",
+   "summary": "Absolute vs relative units and when to use px, em, rem, %, vw, vh, ch and fr.",
+   "description": "CSS units define sizes. They fall into **absolute** and **relative** units.\n\n### Absolute\n- **px** - one CSS pixel. Predictable, good for borders, small shadows, hairlines.\n- cm, mm, in, pt - mostly for print.\n\n### Relative\n| Unit | Relative to | Typical use |\n|---|---|---|\n| `%` | parent's size (width) or containing block | fluid widths |\n| `em` | font-size of the **parent** (or the element itself when used outside font-size) | padding inside components |\n| `rem` | font-size of the **root** (<html>) | font sizes, spacing, media queries |\n| `vw / vh` | 1% of viewport width / height | full-screen sections |\n| `dvh / svh / lvh` | dynamic/small/large viewport height | mobile browsers with moving address bar |\n| `ch` | width of the \"0\" character | readable line length: `max-width: 65ch` |\n| `fr` | share of free space in Grid | grid columns |\n\n### em compounding\nBecause `em` is relative to the parent, nested elements multiply: a list inside a list at `1.2em` keeps growing. `rem` avoids this because it always looks at the root.\n\n### The 62.5% trick\nBrowsers default to `16px`. Setting `html { font-size: 62.5%; }` makes `1rem = 10px`, so `2.4rem` is `24px`. The source course uses this. A safer variant keeps the user's setting: use `100%` and calculate normally.\n\n### Best practices\n- Use **rem** for font sizes and spacing so user font-size preferences are respected.\n- Use **px** for borders and tiny details.\n- Use **%**/`fr` for layout widths.\n- Never use `vw` alone for font-size (zoom will not work) - combine it with `clamp()`.",
+   "keyPoints": [
+    "px absolute; em relative to parent font-size; rem relative to root",
+    "em compounds in nesting, rem does not",
+    "vw/vh are viewport percentages; prefer dvh on mobile full-screen layouts",
+    "html { font-size: 62.5% } makes 1rem = 10px",
+    "Use rem for text, px for hairlines, % / fr for layout"
+   ],
+   "pitfalls": [
+    "Using px font sizes ignores the user's browser font-size setting",
+    "100vh on mobile can be taller than the visible area; use dvh",
+    "Nested em values multiply unexpectedly"
+   ],
+   "examples": [
+    {
+     "title": "em vs rem",
+     "language": "web",
+     "html": "<div class=\"parent\">\n  <p class=\"em\">font-size: 2em (inside 10px parent = 20px)</p>\n  <p class=\"rem\">font-size: 2rem (root 16px = 32px)</p>\n</div>",
+     "css": ".parent { font-size: 10px; font-family: sans-serif; background: #eef; padding: 10px; }\n.em { font-size: 2em; }\n.rem { font-size: 2rem; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Viewport units and ch",
+     "language": "web",
+     "html": "<div class=\"hero\">50vw x 30vh box</div>\n<p class=\"read\">This paragraph is limited to about 40 characters per line using the ch unit so it stays readable even on wide screens, which is a very common typography rule.</p>",
+     "css": ".hero { width: 50vw; height: 30vh; background: linear-gradient(135deg,#6a11cb,#2575fc); color: #fff; display: grid; place-items: center; font-family: sans-serif; }\n.read { max-width: 40ch; font-family: sans-serif; line-height: 1.5; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between em and rem?",
+     "a": "em is relative to the parent element's font-size (and compounds in nesting); rem is relative to the root html font-size, so it is consistent everywhere."
+    },
+    {
+     "q": "Why is rem preferred for responsive design?",
+     "a": "It scales from one root value, respects user font-size settings and can be changed globally (for example in a media query)."
+    },
+    {
+     "q": "What does 1px equal if html font-size is 62.5%?",
+     "a": "1rem = 10px, so 1px = 0.1rem. 62.5% is 10/16."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/units/style.css"
+  },
+  {
+   "id": "css-cascade-inheritance",
+   "title": "Cascade, Inheritance and Initial Values",
+   "level": "beginner",
+   "summary": "How the browser picks winning declarations and which properties flow down to children.",
+   "description": "Two big ideas explain most \"why is my style not applied?\" problems: the **cascade** and **inheritance**.\n\n### The cascade\nWhen many declarations target one property of one element, the browser picks a winner in this order:\n\n1. **Origin and importance** - user-agent styles < author styles; `!important` reverses the order.\n2. **Cascade layers** (`@layer`) - later layers win; unlayered styles beat layered ones.\n3. **Specificity** - more specific selector wins.\n4. **Source order** - if still tied, the last declaration wins.\n\n### Inheritance\nSome properties pass from parent to child automatically:\n\n- **Inherited**: `color`, `font-family`, `font-size`, `line-height`, `text-align`, `visibility`, `cursor`, `list-style`.\n- **Not inherited**: `margin`, `padding`, `border`, `background`, `width`, `height`, `display`, `position`.\n\n### Control keywords\n| Keyword | Meaning |\n|---|---|\n| `inherit` | take the parent's value |\n| `initial` | the CSS spec default value |\n| `unset` | inherit if the property is inheritable, otherwise initial |\n| `revert` | go back to the browser's default stylesheet |\n| `revert-layer` | go back to the previous cascade layer |\n\n### The `all` shorthand\n`all: unset;` resets every property of an element, useful when building isolated components.\n\n### Computed value flow\nSpecified value -> computed value -> used value -> actual value. The DevTools \"Computed\" tab shows the final result and which rule won.",
+   "keyPoints": [
+    "Cascade order: importance, layers, specificity, source order",
+    "Text properties inherit; box properties (margin, border...) do not",
+    "inherit / initial / unset / revert are explicit control keywords",
+    "Set font and color on body and let children inherit",
+    "DevTools Computed tab tells which rule won"
+   ],
+   "pitfalls": [
+    "Expecting border or background to be inherited by children",
+    "Confusing initial (spec default) with revert (browser default)",
+    "Setting everything with !important to win cascade fights"
+   ],
+   "examples": [
+    {
+     "title": "Inheritance in action",
+     "language": "web",
+     "html": "<section class=\"box\">\n  <p>I inherit color and font from .box</p>\n  <p class=\"own\">I override the inherited color</p>\n  <div class=\"inner\">margin and border are NOT inherited</div>\n</section>",
+     "css": ".box { color: #0d6efd; font: 18px/1.5 Georgia, serif; border: 3px solid #0d6efd; padding: 10px; }\n.own { color: crimson; }\n.inner { background: #eef; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "inherit, initial, unset",
+     "language": "web",
+     "html": "<div class=\"parent\">\n  <span class=\"a\">inherit</span>\n  <span class=\"b\">initial</span>\n  <span class=\"c\">unset</span>\n</div>",
+     "css": ".parent { color: green; border: 2px dashed green; padding: 8px; font-family: sans-serif; }\nspan { border: 1px solid; margin-right: 8px; padding: 2px 6px; }\n.a { color: inherit; }\n.b { color: initial; }   /* black (spec default) */\n.c { color: unset; }     /* color is inherited, so green */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Which properties are inherited by default?",
+     "a": "Mostly text related ones: color, font-*, line-height, text-align, visibility, cursor, list-style. Box model properties are not."
+    },
+    {
+     "q": "What is the order the cascade uses?",
+     "a": "Origin & importance, cascade layer, specificity, then source order."
+    },
+    {
+     "q": "Difference between initial and unset?",
+     "a": "initial always resets to the spec default. unset acts like inherit for inherited properties and like initial for the others."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-specificity",
+   "title": "Specificity",
+   "level": "beginner",
+   "summary": "The scoring system that decides which selector wins when rules conflict.",
+   "description": "**Specificity** is a weight the browser assigns to every selector. If two rules set the same property on the same element, the rule with the higher specificity wins - regardless of order.\n\n### Hierarchy (low to high)\n1. Element selectors and pseudo-elements: `h1`, `::before`\n2. Classes, attributes and pseudo-classes: `.card`, `[type=\"text\"]`, `:hover`\n3. IDs: `#navbar`\n4. Inline styles: `style=\"...\"`\n5. `!important` (beats everything in the normal origin)\n\n### Scoring as (ID, CLASS, ELEMENT)\n\n| Selector | Score |\n|---|---|\n| `p` | 0,0,1 |\n| `.hero-content p` | 0,1,1 |\n| `#main .item a:hover` | 1,2,1 |\n| `a.btn:not(.x)` | 0,2,1 |\n\nCompare left to right: any ID beats any number of classes; any class beats any number of elements. (Think of it as digits in separate columns, not a base-10 number.)\n\n### Notes\n- The universal selector `*` and combinators (`>`, `+`, `~`) add **zero**.\n- `:is()` takes the specificity of its most specific argument; `:where()` always adds **zero**; `:not()` counts its argument.\n- Equal specificity: **later rule wins**.\n\n### Writing maintainable CSS\n- Prefer single class selectors (0,1,0).\n- Avoid ids and deep descendant chains.\n- Avoid `!important`; use it only for utilities or to override third-party CSS.\n- Use `@layer` or `:where()` to keep base styles easy to override.",
+   "keyPoints": [
+    "Order of strength: element < class/attr/pseudo-class < id < inline < !important",
+    "Scored as (IDs, classes, elements) and compared left to right",
+    "* and combinators add 0; :where() adds 0; :is() takes the highest argument",
+    "Same specificity -> last rule wins",
+    "Keep selectors flat; avoid !important"
+   ],
+   "pitfalls": [
+    "Thinking 11 classes beat 1 id - they do not",
+    "Fighting specificity with ever longer selectors or !important",
+    "Forgetting that an inline style from JS beats your stylesheet"
+   ],
+   "examples": [
+    {
+     "title": "Which color wins?",
+     "language": "web",
+     "html": "<div class=\"hero-content\">\n  <h1 id=\"title\" class=\"heading\">Which color?</h1>\n</div>",
+     "css": "h1 { color: red; }                          /* 0,0,1 */\n.hero-content h1 { color: orange; }          /* 0,1,1 */\n.heading { color: green; }                   /* 0,1,0 */\n#title { color: royalblue; }                 /* 1,0,0  <- wins */\n/* h1 { color: pink !important; }  uncomment to see !important win */\nh1 { font: bold 32px sans-serif; }",
+     "js": "",
+     "code": "",
+     "explanation": "The id selector wins even though rules after it exist - source order matters only on ties."
+    },
+    {
+     "title": ":is() vs :where()",
+     "language": "web",
+     "html": "<ul class=\"menu\"><li><a href=\"#\">Link A</a></li></ul>",
+     "css": "a { font: 20px sans-serif; }\n:where(.menu) a { color: purple; }  /* specificity 0,0,1 */\n.menu a { color: darkgreen; }        /* 0,1,1 - wins easily */",
+     "js": "",
+     "code": "",
+     "explanation": ":where() adds no weight, so any class-based rule can override it."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How is specificity calculated?",
+     "a": "Count IDs, then classes/attributes/pseudo-classes, then elements/pseudo-elements. Compare the counts column by column, left to right."
+    },
+    {
+     "q": "Difference between :is() and :where()?",
+     "a": ":is() takes the specificity of its most specific argument, :where() always has zero specificity."
+    },
+    {
+     "q": "Does source order matter?",
+     "a": "Only when specificity (and importance) are equal; then the later declaration wins."
+    },
+    {
+     "q": "Why avoid !important?",
+     "a": "It breaks the normal cascade, can only be beaten by another !important with higher specificity and makes code hard to maintain."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/specificity/style.css"
+  }
+ ]
+}

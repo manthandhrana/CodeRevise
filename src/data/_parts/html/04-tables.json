@@ -1,0 +1,132 @@
+{
+ "id": "html-tables",
+ "title": "Tables",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "html-table-basics",
+   "title": "Tables: table, tr, th, td, thead, tbody, tfoot",
+   "level": "beginner",
+   "summary": "Tables show two-dimensional data using rows and cells, grouped into head, body and foot.",
+   "description": "The `<table>` element presents **tabular data** - information with rows and columns, like a price list, timetable or score board. It must **not** be used for page layout (use CSS Grid/Flexbox for that).\n\n### The building blocks\n| Element | Purpose |\n|---|---|\n| `<table>` | The whole table |\n| `<tr>` | A table **r**ow |\n| `<th>` | A **h**eader cell (bold, centred by default) |\n| `<td>` | A **d**ata cell |\n| `<thead>` | Group of header rows |\n| `<tbody>` | Group of body rows (main data) |\n| `<tfoot>` | Group of footer rows (totals) |\n\n### How rows and cells combine\nA table is built **row by row**: each `<tr>` holds `<th>` or `<td>` cells. There is no \"column\" element for data - the columns come from the cells lined up in each row.\n\n### Why thead/tbody/tfoot?\nThey give structure: browsers can repeat the header on each printed page, assistive technology understands the roles, and you can style groups easily (`tbody tr:nth-child(even)` for zebra stripes).\n\n### Styling\nDefault tables have no borders. Add them with CSS. `border-collapse: collapse` merges double borders into one.\n\n### Deprecated attributes\n`border`, `cellpadding`, `cellspacing`, `bgcolor`, `align`, `width` on table elements are obsolete. Do all presentation with CSS.",
+   "keyPoints": [
+    "Use tables only for tabular data, never for layout.",
+    "tr = row; th = header cell; td = data cell.",
+    "thead / tbody / tfoot give the table structure.",
+    "Style with CSS (border-collapse, padding); old attributes are deprecated."
+   ],
+   "pitfalls": [
+    "Building page layouts with tables.",
+    "Using td with bold text instead of a real th.",
+    "Putting content directly in tr without a cell."
+   ],
+   "examples": [
+    {
+     "title": "A complete table",
+     "language": "web",
+     "html": "<table>\n  <thead>\n    <tr><th>Username</th><th>Role</th><th>Score</th></tr>\n  </thead>\n  <tbody>\n    <tr><td>vinod</td><td>Admin</td><td>90</td></tr>\n    <tr><td>thapa</td><td>Editor</td><td>75</td></tr>\n    <tr><td>guest</td><td>Viewer</td><td>60</td></tr>\n  </tbody>\n  <tfoot>\n    <tr><td colspan=\"2\">Total users: 3</td><td>225</td></tr>\n  </tfoot>\n</table>",
+     "css": "body{font-family:sans-serif}\ntable{border-collapse:collapse;text-align:center}\nth,td{border:1px solid #444;padding:8px 12px}\nth{background:#e9eef5}\ncaption{font-weight:bold;margin-bottom:6px}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Purpose of thead, tbody and tfoot?",
+     "a": "They group header rows, main data rows and footer rows, giving structure for styling, accessibility and printing."
+    },
+    {
+     "q": "Difference between th and td?",
+     "a": "th is a header cell (bold, centred, announced as a header by screen readers); td is an ordinary data cell."
+    },
+    {
+     "q": "Should tables be used for page layout?",
+     "a": "No. Tables are for tabular data; use CSS Flexbox or Grid for layout."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/table.html"
+  },
+  {
+   "id": "html-table-colspan-rowspan",
+   "title": "colspan & rowspan (Merging Cells)",
+   "level": "intermediate",
+   "summary": "Make a cell span several columns or rows to build timetables and grouped headings.",
+   "description": "Sometimes one cell must be wider or taller than the grid - a title across all columns, or a \"Lunch\" break that spans the whole day. Two attributes handle this.\n\n- `colspan=\"n\"` - the cell stretches over **n columns** (to the right).\n- `rowspan=\"n\"` - the cell stretches over **n rows** (downwards).\n\n### Counting rule\nEvery row must \"add up\" to the same number of columns. A cell with `colspan=\"3\"` counts as three cells; a cell with `rowspan=\"2\"` also occupies a slot in the next row, so that row needs **one fewer** cell.\n\n### Example plan - a timetable\n```\n| timetable (colspan 7)              |\n| hours (rowspan 4) | Mon Tue Wed ... |\n|                   | math math ...   |\n|                   | Lunch (colspan 6) |\n```\n\n### Tips\n- Draw the grid on paper first and count cells.\n- Do not leave a row with too many or too few cells - the table will look broken.\n- Heavy use of spans makes tables hard for screen readers; add `scope` / `headers` (see the accessibility topic) or simplify the table.\n- For header cells that group columns use `<th colspan=\"2\" scope=\"colgroup\">`.\n\n### colspan vs CSS\ncolspan and rowspan describe **data structure**, so they belong in HTML; the visual look stays in CSS.",
+   "keyPoints": [
+    "colspan merges cells horizontally, rowspan vertically.",
+    "Each row must add up to the same total columns.",
+    "A rowspan cell removes a cell from the following rows.",
+    "Use th with scope for spanning headers."
+   ],
+   "pitfalls": [
+    "Forgetting to remove cells in rows covered by a rowspan.",
+    "Putting colspan larger than the number of columns.",
+    "Overusing spans making the table inaccessible."
+   ],
+   "examples": [
+    {
+     "title": "Timetable with colspan and rowspan",
+     "language": "web",
+     "html": "<table>\n  <thead>\n    <tr><th colspan=\"6\">Weekly Timetable</th></tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td rowspan=\"4\"><strong>Hours</strong></td>\n      <td>Mon</td><td>Tue</td><td>Wed</td><td>Thu</td><td>Fri</td>\n    </tr>\n    <tr><td>Math</td><td>Math</td><td>Math</td><td>Math</td><td>Math</td></tr>\n    <tr><td colspan=\"5\">Lunch Break</td></tr>\n    <tr><td>Art</td><td>Art</td><td>Art</td><td>Art</td><td>Games</td></tr>\n  </tbody>\n</table>",
+     "css": "body{font-family:sans-serif}\ntable{border-collapse:collapse;text-align:center}\nth,td{border:1px solid #444;padding:8px 12px}\nth{background:#e9eef5}\ncaption{font-weight:bold;margin-bottom:6px}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What do colspan and rowspan do?",
+     "a": "colspan makes a cell span multiple columns; rowspan makes a cell span multiple rows."
+    },
+    {
+     "q": "Why is a table with rowspan sometimes broken?",
+     "a": "Rows covered by a rowspan must have one fewer cell; wrong counts shift cells out of place."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/table.html"
+  },
+  {
+   "id": "html-table-accessibility",
+   "title": "Accessible Tables: caption, scope, colgroup & Responsiveness",
+   "level": "intermediate",
+   "summary": "Add caption, scope, headers and colgroup so tables make sense to everyone, and handle small screens.",
+   "description": "A good table works for people who cannot see it. A few extra elements make it understandable.\n\n### caption\n`<caption>` is the table's title and must be the **first child** of `<table>`. It tells users what the table is about before they read it.\n\n### scope\nOn a `<th>`, `scope` states which cells it labels:\n- `scope=\"col\"` - header for the column below.\n- `scope=\"row\"` - header for the cells to its right.\n- `scope=\"colgroup\"` / `scope=\"rowgroup\"` - for grouped headers.\n\nScreen readers then announce \"Price, Apple\" when moving through cells.\n\n### headers / id\nFor very complex tables, give each `<th>` an `id` and each `<td>` a `headers=\"id1 id2\"` list.\n\n### colgroup and col\n`<colgroup>` with `<col>` children lets you style entire columns (width, background) without repeating classes on every cell. Use `span` to cover several columns.\n\n### Responsive tables\nWide tables overflow on phones. Wrap the table in a scroll container:\n\n```html\n<div style=\"overflow-x:auto\"><table>...</table></div>\n```\n\n### Checklist\n- One caption per table.\n- Real `<th>` for headers (not bold td).\n- `scope` on headers.\n- No empty cells without explanation; no layout tables.",
+   "keyPoints": [
+    "caption must be the first child of table.",
+    "scope=\"col\" / \"row\" connects a th to its data cells.",
+    "colgroup/col style whole columns.",
+    "Wrap wide tables in overflow-x:auto for mobile."
+   ],
+   "pitfalls": [
+    "Using an h3 above the table instead of caption (not linked semantically).",
+    "Using td + <b> instead of th.",
+    "Leaving wide tables to overflow the page on phones."
+   ],
+   "examples": [
+    {
+     "title": "Table with caption, scope, colgroup",
+     "language": "web",
+     "html": "<div class=\"wrap\">\n<table>\n  <caption>Fruit prices per kilogram</caption>\n  <colgroup>\n    <col>\n    <col span=\"2\" class=\"money\">\n  </colgroup>\n  <thead>\n    <tr>\n      <th scope=\"col\">Fruit</th>\n      <th scope=\"col\">Market A</th>\n      <th scope=\"col\">Market B</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr><th scope=\"row\">Apple</th><td>$2.10</td><td>$2.40</td></tr>\n    <tr><th scope=\"row\">Banana</th><td>$1.10</td><td>$1.00</td></tr>\n  </tbody>\n</table>\n</div>",
+     "css": "body{font-family:sans-serif}\ntable{border-collapse:collapse;text-align:center}\nth,td{border:1px solid #444;padding:8px 12px}\nth{background:#e9eef5}\ncaption{font-weight:bold;margin-bottom:6px}\n.money{background:#fff8dc}\n.wrap{overflow-x:auto}",
+     "js": "",
+     "explanation": "The colgroup paints the two price columns; the wrapper allows horizontal scroll on narrow screens."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the scope attribute for?",
+     "a": "It declares whether a th is a header for a column, row or group, so assistive tech can announce proper headers for each cell."
+    },
+    {
+     "q": "How do you make a table responsive for small screens?",
+     "a": "Wrap it in a container with overflow-x:auto, or restyle rows as stacked blocks with CSS."
+    },
+    {
+     "q": "Where does <caption> go?",
+     "a": "As the first child of the table element."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

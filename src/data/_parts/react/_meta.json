@@ -1,0 +1,7 @@
+{
+ "id": "react",
+ "title": "React",
+ "tagline": "From JSX and hooks to performance, testing, React 19 and real projects: React from scratch to hero.",
+ "description": "A complete React revision track that starts with components, props, state and JSX, moves through hooks, patterns, forms, data fetching, routing, state management and styling, then covers performance, testing, React 18/19 features, TypeScript and production deployment. It ends with 15 runnable mini projects and interview questions. Most examples run live in the browser; library-heavy code (Router, Redux, TanStack Query, Next.js) is shown as text with explanations.",
+ "color": "#0ea5e9"
+}

@@ -1,0 +1,346 @@
+{
+ "id": "html-text-content",
+ "title": "Text & Content Basics",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "html-headings",
+   "title": "Headings h1-h6",
+   "level": "beginner",
+   "summary": "Six heading levels create the outline of a page for readers, search engines and screen readers.",
+   "description": "HTML has six heading elements: `<h1>` (most important, largest) down to `<h6>` (least important, smallest). Headings are not just \"big text\" - they form the **outline** of your page.\n\n### Why headings matter\n- **Readers** scan a page by its headings.\n- **Search engines** use them to understand what the page is about.\n- **Screen reader users** jump from heading to heading to navigate, so the order must make sense.\n\n### Rules to follow\n1. Use **one `<h1>` per page** for the main title (the traditional, safest approach).\n2. Go in order: `h1` → `h2` → `h3`. Do not skip levels (e.g. `h1` straight to `h3`) just to get a smaller size.\n3. Choose a heading by *meaning*, then control the size with CSS.\n4. Do not use headings just to make text bold or big.\n\n### Default look\nBrowsers give headings a bold weight and a default size (`h1` ≈ 2em, `h2` ≈ 1.5em, `h3` ≈ 1.17em, `h4` = 1em, `h5` ≈ 0.83em, `h6` ≈ 0.67em) plus vertical margins. All of this can be changed with CSS.\n\n### Example outline\n```\nh1 The Best HTML Course\n  h2 Basics\n    h3 Tags\n    h3 Attributes\n  h2 Forms\n```",
+   "keyPoints": [
+    "h1 is the most important, h6 the least; six levels in total.",
+    "Use a single h1 per page for the main topic.",
+    "Do not skip levels; keep a logical hierarchy.",
+    "Pick headings for meaning and use CSS for size.",
+    "Screen readers and search engines rely on headings."
+   ],
+   "pitfalls": [
+    "Skipping from h1 to h4 because you like the font size.",
+    "Using <h1> for the logo and again for the page title.",
+    "Using <b> or a styled <div> instead of a heading for section titles."
+   ],
+   "examples": [
+    {
+     "title": "All six heading levels",
+     "language": "web",
+     "html": "<h1>h1 - The Best HTML Course</h1>\n<h2>h2 - The Best HTML Course</h2>\n<h3>h3 - The Best HTML Course</h3>\n<h4>h4 - The Best HTML Course</h4>\n<h5>h5 - The Best HTML Course</h5>\n<h6>h6 - The Best HTML Course</h6>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": ""
+    },
+    {
+     "title": "A proper page outline",
+     "language": "web",
+     "html": "<h1>Healthy Eating</h1>\n<h2>Fruits</h2>\n<h3>Citrus</h3>\n<p>Oranges, lemons and limes.</p>\n<h3>Berries</h3>\n<p>Strawberries and blueberries.</p>\n<h2>Vegetables</h2>\n<p>Carrots, spinach, broccoli.</p>",
+     "css": "body{font-family:sans-serif} h2{border-bottom:2px solid #e34c26}",
+     "js": "",
+     "explanation": "The structure reads like a book table of contents."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How many heading levels exist in HTML?",
+     "a": "Six: h1 to h6."
+    },
+    {
+     "q": "What happens if you skip heading levels?",
+     "a": "The page still renders, but the outline becomes confusing for screen reader users and search engines. Keep a proper hierarchy."
+    },
+    {
+     "q": "How many h1 tags should a page have?",
+     "a": "The traditional best practice is one h1 per page describing the main topic."
+    },
+    {
+     "q": "Should I use headings to make text big?",
+     "a": "No. Use headings for structure and CSS font-size for visual size."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/heading.html"
+  },
+  {
+   "id": "html-paragraphs-whitespace",
+   "title": "Paragraphs, Line Breaks, Rules, Comments & Whitespace",
+   "level": "beginner",
+   "summary": "p, br, hr, HTML comments and how browsers collapse whitespace.",
+   "description": "### The paragraph element\n`<p>` defines a paragraph. Browsers add a blank line (margin) before and after it. A paragraph can only contain **inline** content such as `<strong>`, `<em>`, `<a>` or `<span>` - it cannot contain headings, lists or other paragraphs.\n\n### Line break and horizontal rule\n- `<br>` forces a line break *inside* a paragraph (poems, addresses). Do not use it to create spacing - use CSS margin.\n- `<hr>` draws a horizontal rule and means a *thematic break* between topics.\n\n### Whitespace collapsing\nNo matter how many spaces, tabs or new lines you type, the browser collapses every run of whitespace into **one single space** when rendering.\n\n```html\n<p>Subscribe to     Thapa\n        Technical</p>\n<!-- renders as: Subscribe to Thapa Technical -->\n```\n\nTo keep your spacing use `<br>` for new lines, `&nbsp;` for a non-breaking space, `<pre>` for preformatted text, or CSS `white-space: pre`.\n\n### Comments\nComments are notes for developers. The browser ignores them but they are visible in View Source.\n\n```html\n<!-- This is a comment -->\n```\n\nUse comments to label large sections and to temporarily disable code. Never put secrets in them.",
+   "keyPoints": [
+    "p holds one paragraph and only allows inline content.",
+    "br = line break inside text; hr = thematic break between topics.",
+    "The browser collapses multiple whitespace characters into one space.",
+    "Use &nbsp; or pre/CSS when you need to preserve spaces.",
+    "Comments use <!-- ... --> and are visible in page source."
+   ],
+   "pitfalls": [
+    "Using several <br> tags or empty <p></p> to create vertical space.",
+    "Placing a heading or div inside a <p>.",
+    "Leaving passwords or API keys in HTML comments."
+   ],
+   "examples": [
+    {
+     "title": "Whitespace is collapsed",
+     "language": "web",
+     "html": "<p>Subscribe to Thapa Technical</p>\n<p>Subscribe to\n      Thapa\n          Technical</p>\n<p>Subscribe &nbsp; &nbsp; &nbsp; to Thapa</p>\n<p>Line one<br>Line two (br)</p>\n<hr>\n<!-- I am a comment: invisible on the page -->\n<p>After the rule.</p>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": "The first two paragraphs look identical. &nbsp; keeps the extra spaces."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Can you nest block elements inside a <p>?",
+     "a": "No. A paragraph accepts only inline (phrasing) content; block elements such as headings or divs would close it automatically."
+    },
+    {
+     "q": "How does the browser treat multiple spaces and new lines in HTML?",
+     "a": "It collapses any sequence of whitespace into a single space. Use <br>, &nbsp;, <pre> or CSS white-space to change that."
+    },
+    {
+     "q": "Difference between <br> and <hr>?",
+     "a": "br is a line break inside text; hr is a horizontal rule marking a thematic break between sections."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/para.html"
+  },
+  {
+   "id": "html-text-formatting",
+   "title": "Text Formatting & Preformatted Text",
+   "level": "beginner",
+   "summary": "strong, em, sub, sup, mark, del, small, pre, code, kbd and when to use each.",
+   "description": "HTML has many inline elements that add meaning or emphasis to text. Choose them for **meaning**, not just looks.\n\n### Emphasis\n| Element | Meaning | Default look |\n|---|---|---|\n| `<strong>` | Strong importance | bold |\n| `<em>` | Stress emphasis | italic |\n| `<b>` | Draw attention without extra importance | bold |\n| `<i>` | Alternate voice (technical term, thought) | italic |\n| `<mark>` | Highlighted / relevant text | yellow background |\n| `<small>` | Fine print, disclaimers | smaller |\n| `<del>` / `<ins>` | Removed / inserted text | strike / underline |\n| `<s>` | No longer accurate | strike |\n| `<u>` | Unarticulated annotation | underline |\n\n### Sub and superscript\n`H<sub>2</sub>O` lowers text (chemical formulas); `e = mc<sup>2</sup>` raises it (powers, footnotes).\n\n### Computer text\n- `<code>` - inline code, `<kbd>` - keyboard input, `<samp>` - program output, `<var>` - a variable.\n- `<pre>` - **preformatted** block: it keeps spaces and line breaks and uses a monospace font. Wrap code samples in `<pre><code>...</code></pre>`.\n\n### Style via CSS\nInline `style=\"...\"` works, but prefer a stylesheet. Historic tags like `<font>`, `<center>` and `<big>` are obsolete - never use them.",
+   "keyPoints": [
+    "strong/em express meaning; b/i are purely stylistic offsets.",
+    "sub and sup lower/raise text for formulas and powers.",
+    "pre preserves whitespace; combine with code for code blocks.",
+    "kbd = keys the user presses, code = code, samp = output.",
+    "Do not use font, center or u just for styling - use CSS."
+   ],
+   "pitfalls": [
+    "Using <u> for links-like underlines which confuses users.",
+    "Overlapping tags like <p><del>text</p></del>.",
+    "Using <strong> everywhere so nothing stands out."
+   ],
+   "examples": [
+    {
+     "title": "Common formatting tags",
+     "language": "web",
+     "html": "<p>This is <strong>important</strong> and <em>emphasized</em> text.</p>\n<p>This is <u>underlined</u>, <s>struck through</s> and <mark>highlighted</mark>.</p>\n<p>Water: H<sub>2</sub>O &nbsp; Relativity: e = mc<sup>2</sup></p>\n<p>Price: <del>$99</del> <ins>$79</ins> <small>(limited offer)</small></p>\n<p>To save a file press <kbd>Ctrl</kbd> + <kbd>S</kbd>.</p>",
+     "css": "body{font-family:sans-serif;line-height:1.6}\nkbd{background:#eee;border:1px solid #aaa;border-bottom-width:3px;border-radius:4px;padding:0 6px}",
+     "js": "",
+     "explanation": ""
+    },
+    {
+     "title": "pre keeps the layout",
+     "language": "web",
+     "html": "<pre>\nTo\nThe Principal\nKVS School\n\nSubject : Leave Application\n\nRespected Sir,\n    I am not feeling well today.\n    Please grant me two days leave.\n\nYours obediently,\nStudent\n</pre>\n<pre><code>function hello() {\n  console.log(\"Hi\");\n}</code></pre>",
+     "css": "pre{background:#f4f4f4;padding:10px;border-radius:6px}",
+     "js": "",
+     "explanation": "Line breaks and indentation appear exactly as typed."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between <strong> and <b>?",
+     "a": "strong marks strong importance (semantic, read with emphasis by screen readers); b only draws attention visually without extra importance."
+    },
+    {
+     "q": "What does <pre> do?",
+     "a": "It displays text exactly as written, preserving spaces and line breaks, in a monospace font."
+    },
+    {
+     "q": "How do you write H2O and e=mc2 correctly?",
+     "a": "H<sub>2</sub>O and e=mc<sup>2</sup> using sub and sup."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/text_format.html"
+  },
+  {
+   "id": "html-inline-semantics",
+   "title": "Quotes, Abbreviations, Time & More Inline Semantics",
+   "level": "beginner",
+   "summary": "blockquote, q, cite, abbr, time, address, dfn, wbr and other meaningful text elements.",
+   "description": "Beyond bold and italic, HTML has small elements that add precise meaning. They help accessibility, SEO and give you hooks for CSS.\n\n### Quotations\n- `<blockquote cite=\"url\">` - a long quote set apart as a block.\n- `<q>` - a short inline quote; the browser adds quotation marks.\n- `<cite>` - the title of a work (book, song, film) being referenced.\n\n### Terms and abbreviations\n- `<abbr title=\"World Health Organization\">WHO</abbr>` - shows the full form on hover and tells assistive tech.\n- `<dfn>` - the defining instance of a term.\n\n### Dates and times\n`<time datetime=\"2026-10-14\">14 Oct 2026</time>` gives machines an exact, machine-readable value while humans see friendly text. Search engines and calendars can use it.\n\n### Contact info\n`<address>` marks contact information for the nearest `<article>` or the whole page (author, email, postal address). It is *not* for any random address.\n\n### Other useful inline elements\n| Element | Use |\n|---|---|\n| `<wbr>` | A place where a very long word may break |\n| `<bdo dir=\"rtl\">` | Override text direction |\n| `<data value=\"42\">` | Machine-readable value for content |\n| `<ruby>` | Pronunciation annotations (East Asian text) |\n\nEvery one of these is **phrasing content**: it sits inside paragraphs and does not start a new line.",
+   "keyPoints": [
+    "blockquote = block quote, q = inline quote, cite = title of a work.",
+    "abbr + title gives the full form of an abbreviation.",
+    "time datetime=\"...\" makes dates machine readable.",
+    "address is for contact details of the author/page owner.",
+    "wbr suggests where long words may wrap."
+   ],
+   "pitfalls": [
+    "Using blockquote just to indent text - use CSS margin instead.",
+    "Wrapping the quotation marks yourself inside <q> (the browser adds them).",
+    "Using <address> for any postal address in the content."
+   ],
+   "examples": [
+    {
+     "title": "Meaningful inline elements",
+     "language": "web",
+     "html": "<blockquote cite=\"https://example.com/wisdom\">\n  The best way to learn HTML is to write HTML.\n</blockquote>\n<p>She said <q>practice every day</q> in the video <cite>HTML in One Shot</cite>.</p>\n<p><abbr title=\"World Health Organization\">WHO</abbr> is an international organisation.</p>\n<p>The workshop starts on <time datetime=\"2026-10-14T10:00\">14 October at 10 AM</time>.</p>\n<address>\n  Written by <a href=\"mailto:dev@example.com\">Dev Team</a><br>\n  221B Baker Street, London\n</address>\n<p>Very long word: Super<wbr>cali<wbr>fragilistic<wbr>expialidocious</p>",
+     "css": "body{font-family:sans-serif;line-height:1.6}\nblockquote{border-left:4px solid #e34c26;margin:0;padding:4px 14px;background:#fff4f0}\nabbr{text-decoration:underline dotted;cursor:help}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between <q> and <blockquote>?",
+     "a": "q is for short inline quotes and gets automatic quotation marks; blockquote is a block-level element for longer quotations."
+    },
+    {
+     "q": "Why use the <time> element?",
+     "a": "Its datetime attribute provides a machine-readable date/time so browsers, search engines and assistive tech can understand it."
+    },
+    {
+     "q": "What is <abbr> used for?",
+     "a": "To mark an abbreviation; the title attribute gives the expansion, shown as a tooltip."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/text_format.html"
+  },
+  {
+   "id": "html-entities",
+   "title": "HTML Entities (Special Characters)",
+   "level": "beginner",
+   "summary": "Use &lt; &amp; &copy; and numeric references to show reserved or hard-to-type characters.",
+   "description": "Some characters have a special meaning in HTML (`<` starts a tag, `&` starts an entity). To show them as plain text, or to show characters missing from your keyboard, you use **character entities**.\n\nAn entity starts with `&` and ends with `;`.\n\n### Common named entities\n| Entity | Result | Meaning |\n|---|---|---|\n| `&lt;` | < | less than |\n| `&gt;` | > | greater than |\n| `&amp;` | & | ampersand |\n| `&quot;` | \" | double quote |\n| `&apos;` | ' | apostrophe |\n| `&nbsp;` | (space) | non-breaking space |\n| `&copy;` | © | copyright |\n| `&reg;` | ® | registered |\n| `&trade;` | ™ | trademark |\n| `&hearts;` | ♥ | heart |\n| `&euro;` | € | euro |\n\n### Numeric references\nEvery Unicode character has a number. Use decimal `&#36;` or hexadecimal `&#x24;` to display the dollar sign `$`. This works for any character, even without a name.\n\n### &nbsp; - non-breaking space\nIt is a space that the browser will not collapse and will not wrap at. Good for keeping \"10 km\" or \"Mr. Thapa\" on one line. Do **not** use many of them for layout.\n\n### Why they matter\n- Show HTML code on a page: `&lt;p&gt;` displays as <p>.\n- Prevent parsing problems with `&` in URLs and text.\n- With UTF-8 you can usually type © or € directly, but entities are still needed for `<`, `>` and `&`.",
+   "keyPoints": [
+    "Entities start with & and end with ;.",
+    "&lt; &gt; &amp; &quot; are the four you must know.",
+    "Numeric references work for any Unicode character: &#36; or &#x24;.",
+    "&nbsp; is a non-breaking space that is not collapsed.",
+    "Use entities to display HTML code as text."
+   ],
+   "pitfalls": [
+    "Typing a raw < in text - the browser may treat it as a tag.",
+    "Using many &nbsp; for spacing instead of CSS padding/margin.",
+    "Forgetting the semicolon at the end of the entity."
+   ],
+   "examples": [
+    {
+     "title": "Entities in action",
+     "language": "web",
+     "html": "<p>This is how you write a paragraph tag: &lt;p&gt;Hello&lt;/p&gt;</p>\n<p>&copy; 2026 CodeRevise. All rights reserved. Brand&trade; Shop&reg;</p>\n<p>Fish &amp; Chips &mdash; only &euro;5 &hearts;</p>\n<p>Dollar three ways: &dollar; &#36; &#x24;</p>\n<p>Spaces: a&nbsp;&nbsp;&nbsp;&nbsp;b (with &amp;nbsp;) vs a    b (normal)</p>",
+     "css": "body{font-family:sans-serif;line-height:1.7}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use HTML entities?",
+     "a": "To display reserved characters (<, >, &) and symbols not on the keyboard, and to avoid conflicts with HTML syntax."
+    },
+    {
+     "q": "When would you use &nbsp;?",
+     "a": "To insert a space the browser will not collapse or break a line at."
+    },
+    {
+     "q": "Show the dollar sign with three different methods.",
+     "a": "Named: &dollar;  decimal: &#36;  hexadecimal: &#x24;."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/entities.html"
+  },
+  {
+   "id": "html-lists",
+   "title": "Ordered & Unordered Lists",
+   "level": "beginner",
+   "summary": "ul for bullets, ol for numbered steps, li for each item and the attributes type, start and reversed.",
+   "description": "Lists group related items. HTML has three kinds; this topic covers the two most used.\n\n### Unordered list `<ul>`\nItems have no order and show bullet points. Use it for menus, features, tags.\n\n### Ordered list `<ol>`\nItems where order matters - steps, rankings. Items are numbered automatically.\n\nEach item is an `<li>` (list item). The only valid direct children of `<ul>` / `<ol>` are `<li>` elements.\n\n### Ordered list attributes\n| Attribute | Effect |\n|---|---|\n| `type=\"1 / A / a / I / i\"` | Numbering style |\n| `start=\"10\"` | First number |\n| `reversed` | Count downwards |\n| `<li value=\"5\">` | Force a specific number |\n\n`start`, `type` and `reversed` work **only on `<ol>`**, not on `<ul>`.\n\n### Styling markers with CSS\n`list-style-type` accepts `disc`, `circle`, `square`, `none` (for ul) and `decimal`, `lower-alpha`, `upper-alpha`, `lower-roman`, `upper-roman` (for ol).\n\n### Navigation menus\nMenus are lists of links. Remove bullets and lay items in a row with CSS:\n\n```css\n.menu { list-style: none; display: flex; gap: 10px; }\n```\n\nA list-based nav is the standard markup pattern because screen readers announce \"list of 4 items\".",
+   "keyPoints": [
+    "ul = bullets (no order), ol = numbers (order matters).",
+    "Only li elements are direct children of ul/ol.",
+    "type, start, reversed work on ol only.",
+    "Use CSS list-style-type to change markers.",
+    "Navigation menus are semantically lists of links."
+   ],
+   "pitfalls": [
+    "Placing text or <div> directly inside <ul> without <li>.",
+    "Using <br> and symbols to fake a list.",
+    "Using <ul start=\"5\"> - start is not valid on ul."
+   ],
+   "examples": [
+    {
+     "title": "ul, ol and their variations",
+     "language": "web",
+     "html": "<h3>Unordered</h3>\n<ul><li>Apple</li><li>Banana</li><li>Pears</li></ul>\n<h3>Square bullets</h3>\n<ul style=\"list-style-type: square\"><li>Red</li><li>Green</li></ul>\n<h3>Ordered, start at 10</h3>\n<ol start=\"10\"><li>1st class</li><li>2nd class</li><li>3rd class</li></ol>\n<h3>Roman, reversed</h3>\n<ol type=\"I\" reversed><li>Gold</li><li>Silver</li><li>Bronze</li></ol>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": ""
+    },
+    {
+     "title": "Horizontal navigation menu",
+     "language": "web",
+     "html": "<nav>\n  <ul class=\"menu\">\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Services</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>",
+     "css": ".menu{list-style:none;display:flex;gap:16px;padding:10px;margin:0;background:#222;border-radius:8px}\n.menu a{color:#fff;text-decoration:none;font-family:sans-serif}\n.menu a:hover{color:#ffb703}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When do you use ol vs ul?",
+     "a": "ol when the sequence matters (steps, rankings); ul when it does not (shopping list, menu)."
+    },
+    {
+     "q": "What does the start attribute do?",
+     "a": "On an ol it sets the number of the first item, e.g. start=\"10\" begins at 10. It does not work on ul."
+    },
+    {
+     "q": "How do you build a horizontal navigation menu?",
+     "a": "Use a ul of li > a links inside nav, then CSS: list-style:none and display:flex (or inline-block on li)."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/lists.html"
+  },
+  {
+   "id": "html-nested-description-lists",
+   "title": "Nested Lists & Description Lists",
+   "level": "beginner",
+   "summary": "Put lists inside list items and use dl/dt/dd for term-description pairs.",
+   "description": "### Nested lists\nA list can contain another list. The inner list goes **inside an `<li>`**, not directly inside the outer `<ul>`.\n\n```html\n<ul>\n  <li>Fruits\n    <ol>\n      <li>Banana</li>\n      <li>Apple\n        <ul><li>Red</li><li>Green</li></ul>\n      </li>\n    </ol>\n  </li>\n  <li>Vegetables</li>\n</ul>\n```\n\nBrowsers automatically change the bullet style on each level (disc → circle → square). You can mix `<ul>` and `<ol>` freely.\n\nA common mistake from the course sample is putting sibling `<li>` elements inside another `<li>` - always close the item first.\n\n### Description list `<dl>`\nUse it for **term + description** pairs: glossaries, FAQs, metadata, key-value data.\n\n| Element | Role |\n|---|---|\n| `<dl>` | The whole list |\n| `<dt>` | Term / name |\n| `<dd>` | Description / value |\n\nOne term can have several descriptions, and several terms can share one description. Wrapping each group in a `<div>` inside `<dl>` is allowed (handy for styling).\n\n### Choosing the right list\n- Order matters → `ol`\n- Just a group → `ul`\n- Name → meaning pairs → `dl`",
+   "keyPoints": [
+    "A nested list must live inside an li element.",
+    "Mix ul and ol freely when nesting.",
+    "dl = description list, dt = term, dd = description.",
+    "Use dl for glossaries, FAQs and key-value info."
+   ],
+   "pitfalls": [
+    "Placing a <ul> directly inside another <ul> without an <li>.",
+    "Forgetting to close <li> before starting the next sibling.",
+    "Using a table for simple term-description pairs."
+   ],
+   "examples": [
+    {
+     "title": "Three-level nested list",
+     "language": "web",
+     "html": "<ul>\n  <li>Fruits\n    <ol>\n      <li>Banana</li>\n      <li>Apple\n        <ul>\n          <li>Red</li>\n          <li>Green</li>\n        </ul>\n      </li>\n      <li>Pears</li>\n    </ol>\n  </li>\n  <li>Vegetables</li>\n  <li>Meat</li>\n</ul>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": ""
+    },
+    {
+     "title": "Description list (glossary)",
+     "language": "web",
+     "html": "<dl>\n  <dt>HTML</dt>\n  <dd>HyperText Markup Language - the structure of a page.</dd>\n  <dt>CSS</dt>\n  <dd>Cascading Style Sheets - the look of a page.</dd>\n  <dt>JS</dt>\n  <dd>JavaScript - the behaviour of a page.</dd>\n  <dd>Also runs on servers via Node.js.</dd>\n</dl>",
+     "css": "body{font-family:sans-serif} dt{font-weight:bold;margin-top:8px} dd{margin-left:20px}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Where must a nested list be placed?",
+     "a": "Inside an li element of the parent list."
+    },
+    {
+     "q": "What is a description list and when do you use it?",
+     "a": "dl with dt (term) and dd (description) pairs; use it for glossaries, FAQs or key-value data."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/lists.html"
+  }
+ ]
+}

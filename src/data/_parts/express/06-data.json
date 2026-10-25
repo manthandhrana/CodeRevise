@@ -1,0 +1,283 @@
+{
+ "id": "express-data",
+ "title": "Data Layer: MongoDB, Mongoose and PostgreSQL",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-mongoose-schema",
+   "title": "MongoDB and Mongoose: Connect, Schema, Validation, Populate",
+   "level": "intermediate",
+   "summary": "Connect to MongoDB with Mongoose, design schemas with validation, and link collections with ref + populate.",
+   "description": "**MongoDB** stores JSON-like documents; **Mongoose** is the ODM (object-document mapper) that adds schemas, validation, middleware and a friendly query API on top of the official driver.\n\n### Connecting\nConnect **once** at startup, before `app.listen`, and exit if it fails:\n\n```js\nawait mongoose.connect(process.env.MONGO_URI)   // mongodb://localhost:27017/shop or an Atlas URL\n```\n\nKeep the URI in `.env`. Mongoose buffers queries until connected and reconnects automatically.\n\n### Schema and model\nA **schema** describes fields, types, defaults and rules; `mongoose.model('User', schema)` creates a model mapped to the `users` collection.\n\n### Built-in validation\n`required`, `minlength`/`maxlength`, `min`/`max`, `enum`, `match` (regex), `unique` (creates an index, not a validator), `trim`, `lowercase` and custom `validate` functions. Validation runs on `save()` and `create()`; for updates you must pass `runValidators: true`.\n\n### Design choices\n- **Embed** data that is read together and bounded (address, order items).\n- **Reference** (`ref`) data that is shared or unbounded (post -> author, comments).\n- Add `timestamps: true` for `createdAt`/`updatedAt` and index fields you filter or sort on.\n- Hide secrets with `select: false` (for example `password`).\n\n### Populate\n`ref` stores an `ObjectId`; `.populate('author', 'name email')` replaces it with the referenced document in the query result - similar to a join, executed as a second query.\n\n### Useful options\n`toJSON: { virtuals: true }`, virtual fields, instance methods and `pre('save')` hooks (used for hashing passwords).",
+   "keyPoints": [
+    "Connect once at startup with `await mongoose.connect(uri)`",
+    "Schema = shape + validation; model = collection access",
+    "Embed small, bounded data; reference shared or growing data",
+    "`populate()` resolves refs; `select: false` hides sensitive fields",
+    "`timestamps: true` and indexes on queried fields"
+   ],
+   "pitfalls": [
+    "`unique: true` is an index, not validation: handle duplicate-key error 11000",
+    "Updates skip validators unless `runValidators: true`",
+    "Unbounded arrays embedded inside a document (16 MB document limit)",
+    "Connecting inside each request instead of once at startup"
+   ],
+   "examples": [
+    {
+     "title": "Models and populate",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/config/db.js\nimport mongoose from 'mongoose'\n\nexport async function connectDB(uri = process.env.MONGO_URI) {\n  mongoose.connection.on('error', (e) => console.error('Mongo error', e))\n  await mongoose.connect(uri)\n  console.log('MongoDB connected:', mongoose.connection.name)\n}\n\n// ## src/models/User.js\nimport mongoose from 'mongoose'\n\nconst userSchema = new mongoose.Schema(\n  {\n    name: { type: String, required: [true, 'Name is required'], trim: true, minlength: 2 },\n    email: {\n      type: String, required: true, unique: true, lowercase: true,\n      match: [/^\\S+@\\S+\\.\\S+$/, 'Invalid email'],\n    },\n    password: { type: String, required: true, minlength: 8, select: false },\n    role: { type: String, enum: ['user', 'admin'], default: 'user' },\n  },\n  { timestamps: true }\n)\nexport default mongoose.model('User', userSchema)\n\n// ## src/models/Post.js\nimport mongoose from 'mongoose'\n\nconst postSchema = new mongoose.Schema(\n  {\n    title: { type: String, required: true, maxlength: 120 },\n    body: { type: String, required: true },\n    tags: [String],\n    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },\n  },\n  { timestamps: true }\n)\npostSchema.index({ author: 1, createdAt: -1 })\nexport default mongoose.model('Post', postSchema)\n\n// ## usage.js\nimport Post from './src/models/Post.js'\n\nconst posts = await Post.find().populate('author', 'name email').sort('-createdAt')\n// posts[0].author -> { _id, name: 'Asha', email: 'asha@x.com' }",
+     "explanation": ""
+    },
+    {
+     "title": "Validation error shape",
+     "language": "text",
+     "lang": "json",
+     "code": "{\n  \"name\": \"ValidationError\",\n  \"message\": \"User validation failed: password: Path `password` is required., name: Path `name` (`A`, length 1) is shorter than the minimum allowed length (2)., email: Invalid email\",\n  \"errors\": {\n    \"password\": \"ValidatorError\",\n    \"name\": \"ValidatorError\",\n    \"email\": \"ValidatorError\"\n  }\n}",
+     "explanation": "What Mongoose reports when you call User.create({ name: \"A\", email: \"bad\" })."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Embed vs reference in MongoDB?",
+     "a": "Embed data that is read together and has a bounded size; reference (store the _id) when data is shared between documents or can grow without limit."
+    },
+    {
+     "q": "Does unique: true validate uniqueness?",
+     "a": "No, it only creates a unique index; a duplicate insert fails with MongoServerError code 11000 that you should translate to a 409 response."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-mongoose-crud",
+   "title": "Full CRUD REST API with Mongoose",
+   "level": "intermediate",
+   "summary": "Build create, read, update and delete endpoints with a model, controller, router and proper status codes.",
+   "description": "CRUD (Create, Read, Update, Delete) maps to five REST endpoints. The structure is **model -> controller -> router -> app**.\n\n| Operation | Route | Status |\n|---|---|---|\n| Create | `POST /api/products` | 201 |\n| Read all | `GET /api/products` | 200 |\n| Read one | `GET /api/products/:id` | 200 / 404 |\n| Update | `PATCH /api/products/:id` | 200 / 404 |\n| Delete | `DELETE /api/products/:id` | 204 / 404 |\n\n### Controller rules\n- **Create**: `Product.create(req.body)`. Never trust `req.body` blindly - pick allowed fields to avoid *mass assignment* (a client sending `role: 'admin'`).\n- **Read one**: validate the id with `mongoose.isValidObjectId` (otherwise Mongoose throws a `CastError`), return 404 when `null`.\n- **Update**: `findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true })`. `returnDocument: 'after'` returns the updated document (older code uses `{ new: true }`, which still works but is deprecated in recent Mongoose).\n- **Delete**: `findByIdAndDelete`, respond `204` with no body.\n\n### Express 5 benefit\nControllers can be plain `async` functions. A rejected promise (validation failure, CastError) reaches the central error handler automatically - no try/catch in each function.\n\n### Lean queries\n`.lean()` returns plain objects instead of Mongoose documents - faster for read-only endpoints.\n\n### Test with curl\nAlways check the happy path and 404, 400 (invalid id), 400 (validation).",
+   "keyPoints": [
+    "Layers: model, controller, router, app",
+    "Whitelist fields to prevent mass assignment",
+    "Use `{ returnDocument: 'after', runValidators: true }` on updates",
+    "201 on create, 404 when missing, 204 on delete",
+    "Validate ObjectId format to avoid CastError 500s"
+   ],
+   "pitfalls": [
+    "`Product.create(req.body)` with unfiltered input",
+    "Forgetting `runValidators` - bad data is saved on update",
+    "Returning 200 with `null` when the document does not exist"
+   ],
+   "examples": [
+    {
+     "title": "Product CRUD",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/models/Product.js\nimport mongoose from 'mongoose'\n\nconst productSchema = new mongoose.Schema(\n  {\n    name: { type: String, required: true, trim: true },\n    price: { type: Number, required: true, min: 0 },\n    category: { type: String, default: 'general' },\n    stock: { type: Number, default: 0, min: 0 },\n  },\n  { timestamps: true }\n)\nexport default mongoose.model('Product', productSchema)\n\n// ## src/controllers/productController.js\nimport mongoose from 'mongoose'\nimport Product from '../models/Product.js'\n\nconst pick = (obj, keys) => Object.fromEntries(keys.filter((k) => k in obj).map((k) => [k, obj[k]]))\nconst FIELDS = ['name', 'price', 'category', 'stock']\n\nfunction checkId(id) {\n  if (!mongoose.isValidObjectId(id)) {\n    throw Object.assign(new Error('Invalid id'), { status: 400 })\n  }\n}\nconst notFound = () => Object.assign(new Error('Product not found'), { status: 404 })\n\nexport const listProducts = async (req, res) => {\n  res.json(await Product.find().lean())\n}\n\nexport const getProduct = async (req, res) => {\n  checkId(req.params.id)\n  const product = await Product.findById(req.params.id)\n  if (!product) throw notFound()\n  res.json(product)\n}\n\nexport const createProduct = async (req, res) => {\n  const product = await Product.create(pick(req.body ?? {}, FIELDS))\n  res.status(201).json(product)\n}\n\nexport const updateProduct = async (req, res) => {\n  checkId(req.params.id)\n  const product = await Product.findByIdAndUpdate(\n    req.params.id, pick(req.body ?? {}, FIELDS), { returnDocument: 'after', runValidators: true }\n  )\n  if (!product) throw notFound()\n  res.json(product)\n}\n\nexport const deleteProduct = async (req, res) => {\n  checkId(req.params.id)\n  const product = await Product.findByIdAndDelete(req.params.id)\n  if (!product) throw notFound()\n  res.status(204).end()\n}\n\n// ## src/routes/products.js\nimport { Router } from 'express'\nimport * as c from '../controllers/productController.js'\n\nconst router = Router()\nrouter.route('/').get(c.listProducts).post(c.createProduct)\nrouter.route('/:id').get(c.getProduct).patch(c.updateProduct).delete(c.deleteProduct)\nexport default router\n\n// ## src/app.js\nimport express from 'express'\nimport products from './routes/products.js'\n\nconst app = express()\napp.use(express.json())\napp.use('/api/products', products)\napp.use((err, req, res, next) => {\n  const status = err.status ?? (err.name === 'ValidationError' ? 400 : 500)\n  res.status(status).json({ error: err.message })\n})\nexport default app",
+     "explanation": ""
+    },
+    {
+     "title": "Try it",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST localhost:3000/api/products -H \"Content-Type: application/json\" \\\n  -d '{\"name\":\"Keyboard\",\"price\":1499,\"category\":\"tech\"}'\n# 201 {\"_id\":\"66f...\",\"name\":\"Keyboard\",\"price\":1499,\"category\":\"tech\",\"stock\":0,...}\n\ncurl localhost:3000/api/products/not-an-id      # 400 {\"error\":\"Invalid id\"}\ncurl -X PATCH localhost:3000/api/products/66f... -H \"Content-Type: application/json\" -d '{\"price\":-5}'\n# 400 {\"error\":\"Validation failed: price: Path `price` (-5) is less than minimum allowed value (0).\"}\ncurl -i -X DELETE localhost:3000/api/products/66f...   # 204 No Content",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "findByIdAndUpdate returns the old document - why?",
+     "a": "By default Mongoose returns the document as it was before the update; pass { returnDocument: \"after\" } (the older option is { new: true }) to get the updated one."
+    },
+    {
+     "q": "What is mass assignment and how do you prevent it?",
+     "a": "A client sends extra fields (like role: \"admin\") that get written to the database; prevent it by whitelisting allowed fields or validating with a schema library."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-query-features",
+   "title": "Pagination, Filtering, Sorting and Search",
+   "level": "intermediate",
+   "summary": "Support ?page, ?limit, ?sort, ?fields, field filters and text search safely in a list endpoint.",
+   "description": "List endpoints must never return an entire collection. Offer **pagination, sorting, filtering, field selection and search** through the query string.\n\n### Pagination\n`GET /products?page=2&limit=10` becomes `skip = (page - 1) * limit` and `limit`. Always clamp the values (for example `limit <= 100`) and also return the total so the UI can render page numbers:\n\n```json\n{ \"data\": [...], \"meta\": { \"page\": 2, \"limit\": 10, \"total\": 57, \"totalPages\": 6 } }\n```\n\n`skip` gets slow on very deep pages. For feeds use **cursor pagination** (`?after=<lastId>` with `_id: { $gt: after }`).\n\n### Sorting\n`?sort=-price,name` -> Mongoose sort string `'-price name'`. Whitelist the sortable fields.\n\n### Filtering\n`?category=tech&price[gte]=100` -> `{ category: 'tech', price: { $gte: 100 } }`. Whitelist filter keys and operators, and cast types. In Express 5 the default query parser does not expand `price[gte]`, so use the explicit `minPrice`/`maxPrice` style or enable the extended parser.\n\n### Field selection\n`?fields=name,price` -> `.select('name price')`.\n\n### Search\nSimple: case-insensitive regex (escape user input!). Better: a **text index** (`schema.index({ name: 'text' })`) with `$text: { $search: 'key' }`.\n\n### Safety\nNever pass `req.query` straight into `find()`: it lets clients inject operators (`?price[$ne]=0`) - see NoSQL injection.",
+   "keyPoints": [
+    "`skip = (page - 1) * limit`; clamp `limit`; return `total`",
+    "Whitelist sort fields, filter fields and operators",
+    "Escape regex input or use a text index for search",
+    "Cursor pagination scales better than deep `skip`",
+    "Never pass raw `req.query` into `find()`"
+   ],
+   "pitfalls": [
+    "Unbounded `limit` lets clients download the whole database",
+    "Building a regex from raw user input (ReDoS and injection)",
+    "Counting with a different filter than the list query"
+   ],
+   "examples": [
+    {
+     "title": "Reusable list query",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/utils/listQuery.js\nconst escapeRegex = (s) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')\n\nexport async function listQuery(Model, query, { sortable = [], filterable = [], searchField = 'name' } = {}) {\n  const page = Math.max(parseInt(query.page) || 1, 1)\n  const limit = Math.min(Math.max(parseInt(query.limit) || 10, 1), 100)\n\n  const filter = {}\n  for (const key of filterable) if (typeof query[key] === 'string') filter[key] = query[key]\n  if (query.minPrice || query.maxPrice) {\n    filter.price = {}\n    if (query.minPrice) filter.price.$gte = Number(query.minPrice)\n    if (query.maxPrice) filter.price.$lte = Number(query.maxPrice)\n  }\n  if (typeof query.search === 'string' && query.search) {\n    filter[searchField] = { $regex: escapeRegex(query.search), $options: 'i' }\n  }\n\n  const sort = String(query.sort ?? '-createdAt')\n    .split(',')\n    .filter((s) => sortable.includes(s.replace(/^-/, '')))\n    .join(' ') || '-createdAt'\n\n  const select = typeof query.fields === 'string' ? query.fields.split(',').join(' ') : ''\n\n  const [data, total] = await Promise.all([\n    Model.find(filter).sort(sort).select(select).skip((page - 1) * limit).limit(limit).lean(),\n    Model.countDocuments(filter),\n  ])\n  return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } }\n}\n\n// ## src/controllers/productController.js (list)\nimport Product from '../models/Product.js'\nimport { listQuery } from '../utils/listQuery.js'\n\nexport const listProducts = async (req, res) => {\n  res.json(await listQuery(Product, req.query, {\n    sortable: ['price', 'name', 'createdAt'],\n    filterable: ['category'],\n  }))\n}",
+     "explanation": ""
+    },
+    {
+     "title": "Example request",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl \"localhost:3000/api/products?category=tech&minPrice=500&sort=-price&page=1&limit=5&fields=name,price&search=key\"\n# {\"data\":[{\"_id\":\"...\",\"name\":\"Keyboard\",\"price\":1499}],\n#  \"meta\":{\"page\":1,\"limit\":5,\"total\":1,\"totalPages\":1}}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Offset vs cursor pagination?",
+     "a": "Offset (skip/limit) is simple but slows down on deep pages and can skip or duplicate rows when data changes; cursor pagination filters from the last seen id/value and stays fast and stable."
+    },
+    {
+     "q": "Why is passing req.query directly to find() dangerous?",
+     "a": "Clients can inject MongoDB operators such as { \"$ne\": null } or $where, changing the query logic; always whitelist and cast the allowed filters."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-aggregation",
+   "title": "MongoDB Aggregation Pipelines",
+   "level": "advanced",
+   "summary": "Use $match, $group, $sort, $lookup and $project stages to compute statistics and joins inside the database.",
+   "description": "An **aggregation pipeline** is an ordered list of stages; each stage transforms the documents and passes them on - like middleware for data. Use it for reports, dashboards and joins that plain `find()` cannot express.\n\n### Common stages\n| Stage | Purpose |\n|---|---|\n| `$match` | filter documents (put it first so indexes can be used) |\n| `$group` | group by a key and compute `$sum`, `$avg`, `$min`, `$max`, `$count` |\n| `$sort` | order results |\n| `$project` | include, exclude or compute fields |\n| `$lookup` | left join with another collection |\n| `$unwind` | turn an array into one document per element |\n| `$skip` / `$limit` | pagination |\n| `$facet` | run several pipelines at once (counts + data) |\n\n### Typical use cases\n- Total sales per month / per category\n- Top 5 customers\n- Order list with product details (`$lookup`)\n- Average rating per product\n\n### Usage in Express\n`Order.aggregate([...])` returns plain objects (no Mongoose casting!). Convert string ids with `new mongoose.Types.ObjectId(id)` inside `$match`, because Mongoose does not cast aggregation stages.\n\n### Performance tips\n- `$match` and `$sort` early, `$project` to drop unneeded fields.\n- Add indexes on matched and sorted fields.\n- Heavy reports can be cached or precomputed.",
+   "keyPoints": [
+    "Pipeline = array of stages: `$match` -> `$group` -> `$sort` -> `$project`",
+    "`$lookup` joins collections; `$unwind` flattens arrays",
+    "`aggregate()` does not auto-cast ids: build `ObjectId` yourself",
+    "Put `$match` first to use indexes"
+   ],
+   "pitfalls": [
+    "Passing a string `_id` into `$match` and getting no results",
+    "Heavy `$lookup` on huge unindexed collections",
+    "Returning aggregation output without limiting size"
+   ],
+   "examples": [
+    {
+     "title": "Sales report endpoint",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import mongoose from 'mongoose'\nimport { Router } from 'express'\n\nconst orderSchema = new mongoose.Schema({\n  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },\n  items: [{ name: String, price: Number, qty: Number }],\n  status: { type: String, enum: ['pending', 'paid', 'shipped'], default: 'pending' },\n}, { timestamps: true })\nconst Order = mongoose.model('Order', orderSchema)\n\nconst router = Router()\n\n// revenue per month for paid orders\nrouter.get('/stats/monthly', async (req, res) => {\n  const stats = await Order.aggregate([\n    { $match: { status: 'paid' } },\n    { $unwind: '$items' },\n    { $group: {\n        _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },\n        revenue: { $sum: { $multiply: ['$items.price', '$items.qty'] } },\n        orders: { $addToSet: '$_id' },\n    } },\n    { $project: { _id: 0, year: '$_id.year', month: '$_id.month', revenue: 1, orderCount: { $size: '$orders' } } },\n    { $sort: { year: 1, month: 1 } },\n  ])\n  res.json(stats)\n})\n\n// orders of one user with user details joined\nrouter.get('/by-user/:userId', async (req, res) => {\n  const userId = new mongoose.Types.ObjectId(req.params.userId)\n  const orders = await Order.aggregate([\n    { $match: { user: userId } },\n    { $lookup: { from: 'users', localField: 'user', foreignField: '_id', as: 'user' } },\n    { $unwind: '$user' },\n    { $project: { status: 1, items: 1, 'user.name': 1, 'user.email': 1 } },\n  ])\n  res.json(orders)\n})\n\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "Sample output",
+     "language": "text",
+     "lang": "json",
+     "code": "[\n  { \"revenue\": 5200, \"year\": 2026, \"month\": 9, \"orderCount\": 3 },\n  { \"revenue\": 8100, \"year\": 2026, \"month\": 10, \"orderCount\": 5 }\n]",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does $match with a string _id return nothing in aggregate?",
+     "a": "Aggregation stages are not cast by Mongoose, so the string must be converted to new mongoose.Types.ObjectId(id) to match ObjectId values."
+    },
+    {
+     "q": "When use aggregate instead of find?",
+     "a": "For grouping, statistics, computed fields and joins ($lookup) that happen in the database; plain filtering and sorting is simpler with find."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-postgres",
+   "title": "PostgreSQL with pg and Prisma",
+   "level": "intermediate",
+   "summary": "Use PostgreSQL from Express with parameterised pg queries or the Prisma ORM.",
+   "description": "Relational databases suit data with strict structure and relations (users, orders, payments). PostgreSQL is the most popular open-source choice. In Node you can use the plain driver **pg**, a query builder, or an ORM such as **Prisma**.\n\n### Option 1: `pg` (SQL by hand)\nCreate one `Pool` for the whole app and use **parameterised queries** (`$1`, `$2`). Never build SQL by concatenating user input - that is SQL injection.\n\n```js\nconst { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id])\n```\n\n### Option 2: Prisma\n1. `npm i prisma @prisma/client` then `npx prisma init`.\n2. Describe tables in `schema.prisma` (models, relations).\n3. `npx prisma migrate dev --name init` creates SQL migrations and the database.\n4. Use the generated type-safe client: `prisma.user.findMany({ where, include, orderBy, skip, take })`.\n\nCreate a **single** `PrismaClient` instance and reuse it; calling `new PrismaClient()` per request exhausts connections.\n\n### Mongo vs Postgres - quick guide\n| Need | Prefer |\n|---|---|\n| Flexible, nested, fast-changing data | MongoDB |\n| Strict schema, joins, transactions, reporting | PostgreSQL |\n\n### Error mapping\nPrisma `P2002` = unique constraint violation (409), `P2025` = record not found (404). Postgres code `23505` is a unique violation in `pg`.",
+   "keyPoints": [
+    "`pg`: one `Pool`, parameterised queries (`$1`) only",
+    "Prisma: schema -> migrate -> generated client",
+    "Reuse a single `PrismaClient`",
+    "Map `P2002` -> 409 and `P2025` -> 404",
+    "Choose SQL for relational, strongly-consistent data"
+   ],
+   "pitfalls": [
+    "String-concatenated SQL (injection)",
+    "Creating a new pool/client per request",
+    "Forgetting to run `prisma generate` / migrations on deploy"
+   ],
+   "examples": [
+    {
+     "title": "pg pool and Prisma client",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/db/pg.js\nimport pg from 'pg'\nexport const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })\n\n// ## src/routes/usersPg.js\nimport { Router } from 'express'\nimport { pool } from '../db/pg.js'\nconst router = Router()\n\nrouter.get('/:id', async (req, res) => {\n  const { rows } = await pool.query('SELECT id, name, email FROM users WHERE id = $1', [req.params.id])\n  if (!rows[0]) return res.status(404).json({ error: 'User not found' })\n  res.json(rows[0])\n})\n\nrouter.post('/', async (req, res) => {\n  const { name, email } = req.body\n  try {\n    const { rows } = await pool.query(\n      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING id, name, email', [name, email])\n    res.status(201).json(rows[0])\n  } catch (err) {\n    if (err.code === '23505') return res.status(409).json({ error: 'Email already exists' })\n    throw err\n  }\n})\nexport default router\n\n// ## src/db/prisma.js\nimport { PrismaClient } from '@prisma/client'\nexport const prisma = new PrismaClient()\n\n// ## src/routes/usersPrisma.js\nimport { Router } from 'express'\nimport { prisma } from '../db/prisma.js'\nconst router = Router()\n\nrouter.get('/', async (req, res) => {\n  const users = await prisma.user.findMany({\n    include: { posts: { take: 3 } },\n    orderBy: { createdAt: 'desc' },\n    take: 20,\n  })\n  res.json(users)\n})\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "prisma/schema.prisma",
+     "language": "text",
+     "lang": "text",
+     "code": "generator client {\n  provider = \"prisma-client-js\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel User {\n  id        Int      @id @default(autoincrement())\n  email     String   @unique\n  name      String\n  posts     Post[]\n  createdAt DateTime @default(now())\n}\n\nmodel Post {\n  id       Int    @id @default(autoincrement())\n  title    String\n  author   User   @relation(fields: [authorId], references: [id])\n  authorId Int\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use parameterised queries?",
+     "a": "The driver sends values separately from the SQL text, so user input cannot change the query structure, which prevents SQL injection."
+    },
+    {
+     "q": "When choose PostgreSQL over MongoDB?",
+     "a": "When the data is relational and needs strict schemas, joins and ACID transactions, such as finance, inventory or orders."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-service-transactions-seeding",
+   "title": "Services, Repositories, Transactions and Seeding",
+   "level": "advanced",
+   "summary": "Keep controllers thin with a service layer, make multi-step changes atomic with transactions and seed demo data.",
+   "description": "### Service and repository pattern\nControllers should only translate HTTP (read input, call a service, send the response). Business rules live in a **service**, and database access in a **repository** (or the model itself in smaller apps).\n\n`route -> controller -> service -> repository/model`\n\nBenefits: services are testable without Express, business logic is reused (HTTP, cron, CLI), and you can swap the database with fewer changes.\n\n### Transactions\nSome operations touch several documents and must succeed or fail **together**: placing an order (create order, decrease stock, charge wallet). In MongoDB use a session:\n\n```js\nconst session = await mongoose.startSession()\nawait session.withTransaction(async () => {\n  await Order.create([data], { session })\n  await Product.updateOne({ _id }, { $inc: { stock: -qty } }, { session })\n})\n```\n\n`withTransaction` retries on transient errors and aborts when the callback throws. Transactions need a **replica set** (Atlas has one; locally start `mongod --replSet`). In PostgreSQL use `BEGIN ... COMMIT`/`ROLLBACK` on one client, or Prisma's `prisma.$transaction([...])`.\n\nKeep transactions short and do not call slow external APIs inside them.\n\n### Seeding\nA seed script fills the database with demo or test data: a standalone file (`node scripts/seed.js`) that connects, clears collections, inserts data and disconnects. Use `insertMany`, hash passwords before inserting, and refuse to run when `NODE_ENV=production`.",
+   "keyPoints": [
+    "Controller (HTTP) -> service (business rules) -> repository/model (data)",
+    "Mongo transactions need a replica set and a session",
+    "Use `session.withTransaction()` for automatic retry/abort",
+    "Prisma: `prisma.$transaction([...])`; SQL: BEGIN/COMMIT/ROLLBACK",
+    "Seed scripts: separate file, insertMany, never in production"
+   ],
+   "pitfalls": [
+    "Forgetting to pass `{ session }` to every operation inside the transaction",
+    "Running transactions on standalone MongoDB (not supported)",
+    "Long-running transactions that hold locks"
+   ],
+   "examples": [
+    {
+     "title": "Order service with transaction",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/services/orderService.js\nimport mongoose from 'mongoose'\nimport Order from '../models/Order.js'   // model from the aggregation topic\nimport Product from '../models/Product.js'\n\nexport async function placeOrder(userId, lines) {\n  const session = await mongoose.startSession()\n  try {\n    let order\n    await session.withTransaction(async () => {\n      const items = []\n      for (const { productId, qty } of lines) {\n        const product = await Product.findOneAndUpdate(\n          { _id: productId, stock: { $gte: qty } },          // atomic stock check\n          { $inc: { stock: -qty } },\n          { returnDocument: 'after', session }\n        )\n        if (!product) throw Object.assign(new Error('Out of stock'), { status: 409 })\n        items.push({ name: product.name, price: product.price, qty })\n      }\n      ;[order] = await Order.create([{ user: userId, items }], { session })\n    })\n    return order\n  } finally {\n    await session.endSession()\n  }\n}\n\n// ## src/controllers/orderController.js\nimport { placeOrder } from '../services/orderService.js'\n\nexport const createOrder = async (req, res) => {\n  const order = await placeOrder(req.user.id, req.body.items)\n  res.status(201).json(order)\n}",
+     "explanation": ""
+    },
+    {
+     "title": "Seed script",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## scripts/seed.js\nimport mongoose from 'mongoose'\nimport bcrypt from 'bcryptjs'\nimport User from '../src/models/User.js'\nimport Product from '../src/models/Product.js'\n\nif (process.env.NODE_ENV === 'production') {\n  console.error('Refusing to seed production')\n  process.exit(1)\n}\n\nawait mongoose.connect(process.env.MONGO_URI)\nawait Promise.all([User.deleteMany(), Product.deleteMany()])\n\nawait User.create([\n  { name: 'Admin', email: 'admin@demo.com', role: 'admin', password: await bcrypt.hash('Admin@123', 10) },\n])\nawait Product.insertMany([\n  { name: 'Keyboard', price: 1499, stock: 20, category: 'tech' },\n  { name: 'Mouse', price: 699, stock: 50, category: 'tech' },\n])\n\nconsole.log('Seeded')\nawait mongoose.disconnect()",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why add a service layer?",
+     "a": "It keeps business logic independent from HTTP so it is reusable and easy to unit test, leaving controllers thin."
+    },
+    {
+     "q": "What does a transaction guarantee?",
+     "a": "Atomicity: all operations inside commit together or none of them are applied, which prevents partial updates such as an order created without reducing stock."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

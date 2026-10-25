@@ -1,0 +1,171 @@
+{
+ "id": "html-graphics-components",
+ "title": "Graphics & Components",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "html-canvas",
+   "title": "Canvas: Drawing with JavaScript",
+   "level": "advanced",
+   "summary": "The canvas element gives a pixel surface you draw on with the 2D context API.",
+   "description": "`<canvas>` is a rectangular **bitmap** area that you paint with JavaScript. It is used for games, charts, image editing, particle effects and animations.\n\n```html\n<canvas id=\"c\" width=\"300\" height=\"150\">Your browser does not support canvas.</canvas>\n```\n\n### Getting a context\n```js\nconst canvas = document.getElementById('c');\nconst ctx = canvas.getContext('2d');\n```\nOther contexts: `webgl`/`webgl2` (3D), `bitmaprenderer`, `webgpu`.\n\n### Basic drawing API\n| Method | Purpose |\n|---|---|\n| `fillStyle` / `strokeStyle` | Colour |\n| `fillRect(x,y,w,h)` | Filled rectangle |\n| `strokeRect`, `clearRect` | Outline / erase |\n| `beginPath()`, `moveTo`, `lineTo`, `arc` | Paths |\n| `fill()` / `stroke()` | Paint the path |\n| `fillText(text,x,y)` | Text |\n| `drawImage(img,x,y)` | Images |\n\nCoordinates start at the **top-left** (0,0); x goes right, y goes **down**.\n\n### Size\nSet `width`/`height` **attributes** (the drawing buffer). CSS size only stretches the bitmap and makes it blurry.\n\n### Animation\nUse `requestAnimationFrame(loop)`: clear, update, redraw, repeat.\n\n### Canvas vs SVG\nCanvas is **pixels** (fast for thousands of objects, no DOM per shape, not accessible by default). SVG is **vectors** (scalable, each shape is a DOM node, stylable). For accessibility provide fallback text or ARIA on the canvas.",
+   "keyPoints": [
+    "canvas is a bitmap drawn through getContext(\"2d\").",
+    "Set size with width/height attributes, not CSS.",
+    "Origin (0,0) is the top-left corner.",
+    "Animate with requestAnimationFrame.",
+    "Canvas content is not accessible by default - add fallbacks."
+   ],
+   "pitfalls": [
+    "Sizing canvas only with CSS - blurry output.",
+    "Forgetting beginPath() so old shapes redraw.",
+    "Using canvas for simple icons where SVG is better."
+   ],
+   "examples": [
+    {
+     "title": "Draw shapes and animate a ball",
+     "language": "web",
+     "html": "<canvas id=\"c\" width=\"320\" height=\"160\" aria-label=\"Bouncing ball animation\" role=\"img\"></canvas>",
+     "css": "canvas{border:2px solid #333;border-radius:8px;background:#fafafa}",
+     "js": "var ctx = document.getElementById('c').getContext('2d');\nvar x = 30, y = 50, dx = 3, dy = 2;\nfunction frame() {\n  ctx.clearRect(0, 0, 320, 160);\n  ctx.fillStyle = '#90e0ef'; ctx.fillRect(10, 10, 80, 40);\n  ctx.strokeStyle = '#e34c26'; ctx.lineWidth = 3; ctx.strokeRect(100, 10, 80, 40);\n  ctx.fillStyle = '#222'; ctx.font = '16px sans-serif'; ctx.fillText('Canvas!', 200, 35);\n  ctx.beginPath(); ctx.arc(x, y + 40, 16, 0, Math.PI * 2); ctx.fillStyle = '#e34c26'; ctx.fill();\n  x += dx; y += dy;\n  if (x < 16 || x > 304) dx = -dx;\n  if (y < 10 || y > 94) dy = -dy;\n  requestAnimationFrame(frame);\n}\nframe();",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the canvas element?",
+     "a": "A bitmap drawing surface controlled with JavaScript through a rendering context such as 2D or WebGL."
+    },
+    {
+     "q": "Canvas vs SVG?",
+     "a": "Canvas is pixel-based and fast for many objects but not scalable or DOM-accessible; SVG is vector-based, scalable and each element is in the DOM."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-svg",
+   "title": "Inline SVG Basics",
+   "level": "intermediate",
+   "summary": "SVG draws crisp, scalable vector graphics directly in HTML and can be styled with CSS.",
+   "description": "**SVG** (Scalable Vector Graphics) describes shapes in XML. It scales to any size without blurring, is small for icons and logos, and can be styled and scripted like HTML.\n\n### Ways to use SVG\n1. **Inline**: paste the `<svg>` element in HTML - fully styleable with CSS and JS (best for icons).\n2. **`<img src=\"logo.svg\">`** - simple, cached, not stylable from the page.\n3. **CSS background** image.\n\n### Core elements\n| Element | Draws |\n|---|---|\n| `<rect>` | Rectangle (x, y, width, height, rx) |\n| `<circle>` | cx, cy, r |\n| `<ellipse>` | cx, cy, rx, ry |\n| `<line>` | x1,y1 → x2,y2 |\n| `<polygon>` / `<polyline>` | points=\"...\" |\n| `<path d=\"...\">` | Any shape (M, L, C, Z commands) |\n| `<text>` | Text |\n| `<g>` | Group |\n\n### viewBox - the key to scaling\n`viewBox=\"0 0 100 100\"` defines the internal coordinate system. With `width=\"100%\"` the whole drawing scales to fit.\n\n### Styling\nPresentation attributes (`fill`, `stroke`, `stroke-width`) or CSS. Use `fill=\"currentColor\"` so icons inherit text colour.\n\n### Accessibility\nAdd `role=\"img\"` plus `<title>` inside, or `aria-hidden=\"true\"` for decorative icons.\n\n### Animation\nCSS transitions/animations, SMIL (`<animate>`) or JavaScript all work.",
+   "keyPoints": [
+    "SVG is vector based: sharp at any size.",
+    "viewBox defines the coordinate system for scaling.",
+    "Inline SVG can be styled by CSS and scripted by JS.",
+    "fill=\"currentColor\" lets icons follow the text colour.",
+    "Add title/role=\"img\" or aria-hidden for accessibility."
+   ],
+   "pitfalls": [
+    "Missing viewBox - the drawing does not scale.",
+    "Hard-coded fill colours that cannot be themed.",
+    "No alternative text on meaningful graphics."
+   ],
+   "examples": [
+    {
+     "title": "Inline SVG shapes and a styled icon",
+     "language": "web",
+     "html": "<svg viewBox=\"0 0 200 100\" width=\"300\" role=\"img\" aria-labelledby=\"t\">\n  <title id=\"t\">Sun above a house</title>\n  <rect width=\"200\" height=\"100\" fill=\"#caf0f8\"/>\n  <circle cx=\"160\" cy=\"25\" r=\"14\" fill=\"#ffd60a\"/>\n  <polygon points=\"40,55 70,30 100,55\" fill=\"#e34c26\"/>\n  <rect x=\"48\" y=\"55\" width=\"44\" height=\"30\" fill=\"#f4a261\"/>\n  <rect x=\"64\" y=\"65\" width=\"12\" height=\"20\" fill=\"#6c4a2d\"/>\n  <path d=\"M0 85 Q50 70 100 85 T200 85 V100 H0Z\" fill=\"#95d5b2\"/>\n</svg>\n<p class=\"ico\"><svg viewBox=\"0 0 24 24\" width=\"28\" height=\"28\" aria-hidden=\"true\">\n  <path fill=\"currentColor\" d=\"M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6C19 16.5 12 21 12 21z\"/></svg> I love SVG</p>",
+     "css": "body{font-family:sans-serif} .ico{color:crimson;display:flex;align-items:center;gap:8px;font-weight:bold}\nsvg{max-width:100%;height:auto}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the viewBox attribute?",
+     "a": "It defines the SVG internal coordinate system (min-x, min-y, width, height) so the graphic scales to its container."
+    },
+    {
+     "q": "Why prefer SVG for icons?",
+     "a": "It is resolution independent, small, stylable with CSS and can inherit text colour via currentColor."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-template-slot",
+   "title": "template & slot Elements",
+   "level": "advanced",
+   "summary": "template holds inert HTML to clone later; slot marks insertion points inside shadow DOM.",
+   "description": "### template\n`<template>` holds HTML that is **parsed but not rendered**. Its content is inert: images do not load, scripts do not run, it is not in the page until you clone it with JavaScript. It is the browser-native way to define a repeatable UI chunk.\n\n```html\n<template id=\"card\">\n  <li class=\"item\"><strong class=\"name\"></strong> - <span class=\"price\"></span></li>\n</template>\n```\n\nUsing it:\n```js\nconst tpl = document.getElementById('card');\nconst clone = tpl.content.cloneNode(true); // DocumentFragment\nclone.querySelector('.name').textContent = 'Laptop';\nlist.appendChild(clone);\n```\n\n### Why use it?\n- Cleaner than building DOM with long strings.\n- Safer (use textContent, not innerHTML).\n- Efficient: parsed once, cloned many times.\n- The base for custom elements.\n\n### slot\n`<slot>` is a placeholder inside a **shadow DOM** component that is filled with content supplied by the user of the component.\n\n```html\n<fancy-card>\n  <h3 slot=\"title\">Hello</h3>\n  <p>Default slot content</p>\n</fancy-card>\n```\nInside the component: `<slot name=\"title\"></slot>` and `<slot></slot>` (default). Content inside a slot tag is **fallback** if nothing is provided.\n\n### Related: `<noscript>`\nShown only when JavaScript is disabled; and `<template shadowrootmode=\"open\">` enables declarative shadow DOM.",
+   "keyPoints": [
+    "template content is inert until cloned.",
+    "Clone with template.content.cloneNode(true).",
+    "slot is a placeholder filled with light-DOM content.",
+    "Named slots use slot=\"name\" on children.",
+    "Use textContent when inserting user data."
+   ],
+   "pitfalls": [
+    "Expecting template content to be visible without cloning.",
+    "Using innerHTML with user input and creating XSS holes.",
+    "Forgetting cloneNode(true) so children are not copied."
+   ],
+   "examples": [
+    {
+     "title": "Render a list from a template",
+     "language": "web",
+     "html": "<h3>Products</h3>\n<ul id=\"list\"></ul>\n<template id=\"row\">\n  <li><strong class=\"name\"></strong> - <span class=\"price\"></span></li>\n</template>",
+     "css": "body{font-family:sans-serif} li{margin:6px 0}",
+     "js": "var products = [{ name: 'Laptop', price: 55000 }, { name: 'Mouse', price: 799 }, { name: 'Keyboard', price: 1499 }];\nvar tpl = document.getElementById('row'), list = document.getElementById('list');\nproducts.forEach(function (p) {\n  var node = tpl.content.cloneNode(true);\n  node.querySelector('.name').textContent = p.name;\n  node.querySelector('.price').textContent = 'Rs ' + p.price;\n  list.appendChild(node);\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the template element?",
+     "a": "A container for HTML that is parsed but not rendered; you clone its content with JavaScript to create elements."
+    },
+    {
+     "q": "What does slot do?",
+     "a": "It defines a placeholder in a shadow DOM component that the component user fills with their own content."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-web-components",
+   "title": "Web Components: Custom Elements & Shadow DOM",
+   "level": "advanced",
+   "summary": "Create your own reusable tags with customElements.define, shadow DOM and templates.",
+   "description": "**Web Components** are a set of browser standards to build **reusable, encapsulated** elements without a framework.\n\n### The three technologies\n1. **Custom Elements** - define new tags (`customElements.define('my-tag', Class)`). The name **must contain a hyphen**.\n2. **Shadow DOM** - a private DOM + CSS scope inside the element. Page styles do not leak in, component styles do not leak out.\n3. **HTML Templates & Slots** - reusable markup and content projection.\n\n### Custom element skeleton\n```js\nclass UserBadge extends HTMLElement {\n  static observedAttributes = ['name'];\n  connectedCallback() {          // added to the page\n    this.attachShadow({ mode: 'open' }).innerHTML =\n      '<style>span{color:tomato}</style><span></span>';\n    this.render();\n  }\n  attributeChangedCallback() { this.render(); }\n  render() {\n    const s = this.shadowRoot && this.shadowRoot.querySelector('span');\n    if (s) s.textContent = 'Hi ' + this.getAttribute('name');\n  }\n}\ncustomElements.define('user-badge', UserBadge);\n```\n\n### Lifecycle callbacks\n`constructor`, `connectedCallback`, `disconnectedCallback`, `attributeChangedCallback`, `adoptedCallback`.\n\n### Using it\n`<user-badge name=\"Asha\"></user-badge>` - works in plain HTML, React, Vue and Angular.\n\n### Pros and cons\n- ✅ Framework independent, encapsulated, standard.\n- ⚠️ Styling from outside needs CSS variables or `::part()`; server rendering and forms need extra work.",
+   "keyPoints": [
+    "Custom element names must contain a hyphen.",
+    "attachShadow creates an encapsulated DOM and CSS scope.",
+    "Lifecycle: connectedCallback, attributeChangedCallback, disconnectedCallback.",
+    "Use slots for content projection.",
+    "Style from outside through CSS variables or ::part()."
+   ],
+   "pitfalls": [
+    "Custom element name without a hyphen - define() throws.",
+    "Doing DOM work in the constructor instead of connectedCallback.",
+    "Forgetting to list attributes in observedAttributes."
+   ],
+   "examples": [
+    {
+     "title": "A custom <user-badge> element",
+     "language": "web",
+     "html": "<user-badge name=\"Asha\" role-title=\"Designer\"></user-badge>\n<user-badge name=\"Ravi\" role-title=\"Developer\"></user-badge>\n<p style=\"color:blue\">This page style does not affect the badge internals.</p>",
+     "css": "body{font-family:sans-serif}",
+     "js": "class UserBadge extends HTMLElement {\n  static get observedAttributes() { return ['name', 'role-title']; }\n  connectedCallback() {\n    this.root = this.attachShadow({ mode: 'open' });\n    this.root.innerHTML = '<style>.b{display:inline-flex;gap:8px;align-items:center;background:#fff4f0;border:1px solid #e34c26;border-radius:999px;padding:4px 12px;margin:4px;font-family:sans-serif}.av{background:#e34c26;color:#fff;border-radius:50%;width:26px;height:26px;display:grid;place-items:center}</style><span class=\"b\"><span class=\"av\"></span><span class=\"n\"></span><small class=\"r\"></small></span>';\n    this.render();\n  }\n  attributeChangedCallback() { if (this.root) this.render(); }\n  render() {\n    var n = this.getAttribute('name') || '?';\n    this.root.querySelector('.av').textContent = n.charAt(0);\n    this.root.querySelector('.n').textContent = n;\n    this.root.querySelector('.r').textContent = this.getAttribute('role-title') || '';\n  }\n}\ncustomElements.define('user-badge', UserBadge);",
+     "explanation": "The hyphenated tag is registered once and can be reused anywhere."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the main parts of Web Components?",
+     "a": "Custom Elements, Shadow DOM and HTML templates/slots."
+    },
+    {
+     "q": "Why must custom element names contain a hyphen?",
+     "a": "To avoid clashes with current and future built-in HTML elements."
+    },
+    {
+     "q": "What does Shadow DOM provide?",
+     "a": "Encapsulation: component markup and styles are isolated from the rest of the document."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

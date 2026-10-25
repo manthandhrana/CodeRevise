@@ -1,0 +1,264 @@
+{
+  "id": "js-interview",
+  "title": "Tricky Interview Questions",
+  "level": "advanced",
+  "topics": [
+    {
+      "id": "js-tricky-hoisting-scope",
+      "title": "Output Questions: Hoisting and Scope",
+      "level": "intermediate",
+      "summary": "Predict the output of classic var, let, function hoisting and scope puzzles.",
+      "description": "Output-based questions test whether you really understand **hoisting**, the **temporal dead zone** and **scope**. Use this checklist for each snippet:\n\n1. **Creation phase first**: `var` becomes `undefined`, function declarations are stored fully, `let`/`const`/`class` are in the TDZ.\n2. Then run line by line.\n3. For a name lookup, check the **current scope**, then outward (lexical scope chain).\n4. A `var` inside a function shadows the outer name for the **whole** function, even before its line.\n5. Function declarations beat `var` declarations in hoisting, but assignments run in order.\n6. Blocks only create scope for `let`, `const`, `class` and (in strict mode) function declarations.\n\n### Typical traps\n- `var` declared **later in the same function** makes an earlier read `undefined`, not the outer value.\n- `typeof` of an undeclared variable is `\"undefined\"` but a TDZ variable throws.\n- A function expression stored in `var` is `undefined` until the assignment line, so calling it early is a `TypeError`.\n- Named function expression names are only visible **inside** the function.\n- Parameters and `var` with the same name share one binding.\n\n### How to answer in an interview\nSay the phases out loud: \"During creation, `a` is `undefined`..., then at line 3 it is assigned...\". Interviewers care about the reasoning more than the output.",
+      "keyPoints": [
+        "Run creation phase mentally before execution",
+        "var is undefined before assignment, let/const throw in TDZ",
+        "A local var shadows the outer variable for the whole function",
+        "Function expressions are not hoisted as functions",
+        "Explain the phases while answering"
+      ],
+      "pitfalls": [
+        "Reading the outer variable when a local var of the same name exists",
+        "Assuming blocks create scope for var",
+        "Forgetting that typeof does not protect TDZ variables"
+      ],
+      "examples": [
+        {
+          "title": "Predict each output",
+          "language": "javascript",
+          "explanation": "",
+          "code": "// Q1\nconsole.log(a);\nvar a = 1;\n// undefined\n\n// Q2\nvar x = \"outer\";\nfunction show() {\n  console.log(x);\n  var x = \"inner\";\n}\nshow();\n// undefined (local x is hoisted)\n\n// Q3\ntry { console.log(typeof notDeclared); console.log(typeof tdz); let tdz = 1; }\ncatch (e) { console.log(e.name); }\n// \"undefined\" then ReferenceError\n\n// Q4\nconsole.log(typeof foo, typeof bar);\nfunction foo() {}\nvar bar = function () {};\n// function undefined\n\n// Q5\nvar v = 1;\n(function () {\n  console.log(v);   // undefined\n  var v = 2;\n  console.log(v);   // 2\n})();\n\n// Q6\n{\n  var inBlock = \"visible\";\n  let hidden = \"not visible\";\n}\nconsole.log(inBlock, typeof hidden);\n// visible undefined"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What will console.log(a); var a = 1; print?",
+          "a": "undefined. The declaration of var a is hoisted and initialised with undefined; the assignment happens later."
+        },
+        {
+          "q": "What is logged by var x = 1; function f() { console.log(x); var x = 2; } f();?",
+          "a": "undefined, because the local var x is hoisted to the top of f and shadows the global x."
+        },
+        {
+          "q": "What happens when you call a function expression assigned to var before its line?",
+          "a": "A TypeError (x is not a function), because the variable exists but is undefined at that point."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/hoisting.js, JS-one-shot/how_js_works/scope.js"
+    },
+    {
+      "id": "js-tricky-closures-loops",
+      "title": "Output Questions: Closures and Loops",
+      "level": "intermediate",
+      "summary": "Classic setTimeout-in-a-loop puzzles and closure counters explained step by step.",
+      "description": "Closure questions are the most popular JavaScript interview topic. Almost all are variations of one idea: **closures capture variables, not values**.\n\n### The famous loop\n```js\nfor (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\n// 3 3 3\n```\n`var i` is **one** variable shared by every callback. The callbacks run after the loop ends, when `i` is `3`.\n\n### Fixes\n1. **`let`** - each iteration gets a fresh binding: `0 1 2`.\n2. **IIFE** - pass the current value as an argument: `((j) => setTimeout(() => console.log(j)))(i)`.\n3. **Extra argument** to `setTimeout`: `setTimeout(console.log, 0, i)`.\n4. `bind`: `setTimeout(console.log.bind(null, i), 0)`.\n\n### Other typical questions\n- **Counter**: a function returning increment/decrement with a private `count`.\n- **once(fn)**: run a function only the first time.\n- **Function factory**: `adder(5)(3)`.\n- **Private variables** with the module pattern.\n- **Memoize** using a cache stored in a closure.\n- **Delayed greeting**: why a closure still sees the *latest* value of a variable that changed after creation.\n\n### How closures relate to memory\nA closure keeps its outer variables alive. If a long-lived function references a huge object, that object cannot be collected.\n\n### Answer template\n\"The callback closes over the variable `i`. Because `var` is function scoped there is only one `i`... With `let` there is a new `i` per iteration, so...\"",
+      "keyPoints": [
+        "Closures capture variables, not values",
+        "var in loops shares one variable; let creates one per iteration",
+        "Fix with let, IIFE, or extra setTimeout arguments",
+        "Callbacks run after the loop finishes",
+        "Explain scope, then timing"
+      ],
+      "pitfalls": [
+        "Assuming the value at the time of creating the callback is stored",
+        "Forgetting that setTimeout callbacks run later"
+      ],
+      "examples": [
+        {
+          "title": "Loop puzzles",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const out = [];\nfor (var i = 0; i < 3; i++) setTimeout(() => out.push(\"var:\" + i), 0);\nfor (let j = 0; j < 3; j++) setTimeout(() => out.push(\"let:\" + j), 0);\nfor (var k = 0; k < 3; k++) ((n) => setTimeout(() => out.push(\"iife:\" + n), 0))(k);\nfor (var m = 0; m < 3; m++) setTimeout((v) => out.push(\"arg:\" + v), 0, m);\nsetTimeout(() => console.log(out.join(\" \")), 10);\n\nfunction createCounter() {\n  let count = 0;\n  return () => ++count;\n}\nconst a = createCounter(), b = createCounter();\nconsole.log(a(), a(), b());          // 1 2 1\n\nlet message = \"first\";\nconst show = () => message;\nmessage = \"second\";\nconsole.log(show());                  // second - sees the latest value"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does for (var i = 0; i < 3; i++) setTimeout(() => console.log(i)) print and why?",
+          "a": "3 3 3. All callbacks share one function-scoped i, and by the time they run the loop has finished and i is 3."
+        },
+        {
+          "q": "How do you make it print 0 1 2?",
+          "a": "Declare the counter with let, or wrap the callback in an IIFE that receives i, or pass i as the third argument to setTimeout."
+        },
+        {
+          "q": "Do closures store a copy of the value?",
+          "a": "No. They keep a reference to the variable, so they see the variable's current value when they run."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/closure.js"
+    },
+    {
+      "id": "js-tricky-this",
+      "title": "Output Questions: this Keyword",
+      "level": "intermediate",
+      "summary": "Work out what this refers to in methods, callbacks, arrow functions and detached functions.",
+      "description": "For every `this` question, ignore where the function is **written** and look at **how it is called**. Then check whether it is an **arrow function**.\n\n### Decision flow\n1. Is the function an **arrow**? `this` = the `this` of the surrounding scope (decided when defined).\n2. Was it called with **`new`**? `this` = the new object.\n3. Was it called with **`call` / `apply` / `bind`**? `this` = the given object.\n4. Was it called as **`obj.method()`**? `this` = `obj`.\n5. Otherwise it is a plain call: `this` = global object, or `undefined` in strict mode / modules / class bodies.\n\n### Classic traps\n- **Detached method**: `const f = obj.method; f()` - no object, default binding.\n- **Callback**: `setTimeout(obj.method, 0)` - same problem.\n- **Nested function** inside a method: a normal inner function has its own `this` (default binding). Use an arrow function, or save `const self = this`.\n- **Arrow as object property**: `this` is the outer scope, not the object.\n- **Chained call**: `a.b.c()` - `this` is `a.b`, the object immediately before the dot.\n- `(obj.method)()` keeps `this`, but `(0, obj.method)()` loses it.\n- **Event handler**: normal function `this` is the element; arrow is not.\n\n### Fixing lost this\n`bind`, arrow wrapper `() => obj.method()`, arrow class fields, or `call/apply` at the call site.",
+      "keyPoints": [
+        "Look at the call site, not the definition",
+        "Arrow functions use the surrounding this",
+        "Detached methods lose this",
+        "a.b.c() uses a.b as this",
+        "bind, arrow wrappers or class field arrows fix lost this"
+      ],
+      "pitfalls": [
+        "Using arrow functions as object methods",
+        "Passing methods as callbacks without binding",
+        "Expecting a nested regular function to share the method's this"
+      ],
+      "examples": [
+        {
+          "title": "Predict this",
+          "language": "javascript",
+          "explanation": "",
+          "code": "(function () {\n  \"use strict\";\n  const obj = {\n    name: \"obj\",\n    regular() { return this?.name; },\n    arrow: () => typeof this,\n    nested() {\n      function inner() { return this?.name; }\n      const innerArrow = () => this.name;\n      return [inner(), innerArrow()];\n    },\n    deep: { name: \"deep\", who() { return this.name; } },\n  };\n\n  console.log(obj.regular());          // obj\n  const detached = obj.regular;\n  console.log(detached());             // undefined\n  console.log(obj.nested());           // [undefined, \"obj\"]\n  console.log(obj.deep.who());         // deep\n  console.log((0, obj.regular)());     // undefined\n  console.log(detached.call({ name: \"call\" }));            // call\n  console.log(detached.bind({ name: \"bound\" }).call({ name: \"x\" })); // bound\n  setTimeout(obj.regular, 0);          // lost this (undefined inside)\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the output of const o = { n: 1, f() { return this.n; } }; const g = o.f; console.log(g());?",
+          "a": "In strict mode it throws a TypeError (this is undefined); in sloppy mode this is the global object so it prints undefined. The method lost its object."
+        },
+        {
+          "q": "What is this inside an arrow function used as an object method?",
+          "a": "The this of the enclosing scope where the object was created (for example the module or window), not the object."
+        },
+        {
+          "q": "How can you keep this in a callback inside a method?",
+          "a": "Use an arrow function, bind(this), or store this in a variable before the callback."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-tricky-coercion-equality",
+      "title": "Output Questions: Coercion, Equality and Operators",
+      "level": "beginner",
+      "summary": "A cheat sheet of strange but predictable results from type coercion and equality.",
+      "description": "These questions look like magic, but each result follows the rules: **`+` prefers strings; other arithmetic operators convert to numbers; `==` converts; objects convert through `valueOf` / `toString`.**\n\n### Rules to apply\n1. `a + b`: if either is a **string** (after converting objects to primitives) it is concatenation; otherwise numeric addition.\n2. `- * / %` always convert to numbers.\n3. `true` is `1`, `false` is `0`, `null` is `0`, `undefined` is `NaN`, `\"\"` is `0`.\n4. Arrays convert to strings using `join`: `[]` is `\"\"`, `[1,2]` is `\"1,2\"`, `[5]` is `\"5\"`.\n5. Plain objects become `\"[object Object]\"`.\n6. `==` between different types usually compares as numbers. `null == undefined` is true and neither equals anything else.\n7. `NaN` is never equal to anything.\n8. Operators evaluate **left to right** with precedence: `1 + 2 + \"3\"` is `\"33\"`, `\"1\" + 2 + 3` is `\"123\"`.\n\n### Frequently asked results\n| Expression | Result |\n|---|---|\n| `[] + []` | `\"\"` |\n| `[] + {}` | `\"[object Object]\"` |\n| `[] == false` | `true` |\n| `[] == ![]` | `true` |\n| `\"b\" + \"a\" + +\"a\" + \"a\"` | `\"baNaNa\"` |\n| `typeof NaN` | `\"number\"` |\n| `0.1 + 0.2 === 0.3` | `false` |\n| `null >= 0` | `true` |\n| `null == 0` | `false` |\n| `\"2\" > \"12\"` | `true` |\n| `3 > 2 > 1` | `false` |\n\n### Strategy\nConvert each side step by step on paper; never guess.",
+      "keyPoints": [
+        "+ concatenates if either side is a string",
+        "- * / always produce numbers",
+        "Arrays and objects become strings with + and ==",
+        "null == undefined but neither equals other values",
+        "Evaluate left to right with precedence"
+      ],
+      "pitfalls": [
+        "Assuming == is symmetrical for NaN and null",
+        "Forgetting that comparisons of two strings are alphabetical",
+        "Trusting these tricks in real code instead of === and explicit conversion"
+      ],
+      "examples": [
+        {
+          "title": "Evaluate these",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log([] + []);                 // \"\"\nconsole.log([] + {});                 // [object Object]\nconsole.log(1 + 2 + \"3\");             // 33\nconsole.log(\"1\" + 2 + 3);             // 123\nconsole.log(\"5\" - 2, \"5\" + 2);        // 3 52\nconsole.log([] == false, [] == ![]);  // true true\nconsole.log(\"b\" + \"a\" + +\"a\" + \"a\");  // baNaNa\nconsole.log(null == 0, null >= 0, null > 0);   // false true false\nconsole.log(undefined == null, NaN == NaN);    // true false\nconsole.log(\"2\" > \"12\", 2 > \"12\");    // true false\nconsole.log(3 > 2 > 1);               // false\nconsole.log(true + true + true);      // 3\nconsole.log(+\"\", +\" \", +\"1e3\", +[], +{}); // 0 0 1000 0 NaN"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is [] + {} and why?",
+          "a": "\"[object Object]\". [] converts to \"\" and {} converts to \"[object Object]\"; with + one side is a string so they are concatenated."
+        },
+        {
+          "q": "Why is null >= 0 true but null == 0 false?",
+          "a": "Relational operators convert null to 0, so null >= 0 is true. The == operator has a special rule: null is only loosely equal to undefined, not to 0."
+        },
+        {
+          "q": "What is the result of \"b\" + \"a\" + +\"a\" + \"a\"?",
+          "a": "\"baNaNa\". The unary plus converts \"a\" to NaN, which is then concatenated as the string \"NaN\"."
+        }
+      ],
+      "source": "JS-one-shot/2_concat_coercion.js, JS-one-shot/3_expressions.js"
+    },
+    {
+      "id": "js-tricky-async-order",
+      "title": "Output Questions: Async Order",
+      "level": "advanced",
+      "summary": "Order sync code, microtasks and timers correctly, including async/await continuations.",
+      "description": "Async order questions combine **promises**, **timers** and **async/await**. The algorithm never changes:\n\n1. Run all **synchronous** code on the call stack.\n2. Drain the **microtask queue** completely: promise `then/catch/finally` callbacks, `queueMicrotask`, continuations after `await`.\n3. Take **one macrotask** (`setTimeout`, `setInterval`, DOM events, I/O).\n4. Drain microtasks again. Repeat.\n\n### Details that decide the answer\n- The **executor** of `new Promise(...)` runs **synchronously**.\n- An `async` function runs synchronously **until the first `await`**; the rest becomes a microtask.\n- `await value` always takes at least one microtask turn.\n- A `.then` callback is queued only after its promise **settles**; chains run one link per turn.\n- `setTimeout(fn, 0)` and `setTimeout(fn, 10)` are ordered by delay, then by registration order.\n- Microtasks queued by microtasks run **before** any timer.\n- Node.js only: `process.nextTick` runs before promise microtasks.\n\n### Method\nWrite four columns while you read the code: **stack**, **microtasks**, **timers**, **output**. Push each callback into the right column, then replay.",
+      "keyPoints": [
+        "Sync, then all microtasks, then one macrotask, repeat",
+        "Promise executor runs synchronously",
+        "async function body runs sync until first await",
+        "Promise callbacks beat setTimeout",
+        "Track stack, microtasks and timers in columns"
+      ],
+      "pitfalls": [
+        "Thinking await blocks the whole program",
+        "Forgetting that the executor of new Promise is synchronous",
+        "Ordering timers by code position instead of delay"
+      ],
+      "examples": [
+        {
+          "title": "Predict the order",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(\"1 sync\");\n\nsetTimeout(() => console.log(\"9 timeout 0\"), 0);\n\nnew Promise((resolve) => {\n  console.log(\"2 executor (sync)\");\n  resolve(\"p\");\n}).then((v) => {\n  console.log(\"5 then 1\");\n}).then(() => console.log(\"8 then 2\"));\n\n(async function () {\n  console.log(\"3 async body start\");\n  await null;\n  console.log(\"6 after await\");\n})();\n\nqueueMicrotask(() => console.log(\"7 queueMicrotask\"));\n\nconsole.log(\"4 sync end\");\n// then 1 and the await continuation were queued before queueMicrotask"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the output order: console.log(1); setTimeout(()=>console.log(2),0); Promise.resolve().then(()=>console.log(3)); console.log(4);?",
+          "a": "1, 4, 3, 2. Sync code first (1, 4), then the microtask (3), then the timer macrotask (2)."
+        },
+        {
+          "q": "Does the code inside new Promise((resolve) => { ... }) run asynchronously?",
+          "a": "No. The executor runs synchronously when the promise is created; only the then/catch callbacks are asynchronous."
+        },
+        {
+          "q": "In which order do an await continuation and a setTimeout(0) run?",
+          "a": "The code after await runs as a microtask, so it runs before the setTimeout callback."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/promises.js, JS-one-shot/how_js_works/sync_vs_async.js"
+    },
+    {
+      "id": "js-polyfills-coding",
+      "title": "Polyfills and Common Coding Questions",
+      "level": "advanced",
+      "summary": "Re-implement map, bind, flat, deep clone and utilities to prove you understand how they work.",
+      "description": "Interviewers often ask you to implement built-in functions or small utilities from scratch. A **polyfill** is code that adds a missing feature to older environments.\n\n### Why they ask\nIt shows you understand `this`, closures, recursion, prototypes and edge cases such as holes, `undefined` and callback arguments.\n\n### Typical list\n- `Array.prototype.myMap`, `myFilter`, `myReduce`, `myForEach`\n- `Function.prototype.myBind`, `myCall`\n- `flatten(arr, depth)`\n- `deepClone(obj)` with arrays, dates and cycles\n- `debounce`, `throttle`, `once`, `memoize`\n- `curry(fn)`, `compose`, `pipe`\n- `Promise.all` and `Promise.race` polyfills\n- `deepEqual(a, b)`\n- Group by, chunk, unique, count frequency\n- Reverse a string, palindrome, anagram, FizzBuzz, two-sum, find the max\n\n### Approach\n1. Clarify inputs and edge cases (empty array, non-function callback).\n2. Write the simple version.\n3. Handle `this`, extra arguments and return values.\n4. Test with a few examples out loud.\n\n### Guard clauses\nThrow `TypeError` for non-function callbacks, as the built-ins do: `if (typeof cb !== \"function\") throw new TypeError(cb + \" is not a function\")`.\n\n### Tip\nKnow the time and space complexity of your solution and mention it.",
+      "keyPoints": [
+        "Polyfills reimplement built-ins using the same semantics",
+        "Use this, thisArg and callback (item, index, array)",
+        "Recursion handles nesting for flatten and deepClone",
+        "Validate inputs like the built-ins do",
+        "Mention complexity and edge cases"
+      ],
+      "pitfalls": [
+        "Using arrow functions for prototype methods (wrong this)",
+        "Skipping the index and array callback arguments",
+        "Forgetting cyclic references in deep clone"
+      ],
+      "examples": [
+        {
+          "title": "map, bind, flatten and deepEqual",
+          "language": "javascript",
+          "explanation": "",
+          "code": "Array.prototype.myMap = function (cb, thisArg) {\n  if (typeof cb !== \"function\") throw new TypeError(cb + \" is not a function\");\n  const result = [];\n  for (let i = 0; i < this.length; i++) {\n    if (i in this) result[i] = cb.call(thisArg, this[i], i, this);\n  }\n  return result;\n};\nconsole.log([1, 2, 3].myMap((n, i) => n * 2 + i));\n\nFunction.prototype.myBind = function (context, ...preset) {\n  const fn = this;\n  return function (...later) {\n    return fn.apply(context, [...preset, ...later]);\n  };\n};\nfunction intro(g, p) { return `${g}, ${this.name}${p}`; }\nconsole.log(intro.myBind({ name: \"Asha\" }, \"Hello\")(\"!\"));\n\nconst flatten = (arr, depth = Infinity) =>\n  arr.reduce((acc, v) => (Array.isArray(v) && depth > 0 ? acc.concat(flatten(v, depth - 1)) : acc.concat(v)), []);\nconsole.log(flatten([1, [2, [3, [4]]]], 2));\n\nconst deepEqual = (a, b) => {\n  if (a === b) return true;\n  if (typeof a !== \"object\" || typeof b !== \"object\" || !a || !b) return false;\n  const ka = Object.keys(a), kb = Object.keys(b);\n  return ka.length === kb.length && ka.every((k) => deepEqual(a[k], b[k]));\n};\nconsole.log(deepEqual({ a: [1, { b: 2 }] }, { a: [1, { b: 2 }] }), deepEqual({ a: 1 }, { a: 2 }));\n\nconst fizzBuzz = (n) => Array.from({ length: n }, (_, i) => ((i + 1) % 15 === 0 ? \"FizzBuzz\" : (i + 1) % 3 === 0 ? \"Fizz\" : (i + 1) % 5 === 0 ? \"Buzz\" : i + 1));\nconsole.log(fizzBuzz(15).join(\" \"));"
+        },
+        {
+          "title": "Promise.all polyfill",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function myPromiseAll(promises) {\n  return new Promise((resolve, reject) => {\n    const results = [];\n    let completed = 0;\n    if (promises.length === 0) return resolve(results);\n    promises.forEach((p, index) => {\n      Promise.resolve(p).then((value) => {\n        results[index] = value;                  // keep the original order\n        if (++completed === promises.length) resolve(results);\n      }, reject);\n    });\n  });\n}\nconst wait = (ms, v) => new Promise((r) => setTimeout(() => r(v), ms));\nmyPromiseAll([wait(30, \"slow\"), 42, wait(10, \"fast\")]).then(console.log);\nmyPromiseAll([wait(10, \"ok\"), Promise.reject(new Error(\"boom\"))]).catch((e) => console.log(\"rejected:\", e.message));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How would you implement Array.prototype.map?",
+          "a": "Loop over the array, call the callback with (element, index, array) using the optional thisArg, push each result into a new array and return it; throw a TypeError if the callback is not a function."
+        },
+        {
+          "q": "How do you write a polyfill for bind?",
+          "a": "Return a new function that calls the original with apply, using the stored context and the combined preset and later arguments; handle new calls if required."
+        },
+        {
+          "q": "How do you implement Promise.all?",
+          "a": "Return a new promise, store each result at its index, resolve when all have fulfilled, and reject immediately on the first rejection."
+        }
+      ],
+      "source": "JS-one-shot/5_functions.js, JS-one-shot/objects/index.js"
+    }
+  ]
+}

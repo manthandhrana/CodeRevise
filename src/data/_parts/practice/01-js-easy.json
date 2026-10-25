@@ -1,0 +1,1273 @@
+[
+ {
+  "id": "q-reverse-string",
+  "title": "Reverse a String",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string"
+  ],
+  "statement": "Write a function `reverseString(str)` that returns the characters of `str` in reverse order.\n\n**Example**\n\n```\nreverseString(\"hello\")  // \"olleh\"\nreverseString(\"\")       // \"\"\n```",
+  "language": "javascript",
+  "functionName": "reverseString",
+  "starter": "function reverseString(str) {\n  // write your code here\n}",
+  "solution": "function reverseString(str) {\n  return str.split('').reverse().join('')\n}",
+  "solutionExplanation": "**Approach:** split the string into characters, reverse the array, join it back.\n\n**Complexity:** O(n) time, O(n) extra space.",
+  "hints": [
+   "Strings are immutable - you need to build a new one.",
+   "Turn the string into an array with `split(\"\")`, reverse it, then join it back.",
+   "A plain `for` loop from the last index to 0 also works."
+  ],
+  "tests": [
+   {
+    "input": [
+     "hello"
+    ],
+    "expected": "olleh"
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     "a"
+    ],
+    "expected": "a"
+   },
+   {
+    "input": [
+     "Hello World"
+    ],
+    "expected": "dlroW olleH"
+   },
+   {
+    "input": [
+     "racecar"
+    ],
+    "expected": "racecar"
+   },
+   {
+    "input": [
+     "12345"
+    ],
+    "expected": "54321"
+   }
+  ]
+ },
+ {
+  "id": "q-is-palindrome",
+  "title": "Valid Palindrome",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string",
+   "two-pointers"
+  ],
+  "statement": "Return `true` if `str` reads the same forwards and backwards, **ignoring case and every non-alphanumeric character**. An empty string is a palindrome.\n\n**Example**\n\n```\nisPalindrome(\"A man, a plan, a canal: Panama\") // true\nisPalindrome(\"race a car\")                    // false\n```",
+  "language": "javascript",
+  "functionName": "isPalindrome",
+  "starter": "function isPalindrome(str) {\n  // write your code here\n}",
+  "solution": "function isPalindrome(str) {\n  const s = str.toLowerCase().replace(/[^a-z0-9]/g, '')\n  let i = 0\n  let j = s.length - 1\n  while (i < j) {\n    if (s[i] !== s[j]) return false\n    i++\n    j--\n  }\n  return true\n}",
+  "solutionExplanation": "**Approach:** clean the string with a regex, then walk two pointers from both ends and compare.\n\n**Complexity:** O(n) time, O(n) space for the cleaned copy.",
+  "hints": [
+   "First normalise: lowercase and remove everything that is not a letter or digit.",
+   "Compare characters from both ends moving inwards (two pointers)."
+  ],
+  "tests": [
+   {
+    "input": [
+     "A man, a plan, a canal: Panama"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "race a car"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "No lemon, no melon"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "ab"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "0P"
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-is-anagram",
+  "title": "Valid Anagram",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string",
+   "sorting"
+  ],
+  "statement": "Return `true` if `b` is an anagram of `a` (same letters, same counts). Ignore case and spaces.\n\n**Example**\n\n```\nisAnagram(\"listen\", \"silent\")        // true\nisAnagram(\"Dormitory\", \"dirty room\") // true\nisAnagram(\"hello\", \"world\")          // false\n```",
+  "language": "javascript",
+  "functionName": "isAnagram",
+  "starter": "function isAnagram(a, b) {\n  // write your code here\n}",
+  "solution": "function isAnagram(a, b) {\n  const norm = (s) => s.toLowerCase().replace(/\\s+/g, '').split('').sort().join('')\n  return norm(a) === norm(b)\n}",
+  "solutionExplanation": "**Approach:** normalise, sort characters, compare. (A frequency map gives O(n) instead of O(n log n).)\n\n**Complexity:** O(n log n) time, O(n) space.",
+  "hints": [
+   "Normalise both strings first: lowercase, remove spaces.",
+   "Two strings are anagrams if their sorted characters are identical."
+  ],
+  "tests": [
+   {
+    "input": [
+     "listen",
+     "silent"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "hello",
+     "world"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "Dormitory",
+     "dirty room"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "a",
+     "ab"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "",
+     ""
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "aabb",
+     "abab"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "rat",
+     "car"
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-count-vowels",
+  "title": "Count Vowels",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string"
+  ],
+  "statement": "Return how many vowels (`a e i o u`, case-insensitive) are in the string.\n\n**Example**\n\n```\ncountVowels(\"hello\")    // 2\ncountVowels(\"rhythm\")   // 0\n```",
+  "language": "javascript",
+  "functionName": "countVowels",
+  "starter": "function countVowels(str) {\n  // write your code here\n}",
+  "solution": "function countVowels(str) {\n  let count = 0\n  for (const ch of str.toLowerCase()) {\n    if ('aeiou'.includes(ch)) count++\n  }\n  return count\n}",
+  "solutionExplanation": "**Approach:** lowercase and count characters that appear in `\"aeiou\"`.\n\n**Complexity:** O(n) time, O(1) space.",
+  "hints": [
+   "Lowercase the string first so you only compare against five letters.",
+   "Loop over the characters and check `\"aeiou\".includes(ch)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     "hello"
+    ],
+    "expected": 2
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     "AEIOU"
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     "rhythm"
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     "Programming Language"
+    ],
+    "expected": 7
+   }
+  ]
+ },
+ {
+  "id": "q-to-camel-case",
+  "title": "camelCase Converter",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string"
+  ],
+  "statement": "Convert a string whose words are separated by spaces, hyphens or underscores to **camelCase**: the first word is all lowercase, every following word starts with an uppercase letter followed by lowercase letters.\n\n**Example**\n\n```\ntoCamelCase(\"hello world\")        // \"helloWorld\"\ntoCamelCase(\"make-it_camel case\") // \"makeItCamelCase\"\ntoCamelCase(\"HELLO WORLD\")        // \"helloWorld\"\n```",
+  "language": "javascript",
+  "functionName": "toCamelCase",
+  "starter": "function toCamelCase(str) {\n  // write your code here\n}",
+  "solution": "function toCamelCase(str) {\n  return str\n    .split(/[\\s\\-_]+/)\n    .filter(Boolean)\n    .map((w, i) => (i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()))\n    .join('')\n}",
+  "solutionExplanation": "**Approach:** split on separators, filter empties, transform each word depending on its index, join.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Split with a regex such as `/[\\s\\-_]+/` and drop empty parts.",
+   "Lowercase the first word; for the others uppercase the first letter and lowercase the rest."
+  ],
+  "tests": [
+   {
+    "input": [
+     "hello world"
+    ],
+    "expected": "helloWorld"
+   },
+   {
+    "input": [
+     "make-it_camel case"
+    ],
+    "expected": "makeItCamelCase"
+   },
+   {
+    "input": [
+     "HELLO WORLD"
+    ],
+    "expected": "helloWorld"
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     "single"
+    ],
+    "expected": "single"
+   },
+   {
+    "input": [
+     "  extra   spaces "
+    ],
+    "expected": "extraSpaces"
+   }
+  ]
+ },
+ {
+  "id": "q-longest-word",
+  "title": "Longest Word",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string"
+  ],
+  "statement": "Return the longest word in the sentence. A word is a run of letters (punctuation is not part of a word). If several words share the maximum length, return the **first** one. Return an empty string if there are no words.\n\n**Example**\n\n```\nlongestWord(\"The quick brown fox\")  // \"quick\"\nlongestWord(\"I love programming!\") // \"programming\"\n```",
+  "language": "javascript",
+  "functionName": "longestWord",
+  "starter": "function longestWord(sentence) {\n  // write your code here\n}",
+  "solution": "function longestWord(sentence) {\n  const words = sentence.match(/[A-Za-z]+/g) || []\n  let best = ''\n  for (const w of words) {\n    if (w.length > best.length) best = w\n  }\n  return best\n}",
+  "solutionExplanation": "**Approach:** extract words with a regex and keep the longest while scanning left to right.\n\n**Complexity:** O(n).",
+  "hints": [
+   "`sentence.match(/[A-Za-z]+/g)` gives all the words (or `null`).",
+   "Only replace your current best when a word is **strictly** longer."
+  ],
+  "tests": [
+   {
+    "input": [
+     "The quick brown fox"
+    ],
+    "expected": "quick"
+   },
+   {
+    "input": [
+     "I love programming!"
+    ],
+    "expected": "programming"
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     "a bb ccc dd"
+    ],
+    "expected": "ccc"
+   },
+   {
+    "input": [
+     "Hello, world!"
+    ],
+    "expected": "Hello"
+   }
+  ]
+ },
+ {
+  "id": "q-fizzbuzz",
+  "title": "FizzBuzz",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math",
+   "loops"
+  ],
+  "statement": "Return an array of strings for the numbers 1 to `n`: `\"Fizz\"` for multiples of 3, `\"Buzz\"` for multiples of 5, `\"FizzBuzz\"` for multiples of both, otherwise the number as a string.\n\n**Example**\n\n```\nfizzBuzz(5) // [\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\"]\n```",
+  "language": "javascript",
+  "functionName": "fizzBuzz",
+  "starter": "function fizzBuzz(n) {\n  // write your code here\n}",
+  "solution": "function fizzBuzz(n) {\n  const out = []\n  for (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) out.push('FizzBuzz')\n    else if (i % 3 === 0) out.push('Fizz')\n    else if (i % 5 === 0) out.push('Buzz')\n    else out.push(String(i))\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** loop 1..n and test the 15, 3, 5 cases in that order.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Check divisibility by 15 **first**.",
+   "Use `i % 3 === 0` and `i % 5 === 0`."
+  ],
+  "tests": [
+   {
+    "input": [
+     5
+    ],
+    "expected": [
+     "1",
+     "2",
+     "Fizz",
+     "4",
+     "Buzz"
+    ]
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": [
+     "1"
+    ]
+   },
+   {
+    "input": [
+     3
+    ],
+    "expected": [
+     "1",
+     "2",
+     "Fizz"
+    ]
+   },
+   {
+    "input": [
+     15
+    ],
+    "expected": [
+     "1",
+     "2",
+     "Fizz",
+     "4",
+     "Buzz",
+     "Fizz",
+     "7",
+     "8",
+     "Fizz",
+     "Buzz",
+     "11",
+     "Fizz",
+     "13",
+     "14",
+     "FizzBuzz"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-is-prime",
+  "title": "Prime Number Check",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math"
+  ],
+  "statement": "Return `true` if `n` is a prime number (an integer greater than 1 with no divisors other than 1 and itself).\n\n**Example**\n\n```\nisPrime(7)  // true\nisPrime(1)  // false\nisPrime(100) // false\n```",
+  "language": "javascript",
+  "functionName": "isPrime",
+  "starter": "function isPrime(n) {\n  // write your code here\n}",
+  "solution": "function isPrime(n) {\n  if (n < 2) return false\n  for (let i = 2; i * i <= n; i++) {\n    if (n % i === 0) return false\n  }\n  return true\n}",
+  "solutionExplanation": "**Approach:** trial division from 2 while `i * i <= n`.\n\n**Complexity:** O(sqrt n) time, O(1) space.",
+  "hints": [
+   "Numbers below 2 are not prime.",
+   "You only need to test divisors up to the square root of n."
+  ],
+  "tests": [
+   {
+    "input": [
+     2
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     -7
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     97
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     100
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     7919
+    ],
+    "expected": true
+   }
+  ]
+ },
+ {
+  "id": "q-fibonacci",
+  "title": "Nth Fibonacci Number",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math",
+   "dp"
+  ],
+  "statement": "Return the `n`-th Fibonacci number where `fib(0) = 0`, `fib(1) = 1` and `fib(n) = fib(n-1) + fib(n-2)`.\n\n**Example**\n\n```\nfibonacci(10) // 55\n```",
+  "language": "javascript",
+  "functionName": "fibonacci",
+  "starter": "function fibonacci(n) {\n  // write your code here\n}",
+  "solution": "function fibonacci(n) {\n  let a = 0\n  let b = 1\n  for (let i = 0; i < n; i++) {\n    const next = a + b\n    a = b\n    b = next\n  }\n  return a\n}",
+  "solutionExplanation": "**Approach:** iterate n times keeping two running values.\n\n**Complexity:** O(n) time, O(1) space.",
+  "hints": [
+   "A naive recursion repeats work - it is exponential.",
+   "Keep only the last two values and iterate."
+  ],
+  "tests": [
+   {
+    "input": [
+     0
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     2
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     10
+    ],
+    "expected": 55
+   },
+   {
+    "input": [
+     20
+    ],
+    "expected": 6765
+   },
+   {
+    "input": [
+     30
+    ],
+    "expected": 832040
+   }
+  ]
+ },
+ {
+  "id": "q-gcd",
+  "title": "Greatest Common Divisor",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math",
+   "recursion"
+  ],
+  "statement": "Return the greatest common divisor of two non-negative integers `a` and `b` (not both zero).\n\n**Example**\n\n```\ngcd(12, 18) // 6\ngcd(7, 13)  // 1\ngcd(0, 5)   // 5\n```",
+  "language": "javascript",
+  "functionName": "gcd",
+  "starter": "function gcd(a, b) {\n  // write your code here\n}",
+  "solution": "function gcd(a, b) {\n  while (b !== 0) {\n    const t = a % b\n    a = b\n    b = t\n  }\n  return a\n}",
+  "solutionExplanation": "**Approach:** Euclidean algorithm.\n\n**Complexity:** O(log min(a, b)).",
+  "hints": [
+   "Euclid: `gcd(a, b) = gcd(b, a % b)`.",
+   "Stop when `b` becomes 0 - the answer is `a`."
+  ],
+  "tests": [
+   {
+    "input": [
+     12,
+     18
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     7,
+     13
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     0,
+     5
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     100,
+     25
+    ],
+    "expected": 25
+   },
+   {
+    "input": [
+     48,
+     180
+    ],
+    "expected": 12
+   },
+   {
+    "input": [
+     17,
+     0
+    ],
+    "expected": 17
+   }
+  ]
+ },
+ {
+  "id": "q-factorial",
+  "title": "Factorial",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math",
+   "recursion"
+  ],
+  "statement": "Return `n!` for a non-negative integer `n`. By definition `0! = 1`.\n\n**Example**\n\n```\nfactorial(5) // 120\n```",
+  "language": "javascript",
+  "functionName": "factorial",
+  "starter": "function factorial(n) {\n  // write your code here\n}",
+  "solution": "function factorial(n) {\n  let result = 1\n  for (let i = 2; i <= n; i++) result *= i\n  return result\n}",
+  "solutionExplanation": "**Approach:** multiply the numbers from 2 up to n.\n\n**Complexity:** O(n) time, O(1) space.",
+  "hints": [
+   "The base case is 0 (and 1) which gives 1.",
+   "Multiply 2 * 3 * ... * n in a loop."
+  ],
+  "tests": [
+   {
+    "input": [
+     0
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     5
+    ],
+    "expected": 120
+   },
+   {
+    "input": [
+     10
+    ],
+    "expected": 3628800
+   },
+   {
+    "input": [
+     12
+    ],
+    "expected": 479001600
+   }
+  ]
+ },
+ {
+  "id": "q-digit-sum",
+  "title": "Sum of Digits",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math"
+  ],
+  "statement": "Return the sum of the digits of a non-negative integer `n`.\n\n**Example**\n\n```\ndigitSum(123)  // 6\ndigitSum(9999) // 36\n```",
+  "language": "javascript",
+  "functionName": "digitSum",
+  "starter": "function digitSum(n) {\n  // write your code here\n}",
+  "solution": "function digitSum(n) {\n  let sum = 0\n  while (n > 0) {\n    sum += n % 10\n    n = Math.floor(n / 10)\n  }\n  return sum\n}",
+  "solutionExplanation": "**Approach:** repeatedly take the last digit and drop it.\n\n**Complexity:** O(log n).",
+  "hints": [
+   "`n % 10` gives the last digit.",
+   "`Math.floor(n / 10)` removes the last digit."
+  ],
+  "tests": [
+   {
+    "input": [
+     123
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     9999
+    ],
+    "expected": 36
+   },
+   {
+    "input": [
+     1000
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     987654321
+    ],
+    "expected": 45
+   }
+  ]
+ },
+ {
+  "id": "q-reverse-number",
+  "title": "Reverse a Number",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "math",
+   "string"
+  ],
+  "statement": "Reverse the digits of an integer and keep its sign. Trailing zeros disappear in the result.\n\n**Example**\n\n```\nreverseNumber(123)  // 321\nreverseNumber(-456) // -654\nreverseNumber(1200) // 21\n```",
+  "language": "javascript",
+  "functionName": "reverseNumber",
+  "starter": "function reverseNumber(n) {\n  // write your code here\n}",
+  "solution": "function reverseNumber(n) {\n  const reversed = Number(String(Math.abs(n)).split('').reverse().join(''))\n  return n < 0 ? -reversed : reversed\n}",
+  "solutionExplanation": "**Approach:** reverse the digits of the absolute value via string, convert back to number, re-apply the sign.\n\n**Complexity:** O(d) where d is the number of digits.",
+  "hints": [
+   "Work with `Math.abs(n)` and restore the sign at the end.",
+   "Converting to a string, reversing and back to a number removes leading zeros for free."
+  ],
+  "tests": [
+   {
+    "input": [
+     123
+    ],
+    "expected": 321
+   },
+   {
+    "input": [
+     -456
+    ],
+    "expected": -654
+   },
+   {
+    "input": [
+     1200
+    ],
+    "expected": 21
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     5
+    ],
+    "expected": 5
+   }
+  ]
+ },
+ {
+  "id": "q-unique-array",
+  "title": "Remove Duplicates",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "set"
+  ],
+  "statement": "Return a new array with duplicate values removed, keeping the order of **first** occurrences. `1` and `\"1\"` are different values.\n\n**Example**\n\n```\nuniqueArray([1, 2, 2, 3, 1]) // [1, 2, 3]\n```",
+  "language": "javascript",
+  "functionName": "uniqueArray",
+  "starter": "function uniqueArray(arr) {\n  // write your code here\n}",
+  "solution": "function uniqueArray(arr) {\n  return [...new Set(arr)]\n}",
+  "solutionExplanation": "**Approach:** a Set keeps insertion order and uniqueness.\n\n**Complexity:** O(n) time, O(n) space.",
+  "hints": [
+   "A `Set` stores each value only once.",
+   "Spread the set back into an array: `[...new Set(arr)]`."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      2,
+      3,
+      1
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      "a",
+      "b",
+      "a"
+     ]
+    ],
+    "expected": [
+     "a",
+     "b"
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      "1",
+      1
+     ]
+    ],
+    "expected": [
+     1,
+     "1"
+    ]
+   },
+   {
+    "input": [
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    "expected": [
+     5
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-two-sum",
+  "title": "Two Sum",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "hashmap"
+  ],
+  "statement": "Given an array of integers `nums` and an integer `target`, return the indices `[i, j]` (with `i < j`) of the two numbers that add up to `target`. Exactly one solution exists and you may not use the same element twice.\n\n**Example**\n\n```\ntwoSum([2, 7, 11, 15], 9) // [0, 1]\ntwoSum([3, 2, 4], 6)     // [1, 2]\n```",
+  "language": "javascript",
+  "functionName": "twoSum",
+  "starter": "function twoSum(nums, target) {\n  // write your code here\n}",
+  "solution": "function twoSum(nums, target) {\n  const seen = new Map()\n  for (let j = 0; j < nums.length; j++) {\n    const need = target - nums[j]\n    if (seen.has(need)) return [seen.get(need), j]\n    seen.set(nums[j], j)\n  }\n  return []\n}",
+  "solutionExplanation": "**Approach:** one pass with a hash map of value -> index; for each element check whether its complement was already seen.\n\n**Complexity:** O(n) time, O(n) space.",
+  "hints": [
+   "Brute force with two loops is O(n^2).",
+   "For each number, the value you need is `target - number`.",
+   "Store numbers you have already seen in a Map from value to index."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      2,
+      7,
+      11,
+      15
+     ],
+     9
+    ],
+    "expected": [
+     0,
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      3,
+      2,
+      4
+     ],
+     6
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      3,
+      3
+     ],
+     6
+    ],
+    "expected": [
+     0,
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      -1,
+      -2,
+      -3,
+      -4,
+      -5
+     ],
+     -8
+    ],
+    "expected": [
+     2,
+     4
+    ]
+   },
+   {
+    "input": [
+     [
+      0,
+      4,
+      3,
+      0
+     ],
+     0
+    ],
+    "expected": [
+     0,
+     3
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-chunk-array",
+  "title": "Chunk an Array",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "array"
+  ],
+  "statement": "Split `arr` into groups of length `size`. The last group may be shorter.\n\n**Example**\n\n```\nchunkArray([1, 2, 3, 4, 5], 2) // [[1, 2], [3, 4], [5]]\n```",
+  "language": "javascript",
+  "functionName": "chunkArray",
+  "starter": "function chunkArray(arr, size) {\n  // write your code here\n}",
+  "solution": "function chunkArray(arr, size) {\n  const out = []\n  for (let i = 0; i < arr.length; i += size) {\n    out.push(arr.slice(i, i + size))\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** slice the array in steps of `size`.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Step through the array with `i += size`.",
+   "`arr.slice(i, i + size)` gives one chunk."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     2
+    ],
+    "expected": [
+     [
+      1,
+      2
+     ],
+     [
+      3,
+      4
+     ],
+     [
+      5
+     ]
+    ]
+   },
+   {
+    "input": [
+     [],
+     3
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ],
+     5
+    ],
+    "expected": [
+     [
+      1,
+      2,
+      3
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4
+     ],
+     2
+    ],
+    "expected": [
+     [
+      1,
+      2
+     ],
+     [
+      3,
+      4
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      "a",
+      "b",
+      "c"
+     ],
+     1
+    ],
+    "expected": [
+     [
+      "a"
+     ],
+     [
+      "b"
+     ],
+     [
+      "c"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-invert-object",
+  "title": "Invert an Object",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "object"
+  ],
+  "statement": "Swap keys and values of a flat object. All values are unique strings or numbers.\n\n**Example**\n\n```\ninvertObject({ a: \"1\", b: \"2\" }) // { \"1\": \"a\", \"2\": \"b\" }\n```",
+  "language": "javascript",
+  "functionName": "invertObject",
+  "starter": "function invertObject(obj) {\n  // write your code here\n}",
+  "solution": "function invertObject(obj) {\n  const out = {}\n  for (const key of Object.keys(obj)) {\n    out[obj[key]] = key\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** iterate over entries and assign `out[value] = key`.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Loop with `Object.keys` or `Object.entries`.",
+   "Use the old value as the new key."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": "1",
+      "b": "2"
+     }
+    ],
+    "expected": {
+     "1": "a",
+     "2": "b"
+    }
+   },
+   {
+    "input": [
+     {}
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "x": "y"
+     }
+    ],
+    "expected": {
+     "y": "x"
+    }
+   },
+   {
+    "input": [
+     {
+      "name": "bob",
+      "age": 30
+     }
+    ],
+    "expected": {
+     "30": "age",
+     "bob": "name"
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-count-frequency",
+  "title": "Character Frequency",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "string",
+   "object",
+   "hashmap"
+  ],
+  "statement": "Return an object that maps every character of the string to the number of times it appears (case-sensitive, spaces count).\n\n**Example**\n\n```\ncountFrequency(\"hello\") // { h: 1, e: 1, l: 2, o: 1 }\n```",
+  "language": "javascript",
+  "functionName": "countFrequency",
+  "starter": "function countFrequency(str) {\n  // write your code here\n}",
+  "solution": "function countFrequency(str) {\n  const freq = {}\n  for (const ch of str) {\n    freq[ch] = (freq[ch] || 0) + 1\n  }\n  return freq\n}",
+  "solutionExplanation": "**Approach:** one pass with a counting object.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Use an object as a counter.",
+   "`freq[ch] = (freq[ch] || 0) + 1` is the classic idiom."
+  ],
+  "tests": [
+   {
+    "input": [
+     "hello"
+    ],
+    "expected": {
+     "h": 1,
+     "e": 1,
+     "l": 2,
+     "o": 1
+    }
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     "aaa"
+    ],
+    "expected": {
+     "a": 3
+    }
+   },
+   {
+    "input": [
+     "a b a"
+    ],
+    "expected": {
+     "a": 2,
+     " ": 2,
+     "b": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-binary-search",
+  "title": "Binary Search",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "search"
+  ],
+  "statement": "Given a **sorted ascending** array of unique integers `nums`, return the index of `target` or `-1` if it is not present. Your solution should run in O(log n).\n\n**Example**\n\n```\nbinarySearch([-1, 0, 3, 5, 9, 12], 9) // 4\nbinarySearch([-1, 0, 3, 5, 9, 12], 2) // -1\n```",
+  "language": "javascript",
+  "functionName": "binarySearch",
+  "starter": "function binarySearch(nums, target) {\n  // write your code here\n}",
+  "solution": "function binarySearch(nums, target) {\n  let lo = 0\n  let hi = nums.length - 1\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2)\n    if (nums[mid] === target) return mid\n    if (nums[mid] < target) lo = mid + 1\n    else hi = mid - 1\n  }\n  return -1\n}",
+  "solutionExplanation": "**Approach:** halve the search range each step.\n\n**Complexity:** O(log n) time, O(1) space.",
+  "hints": [
+   "Keep two pointers `lo` and `hi` around the search window.",
+   "Compare the middle element with the target and discard half of the window."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      -1,
+      0,
+      3,
+      5,
+      9,
+      12
+     ],
+     9
+    ],
+    "expected": 4
+   },
+   {
+    "input": [
+     [
+      -1,
+      0,
+      3,
+      5,
+      9,
+      12
+     ],
+     2
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [],
+     1
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [
+      5
+     ],
+     5
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     1
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+     ],
+     7
+    ],
+    "expected": 6
+   }
+  ]
+ }
+]

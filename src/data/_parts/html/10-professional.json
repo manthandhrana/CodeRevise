@@ -1,0 +1,271 @@
+{
+ "id": "html-professional",
+ "title": "Professional HTML & Interview Prep",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "html-performance",
+   "title": "HTML Performance Best Practices",
+   "level": "advanced",
+   "summary": "Make pages load and render fast: small HTML, optimised media, non-blocking scripts and good Core Web Vitals.",
+   "description": "Fast pages rank better, convert better and work on slow phones. Much of the speed is decided by your HTML.\n\n### What users feel - Core Web Vitals\n| Metric | Meaning | Target |\n|---|---|---|\n| **LCP** Largest Contentful Paint | When the main content appears | ≤ 2.5 s |\n| **INP** Interaction to Next Paint | Responsiveness to input | ≤ 200 ms |\n| **CLS** Cumulative Layout Shift | Visual stability | ≤ 0.1 |\n\n### Checklist\n1. **Images**: right size, modern format (WebP/AVIF), `srcset`, `width`/`height`, `loading=\"lazy\"` below the fold, `fetchpriority=\"high\"` on the hero.\n2. **Scripts**: `defer`/`async`, remove unused JS, avoid huge libraries for tiny jobs.\n3. **CSS**: small critical CSS first, avoid `@import` chains, remove unused rules.\n4. **Fonts**: `font-display: swap`, preload the key font, subset.\n5. **Resource hints**: `preconnect` to key origins, `preload` only critical files.\n6. **Third parties**: audit each one - ads and widgets are the usual culprits.\n7. **DOM size**: avoid thousands of nested nodes; use semantic simple markup.\n8. **Network**: HTTPS + HTTP/2/3, gzip/Brotli, caching headers, CDN.\n9. **Media**: `preload=\"none\"` for videos, poster images, no autoplay.\n10. **Layout shift**: reserve space for images, ads and embeds.\n\n### Measure it\nLighthouse, PageSpeed Insights, WebPageTest and DevTools **Performance** + **Network** tabs. Test on a throttled mobile profile, not just your fast laptop.\n\n### The simplest win\nEvery byte you do not send is free. Delete what you do not need.",
+   "keyPoints": [
+    "Core Web Vitals: LCP, INP and CLS.",
+    "Optimise images: format, size, srcset, lazy loading, dimensions.",
+    "Never block rendering with scripts - use defer/async.",
+    "Preload only critical resources; preconnect to key origins.",
+    "Measure with Lighthouse and DevTools on mobile settings."
+   ],
+   "pitfalls": [
+    "Lazy-loading the hero image.",
+    "Loading five analytics scripts synchronously.",
+    "Optimising without measuring first."
+   ],
+   "examples": [
+    {
+     "title": "A performance-minded page",
+     "language": "text",
+     "code": "<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Fast page</title>\n  <link rel=\"preconnect\" href=\"https://cdn.example.com\" crossorigin>\n  <link rel=\"preload\" as=\"image\" href=\"/hero.avif\" fetchpriority=\"high\">\n  <link rel=\"stylesheet\" href=\"/critical.css\">\n  <script src=\"/app.js\" defer></script>\n</head>\n<body>\n  <img src=\"/hero.avif\" alt=\"Hero\" width=\"1200\" height=\"600\" fetchpriority=\"high\">\n  <img src=\"/below.webp\" alt=\"Gallery\" width=\"600\" height=\"400\" loading=\"lazy\" decoding=\"async\">\n  <iframe src=\"https://www.youtube.com/embed/ID\" title=\"Video\" loading=\"lazy\"></iframe>\n</body>",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are Core Web Vitals?",
+     "a": "Google metrics for user experience: LCP (loading), INP (interactivity) and CLS (visual stability)."
+    },
+    {
+     "q": "Name HTML-level ways to improve load speed.",
+     "a": "Optimise and lazy-load images with dimensions, defer scripts, preload critical assets, preconnect to origins, reduce DOM size and third parties."
+    },
+    {
+     "q": "What causes layout shift and how do you prevent it?",
+     "a": "Content that loads without reserved space (images, ads, fonts). Set width/height or aspect-ratio and reserve slots."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-security",
+   "title": "HTML Security: XSS, sandbox, noopener & CSP",
+   "level": "advanced",
+   "summary": "Escape untrusted data, restrict iframes, protect links and know what Content Security Policy does.",
+   "description": "HTML is where many web attacks land. Know the basics.\n\n### 1. XSS (Cross-Site Scripting)\nAttacker-supplied text is inserted into the page and runs as script.\n- **Never** put untrusted data in `innerHTML`, `document.write` or inline event handlers.\n- Use `textContent` or escape: `<` → `&lt;`, `&` → `&amp;`, `\"` → `&quot;`.\n- Sanitise rich text with a library (DOMPurify) or the Sanitizer API.\n- Escape for the context: HTML body, attribute, URL and JS all differ.\n\n### 2. Safe links\n`target=\"_blank\"` without `rel=\"noopener\"` lets the new page access `window.opener` (reverse tabnabbing). Modern browsers default to noopener, but add it for clarity. Also validate user-supplied URLs - reject `javascript:`.\n\n### 3. iframe sandbox\n```html\n<iframe src=\"https://thirdparty.example\" sandbox=\"allow-scripts\" title=\"Widget\"></iframe>\n```\nAn empty `sandbox` blocks scripts, forms, popups and same-origin access. Add back only what is needed: `allow-scripts`, `allow-forms`, `allow-same-origin` (never together with allow-scripts for untrusted code).\n\n### 4. Content Security Policy\nA header (or `<meta http-equiv=\"Content-Security-Policy\">`) that whitelists sources of scripts, styles and frames:\n```\nContent-Security-Policy: default-src 'self'; script-src 'self'; frame-ancestors 'none'\n```\n\n### 5. Other\n- Subresource Integrity: `<script integrity=\"sha384-...\" crossorigin>` for CDN files.\n- `autocomplete` tokens, `type=\"password\"`, HTTPS everywhere, no secrets in HTML or comments.\n- `<form>` POST with CSRF tokens (server-side).",
+   "keyPoints": [
+    "Escape or use textContent for untrusted data; avoid innerHTML.",
+    "Use rel=\"noopener\" with target=\"_blank\".",
+    "sandbox restricts iframes; grant minimal permissions.",
+    "CSP limits where scripts and frames can come from.",
+    "Use SRI for third-party scripts and HTTPS everywhere."
+   ],
+   "pitfalls": [
+    "Inserting user comments with innerHTML.",
+    "Using sandbox=\"allow-scripts allow-same-origin\" on untrusted pages - the sandbox can be removed.",
+    "Putting API secrets in client-side HTML or comments."
+   ],
+   "examples": [
+    {
+     "title": "Unsafe innerHTML vs safe textContent",
+     "language": "web",
+     "html": "<input id=\"in\" value=\"<img src=x onerror=alert('XSS')>\" size=\"40\">\n<button id=\"bad\">Insert with innerHTML (unsafe)</button>\n<button id=\"good\">Insert with textContent (safe)</button>\n<div id=\"box\" style=\"margin-top:10px;padding:8px;border:1px dashed #888\">Output appears here</div>\n<p id=\"note\"></p>",
+     "css": "body{font-family:sans-serif} button{padding:6px 10px;margin:6px 6px 0 0}",
+     "js": "var box = document.getElementById('box');\nfunction val() { return document.getElementById('in').value; }\ndocument.getElementById('good').onclick = function () {\n  box.textContent = val();\n  document.getElementById('note').textContent = 'Shown as plain text - harmless.';\n};\ndocument.getElementById('bad').onclick = function () {\n  document.getElementById('note').textContent = 'innerHTML would parse the markup and run the handler. We only show an escaped preview here:';\n  box.textContent = '[parsed as HTML] ' + val();\n};",
+     "explanation": "The unsafe path is deliberately neutralised in this demo; never do it with real user input."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is XSS and how do you prevent it?",
+     "a": "Injecting malicious script into a page via untrusted input. Prevent by escaping/sanitising output, using textContent, and a Content Security Policy."
+    },
+    {
+     "q": "What does the iframe sandbox attribute do?",
+     "a": "It applies extra restrictions to the framed content (no scripts, forms, popups, same-origin) unless specific allow-* tokens are given."
+    },
+    {
+     "q": "Why add rel=\"noopener\" to target=\"_blank\" links?",
+     "a": "To stop the opened page from accessing window.opener and redirecting your original tab (reverse tabnabbing)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-best-practices",
+   "title": "HTML Best Practices & Common Mistakes",
+   "level": "advanced",
+   "summary": "A practical checklist for clean, valid, maintainable and accessible HTML.",
+   "description": "Good HTML is invisible - it just works everywhere. Use this checklist before shipping.\n\n### Structure & syntax\n- Start with `<!DOCTYPE html>`, `lang`, `charset` and viewport meta.\n- Use **lowercase** tags and attributes, always quote attribute values.\n- Close all non-void elements and nest properly.\n- One `<h1>`, no skipped heading levels, one `<main>`.\n- Validate with the W3C validator (validator.w3.org).\n\n### Semantics\n- Prefer semantic elements over div/span; buttons for actions, links for navigation.\n- Use lists for lists, tables for data, `<time>`, `<figure>`, `<address>` when they fit.\n- Do not use HTML for presentation: no `<font>`, `<center>`, `<br>` for spacing, tables for layout.\n\n### Content\n- Meaningful `alt` text; transcripts and captions for media.\n- Descriptive link text; avoid \"click here\".\n- Every form control has a visible label and a `name`.\n\n### Organisation\n- Separate concerns: CSS in .css files, JS in .js files, minimal inline styles/handlers.\n- Consistent indentation and naming (kebab-case classes: `.nav-item`).\n- Meaningful ids/classes (`.price` not `.red-text`).\n- Comment sections, not obvious code.\n\n### Common mistakes\n| Mistake | Fix |\n|---|---|\n| Duplicate ids | Use classes or unique ids |\n| Block inside inline (a div in a span) | Restructure |\n| Missing alt / label | Add them |\n| Inline event handlers everywhere | addEventListener |\n| Text in images | Use real text |\n| Empty headings / links | Remove or fill |\n| Deprecated tags (`<marquee>`, `<blink>`) | Use CSS |",
+   "keyPoints": [
+    "Validate your HTML and keep it semantic.",
+    "Lowercase tags, quoted attributes, properly nested elements.",
+    "Separate structure (HTML), style (CSS), behaviour (JS).",
+    "Provide alt, labels and descriptive links.",
+    "Never use HTML elements purely for presentation."
+   ],
+   "pitfalls": [
+    "Div soup and class names like .red-box.",
+    "Using tables for layout or br for spacing.",
+    "Copy-pasting snippets without checking validity."
+   ],
+   "examples": [
+    {
+     "title": "Before and after cleanup",
+     "language": "web",
+     "html": "<h3>Before (messy)</h3>\n<div class=\"header\"><div class=\"red big\" onclick=\"go()\">Home</div></div>\n<font color=\"red\">Welcome</font><br><br><br>\n<img src=\"x.png\">\n\n<h3>After (clean)</h3>\n<header>\n  <nav><a href=\"/\">Home</a></nav>\n</header>\n<main>\n  <h1 class=\"welcome\">Welcome</h1>\n  <img alt=\"Team photo\" width=\"40\" height=\"40\" src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='100%' height='100%' fill='%2390e0ef'/><text x='20' y='40' font-size='60' text-anchor='middle'>👥</text></svg>\">\n</main>",
+     "css": "body{font-family:sans-serif} .welcome{color:#c00}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you check that HTML is valid?",
+     "a": "Use the W3C Markup Validator or browser DevTools/linters (HTMLHint, ESLint plugins)."
+    },
+    {
+     "q": "Why separate HTML, CSS and JS?",
+     "a": "Better maintainability, caching, reuse and smaller pages; each language does one job."
+    },
+    {
+     "q": "Why not use br for spacing?",
+     "a": "br means a line break in text; spacing is presentation and should be done with CSS margin/padding."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-project-landing-page",
+   "title": "Project: A Complete Landing Page",
+   "level": "intermediate",
+   "summary": "Put everything together: semantic layout, hero, about with skills, services figures, article, audio and contact form.",
+   "description": "This is the course project rebuilt as a standalone page. It shows how the topics fit together in one document - no external files needed.\n\n### Page plan\n| Section | Elements used |\n|---|---|\n| Header | `header`, `nav`, `ul`, logo emoji |\n| Hero | `main`, `h1`, `p`, `button`, `a`, `figure` |\n| About | `section`, `h2`, `p`, `label` + `meter`/`progress` |\n| Services | `section`, `figure` + `figcaption` |\n| Blog article | `article`, `header`, nested `section`, `h3`, `strong`, `em` |\n| Podcast | `audio` with controls |\n| Links | list of `a` |\n| Contact | `form` with label/input/textarea, optional map iframe |\n| Footer | `footer`, `&copy;` entity |\n\n### Steps to build it\n1. Start with the boilerplate (doctype, lang, charset, viewport, title, description).\n2. Write the **semantic skeleton** first - no styling.\n3. Fill in content: headings in order, real text, descriptive alt.\n4. Add forms with labels and names.\n5. Add minimal CSS for layout and readability.\n6. Validate, test with keyboard only, check on a narrow window.\n\n### Hosting\nStatic sites can be hosted free on Netlify, Vercel, GitHub Pages or Cloudflare Pages - drag the folder or connect a repo.\n\n### Final SEO pass\nTitle and description, one h1, alt texts, Open Graph tags, favicon, canonical URL, fast images.\n\n### Ideas to extend\nAdd a sticky nav, dark mode with CSS variables, a details FAQ, structured data and lazy-loaded gallery.",
+   "keyPoints": [
+    "Plan sections first, then pick semantic elements.",
+    "Write HTML structure before CSS.",
+    "Every image has alt and dimensions; every input has a label.",
+    "Test with keyboard and a narrow viewport.",
+    "Static sites can be hosted free (Netlify, GitHub Pages)."
+   ],
+   "pitfalls": [
+    "Starting with styling before the structure is correct.",
+    "Using a div for every section.",
+    "Forgetting to test the form and links."
+   ],
+   "examples": [
+    {
+     "title": "The finished landing page",
+     "language": "web",
+     "html": "<header class=\"top\">\n  <div class=\"logo\">🚀 ThapaTech</div>\n  <nav aria-label=\"Main\">\n    <ul class=\"menu\"><li><a href=\"#top\">Home</a></li><li><a href=\"#about\">About</a></li><li><a href=\"#services\">Services</a></li><li><a href=\"#contact\">Contact</a></li></ul>\n  </nav>\n</header>\n<main id=\"top\" class=\"hero\">\n  <div>\n    <h1>I am Vinod Thapa, aka Thapa Technical</h1>\n    <p>Website development, tips and tricks, design principles and programming videos in simple language.</p>\n    <button type=\"button\">See my works</button>\n    <a href=\"#contact\"><button type=\"button\">Contact me</button></a>\n  </div>\n  <figure><img alt=\"Hero illustration of a laptop\" width=\"220\" height=\"140\" src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='140'><rect width='100%' height='100%' fill='%23ffd166'/><text x='110' y='90' font-size='60' text-anchor='middle'>💻</text></svg>\"></figure>\n</main>\n<section id=\"about\">\n  <h2>About me 👍</h2>\n  <p>It's great to meet you! I teach web development in an easy, enjoyable way.</p>\n  <p><strong>My coding knowledge</strong></p>\n  <div class=\"skill\"><label for=\"s1\">HTML</label><meter id=\"s1\" min=\"0\" max=\"100\" value=\"95\">95%</meter></div>\n  <div class=\"skill\"><label for=\"s2\">CSS</label><meter id=\"s2\" min=\"0\" max=\"100\" value=\"90\">90%</meter></div>\n  <div class=\"skill\"><label for=\"s3\">JavaScript</label><meter id=\"s3\" min=\"0\" max=\"100\" value=\"80\">80%</meter></div>\n</section>\n<section id=\"services\">\n  <h2>Our services</h2>\n  <div class=\"gallery\">\n    <figure><img alt=\"HTML website development\" width=\"120\" height=\"80\" src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='80'><rect width='100%' height='100%' fill='%23f9c74f'/><text x='60' y='60' font-size='60' text-anchor='middle'>🌐</text></svg>\"><figcaption>HTML sites</figcaption></figure>\n    <figure><img alt=\"CSS design\" width=\"120\" height=\"80\" src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='80'><rect width='100%' height='100%' fill='%2390e0ef'/><text x='60' y='60' font-size='60' text-anchor='middle'>🎨</text></svg>\"><figcaption>CSS design</figcaption></figure>\n    <figure><img alt=\"JavaScript apps\" width=\"120\" height=\"80\" src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='80'><rect width='100%' height='100%' fill='%23caffbf'/><text x='60' y='60' font-size='60' text-anchor='middle'>⚡</text></svg>\"><figcaption>JS apps</figcaption></figure>\n  </div>\n</section>\n<section>\n  <article>\n    <header><h2>Elevate your skills with Thapa Technical</h2><p><small>By Vinod - <time datetime=\"2026-10-14\">14 Oct 2026</time></small></p></header>\n    <p><strong><em>Thapa Technical</em></strong> offers easy to follow tutorials that help you land a web development job.</p>\n    <section><h3>Enjoyable learning</h3><p>Education blended with entertainment keeps you motivated.</p></section>\n    <section><h3>Your gateway to success</h3><p>From HTML and CSS to JavaScript and beyond.</p></section>\n  </article>\n</section>\n<section id=\"contact\">\n  <h2>Contact us</h2>\n  <form id=\"f\">\n    <div><label for=\"un\">Username</label><input id=\"un\" name=\"username\" required></div>\n    <div><label for=\"em\">Email</label><input id=\"em\" type=\"email\" name=\"email\" required></div>\n    <div><label for=\"ms\">Message</label><textarea id=\"ms\" name=\"message\" rows=\"3\"></textarea></div>\n    <button type=\"submit\">Submit</button>\n    <span id=\"thanks\" role=\"status\"></span>\n  </form>\n</section>\n<footer><p>Copyright &copy; 2026 All rights reserved | Made with ❤ by Thapa Technical</p></footer>",
+     "css": "html{scroll-behavior:smooth}\nbody{font-family:Arial,sans-serif;margin:0;background:#f7f7f7;color:#222}\nsection,main,footer{padding:16px}\n.top{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#222;color:#fff}\n.menu{list-style:none;display:flex;gap:14px;margin:0;padding:0}\n.menu a{color:#ffb703;text-decoration:none}\n.hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:#fff4e6}\n.hero h1{font-size:24px}\nbutton{padding:8px 12px;border:none;background:#e34c26;color:#fff;border-radius:6px;cursor:pointer;margin-right:6px}\n.skill{display:flex;gap:10px;align-items:center;margin:6px 0}\n.skill label{width:90px}\n.gallery{display:flex;gap:12px;flex-wrap:wrap}\nfigure{margin:0;text-align:center}\nfigcaption{font-size:13px;color:#555}\nimg{border-radius:8px}\narticle{background:#fff;padding:12px;border-radius:8px}\nform div{margin:8px 0} label{display:block;font-weight:bold}\ninput,textarea{width:100%;max-width:360px;padding:6px;box-sizing:border-box}\nfooter{background:#222;color:#ccc;text-align:center;font-size:14px}",
+     "js": "document.getElementById('f').addEventListener('submit', function (e) {\n  e.preventDefault();\n  document.getElementById('thanks').textContent = ' Thanks, ' + document.getElementById('un').value + '! Message received.';\n});",
+     "explanation": "A complete, valid-structure landing page without a single external file."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How would you structure a landing page semantically?",
+     "a": "header with nav, main containing hero/section/article/aside parts with proper headings, and a footer; forms use labels."
+    },
+    {
+     "q": "Where can you host a static HTML site for free?",
+     "a": "Netlify, Vercel, GitHub Pages, Cloudflare Pages and similar static hosts."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/main_project/index.html"
+  },
+  {
+   "id": "html-interview-basics",
+   "title": "Interview Questions: Fundamentals",
+   "level": "beginner",
+   "summary": "The most common beginner/intermediate HTML interview questions with crisp answers.",
+   "description": "Use this page as a **rapid-fire revision sheet**. Say the answer in one or two sentences, then give a tiny example.\n\n### Basics\n| Question | Short answer |\n|---|---|\n| What is HTML? | HyperText Markup Language - the standard markup that structures web pages. |\n| Tag vs element? | Tag is the markup (`<p>`); element = opening tag + content + closing tag. |\n| What is the DOCTYPE? | Declaration that triggers standards mode (HTML5: `<!DOCTYPE html>`). |\n| Void elements? | Elements without content/closing tag: br, hr, img, input, meta, link. |\n| Block vs inline? | Block starts a new line and takes the full width; inline flows in text. |\n| id vs class? | id unique, class reusable. |\n| div vs span? | Block generic container vs inline generic container. |\n| HTML vs HTML5? | HTML5 added semantic tags, audio/video, canvas, storage, forms, APIs and removed presentational tags. |\n| Is HTML case sensitive? | Not for tag and attribute names; lowercase is the convention. |\n\n### Text, links, images\n| Question | Short answer |\n|---|---|\n| How many h1? | One main h1 per page is best practice. |\n| strong vs b? | strong = importance (semantic), b = visual boldness. |\n| Why alt? | Accessibility, fallback, SEO. |\n| _blank? | Opens in a new tab; add rel=\"noopener\". |\n| mailto / tel? | Links that open email client / phone dialer. |\n| Absolute vs relative URL? | Full address vs resolved from the current location. |\n\n### Forms and tables\n| Question | Short answer |\n|---|---|\n| GET vs POST? | URL query vs request body. |\n| readonly vs disabled? | readonly is submitted; disabled is not. |\n| Radio vs checkbox? | One of many vs many. |\n| select vs datalist? | Forced choice vs suggestions. |\n| thead/tbody/tfoot? | Group header, body, footer rows. |\n| colspan/rowspan? | Merge cells horizontally/vertically. |\n| th vs td? | Header cell vs data cell. |",
+   "keyPoints": [
+    "Answer in one sentence, then give a mini example.",
+    "Know the pairs: tag/element, block/inline, id/class, div/span.",
+    "Know form pairs: GET/POST, readonly/disabled, select/datalist.",
+    "Mention accessibility and semantics where relevant."
+   ],
+   "pitfalls": [
+    "Reciting definitions without examples.",
+    "Saying HTML is a programming language.",
+    "Forgetting to mention accessibility benefits."
+   ],
+   "examples": [
+    {
+     "title": "Quick demo: the answer in code",
+     "language": "web",
+     "html": "<p>Is <code>&lt;br&gt;</code> void? <label><input type=\"checkbox\" id=\"c\"> show answer</label></p>\n<p id=\"a\" hidden>Yes - br has no content and no closing tag.</p>",
+     "css": "body{font-family:sans-serif}",
+     "js": "document.getElementById('c').addEventListener('change', function (e) { document.getElementById('a').hidden = !e.target.checked; });",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between HTML and HTML5?",
+     "a": "HTML5 is the current standard that added semantic elements, native audio/video, canvas, SVG, new form controls, storage and many APIs, and dropped presentational tags."
+    },
+    {
+     "q": "What are semantic elements? Give examples.",
+     "a": "Elements whose names describe their meaning: header, nav, main, article, section, aside, footer, figure."
+    },
+    {
+     "q": "How do you make a link open an email client?",
+     "a": "Use href=\"mailto:name@example.com\"."
+    },
+    {
+     "q": "Why is the alt attribute required on images?",
+     "a": "It supplies a text alternative for screen readers, failed loads and search engines."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/index.html"
+  },
+  {
+   "id": "html-interview-advanced",
+   "title": "Interview Questions: Advanced & Scenario-Based",
+   "level": "advanced",
+   "summary": "Deeper questions about performance, accessibility, SEO, APIs and real-world scenarios.",
+   "description": "These questions separate good candidates from great ones. Practise answering them with a reason and a trade-off.\n\n### Performance and loading\n| Question | Short answer |\n|---|---|\n| defer vs async? | Both download in parallel; defer runs after parsing in order, async runs ASAP in any order. |\n| How to speed up a page? | Optimise images, lazy load, defer JS, preload critical assets, reduce DOM/CSS/JS, CDN and caching. |\n| preload vs prefetch? | Current page high priority vs future navigation low priority. |\n| What is critical rendering path? | HTML → DOM, CSS → CSSOM, combined into render tree, layout, paint. |\n| What causes CLS? | Images/ads/fonts without reserved space. |\n\n### Accessibility and SEO\n| Question | Short answer |\n|---|---|\n| First rule of ARIA? | Use native HTML before ARIA. |\n| How to make a custom button accessible? | Prefer button; else role, tabindex=\"0\", key handlers, name, focus style. |\n| How to make forms accessible? | Labels, fieldset/legend, error messages linked with aria-describedby, correct types. |\n| SEO tags? | title, meta description, canonical, h1, alt, Open Graph, structured data, robots. |\n\n### HTML5 APIs\n| Question | Short answer |\n|---|---|\n| localStorage vs cookies? | 5 MB, client-only, persistent vs 4 KB, sent with each request. |\n| Web workers? | Background threads without DOM access using postMessage. |\n| What is Shadow DOM? | Encapsulated DOM/CSS subtree for web components. |\n| canvas vs SVG? | Pixels vs vectors. |\n| How does drag and drop work? | draggable + dragstart, dragover (preventDefault), drop. |\n\n### Scenario questions\n- **\"A page looks tiny on mobile.\"** → missing viewport meta.\n- **\"Image causes layout jump.\"** → missing width/height.\n- **\"Link opens but the opener tab is hijacked.\"** → add rel=\"noopener\".\n- **\"Form submits but the server gets nothing for a field.\"** → missing name attribute or disabled.\n- **\"Emoji shows as ???\"** → missing UTF-8 charset.\n- **\"Two elements react to one label.\"** → duplicate ids.",
+   "keyPoints": [
+    "Explain the critical rendering path in one breath.",
+    "Know async/defer, preload/prefetch, localStorage/cookies.",
+    "Have a debugging answer for common scenarios.",
+    "Always connect answers to accessibility and performance."
+   ],
+   "pitfalls": [
+    "Memorising answers without understanding the reason.",
+    "Ignoring trade-offs (e.g. lazy loading everything).",
+    "Not mentioning testing/validation tools."
+   ],
+   "examples": [
+    {
+     "title": "Scenario: a form field is not submitted",
+     "language": "web",
+     "html": "<form id=\"f\">\n  <input name=\"a\" value=\"has name\">\n  <input value=\"NO name - not sent\">\n  <input name=\"c\" value=\"disabled - not sent\" disabled>\n  <input name=\"d\" value=\"readonly - sent\" readonly>\n  <button>Submit</button>\n</form>\n<pre id=\"out\">Submit to see what is sent.</pre>",
+     "css": "body{font-family:sans-serif} input{display:block;margin:4px 0;padding:4px} pre{background:#f4f4f4;padding:8px}",
+     "js": "document.getElementById('f').addEventListener('submit', function (e) {\n  e.preventDefault();\n  var lines = [];\n  new FormData(e.target).forEach(function (v, k) { lines.push(k + ' = ' + v); });\n  document.getElementById('out').textContent = lines.join('\\n');\n});",
+     "explanation": "Only inputs with a name and not disabled appear."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the critical rendering path.",
+     "a": "The browser parses HTML into the DOM and CSS into the CSSOM, combines them into a render tree, computes layout and paints. Blocking CSS/JS delays it."
+    },
+    {
+     "q": "How would you make a div act as a button accessibly?",
+     "a": "Better to use a real button. Otherwise add role=\"button\", tabindex=\"0\", handle Enter/Space keys, give a name and visible focus."
+    },
+    {
+     "q": "Why might a form field not reach the server?",
+     "a": "It has no name, is disabled, is outside the form without the form attribute, or is an unchecked checkbox/radio."
+    },
+    {
+     "q": "How can you prevent layout shift from images?",
+     "a": "Set width and height attributes (or CSS aspect-ratio) so space is reserved before loading."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

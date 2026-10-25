@@ -1,0 +1,230 @@
+{
+ "id": "express-req-res",
+ "title": "Request and Response in Depth",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-request-object",
+   "title": "The Request Object (req)",
+   "level": "beginner",
+   "summary": "req carries params, query, body, headers, cookies, IP and URL details for the incoming request.",
+   "description": "The `req` object describes everything the client sent. Knowing its properties by heart makes handlers easy to write.\n\n### Where does the data come from?\n| Property | Source | Notes |\n|---|---|---|\n| `req.params` | path `/users/:id` | strings |\n| `req.query` | after `?` | strings/arrays; read-only getter in v5 |\n| `req.body` | request payload | needs `express.json()` / `urlencoded()`; `undefined` otherwise |\n| `req.headers` / `req.get('name')` | HTTP headers | header names are lower-case in `req.headers` |\n| `req.cookies` | `Cookie` header | needs `cookie-parser` |\n| `req.signedCookies` | signed cookies | needs `cookie-parser(secret)` |\n\n### URL-related properties\n- `req.method` - `GET`, `POST`...\n- `req.originalUrl` - full URL with query (`/api/v1/users?x=1`), never changes.\n- `req.baseUrl` - the router mount path (`/api/v1`).\n- `req.path` - path without query string, relative to the mount point.\n- `req.protocol`, `req.secure`, `req.hostname`. In Express 5 `req.host` includes the port while `req.hostname` does not.\n\n### Client details\n`req.ip` is the client address. Behind a proxy (nginx, Heroku, Render, Cloudflare) it shows the proxy IP unless you tell Express to trust it: `app.set('trust proxy', 1)`. Then `req.ip` uses `X-Forwarded-For` and `req.protocol` uses `X-Forwarded-Proto`.\n\n### Helpers\n- `req.get('Content-Type')` reads a header case-insensitively.\n- `req.is('json')` checks the request content type.\n- `req.accepts('json')` inspects the `Accept` header.\n- `req.xhr`, `req.fresh`/`req.stale` for caching logic.\n\n### Custom data\nAttach your own fields (`req.user`, `req.requestId`). They live only for that request.",
+   "keyPoints": [
+    "`params` = path, `query` = after `?`, `body` = payload, `headers`, `cookies`",
+    "`originalUrl` vs `baseUrl` vs `path` differ inside mounted routers",
+    "Set `trust proxy` behind a reverse proxy to get the real `req.ip`",
+    "Use `req.get()` or `req.headers['lower-case']` for headers",
+    "Add custom fields like `req.user` in middleware"
+   ],
+   "pitfalls": [
+    "Using `req.cookies` without installing cookie-parser (it is `undefined`)",
+    "Reading `req.headers.Authorization` (case matters: use `authorization`)",
+    "Trusting `X-Forwarded-For` blindly by setting `trust proxy` to `true` without a proxy in front"
+   ],
+   "examples": [
+    {
+     "title": "Inspecting a request",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport cookieParser from 'cookie-parser'\n\nconst app = express()\napp.set('trust proxy', 1)          // we sit behind one proxy\napp.use(express.json())\napp.use(cookieParser())\n\napp.post('/api/v1/debug/:id', (req, res) => {\n  res.json({\n    method: req.method,\n    params: req.params,\n    query: req.query,\n    body: req.body,\n    auth: req.get('authorization') ?? null,\n    cookies: req.cookies,\n    ip: req.ip,\n    originalUrl: req.originalUrl,\n    path: req.path,\n    isJson: Boolean(req.is('json')),\n  })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Request and response",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST \"localhost:3000/api/v1/debug/7?x=1\" \\\n  -H \"Content-Type: application/json\" -H \"Authorization: Bearer abc\" \\\n  -b \"theme=dark\" -d '{\"name\":\"Asha\"}'\n\n{\"method\":\"POST\",\"params\":{\"id\":\"7\"},\"query\":{\"x\":\"1\"},\"body\":{\"name\":\"Asha\"},\n \"auth\":\"Bearer abc\",\"cookies\":{\"theme\":\"dark\"},\"ip\":\"::1\",\n \"originalUrl\":\"/api/v1/debug/7?x=1\",\"path\":\"/api/v1/debug/7\",\"isJson\":true}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between req.originalUrl, req.baseUrl and req.path?",
+     "a": "originalUrl is the full requested URL; baseUrl is the router's mount prefix; path is the remainder after the mount point without the query string."
+    },
+    {
+     "q": "How do you get the real client IP behind nginx?",
+     "a": "Set app.set('trust proxy', 1) (or the exact number of proxies) so Express reads X-Forwarded-For for req.ip."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-response-methods",
+   "title": "The Response Object (res)",
+   "level": "beginner",
+   "summary": "Use res.status, json, send, sendStatus, set, end and locals to craft responses correctly.",
+   "description": "`res` is how you answer. Most of your code ends with one of these methods.\n\n### Sending bodies\n- `res.send(data)` - sends a string, Buffer, object or array. Content-Type is chosen automatically (HTML for strings, JSON for objects).\n- `res.json(obj)` - always JSON (`Content-Type: application/json`). Prefer it in APIs because it also converts `null`/`undefined` safely.\n- `res.end()` - ends with no body (low-level).\n- `res.sendStatus(404)` - sets the status and sends its text (`Not Found`) as the body.\n\n### Status\n`res.status(201)` sets the status code and returns `res`, so you can chain: `res.status(201).json(user)`. In Express 5 the code must be an integer between 100 and 999; passing a string throws. The v4 forms `res.json(status, obj)` and `res.send(status, body)` were removed.\n\n### Headers\n`res.set('X-Total-Count', '42')` (alias `res.header`), `res.type('json')`, `res.location('/users/5')`, `res.append('Set-Cookie', ...)`, `res.vary('Accept')`.\n\n### `res.locals`\nAn object whose properties live for the request. Middleware can store data (`res.locals.user`) for later handlers and templates.\n\n### 204 and empty bodies\nFor deletes, respond with `res.status(204).end()` - a 204 must not have a body.\n\n### One response only\nAfter `res.json()` the headers are sent. A second `res.send()` throws `ERR_HTTP_HEADERS_SENT`. Use `return res.json(...)` in guard clauses.\n\n### Rendering views\n`res.render('page', data)` uses a template engine (EJS, Pug, Handlebars). In JSON APIs you rarely need it.",
+   "keyPoints": [
+    "`res.status(code).json(data)` is the standard API reply",
+    "`res.send` guesses the type, `res.json` is always JSON",
+    "`res.sendStatus(n)` sends the code and its default text",
+    "204 means no content: use `.end()`",
+    "Use `return` with early responses to avoid double sends"
+   ],
+   "pitfalls": [
+    "`res.json` twice in one request (headers already sent)",
+    "Sending a body with 204 or 304",
+    "Express 4 habits that fail in 5: `res.json(200, obj)`, `res.sendfile`, `res.send(404)`"
+   ],
+   "examples": [
+    {
+     "title": "Common responses",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\napp.use(express.json())\n\nconst users = new Map()\n\napp.post('/users', (req, res) => {\n  const { name } = req.body ?? {}\n  if (!name) return res.status(400).json({ error: 'name is required' })\n\n  const id = users.size + 1\n  users.set(id, { id, name })\n  res.status(201).location(`/users/${id}`).json(users.get(id))\n})\n\napp.get('/users/:id', (req, res) => {\n  const user = users.get(Number(req.params.id))\n  if (!user) return res.sendStatus(404)          // body: \"Not Found\"\n  res.set('Cache-Control', 'no-store').json(user)\n})\n\napp.delete('/users/:id', (req, res) => {\n  users.delete(Number(req.params.id))\n  res.status(204).end()                          // no body\n})\n\napp.listen(3000)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "res.send vs res.json?",
+     "a": "Both send a body; res.send picks the Content-Type from the data, while res.json always serialises to JSON with the JSON content type."
+    },
+    {
+     "q": "Why do you see \"Cannot set headers after they are sent\"?",
+     "a": "Because the handler tried to send a second response (or write headers) after the first was already sent, usually from a missing return."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-redirect-files",
+   "title": "Redirect, sendFile and Download",
+   "level": "intermediate",
+   "summary": "Redirect clients, send files and force downloads safely with absolute paths and a root option.",
+   "description": "### Redirects\n`res.redirect('/login')` sends **302 Found** by default. Pass a status as the first argument for permanent moves: `res.redirect(301, '/new-url')`. Use **303** after a POST so the browser follows with GET, and **307/308** to keep the method. In Express 5 the magic string `'back'` no longer works (it would redirect to a literal URL called \"back\"); use `req.get('Referer') || '/'`.\n\n### `res.sendFile()`\nStreams a file with correct MIME type, ETag and range support. The path must be **absolute**, or you must pass a `root`:\n\n```js\nres.sendFile('report.pdf', { root: path.join(import.meta.dirname, 'files') })\n```\n\nUsing `root` also protects against path traversal such as `../../etc/passwd`. Never pass raw user input as the path without `root`. The v4 spelling `res.sendfile` is gone.\n\n### `res.download()`\nSame as `sendFile` but sets `Content-Disposition: attachment` so the browser saves the file. Optional second argument is the filename the user sees:\n\n```js\nres.download('/abs/path/invoice-17.pdf', 'Invoice.pdf')\n```\n\n### Errors\nBoth accept a callback: `res.sendFile(file, opts, (err) => { if (err) next(err) })`. A missing file produces a 404 error object with `err.status`.\n\n### When to use what\n| Need | Method |\n|---|---|\n| Show an HTML page / image inline | `sendFile` |\n| Force \"Save as...\" | `download` |\n| Send generated data as a file | set headers + `res.send(buffer)` or stream |\n| Server-rendered page | `render` |\n\n### Single Page Apps\nServe `index.html` for unknown routes with `res.sendFile(path.join(dist, 'index.html'))` as the last `GET` handler.",
+   "keyPoints": [
+    "`res.redirect(url)` is 302; pass 301/303/307/308 for other behaviours",
+    "`res.sendFile` needs an absolute path or `{ root }`",
+    "`res.download(path, name)` forces a download",
+    "Use `root` to stop path traversal",
+    "v5 removed `res.sendfile` and `redirect('back')`"
+   ],
+   "pitfalls": [
+    "`res.sendFile('./file.pdf')` with a relative path (throws)",
+    "Passing user-controlled filenames without `root` or validation",
+    "Redirecting to a user-supplied URL (open redirect vulnerability)"
+   ],
+   "examples": [
+    {
+     "title": "Redirect, sendFile and download",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport path from 'node:path'\n\nconst app = express()\nconst filesDir = path.join(import.meta.dirname, 'files')\n\napp.get('/old-page', (req, res) => res.redirect(301, '/new-page'))\napp.get('/new-page', (req, res) => res.send('I am the new page'))\n\napp.get('/files/:name', (req, res, next) => {\n  // root blocks ../ traversal; dotfiles are denied\n  res.sendFile(req.params.name, { root: filesDir, dotfiles: 'deny' }, (err) => {\n    if (err) next(err)           // 404 if the file does not exist\n  })\n})\n\napp.get('/download/report', (req, res) => {\n  res.download(path.join(filesDir, 'report.pdf'), 'Monthly-Report.pdf')\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "What the client sees",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -i localhost:3000/old-page\n# HTTP/1.1 301 Moved Permanently\n# Location: /new-page\n\ncurl -i localhost:3000/download/report\n# Content-Disposition: attachment; filename=Monthly-Report.pdf\n# Content-Type: application/pdf",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between res.sendFile and res.download?",
+     "a": "sendFile shows the file inline (browser may render it); download sets Content-Disposition: attachment to make the browser save it."
+    },
+    {
+     "q": "How do you prevent path traversal when serving user-requested files?",
+     "a": "Use the root option (or resolve and verify the final path stays inside the allowed directory) and never concatenate raw input into a path."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-headers-cookies-negotiation",
+   "title": "Headers, Cookies and Content Negotiation",
+   "level": "intermediate",
+   "summary": "Read and set headers, handle cookies with cookie-parser and respond in the format the client asks for.",
+   "description": "### Headers\nRead with `req.get('Authorization')`; write with `res.set('X-Request-Id', id)`. Common ones: `Content-Type`, `Authorization`, `Accept`, `Cache-Control`, `Location`, `Set-Cookie`. Custom headers traditionally start with `X-`. Express adds `X-Powered-By: Express`, which you should disable (`app.disable('x-powered-by')` or use helmet) to avoid advertising your stack.\n\n### Cookies\nA cookie is a small key-value pair stored by the browser and sent back automatically.\n- `res.cookie('name', 'value', options)` sets one.\n- `res.clearCookie('name')` removes it (use the same `path`/`domain`).\n- Reading requires the **cookie-parser** middleware: `app.use(cookieParser())`, then `req.cookies.name`.\n- Options: `httpOnly` (JavaScript cannot read it), `secure` (HTTPS only), `sameSite` (`'lax' | 'strict' | 'none'`), `maxAge` (milliseconds), `signed: true` (tamper-proof with a secret).\n\n### Content negotiation\nClients say what they accept in the `Accept` header. `req.accepts(['json','html'])` returns the best match, and `res.format({...})` runs the handler for the best match, answering **406 Not Acceptable** (or your `default`) when none fit. `Accept-Language`, `Accept-Encoding` and `Accept-Charset` are available through `req.acceptsLanguages()` etc.\n\n### Vary\nIf the response changes with a header, add `res.vary('Accept')` so caches store separate versions.\n\n### CORS headers\nCross-origin rules are also just headers (`Access-Control-Allow-Origin`); see the CORS topic.",
+   "keyPoints": [
+    "`req.get(name)` reads, `res.set(name, value)` writes headers",
+    "Cookies need `cookie-parser` to be read; set with `res.cookie`",
+    "Cookie security flags: `httpOnly`, `secure`, `sameSite`, `maxAge`",
+    "`res.format()` and `req.accepts()` implement content negotiation",
+    "Remove the `X-Powered-By` header"
+   ],
+   "pitfalls": [
+    "Expecting `req.cookies` without cookie-parser",
+    "`maxAge` confusion: it is milliseconds in Express (seconds in the raw header)",
+    "Clearing a cookie with different path/domain options than it was set with"
+   ],
+   "examples": [
+    {
+     "title": "Cookies and res.format",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport cookieParser from 'cookie-parser'\n\nconst app = express()\napp.disable('x-powered-by')\napp.use(cookieParser('my-cookie-secret'))\n\napp.get('/set-theme/:name', (req, res) => {\n  res.cookie('theme', req.params.name, {\n    httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000,\n  })\n  res.cookie('visitor', 'abc123', { signed: true })\n  res.send('cookie set')\n})\n\napp.get('/theme', (req, res) => {\n  res.json({ theme: req.cookies.theme ?? 'light', visitor: req.signedCookies.visitor })\n})\n\napp.get('/report', (req, res) => {\n  res.format({\n    'text/plain': () => res.send('Total: 42'),\n    'application/json': () => res.json({ total: 42 }),\n    'text/html': () => res.send('<b>Total: 42</b>'),\n    default: () => res.status(406).send('Not Acceptable'),\n  })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Negotiation in action",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -H \"Accept: application/json\" localhost:3000/report   # {\"total\":42}\ncurl -H \"Accept: text/html\" localhost:3000/report          # <b>Total: 42</b>\ncurl -H \"Accept: image/png\" localhost:3000/report          # Not Acceptable (406)\n\ncurl -i localhost:3000/set-theme/dark\n# Set-Cookie: theme=dark; Max-Age=604800; Path=/; Expires=...; HttpOnly; SameSite=Lax",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between a signed and a normal cookie?",
+     "a": "A signed cookie carries an HMAC made with your secret so tampering is detected, but its content is still readable; it is integrity, not secrecy."
+    },
+    {
+     "q": "How do you serve JSON or HTML from the same route?",
+     "a": "Use res.format() (or req.accepts) to branch on the Accept header and return 406 if nothing matches."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-streaming-compression-caching",
+   "title": "Streaming, Compression, ETag and Caching",
+   "level": "advanced",
+   "summary": "Stream large payloads, gzip responses and use ETag/Cache-Control so clients and CDNs reuse data.",
+   "description": "### Streaming\nReading a big file into memory (`fs.readFile`) before sending wastes RAM and delays the first byte. Streams send data in chunks:\n\n```js\nimport { pipeline } from 'node:stream/promises'\nawait pipeline(fs.createReadStream('big.csv'), res)\n```\n\n`res` is a writable stream. `pipeline` handles errors and back-pressure and cleans up if the client disconnects. `res.sendFile` and `express.static` already stream.\n\n### Compression\nThe `compression` middleware gzips/brotli-compresses responses larger than 1 KB when the client sends `Accept-Encoding`. Typically cuts JSON/HTML size by 70 percent or more. In production, nginx or a CDN often does this instead.\n\n### ETag and conditional requests\nExpress automatically adds a weak **ETag** (hash of the body) to `res.send/json` responses. When the browser sends `If-None-Match` with the same tag, Express replies **304 Not Modified** with no body, saving bandwidth. The server still did the work, though.\n\n### Cache-Control\nTell clients and CDNs how long they may reuse a response:\n| Header | Meaning |\n|---|---|\n| `Cache-Control: public, max-age=3600` | anyone may cache for 1 hour |\n| `Cache-Control: private, max-age=60` | only the browser may cache |\n| `Cache-Control: no-store` | never cache (sensitive data) |\n| `Cache-Control: no-cache` | must revalidate every time |\n\nFor static assets use `express.static(dir, { maxAge: '1y', immutable: true })` with hashed file names (Vite does this); keep `index.html` uncached.",
+   "keyPoints": [
+    "Stream files with `pipeline(stream, res)` instead of reading them fully",
+    "`compression()` middleware shrinks text responses; proxies can do it too",
+    "Express sets weak ETags, giving 304 responses for unchanged data",
+    "`Cache-Control` controls browser/CDN caching: public, private, no-store, no-cache",
+    "Long cache for hashed assets, none for HTML and private API data"
+   ],
+   "pitfalls": [
+    "Caching authenticated responses with `public` (data leaks between users)",
+    "Compressing already-compressed files like JPEG or ZIP (wasted CPU)",
+    "Using `readFile` for multi-GB files and exhausting memory"
+   ],
+   "examples": [
+    {
+     "title": "Streaming, compression and cache headers",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport compression from 'compression'\nimport fs from 'node:fs'\nimport { pipeline } from 'node:stream/promises'\n\nconst app = express()\napp.use(compression())\n\n// stream a large file\napp.get('/export.csv', async (req, res) => {\n  res.type('text/csv').attachment('export.csv')\n  await pipeline(fs.createReadStream('export.csv'), res)\n})\n\n// cache headers for a public, rarely-changing API response\napp.get('/api/countries', (req, res) => {\n  res.set('Cache-Control', 'public, max-age=3600')\n  res.json(['India', 'Japan', 'Brazil'])\n})\n\n// never cache private data\napp.get('/api/me', (req, res) => {\n  res.set('Cache-Control', 'no-store')\n  res.json({ id: 1 })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Seeing ETag and 304",
+     "language": "text",
+     "lang": "bash",
+     "code": "$ curl -i localhost:3000/api/countries\nHTTP/1.1 200 OK\nCache-Control: public, max-age=3600\nETag: W/\"1d-abc123...\"\n\n$ curl -i localhost:3000/api/countries -H 'If-None-Match: W/\"1d-abc123...\"'\nHTTP/1.1 304 Not Modified",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does a 304 response mean?",
+     "a": "Not Modified: the client's cached copy (identified by ETag or Last-Modified) is still valid, so no body is sent."
+    },
+    {
+     "q": "Why stream instead of reading a file fully?",
+     "a": "Streaming keeps memory low and starts sending immediately, because data is passed in small chunks with back-pressure handling."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

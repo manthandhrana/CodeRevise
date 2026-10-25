@@ -1,0 +1,138 @@
+{
+ "id": "devnotes-tooling",
+ "title": "DevOps & Tooling",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "dev-docker-basics",
+   "title": "Docker Basics",
+   "level": "beginner",
+   "summary": "Package an app and its dependencies into an image and run it as an isolated container anywhere.",
+   "description": "**Docker** packages your application together with its runtime, libraries and configuration into an **image**. A running instance of an image is a **container**. This removes the \"works on my machine\" problem.\n\n### Key concepts\n* **Image** - read-only template built from a `Dockerfile`, made of layers.\n* **Container** - a running (isolated) process from an image.\n* **Registry** - stores images (Docker Hub, GHCR, ECR).\n* **Volume** - persistent storage outside the container's lifecycle.\n* **Compose** - define several containers (app, DB, Redis) in one YAML file.\n\n### Essential commands\n* `docker build -t myapp .` - build an image.\n* `docker run -p 3000:3000 myapp` - run and publish a port.\n* `docker ps` / `docker logs <id>` / `docker exec -it <id> sh`.\n* `docker stop <id>`, `docker rm <id>`, `docker images`.\n* `docker compose up -d` - start the whole stack.\n\n### Tips\n* Use a small base image (`node:20-alpine`).\n* Copy `package*.json` first and install, **then** copy the source - layer caching makes rebuilds fast.\n* Add a `.dockerignore` (`node_modules`, `.git`).\n* Never bake secrets into images; pass them as environment variables.",
+   "keyPoints": [
+    "Image = template, container = running instance",
+    "Dockerfile describes how to build an image",
+    "Publish ports with -p host:container",
+    "Use volumes for persistent data",
+    "Compose runs multi-container apps"
+   ],
+   "pitfalls": [
+    "Storing data inside a container without a volume",
+    "Running as root and shipping secrets in the image",
+    "Copying the whole project before installing dependencies (breaks caching)"
+   ],
+   "examples": [
+    {
+     "title": "Node.js Dockerfile",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nEXPOSE 3000\nCMD [\"node\", \"server.js\"]",
+     "explanation": "Dependency layer is cached until package.json changes."
+    },
+    {
+     "title": "docker-compose.yml",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "services:\n  api:\n    build: .\n    ports: [\"3000:3000\"]\n    environment:\n      - REDIS_URL=redis://redis:6379\n    depends_on: [redis]\n  redis:\n    image: redis:7-alpine",
+     "explanation": "The API reaches Redis by its service name."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Image vs container?",
+     "a": "An image is an immutable template; a container is a running instance created from it."
+    },
+    {
+     "q": "Container vs virtual machine?",
+     "a": "Containers share the host kernel and are lightweight and fast to start; VMs include a full guest OS."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-ci-cd-basics",
+   "title": "CI/CD Basics",
+   "level": "intermediate",
+   "summary": "Automatically build, test and deploy every change so releases become small, frequent and safe.",
+   "description": "**CI (Continuous Integration)** - every push is automatically built and tested. **CD** means either *Continuous Delivery* (always releasable, deploy with one click) or *Continuous Deployment* (every passing change goes to production automatically).\n\n### A typical pipeline\n```\npush / pull request\n      |\n      v\n  install deps -> lint -> unit tests -> build\n      |\n      v\n  build Docker image -> push to registry\n      |\n      v\n  deploy to staging -> smoke tests\n      |\n      v\n  deploy to production (manual approval or automatic)\n```\n\n### Benefits\n* Bugs are caught minutes after they are written.\n* Same repeatable process for every deploy.\n* Small changes are easy to roll back.\n\n### Good practices\n* Keep the pipeline **fast** (cache dependencies, run jobs in parallel).\n* Store secrets in the CI secret store, never in the repository.\n* Protect `main`: require passing checks and review before merge.\n* Deploy strategies: **rolling**, **blue-green**, **canary**; always have a **rollback** plan.\n* Tools: GitHub Actions, GitLab CI, Jenkins, CircleCI.",
+   "keyPoints": [
+    "CI = build and test on every change",
+    "CD = automated delivery/deployment",
+    "Fast, repeatable pipelines",
+    "Secrets live in the CI secret store",
+    "Plan rollbacks and use staged rollouts"
+   ],
+   "pitfalls": [
+    "Flaky tests that everybody ignores",
+    "Deploying straight from a developer laptop",
+    "Slow pipelines nobody waits for"
+   ],
+   "examples": [
+    {
+     "title": "GitHub Actions workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 20, cache: npm }\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build",
+     "explanation": "Runs on every push and pull request."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Continuous delivery vs continuous deployment?",
+     "a": "Delivery keeps every build releasable but requires a manual approval to deploy; deployment ships every passing change automatically."
+    },
+    {
+     "q": "What is a canary release?",
+     "a": "Releasing a new version to a small share of users first and watching metrics before rolling out fully."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-android-emulator-fix",
+   "title": "Android Emulator Stuck: Reset & Connect to Localhost",
+   "level": "beginner",
+   "summary": "Commands to restart ADB, kill hung emulator processes on Windows, and how an emulator reaches your local API via 10.0.2.2.",
+   "description": "When the Android emulator freezes, will not boot or `adb devices` shows nothing, the cure is to restart **ADB** (Android Debug Bridge) and kill leftover emulator processes.\n\n### 1. Restart ADB\n```\nadb kill-server\nadb start-server\nadb devices\n```\n\n### 2. Kill a specific emulator\n```\nadb -s emulator-5554 emu kill\n```\n\n### 3. Kill hung processes on Windows\nFind them first, then kill by PID:\n```\ntasklist | findstr emulator\ntasklist | findstr qemu\ntaskkill /PID 17560 /F\n```\n\n**The shortcut that solves most cases** - kill by image name:\n```\ntaskkill /IM emulator.exe /F\ntaskkill /IM qemu-system-x86_64.exe /F\n```\n\n### 4. Reaching your computer from the emulator\nInside the emulator `localhost` is the emulator itself. Your development machine is available at the special address **10.0.2.2**, so an API running on port 3000 is:\n```\nAPI_URL=http://10.0.2.2:3000/api/v1\n```\nThen start the app with `npm run android` (React Native).\n\nFor a **physical device** use your PC's LAN IP, or `adb reverse tcp:3000 tcp:3000` to forward the port.",
+   "keyPoints": [
+    "`adb kill-server` then `adb start-server` restarts ADB",
+    "`taskkill /IM emulator.exe /F` and `qemu-system-x86_64.exe` kill hung emulators",
+    "Emulator reaches the host machine at 10.0.2.2",
+    "`adb devices` lists connected emulators/devices"
+   ],
+   "pitfalls": [
+    "Using `localhost` in the API URL inside the emulator",
+    "Killing only emulator.exe and leaving qemu running",
+    "Forgetting to restart the Metro/app after changing `API_URL`"
+   ],
+   "examples": [
+    {
+     "title": "Full recovery sequence (Windows)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "taskkill /IM emulator.exe /F\ntaskkill /IM qemu-system-x86_64.exe /F\nadb kill-server\nadb start-server\nadb devices\nnpm run android",
+     "explanation": "Kill processes, restart ADB, confirm device, run the app."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is 10.0.2.2 in the Android emulator?",
+     "a": "A special alias that points to the host computer's loopback interface (127.0.0.1 of your development machine)."
+    },
+    {
+     "q": "How do you restart ADB?",
+     "a": "Run `adb kill-server` followed by `adb start-server`."
+    }
+   ],
+   "source": "Android emulator stuck.txt"
+  }
+ ]
+}

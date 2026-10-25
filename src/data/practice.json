@@ -1,0 +1,5944 @@
+{
+ "questions": [
+  {
+   "id": "q-reverse-string",
+   "title": "Reverse a String",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string"
+   ],
+   "statement": "Write a function `reverseString(str)` that returns the characters of `str` in reverse order.\n\n**Example**\n\n```\nreverseString(\"hello\")  // \"olleh\"\nreverseString(\"\")       // \"\"\n```",
+   "language": "javascript",
+   "functionName": "reverseString",
+   "starter": "function reverseString(str) {\n  // write your code here\n}",
+   "solution": "function reverseString(str) {\n  return str.split('').reverse().join('')\n}",
+   "solutionExplanation": "**Approach:** split the string into characters, reverse the array, join it back.\n\n**Complexity:** O(n) time, O(n) extra space.",
+   "hints": [
+    "Strings are immutable - you need to build a new one.",
+    "Turn the string into an array with `split(\"\")`, reverse it, then join it back.",
+    "A plain `for` loop from the last index to 0 also works."
+   ],
+   "tests": [
+    {
+     "input": [
+      "hello"
+     ],
+     "expected": "olleh"
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      "a"
+     ],
+     "expected": "a"
+    },
+    {
+     "input": [
+      "Hello World"
+     ],
+     "expected": "dlroW olleH"
+    },
+    {
+     "input": [
+      "racecar"
+     ],
+     "expected": "racecar"
+    },
+    {
+     "input": [
+      "12345"
+     ],
+     "expected": "54321"
+    }
+   ]
+  },
+  {
+   "id": "q-is-palindrome",
+   "title": "Valid Palindrome",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string",
+    "two-pointers"
+   ],
+   "statement": "Return `true` if `str` reads the same forwards and backwards, **ignoring case and every non-alphanumeric character**. An empty string is a palindrome.\n\n**Example**\n\n```\nisPalindrome(\"A man, a plan, a canal: Panama\") // true\nisPalindrome(\"race a car\")                    // false\n```",
+   "language": "javascript",
+   "functionName": "isPalindrome",
+   "starter": "function isPalindrome(str) {\n  // write your code here\n}",
+   "solution": "function isPalindrome(str) {\n  const s = str.toLowerCase().replace(/[^a-z0-9]/g, '')\n  let i = 0\n  let j = s.length - 1\n  while (i < j) {\n    if (s[i] !== s[j]) return false\n    i++\n    j--\n  }\n  return true\n}",
+   "solutionExplanation": "**Approach:** clean the string with a regex, then walk two pointers from both ends and compare.\n\n**Complexity:** O(n) time, O(n) space for the cleaned copy.",
+   "hints": [
+    "First normalise: lowercase and remove everything that is not a letter or digit.",
+    "Compare characters from both ends moving inwards (two pointers)."
+   ],
+   "tests": [
+    {
+     "input": [
+      "A man, a plan, a canal: Panama"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "race a car"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "No lemon, no melon"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "ab"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "0P"
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-is-anagram",
+   "title": "Valid Anagram",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string",
+    "sorting"
+   ],
+   "statement": "Return `true` if `b` is an anagram of `a` (same letters, same counts). Ignore case and spaces.\n\n**Example**\n\n```\nisAnagram(\"listen\", \"silent\")        // true\nisAnagram(\"Dormitory\", \"dirty room\") // true\nisAnagram(\"hello\", \"world\")          // false\n```",
+   "language": "javascript",
+   "functionName": "isAnagram",
+   "starter": "function isAnagram(a, b) {\n  // write your code here\n}",
+   "solution": "function isAnagram(a, b) {\n  const norm = (s) => s.toLowerCase().replace(/\\s+/g, '').split('').sort().join('')\n  return norm(a) === norm(b)\n}",
+   "solutionExplanation": "**Approach:** normalise, sort characters, compare. (A frequency map gives O(n) instead of O(n log n).)\n\n**Complexity:** O(n log n) time, O(n) space.",
+   "hints": [
+    "Normalise both strings first: lowercase, remove spaces.",
+    "Two strings are anagrams if their sorted characters are identical."
+   ],
+   "tests": [
+    {
+     "input": [
+      "listen",
+      "silent"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "hello",
+      "world"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "Dormitory",
+      "dirty room"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "a",
+      "ab"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "",
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "aabb",
+      "abab"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "rat",
+      "car"
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-count-vowels",
+   "title": "Count Vowels",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string"
+   ],
+   "statement": "Return how many vowels (`a e i o u`, case-insensitive) are in the string.\n\n**Example**\n\n```\ncountVowels(\"hello\")    // 2\ncountVowels(\"rhythm\")   // 0\n```",
+   "language": "javascript",
+   "functionName": "countVowels",
+   "starter": "function countVowels(str) {\n  // write your code here\n}",
+   "solution": "function countVowels(str) {\n  let count = 0\n  for (const ch of str.toLowerCase()) {\n    if ('aeiou'.includes(ch)) count++\n  }\n  return count\n}",
+   "solutionExplanation": "**Approach:** lowercase and count characters that appear in `\"aeiou\"`.\n\n**Complexity:** O(n) time, O(1) space.",
+   "hints": [
+    "Lowercase the string first so you only compare against five letters.",
+    "Loop over the characters and check `\"aeiou\".includes(ch)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      "hello"
+     ],
+     "expected": 2
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      "AEIOU"
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      "rhythm"
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      "Programming Language"
+     ],
+     "expected": 7
+    }
+   ]
+  },
+  {
+   "id": "q-to-camel-case",
+   "title": "camelCase Converter",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string"
+   ],
+   "statement": "Convert a string whose words are separated by spaces, hyphens or underscores to **camelCase**: the first word is all lowercase, every following word starts with an uppercase letter followed by lowercase letters.\n\n**Example**\n\n```\ntoCamelCase(\"hello world\")        // \"helloWorld\"\ntoCamelCase(\"make-it_camel case\") // \"makeItCamelCase\"\ntoCamelCase(\"HELLO WORLD\")        // \"helloWorld\"\n```",
+   "language": "javascript",
+   "functionName": "toCamelCase",
+   "starter": "function toCamelCase(str) {\n  // write your code here\n}",
+   "solution": "function toCamelCase(str) {\n  return str\n    .split(/[\\s\\-_]+/)\n    .filter(Boolean)\n    .map((w, i) => (i === 0 ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase()))\n    .join('')\n}",
+   "solutionExplanation": "**Approach:** split on separators, filter empties, transform each word depending on its index, join.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Split with a regex such as `/[\\s\\-_]+/` and drop empty parts.",
+    "Lowercase the first word; for the others uppercase the first letter and lowercase the rest."
+   ],
+   "tests": [
+    {
+     "input": [
+      "hello world"
+     ],
+     "expected": "helloWorld"
+    },
+    {
+     "input": [
+      "make-it_camel case"
+     ],
+     "expected": "makeItCamelCase"
+    },
+    {
+     "input": [
+      "HELLO WORLD"
+     ],
+     "expected": "helloWorld"
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      "single"
+     ],
+     "expected": "single"
+    },
+    {
+     "input": [
+      "  extra   spaces "
+     ],
+     "expected": "extraSpaces"
+    }
+   ]
+  },
+  {
+   "id": "q-longest-word",
+   "title": "Longest Word",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string"
+   ],
+   "statement": "Return the longest word in the sentence. A word is a run of letters (punctuation is not part of a word). If several words share the maximum length, return the **first** one. Return an empty string if there are no words.\n\n**Example**\n\n```\nlongestWord(\"The quick brown fox\")  // \"quick\"\nlongestWord(\"I love programming!\") // \"programming\"\n```",
+   "language": "javascript",
+   "functionName": "longestWord",
+   "starter": "function longestWord(sentence) {\n  // write your code here\n}",
+   "solution": "function longestWord(sentence) {\n  const words = sentence.match(/[A-Za-z]+/g) || []\n  let best = ''\n  for (const w of words) {\n    if (w.length > best.length) best = w\n  }\n  return best\n}",
+   "solutionExplanation": "**Approach:** extract words with a regex and keep the longest while scanning left to right.\n\n**Complexity:** O(n).",
+   "hints": [
+    "`sentence.match(/[A-Za-z]+/g)` gives all the words (or `null`).",
+    "Only replace your current best when a word is **strictly** longer."
+   ],
+   "tests": [
+    {
+     "input": [
+      "The quick brown fox"
+     ],
+     "expected": "quick"
+    },
+    {
+     "input": [
+      "I love programming!"
+     ],
+     "expected": "programming"
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      "a bb ccc dd"
+     ],
+     "expected": "ccc"
+    },
+    {
+     "input": [
+      "Hello, world!"
+     ],
+     "expected": "Hello"
+    }
+   ]
+  },
+  {
+   "id": "q-fizzbuzz",
+   "title": "FizzBuzz",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math",
+    "loops"
+   ],
+   "statement": "Return an array of strings for the numbers 1 to `n`: `\"Fizz\"` for multiples of 3, `\"Buzz\"` for multiples of 5, `\"FizzBuzz\"` for multiples of both, otherwise the number as a string.\n\n**Example**\n\n```\nfizzBuzz(5) // [\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\"]\n```",
+   "language": "javascript",
+   "functionName": "fizzBuzz",
+   "starter": "function fizzBuzz(n) {\n  // write your code here\n}",
+   "solution": "function fizzBuzz(n) {\n  const out = []\n  for (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) out.push('FizzBuzz')\n    else if (i % 3 === 0) out.push('Fizz')\n    else if (i % 5 === 0) out.push('Buzz')\n    else out.push(String(i))\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** loop 1..n and test the 15, 3, 5 cases in that order.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Check divisibility by 15 **first**.",
+    "Use `i % 3 === 0` and `i % 5 === 0`."
+   ],
+   "tests": [
+    {
+     "input": [
+      5
+     ],
+     "expected": [
+      "1",
+      "2",
+      "Fizz",
+      "4",
+      "Buzz"
+     ]
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": [
+      "1"
+     ]
+    },
+    {
+     "input": [
+      3
+     ],
+     "expected": [
+      "1",
+      "2",
+      "Fizz"
+     ]
+    },
+    {
+     "input": [
+      15
+     ],
+     "expected": [
+      "1",
+      "2",
+      "Fizz",
+      "4",
+      "Buzz",
+      "Fizz",
+      "7",
+      "8",
+      "Fizz",
+      "Buzz",
+      "11",
+      "Fizz",
+      "13",
+      "14",
+      "FizzBuzz"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-is-prime",
+   "title": "Prime Number Check",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math"
+   ],
+   "statement": "Return `true` if `n` is a prime number (an integer greater than 1 with no divisors other than 1 and itself).\n\n**Example**\n\n```\nisPrime(7)  // true\nisPrime(1)  // false\nisPrime(100) // false\n```",
+   "language": "javascript",
+   "functionName": "isPrime",
+   "starter": "function isPrime(n) {\n  // write your code here\n}",
+   "solution": "function isPrime(n) {\n  if (n < 2) return false\n  for (let i = 2; i * i <= n; i++) {\n    if (n % i === 0) return false\n  }\n  return true\n}",
+   "solutionExplanation": "**Approach:** trial division from 2 while `i * i <= n`.\n\n**Complexity:** O(sqrt n) time, O(1) space.",
+   "hints": [
+    "Numbers below 2 are not prime.",
+    "You only need to test divisors up to the square root of n."
+   ],
+   "tests": [
+    {
+     "input": [
+      2
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      -7
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      97
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      100
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      7919
+     ],
+     "expected": true
+    }
+   ]
+  },
+  {
+   "id": "q-fibonacci",
+   "title": "Nth Fibonacci Number",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math",
+    "dp"
+   ],
+   "statement": "Return the `n`-th Fibonacci number where `fib(0) = 0`, `fib(1) = 1` and `fib(n) = fib(n-1) + fib(n-2)`.\n\n**Example**\n\n```\nfibonacci(10) // 55\n```",
+   "language": "javascript",
+   "functionName": "fibonacci",
+   "starter": "function fibonacci(n) {\n  // write your code here\n}",
+   "solution": "function fibonacci(n) {\n  let a = 0\n  let b = 1\n  for (let i = 0; i < n; i++) {\n    const next = a + b\n    a = b\n    b = next\n  }\n  return a\n}",
+   "solutionExplanation": "**Approach:** iterate n times keeping two running values.\n\n**Complexity:** O(n) time, O(1) space.",
+   "hints": [
+    "A naive recursion repeats work - it is exponential.",
+    "Keep only the last two values and iterate."
+   ],
+   "tests": [
+    {
+     "input": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      2
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      10
+     ],
+     "expected": 55
+    },
+    {
+     "input": [
+      20
+     ],
+     "expected": 6765
+    },
+    {
+     "input": [
+      30
+     ],
+     "expected": 832040
+    }
+   ]
+  },
+  {
+   "id": "q-gcd",
+   "title": "Greatest Common Divisor",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math",
+    "recursion"
+   ],
+   "statement": "Return the greatest common divisor of two non-negative integers `a` and `b` (not both zero).\n\n**Example**\n\n```\ngcd(12, 18) // 6\ngcd(7, 13)  // 1\ngcd(0, 5)   // 5\n```",
+   "language": "javascript",
+   "functionName": "gcd",
+   "starter": "function gcd(a, b) {\n  // write your code here\n}",
+   "solution": "function gcd(a, b) {\n  while (b !== 0) {\n    const t = a % b\n    a = b\n    b = t\n  }\n  return a\n}",
+   "solutionExplanation": "**Approach:** Euclidean algorithm.\n\n**Complexity:** O(log min(a, b)).",
+   "hints": [
+    "Euclid: `gcd(a, b) = gcd(b, a % b)`.",
+    "Stop when `b` becomes 0 - the answer is `a`."
+   ],
+   "tests": [
+    {
+     "input": [
+      12,
+      18
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      7,
+      13
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      0,
+      5
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      100,
+      25
+     ],
+     "expected": 25
+    },
+    {
+     "input": [
+      48,
+      180
+     ],
+     "expected": 12
+    },
+    {
+     "input": [
+      17,
+      0
+     ],
+     "expected": 17
+    }
+   ]
+  },
+  {
+   "id": "q-factorial",
+   "title": "Factorial",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math",
+    "recursion"
+   ],
+   "statement": "Return `n!` for a non-negative integer `n`. By definition `0! = 1`.\n\n**Example**\n\n```\nfactorial(5) // 120\n```",
+   "language": "javascript",
+   "functionName": "factorial",
+   "starter": "function factorial(n) {\n  // write your code here\n}",
+   "solution": "function factorial(n) {\n  let result = 1\n  for (let i = 2; i <= n; i++) result *= i\n  return result\n}",
+   "solutionExplanation": "**Approach:** multiply the numbers from 2 up to n.\n\n**Complexity:** O(n) time, O(1) space.",
+   "hints": [
+    "The base case is 0 (and 1) which gives 1.",
+    "Multiply 2 * 3 * ... * n in a loop."
+   ],
+   "tests": [
+    {
+     "input": [
+      0
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      5
+     ],
+     "expected": 120
+    },
+    {
+     "input": [
+      10
+     ],
+     "expected": 3628800
+    },
+    {
+     "input": [
+      12
+     ],
+     "expected": 479001600
+    }
+   ]
+  },
+  {
+   "id": "q-digit-sum",
+   "title": "Sum of Digits",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math"
+   ],
+   "statement": "Return the sum of the digits of a non-negative integer `n`.\n\n**Example**\n\n```\ndigitSum(123)  // 6\ndigitSum(9999) // 36\n```",
+   "language": "javascript",
+   "functionName": "digitSum",
+   "starter": "function digitSum(n) {\n  // write your code here\n}",
+   "solution": "function digitSum(n) {\n  let sum = 0\n  while (n > 0) {\n    sum += n % 10\n    n = Math.floor(n / 10)\n  }\n  return sum\n}",
+   "solutionExplanation": "**Approach:** repeatedly take the last digit and drop it.\n\n**Complexity:** O(log n).",
+   "hints": [
+    "`n % 10` gives the last digit.",
+    "`Math.floor(n / 10)` removes the last digit."
+   ],
+   "tests": [
+    {
+     "input": [
+      123
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      9999
+     ],
+     "expected": 36
+    },
+    {
+     "input": [
+      1000
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      987654321
+     ],
+     "expected": 45
+    }
+   ]
+  },
+  {
+   "id": "q-reverse-number",
+   "title": "Reverse a Number",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "math",
+    "string"
+   ],
+   "statement": "Reverse the digits of an integer and keep its sign. Trailing zeros disappear in the result.\n\n**Example**\n\n```\nreverseNumber(123)  // 321\nreverseNumber(-456) // -654\nreverseNumber(1200) // 21\n```",
+   "language": "javascript",
+   "functionName": "reverseNumber",
+   "starter": "function reverseNumber(n) {\n  // write your code here\n}",
+   "solution": "function reverseNumber(n) {\n  const reversed = Number(String(Math.abs(n)).split('').reverse().join(''))\n  return n < 0 ? -reversed : reversed\n}",
+   "solutionExplanation": "**Approach:** reverse the digits of the absolute value via string, convert back to number, re-apply the sign.\n\n**Complexity:** O(d) where d is the number of digits.",
+   "hints": [
+    "Work with `Math.abs(n)` and restore the sign at the end.",
+    "Converting to a string, reversing and back to a number removes leading zeros for free."
+   ],
+   "tests": [
+    {
+     "input": [
+      123
+     ],
+     "expected": 321
+    },
+    {
+     "input": [
+      -456
+     ],
+     "expected": -654
+    },
+    {
+     "input": [
+      1200
+     ],
+     "expected": 21
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      5
+     ],
+     "expected": 5
+    }
+   ]
+  },
+  {
+   "id": "q-unique-array",
+   "title": "Remove Duplicates",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "set"
+   ],
+   "statement": "Return a new array with duplicate values removed, keeping the order of **first** occurrences. `1` and `\"1\"` are different values.\n\n**Example**\n\n```\nuniqueArray([1, 2, 2, 3, 1]) // [1, 2, 3]\n```",
+   "language": "javascript",
+   "functionName": "uniqueArray",
+   "starter": "function uniqueArray(arr) {\n  // write your code here\n}",
+   "solution": "function uniqueArray(arr) {\n  return [...new Set(arr)]\n}",
+   "solutionExplanation": "**Approach:** a Set keeps insertion order and uniqueness.\n\n**Complexity:** O(n) time, O(n) space.",
+   "hints": [
+    "A `Set` stores each value only once.",
+    "Spread the set back into an array: `[...new Set(arr)]`."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       2,
+       3,
+       1
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       "a",
+       "b",
+       "a"
+      ]
+     ],
+     "expected": [
+      "a",
+      "b"
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       "1",
+       1
+      ]
+     ],
+     "expected": [
+      1,
+      "1"
+     ]
+    },
+    {
+     "input": [
+      [
+       5,
+       5,
+       5
+      ]
+     ],
+     "expected": [
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-two-sum",
+   "title": "Two Sum",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "hashmap"
+   ],
+   "statement": "Given an array of integers `nums` and an integer `target`, return the indices `[i, j]` (with `i < j`) of the two numbers that add up to `target`. Exactly one solution exists and you may not use the same element twice.\n\n**Example**\n\n```\ntwoSum([2, 7, 11, 15], 9) // [0, 1]\ntwoSum([3, 2, 4], 6)     // [1, 2]\n```",
+   "language": "javascript",
+   "functionName": "twoSum",
+   "starter": "function twoSum(nums, target) {\n  // write your code here\n}",
+   "solution": "function twoSum(nums, target) {\n  const seen = new Map()\n  for (let j = 0; j < nums.length; j++) {\n    const need = target - nums[j]\n    if (seen.has(need)) return [seen.get(need), j]\n    seen.set(nums[j], j)\n  }\n  return []\n}",
+   "solutionExplanation": "**Approach:** one pass with a hash map of value -> index; for each element check whether its complement was already seen.\n\n**Complexity:** O(n) time, O(n) space.",
+   "hints": [
+    "Brute force with two loops is O(n^2).",
+    "For each number, the value you need is `target - number`.",
+    "Store numbers you have already seen in a Map from value to index."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       2,
+       7,
+       11,
+       15
+      ],
+      9
+     ],
+     "expected": [
+      0,
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       3,
+       2,
+       4
+      ],
+      6
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       3,
+       3
+      ],
+      6
+     ],
+     "expected": [
+      0,
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       -1,
+       -2,
+       -3,
+       -4,
+       -5
+      ],
+      -8
+     ],
+     "expected": [
+      2,
+      4
+     ]
+    },
+    {
+     "input": [
+      [
+       0,
+       4,
+       3,
+       0
+      ],
+      0
+     ],
+     "expected": [
+      0,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-chunk-array",
+   "title": "Chunk an Array",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "array"
+   ],
+   "statement": "Split `arr` into groups of length `size`. The last group may be shorter.\n\n**Example**\n\n```\nchunkArray([1, 2, 3, 4, 5], 2) // [[1, 2], [3, 4], [5]]\n```",
+   "language": "javascript",
+   "functionName": "chunkArray",
+   "starter": "function chunkArray(arr, size) {\n  // write your code here\n}",
+   "solution": "function chunkArray(arr, size) {\n  const out = []\n  for (let i = 0; i < arr.length; i += size) {\n    out.push(arr.slice(i, i + size))\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** slice the array in steps of `size`.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Step through the array with `i += size`.",
+    "`arr.slice(i, i + size)` gives one chunk."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      2
+     ],
+     "expected": [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ],
+      [
+       5
+      ]
+     ]
+    },
+    {
+     "input": [
+      [],
+      3
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ],
+      5
+     ],
+     "expected": [
+      [
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4
+      ],
+      2
+     ],
+     "expected": [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       "a",
+       "b",
+       "c"
+      ],
+      1
+     ],
+     "expected": [
+      [
+       "a"
+      ],
+      [
+       "b"
+      ],
+      [
+       "c"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-invert-object",
+   "title": "Invert an Object",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "object"
+   ],
+   "statement": "Swap keys and values of a flat object. All values are unique strings or numbers.\n\n**Example**\n\n```\ninvertObject({ a: \"1\", b: \"2\" }) // { \"1\": \"a\", \"2\": \"b\" }\n```",
+   "language": "javascript",
+   "functionName": "invertObject",
+   "starter": "function invertObject(obj) {\n  // write your code here\n}",
+   "solution": "function invertObject(obj) {\n  const out = {}\n  for (const key of Object.keys(obj)) {\n    out[obj[key]] = key\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** iterate over entries and assign `out[value] = key`.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Loop with `Object.keys` or `Object.entries`.",
+    "Use the old value as the new key."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": "1",
+       "b": "2"
+      }
+     ],
+     "expected": {
+      "1": "a",
+      "2": "b"
+     }
+    },
+    {
+     "input": [
+      {}
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "x": "y"
+      }
+     ],
+     "expected": {
+      "y": "x"
+     }
+    },
+    {
+     "input": [
+      {
+       "name": "bob",
+       "age": 30
+      }
+     ],
+     "expected": {
+      "30": "age",
+      "bob": "name"
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-count-frequency",
+   "title": "Character Frequency",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "string",
+    "object",
+    "hashmap"
+   ],
+   "statement": "Return an object that maps every character of the string to the number of times it appears (case-sensitive, spaces count).\n\n**Example**\n\n```\ncountFrequency(\"hello\") // { h: 1, e: 1, l: 2, o: 1 }\n```",
+   "language": "javascript",
+   "functionName": "countFrequency",
+   "starter": "function countFrequency(str) {\n  // write your code here\n}",
+   "solution": "function countFrequency(str) {\n  const freq = {}\n  for (const ch of str) {\n    freq[ch] = (freq[ch] || 0) + 1\n  }\n  return freq\n}",
+   "solutionExplanation": "**Approach:** one pass with a counting object.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Use an object as a counter.",
+    "`freq[ch] = (freq[ch] || 0) + 1` is the classic idiom."
+   ],
+   "tests": [
+    {
+     "input": [
+      "hello"
+     ],
+     "expected": {
+      "h": 1,
+      "e": 1,
+      "l": 2,
+      "o": 1
+     }
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      "aaa"
+     ],
+     "expected": {
+      "a": 3
+     }
+    },
+    {
+     "input": [
+      "a b a"
+     ],
+     "expected": {
+      "a": 2,
+      " ": 2,
+      "b": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-binary-search",
+   "title": "Binary Search",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "search"
+   ],
+   "statement": "Given a **sorted ascending** array of unique integers `nums`, return the index of `target` or `-1` if it is not present. Your solution should run in O(log n).\n\n**Example**\n\n```\nbinarySearch([-1, 0, 3, 5, 9, 12], 9) // 4\nbinarySearch([-1, 0, 3, 5, 9, 12], 2) // -1\n```",
+   "language": "javascript",
+   "functionName": "binarySearch",
+   "starter": "function binarySearch(nums, target) {\n  // write your code here\n}",
+   "solution": "function binarySearch(nums, target) {\n  let lo = 0\n  let hi = nums.length - 1\n  while (lo <= hi) {\n    const mid = Math.floor((lo + hi) / 2)\n    if (nums[mid] === target) return mid\n    if (nums[mid] < target) lo = mid + 1\n    else hi = mid - 1\n  }\n  return -1\n}",
+   "solutionExplanation": "**Approach:** halve the search range each step.\n\n**Complexity:** O(log n) time, O(1) space.",
+   "hints": [
+    "Keep two pointers `lo` and `hi` around the search window.",
+    "Compare the middle element with the target and discard half of the window."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       -1,
+       0,
+       3,
+       5,
+       9,
+       12
+      ],
+      9
+     ],
+     "expected": 4
+    },
+    {
+     "input": [
+      [
+       -1,
+       0,
+       3,
+       5,
+       9,
+       12
+      ],
+      2
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [],
+      1
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [
+       5
+      ],
+      5
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ],
+      1
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7
+      ],
+      7
+     ],
+     "expected": 6
+    }
+   ]
+  },
+  {
+   "id": "q-flatten-array",
+   "title": "Flatten a Nested Array",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "recursion"
+   ],
+   "statement": "Flatten an arbitrarily deep nested array into a single flat array, keeping order. Try to solve it **without** `Array.prototype.flat`.\n\n**Example**\n\n```\nflattenArray([1, [2, [3, [4]]]]) // [1, 2, 3, 4]\n```",
+   "language": "javascript",
+   "functionName": "flattenArray",
+   "starter": "function flattenArray(arr) {\n  // write your code here\n}",
+   "solution": "function flattenArray(arr) {\n  const out = []\n  for (const item of arr) {\n    if (Array.isArray(item)) out.push(...flattenArray(item))\n    else out.push(item)\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** recursion - arrays are flattened and merged, other values are pushed as is.\n\n**Complexity:** O(n) in the total number of elements (plus recursion depth).",
+   "hints": [
+    "Check each element with `Array.isArray`.",
+    "If it is an array, flatten it recursively and spread the result."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       [
+        2,
+        [
+         3,
+         [
+          4
+         ]
+        ]
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       [],
+       [
+        []
+       ]
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       [
+        "a",
+        [
+         "b"
+        ]
+       ],
+       "c"
+      ]
+     ],
+     "expected": [
+      "a",
+      "b",
+      "c"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-rotate-array",
+   "title": "Rotate Array",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array"
+   ],
+   "statement": "Rotate `arr` to the **right** by `k` steps (`k ≥ 0`, may be larger than the length) and return the new array.\n\n**Example**\n\n```\nrotateArray([1, 2, 3, 4, 5], 2) // [4, 5, 1, 2, 3]\nrotateArray([1, 2, 3], 4)       // [3, 1, 2]\n```",
+   "language": "javascript",
+   "functionName": "rotateArray",
+   "starter": "function rotateArray(arr, k) {\n  // write your code here\n}",
+   "solution": "function rotateArray(arr, k) {\n  if (arr.length === 0) return []\n  const n = k % arr.length\n  if (n === 0) return arr.slice()\n  return [...arr.slice(-n), ...arr.slice(0, -n)]\n}",
+   "solutionExplanation": "**Approach:** normalise k with modulo, then concatenate `slice(-k)` and `slice(0, -k)`.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Rotating by the array length changes nothing - use `k % arr.length`.",
+    "The last k items move to the front."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5
+      ],
+      2
+     ],
+     "expected": [
+      4,
+      5,
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ],
+      0
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ],
+      4
+     ],
+     "expected": [
+      3,
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [],
+      3
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       1
+      ],
+      10
+     ],
+     "expected": [
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2
+      ],
+      2
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-array-intersection",
+   "title": "Array Intersection",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "set"
+   ],
+   "statement": "Return the **unique** values present in both arrays. The result keeps the order in which the values first appear in `a`.\n\n**Example**\n\n```\nintersection([1, 2, 2, 3], [2, 3, 4]) // [2, 3]\nintersection([4, 9, 5], [9, 4, 9, 8, 4]) // [4, 9]\n```",
+   "language": "javascript",
+   "functionName": "intersection",
+   "starter": "function intersection(a, b) {\n  // write your code here\n}",
+   "solution": "function intersection(a, b) {\n  const inB = new Set(b)\n  const result = []\n  for (const x of new Set(a)) {\n    if (inB.has(x)) result.push(x)\n  }\n  return result\n}",
+   "solutionExplanation": "**Approach:** Set of `b`, iterate over the unique values of `a`.\n\n**Complexity:** O(n + m).",
+   "hints": [
+    "Put one array in a Set for O(1) lookups.",
+    "Iterate over the unique values of the other array and keep those that are in the set."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       2,
+       3
+      ],
+      [
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": [
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [],
+      [
+       1
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       4,
+       9,
+       5
+      ],
+      [
+       9,
+       4,
+       9,
+       8,
+       4
+      ]
+     ],
+     "expected": [
+      4,
+      9
+     ]
+    },
+    {
+     "input": [
+      [
+       "a",
+       "b"
+      ],
+      [
+       "b",
+       "a"
+      ]
+     ],
+     "expected": [
+      "a",
+      "b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-merge-sorted",
+   "title": "Merge Two Sorted Arrays",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "two-pointers"
+   ],
+   "statement": "Merge two arrays that are already sorted ascending into one sorted array. Do it in a single pass (do not just concatenate and sort).\n\n**Example**\n\n```\nmergeSorted([1, 3, 5], [2, 4, 6]) // [1, 2, 3, 4, 5, 6]\n```",
+   "language": "javascript",
+   "functionName": "mergeSorted",
+   "starter": "function mergeSorted(a, b) {\n  // write your code here\n}",
+   "solution": "function mergeSorted(a, b) {\n  const out = []\n  let i = 0\n  let j = 0\n  while (i < a.length && j < b.length) {\n    if (a[i] <= b[j]) out.push(a[i++])\n    else out.push(b[j++])\n  }\n  while (i < a.length) out.push(a[i++])\n  while (j < b.length) out.push(b[j++])\n  return out\n}",
+   "solutionExplanation": "**Approach:** classic merge step of merge sort with two pointers.\n\n**Complexity:** O(n + m) time, O(n + m) space.",
+   "hints": [
+    "Use one index per array.",
+    "Always push the smaller current element and advance that index.",
+    "Do not forget the leftovers of the array that is not finished yet."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       3,
+       5
+      ],
+      [
+       2,
+       4,
+       6
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ]
+    },
+    {
+     "input": [
+      [],
+      [
+       1,
+       2
+      ]
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2
+      ],
+      []
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       1,
+       2
+      ],
+      [
+       1,
+       3
+      ]
+     ],
+     "expected": [
+      1,
+      1,
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       -5,
+       0
+      ],
+      [
+       -3,
+       2
+      ]
+     ],
+     "expected": [
+      -5,
+      -3,
+      0,
+      2
+     ]
+    },
+    {
+     "input": [
+      [],
+      []
+     ],
+     "expected": []
+    }
+   ]
+  },
+  {
+   "id": "q-max-subarray",
+   "title": "Maximum Subarray",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "dp",
+    "kadane"
+   ],
+   "statement": "Find the contiguous subarray (at least one element) with the largest sum and return that sum.\n\n**Example**\n\n```\nmaxSubarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]) // 6  (subarray [4, -1, 2, 1])\n```",
+   "language": "javascript",
+   "functionName": "maxSubarray",
+   "starter": "function maxSubarray(nums) {\n  // write your code here\n}",
+   "solution": "function maxSubarray(nums) {\n  let best = nums[0]\n  let current = nums[0]\n  for (let i = 1; i < nums.length; i++) {\n    current = Math.max(nums[i], current + nums[i])\n    best = Math.max(best, current)\n  }\n  return best\n}",
+   "solutionExplanation": "**Approach:** Kadane's algorithm: `current = max(x, current + x)`, `best = max(best, current)`.\n\n**Complexity:** O(n) time, O(1) space.",
+   "hints": [
+    "At each index decide: extend the previous subarray or start a new one here.",
+    "Keep a running \"best ending here\" and a global best."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       -2,
+       1,
+       -3,
+       4,
+       -1,
+       2,
+       1,
+       -5,
+       4
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       1
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      [
+       5,
+       4,
+       -1,
+       7,
+       8
+      ]
+     ],
+     "expected": 23
+    },
+    {
+     "input": [
+      [
+       -3,
+       -1,
+       -2
+      ]
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [
+       -2,
+       -1
+      ]
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [
+       0,
+       0,
+       0
+      ]
+     ],
+     "expected": 0
+    }
+   ]
+  },
+  {
+   "id": "q-group-by",
+   "title": "Group By Key",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "object",
+    "hashmap"
+   ],
+   "statement": "Given an array of objects and a property name `key`, return an object whose keys are the distinct values of that property and whose values are arrays of the matching objects (in original order).\n\n**Example**\n\n```\ngroupBy([{ t: \"a\", v: 1 }, { t: \"b\", v: 2 }, { t: \"a\", v: 3 }], \"t\")\n// { a: [{t:\"a\",v:1},{t:\"a\",v:3}], b: [{t:\"b\",v:2}] }\n```",
+   "language": "javascript",
+   "functionName": "groupBy",
+   "starter": "function groupBy(arr, key) {\n  // write your code here\n}",
+   "solution": "function groupBy(arr, key) {\n  const groups = {}\n  for (const item of arr) {\n    const k = item[key]\n    if (!groups[k]) groups[k] = []\n    groups[k].push(item)\n  }\n  return groups\n}",
+   "solutionExplanation": "**Approach:** single pass, push each item into `groups[item[key]]`.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Use an object as accumulator.",
+    "Create the array for a group the first time you see its key."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       {
+        "t": "a",
+        "v": 1
+       },
+       {
+        "t": "b",
+        "v": 2
+       },
+       {
+        "t": "a",
+        "v": 3
+       }
+      ],
+      "t"
+     ],
+     "expected": {
+      "a": [
+       {
+        "t": "a",
+        "v": 1
+       },
+       {
+        "t": "a",
+        "v": 3
+       }
+      ],
+      "b": [
+       {
+        "t": "b",
+        "v": 2
+       }
+      ]
+     }
+    },
+    {
+     "input": [
+      [],
+      "x"
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      [
+       {
+        "age": 20,
+        "n": "x"
+       },
+       {
+        "age": 20,
+        "n": "y"
+       }
+      ],
+      "age"
+     ],
+     "expected": {
+      "20": [
+       {
+        "age": 20,
+        "n": "x"
+       },
+       {
+        "age": 20,
+        "n": "y"
+       }
+      ]
+     }
+    },
+    {
+     "input": [
+      [
+       {
+        "c": "red"
+       }
+      ],
+      "c"
+     ],
+     "expected": {
+      "red": [
+       {
+        "c": "red"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-deep-clone",
+   "title": "Deep Clone",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "object",
+    "recursion"
+   ],
+   "statement": "Write `deepClone(value)` that returns a **deep copy** of JSON-like data (objects, arrays, strings, numbers, booleans, `null`). Changing the copy must never change the original. Write it recursively instead of using `JSON.parse(JSON.stringify(...))`.\n\n**Example**\n\n```\nconst a = { x: [1, { y: 2 }] };\nconst b = deepClone(a);\nb.x[1].y = 99;   // a.x[1].y is still 2\n```",
+   "language": "javascript",
+   "functionName": "deepClone",
+   "starter": "function deepClone(value) {\n  // write your code here\n}",
+   "solution": "function deepClone(value) {\n  if (value === null || typeof value !== 'object') return value\n  if (Array.isArray(value)) return value.map(deepClone)\n  const copy = {}\n  for (const key of Object.keys(value)) {\n    copy[key] = deepClone(value[key])\n  }\n  return copy\n}",
+   "solutionExplanation": "**Approach:** recursion on arrays and plain objects, primitives returned directly.\n\n**Complexity:** O(n) in the total size of the structure.",
+   "hints": [
+    "Primitives and `null` can be returned as they are.",
+    "For arrays use `map` recursively.",
+    "For objects create a new object and clone every property."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": {
+        "c": [
+         1,
+         2,
+         {
+          "d": 3
+         }
+        ]
+       }
+      }
+     ],
+     "expected": {
+      "a": 1,
+      "b": {
+       "c": [
+        1,
+        2,
+        {
+         "d": 3
+        }
+       ]
+      }
+     }
+    },
+    {
+     "input": [
+      [
+       1,
+       [
+        2,
+        3
+       ],
+       {
+        "x": null
+       }
+      ]
+     ],
+     "expected": [
+      1,
+      [
+       2,
+       3
+      ],
+      {
+       "x": null
+      }
+     ]
+    },
+    {
+     "input": [
+      null
+     ],
+     "expected": null
+    },
+    {
+     "input": [
+      5
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      "str"
+     ],
+     "expected": "str"
+    },
+    {
+     "input": [
+      {}
+     ],
+     "expected": {}
+    }
+   ]
+  },
+  {
+   "id": "q-pick",
+   "title": "Pick Properties",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "object"
+   ],
+   "statement": "Return a new object containing only the listed `keys` of `obj`. Keys that do not exist on the object are skipped.\n\n**Example**\n\n```\npick({ a: 1, b: 2, c: 3 }, [\"a\", \"c\"]) // { a: 1, c: 3 }\n```",
+   "language": "javascript",
+   "functionName": "pick",
+   "starter": "function pick(obj, keys) {\n  // write your code here\n}",
+   "solution": "function pick(obj, keys) {\n  const out = {}\n  for (const key of keys) {\n    if (Object.prototype.hasOwnProperty.call(obj, key)) out[key] = obj[key]\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** loop over the wanted keys and copy the ones that exist.\n\n**Complexity:** O(k).",
+   "hints": [
+    "Loop over `keys`, not over the object.",
+    "Check `Object.prototype.hasOwnProperty.call(obj, key)` before copying."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": 2,
+       "c": 3
+      },
+      [
+       "a",
+       "c"
+      ]
+     ],
+     "expected": {
+      "a": 1,
+      "c": 3
+     }
+    },
+    {
+     "input": [
+      {
+       "a": 1
+      },
+      [
+       "z"
+      ]
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": 2
+      },
+      []
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "x": {
+        "y": 1
+       },
+       "z": 2
+      },
+      [
+       "x"
+      ]
+     ],
+     "expected": {
+      "x": {
+       "y": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-omit",
+   "title": "Omit Properties",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "object"
+   ],
+   "statement": "Return a new object with all properties of `obj` **except** the ones listed in `keys`. The original must not be changed.\n\n**Example**\n\n```\nomit({ a: 1, b: 2, c: 3 }, [\"b\"]) // { a: 1, c: 3 }\n```",
+   "language": "javascript",
+   "functionName": "omit",
+   "starter": "function omit(obj, keys) {\n  // write your code here\n}",
+   "solution": "function omit(obj, keys) {\n  const out = {}\n  for (const key of Object.keys(obj)) {\n    if (!keys.includes(key)) out[key] = obj[key]\n  }\n  return out\n}",
+   "solutionExplanation": "**Approach:** copy every own key that is not in the blacklist.\n\n**Complexity:** O(n * k) (use a Set for O(n)).",
+   "hints": [
+    "Loop over the keys of the object.",
+    "Skip a key when `keys.includes(key)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": 2,
+       "c": 3
+      },
+      [
+       "b"
+      ]
+     ],
+     "expected": {
+      "a": 1,
+      "c": 3
+     }
+    },
+    {
+     "input": [
+      {
+       "a": 1
+      },
+      []
+     ],
+     "expected": {
+      "a": 1
+     }
+    },
+    {
+     "input": [
+      {
+       "a": 1
+      },
+      [
+       "a"
+      ]
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": 2
+      },
+      [
+       "z"
+      ]
+     ],
+     "expected": {
+      "a": 1,
+      "b": 2
+     }
+    },
+    {
+     "input": [
+      {},
+      [
+       "a"
+      ]
+     ],
+     "expected": {}
+    }
+   ]
+  },
+  {
+   "id": "q-once",
+   "title": "once() - Run a Function Only Once",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "closure",
+    "higher-order"
+   ],
+   "statement": "Implement a `once(fn)` helper **inside** `onceDemo`: it returns a function that calls `fn` only the first time and afterwards returns the first result without calling `fn` again.\n\n`onceDemo(values)` must create `wrapped = once(x => x * 10)` (the inner function increases a counter `timesRun` whenever it really runs), call `wrapped` with every value of `values` and return `{ results, timesRun }`.\n\n**Example**\n\n```\nonceDemo([1, 2, 3]) // { results: [10, 10, 10], timesRun: 1 }\nonceDemo([])        // { results: [], timesRun: 0 }\n```",
+   "language": "javascript",
+   "functionName": "onceDemo",
+   "starter": "function onceDemo(values) {\n  // write your code here\n}",
+   "solution": "function onceDemo(values) {\n  let timesRun = 0\n  function once(fn) {\n    let called = false\n    let result\n    return function (...args) {\n      if (!called) {\n        called = true\n        result = fn.apply(this, args)\n      }\n      return result\n    }\n  }\n  const wrapped = once((x) => {\n    timesRun++\n    return x * 10\n  })\n  const results = values.map((v) => wrapped(v))\n  return { results, timesRun }\n}",
+   "solutionExplanation": "**Approach:** the wrapper closes over a flag and the cached result.\n\n**Complexity:** O(n) for n calls; each call is O(1) plus the wrapped function once.",
+   "hints": [
+    "A closure lets the returned function remember `called` and `result`.",
+    "Set `called = true` before returning the result."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": {
+      "results": [
+       10,
+       10,
+       10
+      ],
+      "timesRun": 1
+     }
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": {
+      "results": [],
+      "timesRun": 0
+     }
+    },
+    {
+     "input": [
+      [
+       4
+      ]
+     ],
+     "expected": {
+      "results": [
+       40
+      ],
+      "timesRun": 1
+     }
+    },
+    {
+     "input": [
+      [
+       -1,
+       5
+      ]
+     ],
+     "expected": {
+      "results": [
+       -10,
+       -10
+      ],
+      "timesRun": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-memoize",
+   "title": "memoize() - Count the Calls",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "closure",
+    "higher-order",
+    "dp"
+   ],
+   "statement": "Write a generic `memoize(fn)` helper (single numeric argument, cache in a Map) **inside** `memoizedFib(n)`. Then define a recursive Fibonacci function wrapped by `memoize` so that every recursive call goes through the wrapper. The original (unwrapped) function increments a `calls` counter every time it truly runs.\n\nReturn `{ value, calls }` where `value = fib(n)`.\n\n**Example**\n\n```\nmemoizedFib(10) // { value: 55, calls: 11 }\nmemoizedFib(1)  // { value: 1,  calls: 1 }\n```",
+   "language": "javascript",
+   "functionName": "memoizedFib",
+   "starter": "function memoizedFib(n) {\n  // write your code here\n}",
+   "solution": "function memoizedFib(n) {\n  let calls = 0\n  function memoize(fn) {\n    const cache = new Map()\n    return function (x) {\n      if (cache.has(x)) return cache.get(x)\n      const result = fn(x)\n      cache.set(x, result)\n      return result\n    }\n  }\n  const fib = memoize((x) => {\n    calls++\n    return x < 2 ? x : fib(x - 1) + fib(x - 2)\n  })\n  const value = fib(n)\n  return { value, calls }\n}",
+   "solutionExplanation": "**Approach:** Map cache keyed by argument; check before computing.\n\n**Complexity:** O(n) time and space instead of O(2^n).",
+   "hints": [
+    "The recursive calls must reference the **memoized** variable, not the raw function.",
+    "With memoization every argument from n down to 0 runs only once."
+   ],
+   "tests": [
+    {
+     "input": [
+      0
+     ],
+     "expected": {
+      "value": 0,
+      "calls": 1
+     }
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": {
+      "value": 1,
+      "calls": 1
+     }
+    },
+    {
+     "input": [
+      2
+     ],
+     "expected": {
+      "value": 1,
+      "calls": 3
+     }
+    },
+    {
+     "input": [
+      10
+     ],
+     "expected": {
+      "value": 55,
+      "calls": 11
+     }
+    },
+    {
+     "input": [
+      30
+     ],
+     "expected": {
+      "value": 832040,
+      "calls": 31
+     }
+    },
+    {
+     "input": [
+      50
+     ],
+     "expected": {
+      "value": 12586269025,
+      "calls": 51
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-compose",
+   "title": "compose() - Right to Left",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "higher-order",
+    "functional"
+   ],
+   "statement": "Inside `composeApply(names, x)` implement `compose(...fns)` where `compose(f, g, h)(x) = f(g(h(x)))` (right to left). Use this library of functions:\n\n| name | function |\n|---|---|\n| `double` | `x * 2` |\n| `inc` | `x + 1` |\n| `square` | `x * x` |\n| `negate` | `-x` |\n\nCompose the functions named in `names` (in that order) and return the result of applying them to `x`. An empty list returns `x`.\n\n**Example**\n\n```\ncomposeApply([\"double\", \"inc\"], 5) // double(inc(5)) = 12\ncomposeApply([\"inc\", \"double\"], 5) // inc(double(5)) = 11\n```",
+   "language": "javascript",
+   "functionName": "composeApply",
+   "starter": "function composeApply(names, x) {\n  // write your code here\n}",
+   "solution": "function composeApply(names, x) {\n  const library = {\n    double: (v) => v * 2,\n    inc: (v) => v + 1,\n    square: (v) => v * v,\n    negate: (v) => -v,\n  }\n  const compose =\n    (...fns) =>\n    (input) =>\n      fns.reduceRight((acc, fn) => fn(acc), input)\n  return compose(...names.map((name) => library[name]))(x)\n}",
+   "solutionExplanation": "**Approach:** `fns.reduceRight((acc, fn) => fn(acc), x)`.\n\n**Complexity:** O(f) for f composed functions.",
+   "hints": [
+    "`reduceRight` runs from the last function to the first.",
+    "The initial accumulator is the input value `x`."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       "double",
+       "inc"
+      ],
+      5
+     ],
+     "expected": 12
+    },
+    {
+     "input": [
+      [
+       "inc",
+       "double"
+      ],
+      5
+     ],
+     "expected": 11
+    },
+    {
+     "input": [
+      [],
+      7
+     ],
+     "expected": 7
+    },
+    {
+     "input": [
+      [
+       "square",
+       "negate",
+       "inc"
+      ],
+      2
+     ],
+     "expected": 9
+    },
+    {
+     "input": [
+      [
+       "negate"
+      ],
+      4
+     ],
+     "expected": -4
+    },
+    {
+     "input": [
+      [
+       "double",
+       "double",
+       "double"
+      ],
+      1
+     ],
+     "expected": 8
+    }
+   ]
+  },
+  {
+   "id": "q-curry",
+   "title": "curry() - Partial Application",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "closure",
+    "higher-order",
+    "functional"
+   ],
+   "statement": "Inside `curriedAdd3(groups)` write a generic `curry(fn)` that collects arguments (using `fn.length`) until enough have been supplied. Curry `add3 = (a, b, c) => a + b + c`, then call the curried function with each group of arguments in `groups` one after another, i.e. `curried(...groups[0])(...groups[1])...`, and return the final number.\n\n**Example**\n\n```\ncurriedAdd3([[1], [2], [3]]) // 6\ncurriedAdd3([[1, 2], [3]])   // 6\ncurriedAdd3([[1, 2, 3]])     // 6\n```",
+   "language": "javascript",
+   "functionName": "curriedAdd3",
+   "starter": "function curriedAdd3(groups) {\n  // write your code here\n}",
+   "solution": "function curriedAdd3(groups) {\n  function curry(fn) {\n    return function curried(...args) {\n      if (args.length >= fn.length) return fn(...args)\n      return (...more) => curried(...args, ...more)\n    }\n  }\n  const add3 = (a, b, c) => a + b + c\n  let current = curry(add3)\n  for (const group of groups) {\n    current = current(...group)\n  }\n  return current\n}",
+   "solutionExplanation": "**Approach:** recursive closure that accumulates arguments.\n\n**Complexity:** O(total arguments).",
+   "hints": [
+    "If `args.length >= fn.length` call `fn(...args)`.",
+    "Otherwise return a new function that gathers more arguments and calls itself."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1
+       ],
+       [
+        2
+       ],
+       [
+        3
+       ]
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        3
+       ]
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       [
+        10
+       ],
+       [
+        20,
+        30
+       ]
+      ]
+     ],
+     "expected": 60
+    },
+    {
+     "input": [
+      [
+       [
+        0
+       ],
+       [
+        0
+       ],
+       [
+        5
+       ]
+      ]
+     ],
+     "expected": 5
+    }
+   ]
+  },
+  {
+   "id": "q-sum-nested",
+   "title": "Sum of Nested Arrays",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "recursion",
+    "array"
+   ],
+   "statement": "Return the sum of all numbers in an array that may contain further arrays at any depth.\n\n**Example**\n\n```\nsumNested([1, [2, [3]], 4]) // 10\nsumNested([])               // 0\n```",
+   "language": "javascript",
+   "functionName": "sumNested",
+   "starter": "function sumNested(arr) {\n  // write your code here\n}",
+   "solution": "function sumNested(arr) {\n  let total = 0\n  for (const item of arr) {\n    total += Array.isArray(item) ? sumNested(item) : item\n  }\n  return total\n}",
+   "solutionExplanation": "**Approach:** recursion over the structure.\n\n**Complexity:** O(n) for n numbers.",
+   "hints": [
+    "The base case is a number - just add it.",
+    "For an array element recurse and add the returned sum."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       [
+        2,
+        [
+         3
+        ]
+       ],
+       4
+      ]
+     ],
+     "expected": 10
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       [
+        [
+         [
+          5
+         ]
+        ]
+       ]
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       [
+        -1,
+        [
+         1
+        ]
+       ],
+       [
+        10,
+        [
+         20,
+         [
+          30
+         ]
+        ]
+       ]
+      ]
+     ],
+     "expected": 60
+    }
+   ]
+  },
+  {
+   "id": "q-power-set",
+   "title": "Power Set",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "recursion",
+    "backtracking",
+    "array"
+   ],
+   "statement": "Return all subsets of an array of distinct values. Produce them in this **exact order**: start with `[[]]`; for every element, in order, append a copy of every subset found so far with that element added.\n\n**Example**\n\n```\npowerSet([1, 2, 3])\n// [[], [1], [2], [1,2], [3], [1,3], [2,3], [1,2,3]]\n```",
+   "language": "javascript",
+   "functionName": "powerSet",
+   "starter": "function powerSet(nums) {\n  // write your code here\n}",
+   "solution": "function powerSet(nums) {\n  const subsets = [[]]\n  for (const n of nums) {\n    const size = subsets.length\n    for (let i = 0; i < size; i++) {\n      subsets.push([...subsets[i], n])\n    }\n  }\n  return subsets\n}",
+   "solutionExplanation": "**Approach:** iterative doubling - every new element doubles the number of subsets.\n\n**Complexity:** O(n * 2^n) time and space.",
+   "hints": [
+    "Start with `[[]]` (the empty subset).",
+    "For each number, loop over the subsets that exist right now and push `[...subset, number]`.",
+    "Remember the size before looping, otherwise you loop over what you just added."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      [],
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       3
+      ],
+      [
+       1,
+       3
+      ],
+      [
+       2,
+       3
+      ],
+      [
+       1,
+       2,
+       3
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": [
+      []
+     ]
+    },
+    {
+     "input": [
+      [
+       7
+      ]
+     ],
+     "expected": [
+      [],
+      [
+       7
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       "a",
+       "b"
+      ]
+     ],
+     "expected": [
+      [],
+      [
+       "a"
+      ],
+      [
+       "b"
+      ],
+      [
+       "a",
+       "b"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-valid-parentheses",
+   "title": "Valid Parentheses",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "stack",
+    "string"
+   ],
+   "statement": "The string contains only `( ) [ ] { }`. Return `true` if every bracket is closed by the same type of bracket in the correct order. The empty string is valid.\n\n**Example**\n\n```\nvalidParentheses(\"()[]{}\") // true\nvalidParentheses(\"([)]\")   // false\n```",
+   "language": "javascript",
+   "functionName": "validParentheses",
+   "starter": "function validParentheses(s) {\n  // write your code here\n}",
+   "solution": "function validParentheses(s) {\n  const pairs = { ')': '(', ']': '[', '}': '{' }\n  const stack = []\n  for (const ch of s) {\n    if (ch === '(' || ch === '[' || ch === '{') stack.push(ch)\n    else if (stack.pop() !== pairs[ch]) return false\n  }\n  return stack.length === 0\n}",
+   "solutionExplanation": "**Approach:** stack of opening brackets, match on every closing one.\n\n**Complexity:** O(n) time, O(n) space.",
+   "hints": [
+    "A stack is the natural data structure.",
+    "Push opening brackets; on a closing bracket the top of the stack must be its partner.",
+    "At the end the stack must be empty."
+   ],
+   "tests": [
+    {
+     "input": [
+      "()[]{}"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "(]"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "([)]"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "{[]}"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "(("
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "]"
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-merge-intervals",
+   "title": "Merge Intervals",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "sorting",
+    "intervals"
+   ],
+   "statement": "Given an array of `[start, end]` intervals merge all overlapping ones (intervals that touch, like `[1,4]` and `[4,5]`, also merge) and return the result sorted by start.\n\n**Example**\n\n```\nmergeIntervals([[1,3],[2,6],[8,10],[15,18]]) // [[1,6],[8,10],[15,18]]\n```",
+   "language": "javascript",
+   "functionName": "mergeIntervals",
+   "starter": "function mergeIntervals(intervals) {\n  // write your code here\n}",
+   "solution": "function mergeIntervals(intervals) {\n  const sorted = intervals.map((i) => [...i]).sort((a, b) => a[0] - b[0])\n  const merged = []\n  for (const interval of sorted) {\n    const last = merged[merged.length - 1]\n    if (last && interval[0] <= last[1]) last[1] = Math.max(last[1], interval[1])\n    else merged.push(interval)\n  }\n  return merged\n}",
+   "solutionExplanation": "**Approach:** sort by start, then sweep and extend the last merged interval when overlapping.\n\n**Complexity:** O(n log n) time (sorting), O(n) space.",
+   "hints": [
+    "Sort the intervals by their start value first.",
+    "Compare each interval with the last merged one.",
+    "Overlap means `current.start <= last.end`."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1,
+        3
+       ],
+       [
+        2,
+        6
+       ],
+       [
+        8,
+        10
+       ],
+       [
+        15,
+        18
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       6
+      ],
+      [
+       8,
+       10
+      ],
+      [
+       15,
+       18
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        4,
+        5
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       5
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        0,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       4
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        5,
+        6
+       ],
+       [
+        1,
+        2
+       ],
+       [
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       3
+      ],
+      [
+       5,
+       6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-top-k-frequent",
+   "title": "Top K Frequent Elements",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "hashmap",
+    "sorting"
+   ],
+   "statement": "Return the `k` most frequent numbers of `nums`, ordered by frequency (highest first). When two numbers have the same frequency the **smaller number comes first**.\n\n**Example**\n\n```\ntopKFrequent([1, 1, 1, 2, 2, 3], 2) // [1, 2]\ntopKFrequent([4, 4, 5, 5, 6], 2)    // [4, 5]\n```",
+   "language": "javascript",
+   "functionName": "topKFrequent",
+   "starter": "function topKFrequent(nums, k) {\n  // write your code here\n}",
+   "solution": "function topKFrequent(nums, k) {\n  const freq = new Map()\n  for (const n of nums) freq.set(n, (freq.get(n) || 0) + 1)\n  return [...freq.keys()]\n    .sort((a, b) => freq.get(b) - freq.get(a) || a - b)\n    .slice(0, k)\n}",
+   "solutionExplanation": "**Approach:** frequency map then sort the distinct keys with a two-level comparator.\n\n**Complexity:** O(n + u log u) where u is the number of distinct values.",
+   "hints": [
+    "Count occurrences with a Map.",
+    "Sort the distinct numbers by count descending, then by value ascending.",
+    "Take the first k."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       1,
+       1,
+       2,
+       2,
+       3
+      ],
+      2
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       1
+      ],
+      1
+     ],
+     "expected": [
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       4,
+       4,
+       5,
+       5,
+       6
+      ],
+      2
+     ],
+     "expected": [
+      4,
+      5
+     ]
+    },
+    {
+     "input": [
+      [
+       3,
+       3,
+       2,
+       2,
+       1,
+       1
+      ],
+      3
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       -1,
+       -1,
+       2,
+       2,
+       2,
+       3
+      ],
+      1
+     ],
+     "expected": [
+      2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-longest-substring",
+   "title": "Longest Substring Without Repeating Characters",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "string",
+    "sliding-window",
+    "hashmap"
+   ],
+   "statement": "Return the **length** of the longest substring of `s` that contains no repeated character.\n\n**Example**\n\n```\nlongestSubstring(\"abcabcbb\") // 3  (\"abc\")\nlongestSubstring(\"bbbbb\")    // 1\nlongestSubstring(\"pwwkew\")   // 3  (\"wke\")\n```",
+   "language": "javascript",
+   "functionName": "longestSubstring",
+   "starter": "function longestSubstring(s) {\n  // write your code here\n}",
+   "solution": "function longestSubstring(s) {\n  const lastSeen = new Map()\n  let start = 0\n  let best = 0\n  for (let i = 0; i < s.length; i++) {\n    const ch = s[i]\n    if (lastSeen.has(ch) && lastSeen.get(ch) >= start) start = lastSeen.get(ch) + 1\n    lastSeen.set(ch, i)\n    best = Math.max(best, i - start + 1)\n  }\n  return best\n}",
+   "solutionExplanation": "**Approach:** sliding window + map of last seen indices.\n\n**Complexity:** O(n) time, O(min(n, alphabet)) space.",
+   "hints": [
+    "Use a sliding window with a left pointer `start`.",
+    "Remember the last index of every character in a Map.",
+    "When you see a repeat inside the window, move `start` just past its previous position."
+   ],
+   "tests": [
+    {
+     "input": [
+      "abcabcbb"
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      "bbbbb"
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      "pwwkew"
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      "dvdf"
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      "abba"
+     ],
+     "expected": 2
+    },
+    {
+     "input": [
+      " "
+     ],
+     "expected": 1
+    }
+   ]
+  },
+  {
+   "id": "q-product-except-self",
+   "title": "Product of Array Except Self",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "prefix-sum"
+   ],
+   "statement": "Return an array `out` where `out[i]` is the product of all elements of `nums` **except** `nums[i]`. Do not use division and aim for O(n).\n\n**Example**\n\n```\nproductExceptSelf([1, 2, 3, 4]) // [24, 12, 8, 6]\n```",
+   "language": "javascript",
+   "functionName": "productExceptSelf",
+   "starter": "function productExceptSelf(nums) {\n  // write your code here\n}",
+   "solution": "function productExceptSelf(nums) {\n  const n = nums.length\n  const result = new Array(n).fill(1)\n  let prefix = 1\n  for (let i = 0; i < n; i++) {\n    result[i] = prefix\n    prefix *= nums[i]\n  }\n  let suffix = 1\n  for (let i = n - 1; i >= 0; i--) {\n    result[i] *= suffix\n    suffix *= nums[i]\n  }\n  return result\n}",
+   "solutionExplanation": "**Approach:** prefix and suffix products computed in two passes over the same result array.\n\n**Complexity:** O(n) time, O(1) extra space besides the output.",
+   "hints": [
+    "out[i] = (product of everything to the left) * (product of everything to the right).",
+    "First pass fills prefix products, second pass multiplies in suffix products."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4
+      ]
+     ],
+     "expected": [
+      24,
+      12,
+      8,
+      6
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       0,
+       4
+      ]
+     ],
+     "expected": [
+      0,
+      0,
+      8,
+      0
+     ]
+    },
+    {
+     "input": [
+      [
+       -1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      6,
+      -3,
+      -2
+     ]
+    },
+    {
+     "input": [
+      [
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      3,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       0,
+       0
+      ]
+     ],
+     "expected": [
+      0,
+      0
+     ]
+    },
+    {
+     "input": [
+      [
+       5,
+       1,
+       1
+      ]
+     ],
+     "expected": [
+      1,
+      5,
+      5
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-permutations",
+   "title": "Permutations",
+   "difficulty": "hard",
+   "track": "javascript",
+   "tags": [
+    "recursion",
+    "backtracking"
+   ],
+   "statement": "Return all permutations of an array of distinct values. Generate them in this order: choose the first element from left to right, then for every choice recurse on the remaining elements (again left to right).\n\n**Example**\n\n```\npermutations([1, 2, 3])\n// [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]\npermutations([]) // [[]]\n```",
+   "language": "javascript",
+   "functionName": "permutations",
+   "starter": "function permutations(nums) {\n  // write your code here\n}",
+   "solution": "function permutations(nums) {\n  const result = []\n  const used = new Array(nums.length).fill(false)\n  const path = []\n  function backtrack() {\n    if (path.length === nums.length) {\n      result.push([...path])\n      return\n    }\n    for (let i = 0; i < nums.length; i++) {\n      if (used[i]) continue\n      used[i] = true\n      path.push(nums[i])\n      backtrack()\n      path.pop()\n      used[i] = false\n    }\n  }\n  backtrack()\n  return result\n}",
+   "solutionExplanation": "**Approach:** depth-first backtracking with a \"used\" array.\n\n**Complexity:** O(n * n!) time and space for the output.",
+   "hints": [
+    "Backtracking: choose, explore, un-choose.",
+    "Track which indices are already used.",
+    "When the current path has the same length as the input, save a copy."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       2,
+       3
+      ],
+      [
+       1,
+       3,
+       2
+      ],
+      [
+       2,
+       1,
+       3
+      ],
+      [
+       2,
+       3,
+       1
+      ],
+      [
+       3,
+       1,
+       2
+      ],
+      [
+       3,
+       2,
+       1
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       1
+      ]
+     ],
+     "expected": [
+      [
+       1
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": [
+      []
+     ]
+    },
+    {
+     "input": [
+      [
+       1,
+       2
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       2
+      ],
+      [
+       2,
+       1
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       "a",
+       "b"
+      ]
+     ],
+     "expected": [
+      [
+       "a",
+       "b"
+      ],
+      [
+       "b",
+       "a"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-lru-cache",
+   "title": "LRU Cache",
+   "difficulty": "hard",
+   "track": "javascript",
+   "tags": [
+    "design",
+    "hashmap",
+    "cache"
+   ],
+   "statement": "Simulate an **LRU (least recently used) cache** with the given `capacity`. `ops` is a list of operations:\n\n* `[\"put\", key, value]` inserts or updates a key and marks it most recently used. When the size exceeds `capacity` the least recently used key is evicted.\n* `[\"get\", key]` returns the value (and marks the key most recently used) or `-1` when missing.\n\nReturn the array of results of all `get` operations in order.\n\n**Example**\n\n```\nlruCache(2, [[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2]])\n// [1, -1]   (key 2 was evicted)\n```",
+   "language": "javascript",
+   "functionName": "lruCache",
+   "starter": "function lruCache(capacity, ops) {\n  // write your code here\n}",
+   "solution": "function lruCache(capacity, ops) {\n  const cache = new Map()\n  const results = []\n  for (const [op, key, value] of ops) {\n    if (op === 'get') {\n      if (!cache.has(key)) {\n        results.push(-1)\n      } else {\n        const v = cache.get(key)\n        cache.delete(key)\n        cache.set(key, v)\n        results.push(v)\n      }\n    } else {\n      if (cache.has(key)) cache.delete(key)\n      cache.set(key, value)\n      if (cache.size > capacity) {\n        const oldest = cache.keys().next().value\n        cache.delete(oldest)\n      }\n    }\n  }\n  return results\n}",
+   "solutionExplanation": "**Approach:** a Map doubles as hash table and ordering list; re-inserting moves a key to the end, the first key is the LRU.\n\n**Complexity:** O(1) per operation.",
+   "hints": [
+    "A JavaScript `Map` remembers insertion order.",
+    "To mark a key as recently used delete it and set it again.",
+    "`map.keys().next().value` is the oldest key."
+   ],
+   "tests": [
+    {
+     "input": [
+      2,
+      [
+       [
+        "put",
+        1,
+        1
+       ],
+       [
+        "put",
+        2,
+        2
+       ],
+       [
+        "get",
+        1
+       ],
+       [
+        "put",
+        3,
+        3
+       ],
+       [
+        "get",
+        2
+       ],
+       [
+        "put",
+        4,
+        4
+       ],
+       [
+        "get",
+        1
+       ],
+       [
+        "get",
+        3
+       ],
+       [
+        "get",
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      -1,
+      -1,
+      3,
+      4
+     ]
+    },
+    {
+     "input": [
+      1,
+      [
+       [
+        "put",
+        1,
+        1
+       ],
+       [
+        "put",
+        2,
+        2
+       ],
+       [
+        "get",
+        1
+       ],
+       [
+        "get",
+        2
+       ]
+      ]
+     ],
+     "expected": [
+      -1,
+      2
+     ]
+    },
+    {
+     "input": [
+      2,
+      [
+       [
+        "put",
+        1,
+        1
+       ],
+       [
+        "put",
+        1,
+        10
+       ],
+       [
+        "get",
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      10
+     ]
+    },
+    {
+     "input": [
+      2,
+      [
+       [
+        "get",
+        5
+       ]
+      ]
+     ],
+     "expected": [
+      -1
+     ]
+    },
+    {
+     "input": [
+      2,
+      [
+       [
+        "put",
+        1,
+        1
+       ],
+       [
+        "put",
+        2,
+        2
+       ],
+       [
+        "put",
+        1,
+        5
+       ],
+       [
+        "put",
+        3,
+        3
+       ],
+       [
+        "get",
+        2
+       ],
+       [
+        "get",
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      -1,
+      5
+     ]
+    },
+    {
+     "input": [
+      3,
+      []
+     ],
+     "expected": []
+    }
+   ]
+  },
+  {
+   "id": "q-coin-change",
+   "title": "Coin Change",
+   "difficulty": "hard",
+   "track": "javascript",
+   "tags": [
+    "dp"
+   ],
+   "statement": "Given coin denominations `coins` (unlimited supply of each) and a target `amount`, return the **fewest number of coins** that make exactly that amount, or `-1` if it is impossible.\n\n**Example**\n\n```\ncoinChange([1, 2, 5], 11) // 3  (5 + 5 + 1)\ncoinChange([2], 3)        // -1\ncoinChange([1], 0)        // 0\n```",
+   "language": "javascript",
+   "functionName": "coinChange",
+   "starter": "function coinChange(coins, amount) {\n  // write your code here\n}",
+   "solution": "function coinChange(coins, amount) {\n  const dp = new Array(amount + 1).fill(Infinity)\n  dp[0] = 0\n  for (let a = 1; a <= amount; a++) {\n    for (const coin of coins) {\n      if (coin <= a && dp[a - coin] + 1 < dp[a]) dp[a] = dp[a - coin] + 1\n    }\n  }\n  return dp[amount] === Infinity ? -1 : dp[amount]\n}",
+   "solutionExplanation": "**Approach:** bottom-up dynamic programming over amounts 0..amount.\n\n**Complexity:** O(amount * coins) time, O(amount) space.",
+   "hints": [
+    "Greedy (largest coin first) fails, e.g. coins [1,3,4] and amount 6.",
+    "Let `dp[a]` be the fewest coins for amount `a`.",
+    "`dp[a] = min(dp[a - coin] + 1)` over all coins."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       5
+      ],
+      11
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      [
+       2
+      ],
+      3
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [
+       1
+      ],
+      0
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       186,
+       419,
+       83,
+       408
+      ],
+      6249
+     ],
+     "expected": 20
+    },
+    {
+     "input": [
+      [
+       1,
+       3,
+       4
+      ],
+      6
+     ],
+     "expected": 2
+    },
+    {
+     "input": [
+      [
+       5,
+       10
+      ],
+      7
+     ],
+     "expected": -1
+    },
+    {
+     "input": [
+      [
+       2,
+       5,
+       10,
+       1
+      ],
+      27
+     ],
+     "expected": 4
+    }
+   ]
+  },
+  {
+   "id": "q-trapping-rain-water",
+   "title": "Trapping Rain Water",
+   "difficulty": "hard",
+   "track": "javascript",
+   "tags": [
+    "array",
+    "two-pointers"
+   ],
+   "statement": "The array `heights` describes an elevation map where each bar has width 1. Return how many units of water are trapped after raining.\n\n**Example**\n\n```\ntrapRain([0,1,0,2,1,0,1,3,2,1,2,1]) // 6\ntrapRain([4,2,0,3,2,5])             // 9\n```",
+   "language": "javascript",
+   "functionName": "trapRain",
+   "starter": "function trapRain(heights) {\n  // write your code here\n}",
+   "solution": "function trapRain(heights) {\n  let left = 0\n  let right = heights.length - 1\n  let leftMax = 0\n  let rightMax = 0\n  let water = 0\n  while (left < right) {\n    if (heights[left] < heights[right]) {\n      leftMax = Math.max(leftMax, heights[left])\n      water += leftMax - heights[left]\n      left++\n    } else {\n      rightMax = Math.max(rightMax, heights[right])\n      water += rightMax - heights[right]\n      right--\n    }\n  }\n  return water\n}",
+   "solutionExplanation": "**Approach:** two pointers; always process the side with the smaller current maximum because that side limits the water level.\n\n**Complexity:** O(n) time, O(1) space.",
+   "hints": [
+    "Water above a bar = min(tallest bar to its left, tallest bar to its right) - its own height.",
+    "Precomputing left/right maxima gives O(n) with extra space.",
+    "Two pointers moving inwards need only O(1) space."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       0,
+       1,
+       0,
+       2,
+       1,
+       0,
+       1,
+       3,
+       2,
+       1,
+       2,
+       1
+      ]
+     ],
+     "expected": 6
+    },
+    {
+     "input": [
+      [
+       4,
+       2,
+       0,
+       3,
+       2,
+       5
+      ]
+     ],
+     "expected": 9
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       3,
+       0,
+       3
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      [
+       2,
+       0,
+       2
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "input": [
+      [
+       5
+      ]
+     ],
+     "expected": 0
+    }
+   ]
+  },
+  {
+   "id": "q-py-reverse-words",
+   "title": "Reverse the Words",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "string",
+    "list"
+   ],
+   "statement": "Return the words of the sentence in reverse order, separated by a single space. Ignore leading, trailing and repeated spaces.\n\n**Example**\n\n```\nreverse_words(\"the sky is blue\")   # \"blue is sky the\"\nreverse_words(\"  hello   world \") # \"world hello\"\n```",
+   "language": "python",
+   "functionName": "reverse_words",
+   "starter": "def reverse_words(s):\n    # write your code here\n    pass\n",
+   "solution": "def reverse_words(s):\n    return \" \".join(s.split()[::-1])\n",
+   "solutionExplanation": "**Approach:** split, reverse with a slice, join with a space.\n\n**Complexity:** O(n).",
+   "hints": [
+    "`str.split()` without arguments splits on any run of whitespace.",
+    "A slice `[::-1]` reverses a list."
+   ],
+   "tests": [
+    {
+     "input": [
+      "the sky is blue"
+     ],
+     "expected": "blue is sky the"
+    },
+    {
+     "input": [
+      "  hello   world "
+     ],
+     "expected": "world hello"
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      "one"
+     ],
+     "expected": "one"
+    },
+    {
+     "input": [
+      "a b c d"
+     ],
+     "expected": "d c b a"
+    }
+   ]
+  },
+  {
+   "id": "q-py-is-palindrome",
+   "title": "Palindrome Check",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "string"
+   ],
+   "statement": "Return `True` if the text is a palindrome when you ignore case and every character that is not a letter or digit.\n\n**Example**\n\n```\nis_palindrome(\"A man, a plan, a canal: Panama\")  # True\nis_palindrome(\"hello\")                          # False\n```",
+   "language": "python",
+   "functionName": "is_palindrome",
+   "starter": "def is_palindrome(s):\n    # write your code here\n    pass\n",
+   "solution": "def is_palindrome(s):\n    cleaned = \"\".join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n",
+   "solutionExplanation": "**Approach:** filter characters with `isalnum`, lowercase, compare with the reversed string.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Build a cleaned string with a comprehension and `str.isalnum()`.",
+    "Compare it with its reverse `cleaned[::-1]`."
+   ],
+   "tests": [
+    {
+     "input": [
+      "A man, a plan, a canal: Panama"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "hello"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "No lemon, no melon"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "ab"
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-py-char-frequency",
+   "title": "Character Frequency",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "string",
+    "dict"
+   ],
+   "statement": "Return a dictionary mapping each character of the string to how many times it occurs.\n\n**Example**\n\n```\nchar_frequency(\"hello\")  # {\"h\": 1, \"e\": 1, \"l\": 2, \"o\": 1}\n```",
+   "language": "python",
+   "functionName": "char_frequency",
+   "starter": "def char_frequency(s):\n    # write your code here\n    pass\n",
+   "solution": "def char_frequency(s):\n    counts = {}\n    for ch in s:\n        counts[ch] = counts.get(ch, 0) + 1\n    return counts\n",
+   "solutionExplanation": "**Approach:** one pass with `counts[ch] = counts.get(ch, 0) + 1`.\n\n**Complexity:** O(n).",
+   "hints": [
+    "`dict.get(key, 0)` returns 0 for missing keys.",
+    "Loop over the string and update the counter."
+   ],
+   "tests": [
+    {
+     "input": [
+      "hello"
+     ],
+     "expected": {
+      "h": 1,
+      "e": 1,
+      "l": 2,
+      "o": 1
+     }
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      "aab"
+     ],
+     "expected": {
+      "a": 2,
+      "b": 1
+     }
+    },
+    {
+     "input": [
+      "a a"
+     ],
+     "expected": {
+      "a": 2,
+      " ": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-py-fizzbuzz",
+   "title": "FizzBuzz",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "loops",
+    "math"
+   ],
+   "statement": "Return a list of strings for 1..n: `\"Fizz\"` for multiples of 3, `\"Buzz\"` for multiples of 5, `\"FizzBuzz\"` for both, otherwise the number as a string.\n\n**Example**\n\n```\nfizzbuzz(5)  # [\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\"]\n```",
+   "language": "python",
+   "functionName": "fizzbuzz",
+   "starter": "def fizzbuzz(n):\n    # write your code here\n    pass\n",
+   "solution": "def fizzbuzz(n):\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n",
+   "solutionExplanation": "**Approach:** loop and test divisibility.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Check 15 (or both conditions) first.",
+    "Use `range(1, n + 1)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      5
+     ],
+     "expected": [
+      "1",
+      "2",
+      "Fizz",
+      "4",
+      "Buzz"
+     ]
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": [
+      "1"
+     ]
+    },
+    {
+     "input": [
+      15
+     ],
+     "expected": [
+      "1",
+      "2",
+      "Fizz",
+      "4",
+      "Buzz",
+      "Fizz",
+      "7",
+      "8",
+      "Fizz",
+      "Buzz",
+      "11",
+      "Fizz",
+      "13",
+      "14",
+      "FizzBuzz"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-is-prime",
+   "title": "Prime Check",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "math"
+   ],
+   "statement": "Return `True` if `n` is prime.\n\n**Example**\n\n```\nis_prime(7)   # True\nis_prime(1)   # False\n```",
+   "language": "python",
+   "functionName": "is_prime",
+   "starter": "def is_prime(n):\n    # write your code here\n    pass\n",
+   "solution": "def is_prime(n):\n    if n < 2:\n        return False\n    i = 2\n    while i * i <= n:\n        if n % i == 0:\n            return False\n        i += 1\n    return True\n",
+   "solutionExplanation": "**Approach:** trial division up to the square root.\n\n**Complexity:** O(sqrt n).",
+   "hints": [
+    "Numbers below 2 are not prime.",
+    "Test divisors up to `int(n ** 0.5)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      2
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      -5
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      97
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      100
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      7919
+     ],
+     "expected": true
+    }
+   ]
+  },
+  {
+   "id": "q-py-fibonacci-list",
+   "title": "Fibonacci Generator to List",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "generator",
+    "math"
+   ],
+   "statement": "Write a **generator** that yields Fibonacci numbers and use it inside `fibonacci_list(n)` to return the first `n` Fibonacci numbers as a list (starting at 0).\n\n**Example**\n\n```\nfibonacci_list(7)  # [0, 1, 1, 2, 3, 5, 8]\n```",
+   "language": "python",
+   "functionName": "fibonacci_list",
+   "starter": "def fibonacci_list(n):\n    # write your code here\n    pass\n",
+   "solution": "def fibonacci_list(n):\n    def fib_gen():\n        a, b = 0, 1\n        while True:\n            yield a\n            a, b = b, a + b\n\n    gen = fib_gen()\n    return [next(gen) for _ in range(n)]\n",
+   "solutionExplanation": "**Approach:** an infinite generator, consumed n times.\n\n**Complexity:** O(n).",
+   "hints": [
+    "A generator function uses `yield`.",
+    "Keep two variables `a, b = 0, 1` and update them with tuple assignment.",
+    "Stop after n values - e.g. with a counter or `range(n)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      0
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": [
+      0
+     ]
+    },
+    {
+     "input": [
+      7
+     ],
+     "expected": [
+      0,
+      1,
+      1,
+      2,
+      3,
+      5,
+      8
+     ]
+    },
+    {
+     "input": [
+      10
+     ],
+     "expected": [
+      0,
+      1,
+      1,
+      2,
+      3,
+      5,
+      8,
+      13,
+      21,
+      34
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-squares-of-evens",
+   "title": "Squares of Even Numbers",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "list-comprehension"
+   ],
+   "statement": "Return a list with the square of every even number of `nums`, keeping the order. Solve it with **one list comprehension**.\n\n**Example**\n\n```\nsquares_of_evens([1, 2, 3, 4, 5, 6])  # [4, 16, 36]\n```",
+   "language": "python",
+   "functionName": "squares_of_evens",
+   "starter": "def squares_of_evens(nums):\n    # write your code here\n    pass\n",
+   "solution": "def squares_of_evens(nums):\n    return [x * x for x in nums if x % 2 == 0]\n",
+   "solutionExplanation": "**Approach:** list comprehension with a filter.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Pattern: `[expression for x in items if condition]`.",
+    "A number is even when `x % 2 == 0`."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     ],
+     "expected": [
+      4,
+      16,
+      36
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       1,
+       3
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       -2,
+       0,
+       2
+      ]
+     ],
+     "expected": [
+      4,
+      0,
+      4
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-merge-dicts-sum",
+   "title": "Merge Dictionaries by Summing",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "dict"
+   ],
+   "statement": "Merge two dictionaries with numeric values. If a key is in both, add the values. Do not modify the inputs.\n\n**Example**\n\n```\nmerge_dicts_sum({\"a\": 1, \"b\": 2}, {\"b\": 3, \"c\": 4})\n# {\"a\": 1, \"b\": 5, \"c\": 4}\n```",
+   "language": "python",
+   "functionName": "merge_dicts_sum",
+   "starter": "def merge_dicts_sum(a, b):\n    # write your code here\n    pass\n",
+   "solution": "def merge_dicts_sum(a, b):\n    result = dict(a)\n    for key, value in b.items():\n        result[key] = result.get(key, 0) + value\n    return result\n",
+   "solutionExplanation": "**Approach:** copy the first dict, then add every value of the second.\n\n**Complexity:** O(n + m).",
+   "hints": [
+    "Start from a copy: `result = dict(a)`.",
+    "Loop over `b.items()` and use `result.get(k, 0)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": 1,
+       "b": 2
+      },
+      {
+       "b": 3,
+       "c": 4
+      }
+     ],
+     "expected": {
+      "a": 1,
+      "b": 5,
+      "c": 4
+     }
+    },
+    {
+     "input": [
+      {},
+      {}
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "x": 1
+      },
+      {}
+     ],
+     "expected": {
+      "x": 1
+     }
+    },
+    {
+     "input": [
+      {},
+      {
+       "y": 2
+      }
+     ],
+     "expected": {
+      "y": 2
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-py-sort-by-length",
+   "title": "Sort by Length then Alphabet",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "sorting",
+    "key-function"
+   ],
+   "statement": "Return the words sorted by length (shortest first). Words with the same length are sorted alphabetically.\n\n**Example**\n\n```\nsort_by_length([\"pear\", \"fig\", \"apple\", \"kiwi\", \"date\"])\n# [\"fig\", \"date\", \"kiwi\", \"pear\", \"apple\"]\n```",
+   "language": "python",
+   "functionName": "sort_by_length",
+   "starter": "def sort_by_length(words):\n    # write your code here\n    pass\n",
+   "solution": "def sort_by_length(words):\n    return sorted(words, key=lambda w: (len(w), w))\n",
+   "solutionExplanation": "**Approach:** sort with the tuple key `(len(word), word)` - tuples compare element by element.\n\n**Complexity:** O(n log n).",
+   "hints": [
+    "`sorted(items, key=...)` accepts a key function.",
+    "A key can return a tuple: `(len(w), w)`."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       "pear",
+       "fig",
+       "apple",
+       "kiwi",
+       "date"
+      ]
+     ],
+     "expected": [
+      "fig",
+      "date",
+      "kiwi",
+      "pear",
+      "apple"
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       "b",
+       "a"
+      ]
+     ],
+     "expected": [
+      "a",
+      "b"
+     ]
+    },
+    {
+     "input": [
+      [
+       "ccc",
+       "bb",
+       "a",
+       "aa"
+      ]
+     ],
+     "expected": [
+      "a",
+      "aa",
+      "bb",
+      "ccc"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-format-price",
+   "title": "Format a Price",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "string-formatting",
+    "f-string"
+   ],
+   "statement": "Return the amount as a dollar string with thousands separators and exactly two decimals.\n\n**Example**\n\n```\nformat_price(1234.5)     # \"$1,234.50\"\nformat_price(0)          # \"$0.00\"\nformat_price(1234567.891) # \"$1,234,567.89\"\n```",
+   "language": "python",
+   "functionName": "format_price",
+   "starter": "def format_price(amount):\n    # write your code here\n    pass\n",
+   "solution": "def format_price(amount):\n    return \"$\" + f\"{amount:,.2f}\"\n",
+   "solutionExplanation": "**Approach:** one f-string with the format spec `,.2f`.\n\n**Complexity:** O(1).",
+   "hints": [
+    "f-strings support format specs: `f\"{x:.2f}\"`.",
+    "The `,` option adds thousands separators: `f\"{x:,.2f}\"`."
+   ],
+   "tests": [
+    {
+     "input": [
+      1234.5
+     ],
+     "expected": "$1,234.50"
+    },
+    {
+     "input": [
+      0
+     ],
+     "expected": "$0.00"
+    },
+    {
+     "input": [
+      5
+     ],
+     "expected": "$5.00"
+    },
+    {
+     "input": [
+      1234567.891
+     ],
+     "expected": "$1,234,567.89"
+    },
+    {
+     "input": [
+      0.5
+     ],
+     "expected": "$0.50"
+    }
+   ]
+  },
+  {
+   "id": "q-py-transpose",
+   "title": "Transpose a Matrix",
+   "difficulty": "easy",
+   "track": "python",
+   "tags": [
+    "matrix",
+    "zip"
+   ],
+   "statement": "Transpose a matrix (list of rows): rows become columns. Return a list of lists. An empty matrix gives an empty list.\n\n**Example**\n\n```\ntranspose([[1, 2, 3], [4, 5, 6]])  # [[1, 4], [2, 5], [3, 6]]\n```",
+   "language": "python",
+   "functionName": "transpose",
+   "starter": "def transpose(matrix):\n    # write your code here\n    pass\n",
+   "solution": "def transpose(matrix):\n    return [list(row) for row in zip(*matrix)]\n",
+   "solutionExplanation": "**Approach:** unpack the rows into `zip`.\n\n**Complexity:** O(r * c).",
+   "hints": [
+    "`zip(*matrix)` pairs up the i-th elements of all rows.",
+    "zip returns tuples - convert each to a list."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       4
+      ],
+      [
+       2,
+       5
+      ],
+      [
+       3,
+       6
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        3,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       3
+      ],
+      [
+       2,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-flatten",
+   "title": "Flatten a Nested List",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "recursion",
+    "list"
+   ],
+   "statement": "Flatten a list that can contain lists nested to any depth into one flat list, keeping order.\n\n**Example**\n\n```\nflatten([1, [2, [3, [4]]]])  # [1, 2, 3, 4]\n```",
+   "language": "python",
+   "functionName": "flatten",
+   "starter": "def flatten(items):\n    # write your code here\n    pass\n",
+   "solution": "def flatten(items):\n    result = []\n    for item in items:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result\n",
+   "solutionExplanation": "**Approach:** recursion.\n\n**Complexity:** O(n) in total elements.",
+   "hints": [
+    "Use `isinstance(item, list)`.",
+    "Recurse for sub-lists and `extend` the result."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       1,
+       [
+        2,
+        [
+         3,
+         [
+          4
+         ]
+        ]
+       ]
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       1,
+       2,
+       3
+      ]
+     ],
+     "expected": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "input": [
+      [
+       [],
+       [
+        []
+       ]
+      ]
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       [
+        "a",
+        [
+         "b"
+        ]
+       ],
+       "c"
+      ]
+     ],
+     "expected": [
+      "a",
+      "b",
+      "c"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-two-sum",
+   "title": "Two Sum",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "array",
+    "dict"
+   ],
+   "statement": "Return the indices `[i, j]` (`i < j`) of the two numbers in `nums` that add up to `target`. Exactly one solution exists.\n\n**Example**\n\n```\ntwo_sum([2, 7, 11, 15], 9)  # [0, 1]\n```",
+   "language": "python",
+   "functionName": "two_sum",
+   "starter": "def two_sum(nums, target):\n    # write your code here\n    pass\n",
+   "solution": "def two_sum(nums, target):\n    seen = {}\n    for j, n in enumerate(nums):\n        need = target - n\n        if need in seen:\n            return [seen[need], j]\n        seen[n] = j\n    return []\n",
+   "solutionExplanation": "**Approach:** one pass with a dictionary.\n\n**Complexity:** O(n) time, O(n) space.",
+   "hints": [
+    "Use a dict from value to index.",
+    "For each number look for `target - number` in the dict."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       2,
+       7,
+       11,
+       15
+      ],
+      9
+     ],
+     "expected": [
+      0,
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       3,
+       2,
+       4
+      ],
+      6
+     ],
+     "expected": [
+      1,
+      2
+     ]
+    },
+    {
+     "input": [
+      [
+       3,
+       3
+      ],
+      6
+     ],
+     "expected": [
+      0,
+      1
+     ]
+    },
+    {
+     "input": [
+      [
+       -1,
+       -2,
+       -3,
+       -4,
+       -5
+      ],
+      -8
+     ],
+     "expected": [
+      2,
+      4
+     ]
+    },
+    {
+     "input": [
+      [
+       0,
+       4,
+       3,
+       0
+      ],
+      0
+     ],
+     "expected": [
+      0,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-group-anagrams",
+   "title": "Group Anagrams",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "dict",
+    "sorting",
+    "string"
+   ],
+   "statement": "Group words that are anagrams of each other. Sort the words **inside** every group alphabetically and sort the groups by their first word.\n\n**Example**\n\n```\ngroup_anagrams([\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"])\n# [[\"ate\", \"eat\", \"tea\"], [\"bat\"], [\"nat\", \"tan\"]]\n```",
+   "language": "python",
+   "functionName": "group_anagrams",
+   "starter": "def group_anagrams(words):\n    # write your code here\n    pass\n",
+   "solution": "def group_anagrams(words):\n    groups = {}\n    for word in words:\n        key = \"\".join(sorted(word))\n        groups.setdefault(key, []).append(word)\n    result = [sorted(group) for group in groups.values()]\n    result.sort(key=lambda g: g[0])\n    return result\n",
+   "solutionExplanation": "**Approach:** bucket words by their sorted-letter signature, then sort for a deterministic output.\n\n**Complexity:** O(n * k log k) for n words of length k.",
+   "hints": [
+    "Anagrams share the same sorted letters: `\"\".join(sorted(word))`.",
+    "Use that string as a dictionary key.",
+    "Sort each group, then sort the list of groups."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       "eat",
+       "tea",
+       "tan",
+       "ate",
+       "nat",
+       "bat"
+      ]
+     ],
+     "expected": [
+      [
+       "ate",
+       "eat",
+       "tea"
+      ],
+      [
+       "bat"
+      ],
+      [
+       "nat",
+       "tan"
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       "a"
+      ]
+     ],
+     "expected": [
+      [
+       "a"
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       "ab",
+       "ba",
+       "abc"
+      ]
+     ],
+     "expected": [
+      [
+       "ab",
+       "ba"
+      ],
+      [
+       "abc"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-word-count",
+   "title": "Word Count",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "dict",
+    "string",
+    "regex"
+   ],
+   "statement": "Count how often every word appears in the text. Words are made of letters and digits, case-insensitive; punctuation is ignored. Return a dict of lowercase word -> count.\n\n**Example**\n\n```\nword_count(\"The cat and the hat.\")  # {\"the\": 2, \"cat\": 1, \"and\": 1, \"hat\": 1}\n```",
+   "language": "python",
+   "functionName": "word_count",
+   "starter": "def word_count(text):\n    # write your code here\n    pass\n",
+   "solution": "import re\n\ndef word_count(text):\n    counts = {}\n    for word in re.findall(r\"[a-z0-9]+\", text.lower()):\n        counts[word] = counts.get(word, 0) + 1\n    return counts\n",
+   "solutionExplanation": "**Approach:** regex tokenisation + counting dictionary.\n\n**Complexity:** O(n).",
+   "hints": [
+    "Lowercase first.",
+    "`re.findall(r\"[a-z0-9]+\", text)` extracts the words.",
+    "Count with a dict."
+   ],
+   "tests": [
+    {
+     "input": [
+      "The cat and the hat."
+     ],
+     "expected": {
+      "the": 2,
+      "cat": 1,
+      "and": 1,
+      "hat": 1
+     }
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      "Hello, hello! HELLO?"
+     ],
+     "expected": {
+      "hello": 3
+     }
+    },
+    {
+     "input": [
+      "a1 b2 a1"
+     ],
+     "expected": {
+      "a1": 2,
+      "b2": 1
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-py-second-largest",
+   "title": "Second Largest Number",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "list",
+    "set"
+   ],
+   "statement": "Return the second largest **distinct** number of the list, or `None` if there is no such value.\n\n**Example**\n\n```\nsecond_largest([5, 3, 9, 1])  # 5\nsecond_largest([4, 4, 4])     # None\n```",
+   "language": "python",
+   "functionName": "second_largest",
+   "starter": "def second_largest(nums):\n    # write your code here\n    pass\n",
+   "solution": "def second_largest(nums):\n    unique = sorted(set(nums))\n    if len(unique) < 2:\n        return None\n    return unique[-2]\n",
+   "solutionExplanation": "**Approach:** unique values, sort, pick index -2 when at least two exist.\n\n**Complexity:** O(n log n).",
+   "hints": [
+    "Duplicates must not count - use `set`.",
+    "Sort the unique values and take the second last."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       5,
+       3,
+       9,
+       1
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      [
+       4,
+       4,
+       4
+      ]
+     ],
+     "expected": null
+    },
+    {
+     "input": [
+      [
+       1
+      ]
+     ],
+     "expected": null
+    },
+    {
+     "input": [
+      [
+       2,
+       2,
+       3
+      ]
+     ],
+     "expected": 2
+    },
+    {
+     "input": [
+      [
+       -1,
+       -5,
+       -3
+      ]
+     ],
+     "expected": -3
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": null
+    }
+   ]
+  },
+  {
+   "id": "q-py-valid-parentheses",
+   "title": "Valid Brackets",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "stack",
+    "string"
+   ],
+   "statement": "The string contains only `()[]{}`. Return `True` if all brackets are closed in the right order.\n\n**Example**\n\n```\nis_valid_brackets(\"{[]}\")  # True\nis_valid_brackets(\"([)]\")  # False\n```",
+   "language": "python",
+   "functionName": "is_valid_brackets",
+   "starter": "def is_valid_brackets(s):\n    # write your code here\n    pass\n",
+   "solution": "def is_valid_brackets(s):\n    pairs = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    stack = []\n    for ch in s:\n        if ch in pairs:\n            if not stack or stack.pop() != pairs[ch]:\n                return False\n        else:\n            stack.append(ch)\n    return not stack\n",
+   "solutionExplanation": "**Approach:** stack; every closing bracket must match the top.\n\n**Complexity:** O(n).",
+   "hints": [
+    "A list works as a stack (`append` / `pop`).",
+    "Map each closing bracket to its opening partner."
+   ],
+   "tests": [
+    {
+     "input": [
+      "()[]{}"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "(]"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "([)]"
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "{[]}"
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "(("
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "]"
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-py-first-n-primes",
+   "title": "First N Primes (generator)",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "generator",
+    "math"
+   ],
+   "statement": "Write a generator that yields primes forever and use it to return the first `n` primes as a list.\n\n**Example**\n\n```\nfirst_n_primes(5)  # [2, 3, 5, 7, 11]\n```",
+   "language": "python",
+   "functionName": "first_n_primes",
+   "starter": "def first_n_primes(n):\n    # write your code here\n    pass\n",
+   "solution": "def first_n_primes(n):\n    def primes():\n        found = []\n        candidate = 2\n        while True:\n            if all(candidate % p != 0 for p in found if p * p <= candidate):\n                found.append(candidate)\n                yield candidate\n            candidate += 1\n\n    gen = primes()\n    return [next(gen) for _ in range(n)]\n",
+   "solutionExplanation": "**Approach:** generator keeps a list of primes found so far and tests each new candidate against them.\n\n**Complexity:** roughly O(n * sqrt(p)) where p is the n-th prime.",
+   "hints": [
+    "A candidate is prime if no previously found prime (up to its square root) divides it.",
+    "Use `yield` for every prime found."
+   ],
+   "tests": [
+    {
+     "input": [
+      0
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      1
+     ],
+     "expected": [
+      2
+     ]
+    },
+    {
+     "input": [
+      5
+     ],
+     "expected": [
+      2,
+      3,
+      5,
+      7,
+      11
+     ]
+    },
+    {
+     "input": [
+      10
+     ],
+     "expected": [
+      2,
+      3,
+      5,
+      7,
+      11,
+      13,
+      17,
+      19,
+      23,
+      29
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-rotate-matrix",
+   "title": "Rotate Matrix 90 Degrees",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "matrix",
+    "zip"
+   ],
+   "statement": "Rotate a square matrix 90 degrees **clockwise** and return the new matrix (a list of lists).\n\n**Example**\n\n```\nrotate_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])\n# [[7, 4, 1], [8, 5, 2], [9, 6, 3]]\n```",
+   "language": "python",
+   "functionName": "rotate_matrix",
+   "starter": "def rotate_matrix(matrix):\n    # write your code here\n    pass\n",
+   "solution": "def rotate_matrix(matrix):\n    return [list(row) for row in zip(*matrix[::-1])]\n",
+   "solutionExplanation": "**Approach:** `zip(*matrix[::-1])`.\n\n**Complexity:** O(n^2).",
+   "hints": [
+    "Clockwise rotation = reverse the rows, then transpose.",
+    "`zip(*rows)` transposes."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1,
+        2,
+        3
+       ],
+       [
+        4,
+        5,
+        6
+       ],
+       [
+        7,
+        8,
+        9
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       7,
+       4,
+       1
+      ],
+      [
+       8,
+       5,
+       2
+      ],
+      [
+       9,
+       6,
+       3
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        2
+       ],
+       [
+        3,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       3,
+       1
+      ],
+      [
+       4,
+       2
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    }
+   ]
+  },
+  {
+   "id": "q-py-longest-common-prefix",
+   "title": "Longest Common Prefix",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "string"
+   ],
+   "statement": "Return the longest prefix shared by all strings, or an empty string if there is none (or the list is empty).\n\n**Example**\n\n```\nlongest_common_prefix([\"flower\", \"flow\", \"flight\"])  # \"fl\"\nlongest_common_prefix([\"dog\", \"racecar\"])          # \"\"\n```",
+   "language": "python",
+   "functionName": "longest_common_prefix",
+   "starter": "def longest_common_prefix(strs):\n    # write your code here\n    pass\n",
+   "solution": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for word in strs[1:]:\n        while not word.startswith(prefix):\n            prefix = prefix[:-1]\n    return prefix\n",
+   "solutionExplanation": "**Approach:** shrink a candidate prefix until all words start with it.\n\n**Complexity:** O(total characters).",
+   "hints": [
+    "Start with the first word as the candidate prefix.",
+    "Shorten it until every word `startswith` it."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       "flower",
+       "flow",
+       "flight"
+      ]
+     ],
+     "expected": "fl"
+    },
+    {
+     "input": [
+      [
+       "dog",
+       "racecar",
+       "car"
+      ]
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      [
+       "a"
+      ]
+     ],
+     "expected": "a"
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      [
+       "same",
+       "same"
+      ]
+     ],
+     "expected": "same"
+    }
+   ]
+  },
+  {
+   "id": "q-py-invert-dict",
+   "title": "Invert a Dictionary with Duplicates",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "dict"
+   ],
+   "statement": "Values of the dictionary may repeat. Return a new dictionary that maps each value to the **sorted list of keys** that had that value.\n\n**Example**\n\n```\ninvert_dict({\"a\": \"x\", \"b\": \"y\", \"c\": \"x\"})\n# {\"x\": [\"a\", \"c\"], \"y\": [\"b\"]}\n```",
+   "language": "python",
+   "functionName": "invert_dict",
+   "starter": "def invert_dict(d):\n    # write your code here\n    pass\n",
+   "solution": "def invert_dict(d):\n    result = {}\n    for key, value in d.items():\n        result.setdefault(value, []).append(key)\n    for keys in result.values():\n        keys.sort()\n    return result\n",
+   "solutionExplanation": "**Approach:** bucket keys by value, then sort every bucket.\n\n**Complexity:** O(n log n).",
+   "hints": [
+    "`dict.setdefault(k, [])` gives you a list to append to.",
+    "Sort each list of keys at the end."
+   ],
+   "tests": [
+    {
+     "input": [
+      {
+       "a": "x",
+       "b": "y",
+       "c": "x"
+      }
+     ],
+     "expected": {
+      "x": [
+       "a",
+       "c"
+      ],
+      "y": [
+       "b"
+      ]
+     }
+    },
+    {
+     "input": [
+      {}
+     ],
+     "expected": {}
+    },
+    {
+     "input": [
+      {
+       "k": "v"
+      }
+     ],
+     "expected": {
+      "v": [
+       "k"
+      ]
+     }
+    },
+    {
+     "input": [
+      {
+       "b": "z",
+       "a": "z"
+      }
+     ],
+     "expected": {
+      "z": [
+       "a",
+       "b"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "q-py-merge-intervals",
+   "title": "Merge Intervals",
+   "difficulty": "medium",
+   "track": "python",
+   "tags": [
+    "sorting",
+    "intervals"
+   ],
+   "statement": "Merge all overlapping `[start, end]` intervals (touching intervals such as `[1,4]` and `[4,5]` also merge) and return them sorted by start.\n\n**Example**\n\n```\nmerge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]])\n# [[1, 6], [8, 10], [15, 18]]\n```",
+   "language": "python",
+   "functionName": "merge_intervals",
+   "starter": "def merge_intervals(intervals):\n    # write your code here\n    pass\n",
+   "solution": "def merge_intervals(intervals):\n    merged = []\n    for start, end in sorted(intervals, key=lambda i: i[0]):\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n",
+   "solutionExplanation": "**Approach:** sort, then sweep and merge.\n\n**Complexity:** O(n log n).",
+   "hints": [
+    "Sort by the start value.",
+    "Compare each interval to the last merged one."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1,
+        3
+       ],
+       [
+        2,
+        6
+       ],
+       [
+        8,
+        10
+       ],
+       [
+        15,
+        18
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       6
+      ],
+      [
+       8,
+       10
+      ],
+      [
+       15,
+       18
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        4,
+        5
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       5
+      ]
+     ]
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": []
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        4
+       ],
+       [
+        0,
+        4
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "input": [
+      [
+       [
+        5,
+        6
+       ],
+       [
+        1,
+        2
+       ],
+       [
+        2,
+        3
+       ]
+      ]
+     ],
+     "expected": [
+      [
+       1,
+       3
+      ],
+      [
+       5,
+       6
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "q-py-longest-palindromic-substring",
+   "title": "Longest Palindromic Substring",
+   "difficulty": "hard",
+   "track": "python",
+   "tags": [
+    "string",
+    "two-pointers"
+   ],
+   "statement": "Return the longest palindromic substring of `s`. If several have the same length return the one that starts **first**. The empty string returns `\"\"`.\n\n**Example**\n\n```\nlongest_palindrome(\"babad\")  # \"bab\"\nlongest_palindrome(\"cbbd\")   # \"bb\"\n```",
+   "language": "python",
+   "functionName": "longest_palindrome",
+   "starter": "def longest_palindrome(s):\n    # write your code here\n    pass\n",
+   "solution": "def longest_palindrome(s):\n    best = \"\"\n    for center in range(len(s)):\n        for left, right in ((center, center), (center, center + 1)):\n            while left >= 0 and right < len(s) and s[left] == s[right]:\n                left -= 1\n                right += 1\n            candidate = s[left + 1:right]\n            if len(candidate) > len(best):\n                best = candidate\n    return best\n",
+   "solutionExplanation": "**Approach:** expand around each of the 2n-1 centres.\n\n**Complexity:** O(n^2) time, O(1) space.",
+   "hints": [
+    "Every palindrome has a centre (a character or the gap between two characters).",
+    "Expand outwards from each centre while both sides match.",
+    "Only update the best when the new one is strictly longer."
+   ],
+   "tests": [
+    {
+     "input": [
+      "babad"
+     ],
+     "expected": "bab"
+    },
+    {
+     "input": [
+      "cbbd"
+     ],
+     "expected": "bb"
+    },
+    {
+     "input": [
+      "a"
+     ],
+     "expected": "a"
+    },
+    {
+     "input": [
+      "racecar"
+     ],
+     "expected": "racecar"
+    },
+    {
+     "input": [
+      "abc"
+     ],
+     "expected": "a"
+    },
+    {
+     "input": [
+      ""
+     ],
+     "expected": ""
+    },
+    {
+     "input": [
+      "forgeeksskeegfor"
+     ],
+     "expected": "geeksskeeg"
+    }
+   ]
+  },
+  {
+   "id": "q-py-word-break",
+   "title": "Word Break",
+   "difficulty": "hard",
+   "track": "python",
+   "tags": [
+    "dp",
+    "string"
+   ],
+   "statement": "Return `True` if the string `s` can be split into a sequence of words from the list `words` (words may be reused).\n\n**Example**\n\n```\nword_break(\"leetcode\", [\"leet\", \"code\"])        # True\nword_break(\"catsandog\", [\"cats\",\"dog\",\"sand\",\"and\",\"cat\"])  # False\n```",
+   "language": "python",
+   "functionName": "word_break",
+   "starter": "def word_break(s, words):\n    # write your code here\n    pass\n",
+   "solution": "def word_break(s, words):\n    word_set = set(words)\n    dp = [False] * (len(s) + 1)\n    dp[0] = True\n    for i in range(1, len(s) + 1):\n        for j in range(i):\n            if dp[j] and s[j:i] in word_set:\n                dp[i] = True\n                break\n    return dp[len(s)]\n",
+   "solutionExplanation": "**Approach:** bottom-up DP over prefixes with a set for O(1) word lookup.\n\n**Complexity:** O(n^2) substring checks (times word length).",
+   "hints": [
+    "Let `dp[i]` mean \"the first i characters can be segmented\".",
+    "`dp[0]` is True.",
+    "dp[i] is True if some j < i has dp[j] True and `s[j:i]` is a word."
+   ],
+   "tests": [
+    {
+     "input": [
+      "leetcode",
+      [
+       "leet",
+       "code"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "applepenapple",
+      [
+       "apple",
+       "pen"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "catsandog",
+      [
+       "cats",
+       "dog",
+       "sand",
+       "and",
+       "cat"
+      ]
+     ],
+     "expected": false
+    },
+    {
+     "input": [
+      "",
+      [
+       "a"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "aaaaaaa",
+      [
+       "aaaa",
+       "aaa"
+      ]
+     ],
+     "expected": true
+    },
+    {
+     "input": [
+      "a",
+      []
+     ],
+     "expected": false
+    }
+   ]
+  },
+  {
+   "id": "q-py-count-islands",
+   "title": "Number of Islands",
+   "difficulty": "hard",
+   "track": "python",
+   "tags": [
+    "grid",
+    "dfs",
+    "graph"
+   ],
+   "statement": "The grid contains `1` (land) and `0` (water). An island is a group of land cells connected **horizontally or vertically**. Return the number of islands.\n\n**Example**\n\n```\ncount_islands([\n  [1, 1, 0, 0, 0],\n  [1, 1, 0, 0, 0],\n  [0, 0, 1, 0, 0],\n  [0, 0, 0, 1, 1],\n])  # 3\n```",
+   "language": "python",
+   "functionName": "count_islands",
+   "starter": "def count_islands(grid):\n    # write your code here\n    pass\n",
+   "solution": "def count_islands(grid):\n    if not grid:\n        return 0\n    rows, cols = len(grid), len(grid[0])\n    seen = set()\n    count = 0\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r][c] == 1 and (r, c) not in seen:\n                count += 1\n                stack = [(r, c)]\n                seen.add((r, c))\n                while stack:\n                    cr, cc = stack.pop()\n                    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n                        nr, nc = cr + dr, cc + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1 and (nr, nc) not in seen:\n                            seen.add((nr, nc))\n                            stack.append((nr, nc))\n    return count\n",
+   "solutionExplanation": "**Approach:** iterate over cells and flood-fill with an explicit stack for every new land cell.\n\n**Complexity:** O(rows * cols).",
+   "hints": [
+    "Scan every cell; when you find unvisited land, count an island.",
+    "Flood-fill (DFS/BFS) the island so it is not counted again.",
+    "Work on a copy or keep a visited set so the input is not changed."
+   ],
+   "tests": [
+    {
+     "input": [
+      [
+       [
+        1,
+        1,
+        0,
+        0,
+        0
+       ],
+       [
+        1,
+        1,
+        0,
+        0,
+        0
+       ],
+       [
+        0,
+        0,
+        1,
+        0,
+        0
+       ],
+       [
+        0,
+        0,
+        0,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 3
+    },
+    {
+     "input": [
+      []
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       [
+        0,
+        0
+       ]
+      ]
+     ],
+     "expected": 0
+    },
+    {
+     "input": [
+      [
+       [
+        1
+       ]
+      ]
+     ],
+     "expected": 1
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        0,
+        1
+       ],
+       [
+        0,
+        1,
+        0
+       ],
+       [
+        1,
+        0,
+        1
+       ]
+      ]
+     ],
+     "expected": 5
+    },
+    {
+     "input": [
+      [
+       [
+        1,
+        1,
+        1
+       ],
+       [
+        0,
+        1,
+        0
+       ],
+       [
+        1,
+        1,
+        1
+       ]
+      ]
+     ],
+     "expected": 1
+    }
+   ]
+  },
+  {
+   "id": "q-web-center-div-three-ways",
+   "title": "Center a Box - Three Ways",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "flexbox",
+    "grid",
+    "positioning"
+   ],
+   "statement": "Three stage areas (`.a`, `.b`, `.c`) each contain a small `.box`. Center the box **horizontally and vertically** inside its stage using a different technique each time:\n\n1. `.a` - **Flexbox**\n2. `.b` - **CSS Grid**\n3. `.c` - **Absolute positioning** with `transform`\n\nDo not change the HTML or the stage sizes.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"stage a\"><div class=\"box\">flex</div></div>\n<div class=\"stage b\"><div class=\"box\">grid</div></div>\n<div class=\"stage c\"><div class=\"box\">abs</div></div>",
+    "css": "body { display: flex; gap: 16px; font-family: sans-serif; }\n.stage { width: 180px; height: 140px; border: 2px dashed #94a3b8; }\n.box { width: 60px; height: 60px; background: #6366f1; color: #fff; display: grid; place-items: center; border-radius: 8px; }\n\n/* TODO: center .box inside .a (flex), .b (grid) and .c (absolute) */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<div class=\"stage a\"><div class=\"box\">flex</div></div>\n<div class=\"stage b\"><div class=\"box\">grid</div></div>\n<div class=\"stage c\"><div class=\"box\">abs</div></div>",
+    "css": "body { display: flex; gap: 16px; font-family: sans-serif; }\n.stage { width: 180px; height: 140px; border: 2px dashed #94a3b8; }\n.box { width: 60px; height: 60px; background: #6366f1; color: #fff; display: grid; place-items: center; border-radius: 8px; }\n\n.a { display: flex; justify-content: center; align-items: center; }\n.b { display: grid; place-items: center; }\n.c { position: relative; }\n.c .box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }\n",
+    "js": ""
+   },
+   "solutionExplanation": "**Flexbox** and **Grid** center children from the parent. The **absolute** technique places the top-left corner of the child at 50%/50% and then pulls it back by half of its own size with `translate(-50%, -50%)`.\n\nAll three are O(1) CSS rules; Grid's `place-items: center` is the shortest.",
+   "hints": [
+    "Flexbox: `display: flex` plus `justify-content` and `align-items` on the parent.",
+    "Grid: `display: grid; place-items: center` is a two-line solution.",
+    "Absolute: parent `position: relative`, child `top: 50%; left: 50%` then `transform: translate(-50%, -50%)`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-responsive-card-grid",
+   "title": "Responsive Card Grid",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "grid",
+    "responsive"
+   ],
+   "statement": "Six cards are inside a `.grid` container. Make a **responsive grid** without media queries: cards should be at least 160px wide, fill the available width equally and wrap to new rows as the window gets narrower. Use a 16px gap.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"grid\">\n  <div class=\"card\">1</div>\n  <div class=\"card\">2</div>\n  <div class=\"card\">3</div>\n  <div class=\"card\">4</div>\n  <div class=\"card\">5</div>\n  <div class=\"card\">6</div>\n</div>",
+    "css": "body { font-family: sans-serif; padding: 16px; }\n.card { background: #e0e7ff; padding: 32px 16px; text-align: center; border-radius: 10px; font-weight: bold; }\n\n/* TODO: make .grid a responsive grid */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<div class=\"grid\">\n  <div class=\"card\">1</div>\n  <div class=\"card\">2</div>\n  <div class=\"card\">3</div>\n  <div class=\"card\">4</div>\n  <div class=\"card\">5</div>\n  <div class=\"card\">6</div>\n</div>",
+    "css": "body { font-family: sans-serif; padding: 16px; }\n.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }\n.card { background: #e0e7ff; padding: 32px 16px; text-align: center; border-radius: 10px; font-weight: bold; }\n",
+    "js": ""
+   },
+   "solutionExplanation": "`repeat(auto-fit, minmax(160px, 1fr))` lets the browser create as many columns of at least 160px as fit; `1fr` distributes the remaining space. No media query is needed.",
+   "hints": [
+    "Use `display: grid` on `.grid`.",
+    "`grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))` does the job.",
+    "Use `gap` for spacing between cards."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-flex-navbar",
+   "title": "Flexbox Navbar",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "flexbox",
+    "layout"
+   ],
+   "statement": "Build a horizontal navigation bar with flexbox: the logo sits on the **left**, the links (Home, About, Contact) on the **right**, everything vertically centered, with 16px padding and a dark background. Links must have no bullets and a hover colour change.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<nav class=\"navbar\">\n  <div class=\"logo\">MySite</div>\n  <ul class=\"links\">\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>",
+    "css": "body { margin: 0; font-family: sans-serif; }\n/* TODO: style .navbar, .logo, .links and the links */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<nav class=\"navbar\">\n  <div class=\"logo\">MySite</div>\n  <ul class=\"links\">\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>",
+    "css": "body { margin: 0; font-family: sans-serif; }\n.navbar { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #0f172a; }\n.logo { color: #fff; font-weight: bold; font-size: 1.25rem; }\n.links { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }\n.links a { color: #cbd5e1; text-decoration: none; }\n.links a:hover { color: #38bdf8; }\n",
+    "js": ""
+   },
+   "solutionExplanation": "`justify-content: space-between` pushes the logo and link list to opposite ends; the inner `ul` is another flex row. `align-items: center` gives vertical centering.",
+   "hints": [
+    "Make the `nav` a flex container with `align-items: center`.",
+    "Put `margin-left: auto` on the `ul` (or use `justify-content: space-between`).",
+    "Make the `ul` itself a flex container with a gap and `list-style: none`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-css-accordion",
+   "title": "Pure CSS Accordion",
+   "difficulty": "medium",
+   "track": "css",
+   "tags": [
+    "css",
+    "accordion",
+    "checkbox-hack",
+    "no-js"
+   ],
+   "statement": "Make each FAQ item open and close **without JavaScript**. Clicking the question label toggles the answer. Use the hidden checkbox technique: a checkbox, its label and the answer, where `input:checked + label + .answer` shows the answer. Animate the open/close with a `max-height` transition.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"item\">\n  <input type=\"checkbox\" id=\"q1\" class=\"toggle\">\n  <label for=\"q1\">What is CSS?</label>\n  <div class=\"answer\"><p>Cascading Style Sheets describe how HTML is displayed.</p></div>\n</div>\n<div class=\"item\">\n  <input type=\"checkbox\" id=\"q2\" class=\"toggle\">\n  <label for=\"q2\">Why no JavaScript?</label>\n  <div class=\"answer\"><p>The :checked pseudo-class is enough for simple toggles.</p></div>\n</div>",
+    "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.item { border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }\nlabel { display: block; padding: 12px 16px; cursor: pointer; font-weight: bold; background: #f1f5f9; }\n.answer p { margin: 0; padding: 12px 16px; }\n/* TODO: hide the checkbox, collapse .answer and open it when checked */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<div class=\"item\">\n  <input type=\"checkbox\" id=\"q1\" class=\"toggle\">\n  <label for=\"q1\">What is CSS?</label>\n  <div class=\"answer\"><p>Cascading Style Sheets describe how HTML is displayed.</p></div>\n</div>\n<div class=\"item\">\n  <input type=\"checkbox\" id=\"q2\" class=\"toggle\">\n  <label for=\"q2\">Why no JavaScript?</label>\n  <div class=\"answer\"><p>The :checked pseudo-class is enough for simple toggles.</p></div>\n</div>",
+    "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.item { border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }\nlabel { display: block; padding: 12px 16px; cursor: pointer; font-weight: bold; background: #f1f5f9; }\n.answer p { margin: 0; padding: 12px 16px; }\n.toggle { display: none; }\n.answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }\n.toggle:checked ~ .answer { max-height: 120px; }\n.toggle:checked + label { background: #e0e7ff; }\n",
+    "js": ""
+   },
+   "solutionExplanation": "A label toggles its checkbox; the general sibling selector `~` lets CSS react to `:checked`. Because `height: auto` cannot be animated, a generous `max-height` is transitioned instead. For production, the native `<details>` element is the better choice.",
+   "hints": [
+    "Hide the checkbox (`display: none`) - the label still toggles it.",
+    "The answer starts with `max-height: 0; overflow: hidden`.",
+    "Use the sibling combinator: `.toggle:checked ~ .answer { max-height: 120px }`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-loading-spinner",
+   "title": "CSS Loading Spinner",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "animation",
+    "keyframes"
+   ],
+   "statement": "Create a **40px circular spinner**: a light grey ring where one quarter of the border is coloured, rotating endlessly (1 second per turn, linear). Style the `.spinner` element and define a `@keyframes` animation.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"spinner\"></div>",
+    "css": "body { display: grid; place-items: center; height: 100vh; margin: 0; }\n/* TODO: style .spinner and add @keyframes spin */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<div class=\"spinner\"></div>",
+    "css": "body { display: grid; place-items: center; height: 100vh; margin: 0; }\n.spinner { width: 40px; height: 40px; border: 5px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; }\n@keyframes spin { to { transform: rotate(360deg); } }\n",
+    "js": ""
+   },
+   "solutionExplanation": "The ring is a bordered circle; only one side is coloured so rotation is visible. The animation rotates the element a full turn; `linear` keeps a constant speed and `infinite` loops forever.",
+   "hints": [
+    "A circle is a square with `border-radius: 50%`.",
+    "Give the border a colour on one side only (`border-top-color`).",
+    "Animate `transform: rotate(360deg)` with `animation: spin 1s linear infinite`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-sticky-header",
+   "title": "Sticky Header",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "position",
+    "sticky"
+   ],
+   "statement": "The page has a long article under a header. Make the `header` **stick to the top** of the viewport while scrolling, stay above the content (z-index) and show a subtle shadow.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<header>My Blog</header>\n<main>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n</main>",
+    "css": "body { margin: 0; font-family: sans-serif; }\nheader { padding: 16px; background: #fff; font-weight: bold; font-size: 1.2rem; }\nmain { padding: 16px; line-height: 2; }\nmain p { margin: 0 0 120px; }\n/* TODO: make the header sticky */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<header>My Blog</header>\n<main>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n</main>",
+    "css": "body { margin: 0; font-family: sans-serif; }\nheader { position: sticky; top: 0; z-index: 10; padding: 16px; background: #fff; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }\nmain { padding: 16px; line-height: 2; }\nmain p { margin: 0 0 120px; }\n",
+    "js": ""
+   },
+   "solutionExplanation": "`position: sticky` behaves like relative until the scroll position reaches `top: 0`, then it sticks. It only works if no ancestor has `overflow` set that creates a different scroll container.",
+   "hints": [
+    "`position: sticky; top: 0` is enough - no JS.",
+    "Give it a solid background so text does not show through.",
+    "Add `z-index` so it overlaps the content."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-css-tooltip",
+   "title": "Hover Tooltip",
+   "difficulty": "easy",
+   "track": "css",
+   "tags": [
+    "css",
+    "pseudo-elements",
+    "hover",
+    "attr"
+   ],
+   "statement": "Add a tooltip to every element with a `data-tip` attribute: on **hover** (or keyboard focus) a small dark bubble with the tip text appears **above** the element, centered. Use `::after` with `content: attr(data-tip)` - no JavaScript, no extra HTML.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<p style=\"margin-top:80px;text-align:center\">\n  <button data-tip=\"Saves your work\">Save</button>\n  <button data-tip=\"Deletes forever\">Delete</button>\n</p>",
+    "css": "body { font-family: sans-serif; }\nbutton { padding: 8px 16px; margin: 0 8px; }\n/* TODO: build the tooltip with [data-tip]::after */\n",
+    "js": ""
+   },
+   "solution": {
+    "html": "<p style=\"margin-top:80px;text-align:center\">\n  <button data-tip=\"Saves your work\">Save</button>\n  <button data-tip=\"Deletes forever\">Delete</button>\n</p>",
+    "css": "body { font-family: sans-serif; }\nbutton { padding: 8px 16px; margin: 0 8px; }\n[data-tip] { position: relative; }\n[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; }\n[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; }\n",
+    "js": ""
+   },
+   "solutionExplanation": "`attr()` reads the attribute into generated content. Opacity + a transition gives a fade; `pointer-events: none` stops the bubble from stealing hover.",
+   "hints": [
+    "The host element needs `position: relative`.",
+    "`::after` is absolutely positioned: `bottom: 100%; left: 50%; transform: translateX(-50%)`.",
+    "Hide it with `opacity: 0` and show it on `:hover` and `:focus`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-js-counter",
+   "title": "Counter Component",
+   "difficulty": "easy",
+   "track": "javascript",
+   "tags": [
+    "dom",
+    "events",
+    "javascript"
+   ],
+   "statement": "Build a counter: a number display with id `count` (starts at 0) and three buttons with ids `inc`, `dec` and `reset`. Increment, decrement and reset the number when clicked. Colour the number **green** when positive, **red** when negative and grey at zero.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"counter\">\n  <button id=\"dec\">-</button>\n  <span id=\"count\">0</span>\n  <button id=\"inc\">+</button>\n  <button id=\"reset\">Reset</button>\n</div>",
+    "css": ".counter { font-family: sans-serif; display: flex; gap: 12px; align-items: center; font-size: 1.5rem; }\nbutton { font-size: 1.2rem; padding: 4px 12px; cursor: pointer; }\n#count { min-width: 40px; text-align: center; }",
+    "js": "// TODO: wire up #inc, #dec and #reset\n"
+   },
+   "solution": {
+    "html": "<div class=\"counter\">\n  <button id=\"dec\">-</button>\n  <span id=\"count\">0</span>\n  <button id=\"inc\">+</button>\n  <button id=\"reset\">Reset</button>\n</div>",
+    "css": ".counter { font-family: sans-serif; display: flex; gap: 12px; align-items: center; font-size: 1.5rem; }\nbutton { font-size: 1.2rem; padding: 4px 12px; cursor: pointer; }\n#count { min-width: 40px; text-align: center; }",
+    "js": "let value = 0;\nconst display = document.getElementById(\"count\");\n\nfunction render() {\n  display.textContent = value;\n  display.style.color = value > 0 ? \"green\" : value < 0 ? \"crimson\" : \"gray\";\n}\n\ndocument.getElementById(\"inc\").addEventListener(\"click\", function () { value++; render(); });\ndocument.getElementById(\"dec\").addEventListener(\"click\", function () { value--; render(); });\ndocument.getElementById(\"reset\").addEventListener(\"click\", function () { value = 0; render(); });\nrender();\n"
+   },
+   "solutionExplanation": "State lives in a variable; every handler changes it and calls one `render()` function that syncs the DOM. This \"state -> render\" pattern is what frameworks automate.",
+   "hints": [
+    "Keep the value in a variable and write a `render()` function.",
+    "Use `addEventListener(\"click\", ...)` for each button.",
+    "Set `element.style.color` inside `render`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-dom-todo-list",
+   "title": "DOM Todo List",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "dom",
+    "events",
+    "javascript",
+    "todo"
+   ],
+   "statement": "Build a todo list with plain JavaScript.\n\n* Text input `#todo-input`, button `#add-btn`, list `#todo-list`.\n* Clicking **Add** (or pressing Enter) appends a `li` with the text; empty or whitespace-only input is ignored; the input is cleared afterwards.\n* Clicking the text of an item toggles a `done` class (line-through).\n* Each item has a **Delete** button (`.delete`) that removes it.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"todo\">\n  <input id=\"todo-input\" placeholder=\"New task...\">\n  <button id=\"add-btn\">Add</button>\n  <ul id=\"todo-list\"></ul>\n</div>",
+    "css": ".todo { font-family: sans-serif; max-width: 360px; margin: 20px auto; }\n#todo-list { padding: 0; list-style: none; }\n#todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0; cursor: pointer; }\n.done span { text-decoration: line-through; color: #94a3b8; }",
+    "js": "// TODO: add, toggle and delete todos\n"
+   },
+   "solution": {
+    "html": "<div class=\"todo\">\n  <input id=\"todo-input\" placeholder=\"New task...\">\n  <button id=\"add-btn\">Add</button>\n  <ul id=\"todo-list\"></ul>\n</div>",
+    "css": ".todo { font-family: sans-serif; max-width: 360px; margin: 20px auto; }\n#todo-list { padding: 0; list-style: none; }\n#todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0; cursor: pointer; }\n.done span { text-decoration: line-through; color: #94a3b8; }",
+    "js": "const input = document.getElementById(\"todo-input\");\nconst list = document.getElementById(\"todo-list\");\n\nfunction addTodo() {\n  const text = input.value.trim();\n  if (!text) return;\n  const li = document.createElement(\"li\");\n  const span = document.createElement(\"span\");\n  span.textContent = text;\n  const del = document.createElement(\"button\");\n  del.textContent = \"Delete\";\n  del.className = \"delete\";\n  li.appendChild(span);\n  li.appendChild(del);\n  list.appendChild(li);\n  input.value = \"\";\n  input.focus();\n}\n\ndocument.getElementById(\"add-btn\").addEventListener(\"click\", addTodo);\ninput.addEventListener(\"keydown\", function (e) {\n  if (e.key === \"Enter\") addTodo();\n});\n\nlist.addEventListener(\"click\", function (e) {\n  const li = e.target.closest(\"li\");\n  if (!li) return;\n  if (e.target.classList.contains(\"delete\")) li.remove();\n  else li.classList.toggle(\"done\");\n});\n"
+   },
+   "solutionExplanation": "One listener on the list handles all current and future items (**event delegation**). `closest(\"li\")` finds the item from any click inside it. Using `textContent` avoids HTML injection.",
+   "hints": [
+    "Create elements with `document.createElement(\"li\")`.",
+    "Use **event delegation**: one click listener on the `ul` and check `event.target`.",
+    "Use `textContent` instead of `innerHTML` for user text."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-js-tabs",
+   "title": "Tabs Component",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "dom",
+    "events",
+    "tabs",
+    "javascript"
+   ],
+   "statement": "Make the three tab buttons switch panels. Each `.tab-btn` has a `data-tab` value that matches the `id` of a `.panel`. Clicking a button shows only its panel (add class `active` to the panel and the button, remove it from the others). The first tab is active at start. Panels without `.active` are hidden.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<div class=\"tabs\">\n  <button class=\"tab-btn active\" data-tab=\"html\">HTML</button>\n  <button class=\"tab-btn\" data-tab=\"css\">CSS</button>\n  <button class=\"tab-btn\" data-tab=\"js\">JS</button>\n</div>\n<div id=\"html\" class=\"panel active\">HTML gives structure.</div>\n<div id=\"css\" class=\"panel\">CSS gives style.</div>\n<div id=\"js\" class=\"panel\">JS gives behaviour.</div>",
+    "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.tab-btn { padding: 8px 16px; border: 0; background: #e2e8f0; cursor: pointer; }\n.tab-btn.active { background: #6366f1; color: #fff; }\n.panel { padding: 16px; border: 1px solid #e2e8f0; }\n/* TODO: hide inactive panels */",
+    "js": "// TODO: switch tabs\n"
+   },
+   "solution": {
+    "html": "<div class=\"tabs\">\n  <button class=\"tab-btn active\" data-tab=\"html\">HTML</button>\n  <button class=\"tab-btn\" data-tab=\"css\">CSS</button>\n  <button class=\"tab-btn\" data-tab=\"js\">JS</button>\n</div>\n<div id=\"html\" class=\"panel active\">HTML gives structure.</div>\n<div id=\"css\" class=\"panel\">CSS gives style.</div>\n<div id=\"js\" class=\"panel\">JS gives behaviour.</div>",
+    "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.tab-btn { padding: 8px 16px; border: 0; background: #e2e8f0; cursor: pointer; }\n.tab-btn.active { background: #6366f1; color: #fff; }\n.panel { display: none; padding: 16px; border: 1px solid #e2e8f0; }\n.panel.active { display: block; }",
+    "js": "const buttons = document.querySelectorAll(\".tab-btn\");\nconst panels = document.querySelectorAll(\".panel\");\n\nbuttons.forEach(function (btn) {\n  btn.addEventListener(\"click\", function () {\n    buttons.forEach(function (b) { b.classList.remove(\"active\"); });\n    panels.forEach(function (p) { p.classList.remove(\"active\"); });\n    btn.classList.add(\"active\");\n    document.getElementById(btn.dataset.tab).classList.add(\"active\");\n  });\n});\n"
+   },
+   "solutionExplanation": "Data attributes link buttons to panels without hard-coding IDs in JS. Switching is just removing and adding the `active` class; CSS decides what is visible.",
+   "hints": [
+    "Hide panels with `.panel { display: none }` and show `.panel.active { display: block }`.",
+    "Loop over all buttons and add a click listener.",
+    "Use `dataset.tab` to read the target id."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-js-modal",
+   "title": "Modal Dialog",
+   "difficulty": "medium",
+   "track": "javascript",
+   "tags": [
+    "dom",
+    "events",
+    "modal",
+    "accessibility"
+   ],
+   "statement": "Build a modal dialog.\n\n* Button `#open-modal` opens the overlay `#overlay` (add class `show`).\n* The overlay can be closed by the **X button** (`#close-modal`), by clicking the **dark backdrop** (but not the white box) or by pressing **Escape**.\n* The overlay is hidden by default; the white box is centered.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<button id=\"open-modal\">Open modal</button>\n<div id=\"overlay\">\n  <div class=\"modal\">\n    <button id=\"close-modal\" aria-label=\"Close\">X</button>\n    <h2>Hello!</h2>\n    <p>This is a modal dialog.</p>\n  </div>\n</div>",
+    "css": "body { font-family: sans-serif; padding: 20px; }\n.modal { position: relative; background: #fff; padding: 24px; border-radius: 10px; width: 280px; }\n#close-modal { position: absolute; top: 8px; right: 8px; cursor: pointer; }\n/* TODO: style #overlay and .show */",
+    "js": "// TODO: open and close the modal\n"
+   },
+   "solution": {
+    "html": "<button id=\"open-modal\">Open modal</button>\n<div id=\"overlay\">\n  <div class=\"modal\">\n    <button id=\"close-modal\" aria-label=\"Close\">X</button>\n    <h2>Hello!</h2>\n    <p>This is a modal dialog.</p>\n  </div>\n</div>",
+    "css": "body { font-family: sans-serif; padding: 20px; }\n.modal { position: relative; background: #fff; padding: 24px; border-radius: 10px; width: 280px; }\n#close-modal { position: absolute; top: 8px; right: 8px; cursor: pointer; }\n#overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: none; align-items: center; justify-content: center; }\n#overlay.show { display: flex; }",
+    "js": "const overlay = document.getElementById(\"overlay\");\n\nfunction openModal() { overlay.classList.add(\"show\"); }\nfunction closeModal() { overlay.classList.remove(\"show\"); }\n\ndocument.getElementById(\"open-modal\").addEventListener(\"click\", openModal);\ndocument.getElementById(\"close-modal\").addEventListener(\"click\", closeModal);\noverlay.addEventListener(\"click\", function (e) {\n  if (e.target === overlay) closeModal();\n});\ndocument.addEventListener(\"keydown\", function (e) {\n  if (e.key === \"Escape\") closeModal();\n});\n"
+   },
+   "solutionExplanation": "A fixed full-screen overlay centers the box with flexbox. Clicks inside the box bubble to the overlay, so `e.target === overlay` distinguishes backdrop clicks. A real dialog should also trap focus - the native `<dialog>` element does this for you.",
+   "hints": [
+    "The overlay is `position: fixed; inset: 0` with a semi-transparent background.",
+    "To detect a backdrop click compare `event.target === overlay`.",
+    "Listen for `keydown` on `document` and check `event.key === \"Escape\"`."
+   ],
+   "tests": []
+  },
+  {
+   "id": "q-web-form-validation",
+   "title": "Sign-up Form Validation",
+   "difficulty": "hard",
+   "track": "html",
+   "tags": [
+    "forms",
+    "validation",
+    "dom",
+    "regex"
+   ],
+   "statement": "Validate the sign-up form on **submit** (use `novalidate` so the browser does not interfere).\n\n| field | rule |\n|---|---|\n| `#name` | at least 2 characters |\n| `#email` | looks like `something@domain.tld` |\n| `#password` | at least 8 characters and contains a digit |\n| `#confirm` | equals the password |\n\n* Show the message inside the matching `.error` element and give the invalid input the class `invalid`.\n* If all fields are valid show **\"Account created!\"** in `#success` and clear the form.\n* Always call `event.preventDefault()`.",
+   "language": "web",
+   "functionName": "",
+   "starter": {
+    "html": "<form id=\"signup\" novalidate>\n  <label>Name <input id=\"name\"><span class=\"error\" data-for=\"name\"></span></label>\n  <label>Email <input id=\"email\" type=\"email\"><span class=\"error\" data-for=\"email\"></span></label>\n  <label>Password <input id=\"password\" type=\"password\"><span class=\"error\" data-for=\"password\"></span></label>\n  <label>Confirm <input id=\"confirm\" type=\"password\"><span class=\"error\" data-for=\"confirm\"></span></label>\n  <button type=\"submit\">Create account</button>\n  <p id=\"success\"></p>\n</form>",
+    "css": "body { font-family: sans-serif; }\nform { max-width: 320px; margin: 20px auto; display: grid; gap: 12px; }\nlabel { display: grid; gap: 4px; }\ninput { padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }\ninput.invalid { border-color: crimson; }\n.error { color: crimson; font-size: 0.8rem; min-height: 1em; }\n#success { color: green; font-weight: bold; }",
+    "js": "// TODO: validate on submit\n"
+   },
+   "solution": {
+    "html": "<form id=\"signup\" novalidate>\n  <label>Name <input id=\"name\"><span class=\"error\" data-for=\"name\"></span></label>\n  <label>Email <input id=\"email\" type=\"email\"><span class=\"error\" data-for=\"email\"></span></label>\n  <label>Password <input id=\"password\" type=\"password\"><span class=\"error\" data-for=\"password\"></span></label>\n  <label>Confirm <input id=\"confirm\" type=\"password\"><span class=\"error\" data-for=\"confirm\"></span></label>\n  <button type=\"submit\">Create account</button>\n  <p id=\"success\"></p>\n</form>",
+    "css": "body { font-family: sans-serif; }\nform { max-width: 320px; margin: 20px auto; display: grid; gap: 12px; }\nlabel { display: grid; gap: 4px; }\ninput { padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }\ninput.invalid { border-color: crimson; }\n.error { color: crimson; font-size: 0.8rem; min-height: 1em; }\n#success { color: green; font-weight: bold; }",
+    "js": "const form = document.getElementById(\"signup\");\nconst success = document.getElementById(\"success\");\n\nfunction validate(values) {\n  const errors = {};\n  if (values.name.trim().length < 2) errors.name = \"Name must be at least 2 characters\";\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(values.email)) errors.email = \"Enter a valid email\";\n  if (values.password.length < 8 || !/\\d/.test(values.password)) errors.password = \"Min 8 characters and a number\";\n  if (values.confirm !== values.password || values.confirm === \"\") errors.confirm = \"Passwords do not match\";\n  return errors;\n}\n\nform.addEventListener(\"submit\", function (e) {\n  e.preventDefault();\n  const ids = [\"name\", \"email\", \"password\", \"confirm\"];\n  const values = {};\n  ids.forEach(function (id) { values[id] = document.getElementById(id).value; });\n  const errors = validate(values);\n  success.textContent = \"\";\n  ids.forEach(function (id) {\n    const input = document.getElementById(id);\n    const slot = form.querySelector('.error[data-for=\"' + id + '\"]');\n    slot.textContent = errors[id] || \"\";\n    input.classList.toggle(\"invalid\", Boolean(errors[id]));\n  });\n  if (Object.keys(errors).length === 0) {\n    success.textContent = \"Account created!\";\n    form.reset();\n  }\n});\n"
+   },
+   "solutionExplanation": "Validation is a pure function from values to an errors object, which keeps DOM code simple: render the errors, toggle the `invalid` class, and show success only when the object is empty. Always repeat validation on the server - client checks are only for UX.",
+   "hints": [
+    "Write one small function per rule or a single `validate()` returning an errors object.",
+    "A simple email regex: `/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/`.",
+    "Clear old errors at the start of every submit."
+   ],
+   "tests": []
+  }
+ ]
+}

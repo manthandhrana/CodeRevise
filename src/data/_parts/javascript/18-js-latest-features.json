@@ -1,0 +1,454 @@
+{
+  "id": "js-latest-features",
+  "title": "Latest JavaScript (ES2022 to ES2025+)",
+  "level": "advanced",
+  "topics": [
+    {
+      "id": "js-latest-groupby",
+      "title": "Object.groupBy and Map.groupBy (ES2024)",
+      "level": "intermediate",
+      "summary": "Group an iterable by a key function natively, returning either a plain null-prototype object or a Map.",
+      "description": "**Support:** ES2024. Available in Node 21+, Chrome 117+, Firefox 119+, Safari 17.4+. Older runtimes need a `reduce` fallback.\n\n`Object.groupBy(items, callback)` loops over any iterable, calls `callback(item, index)` to get a key, and returns an object whose properties are arrays of the items sharing that key. `Map.groupBy` does the same but returns a `Map`, so keys can be **any value** (objects, numbers, booleans) instead of being converted to strings.\n\n### Key facts\n| | `Object.groupBy` | `Map.groupBy` |\n|---|---|---|\n| Result | object with `null` prototype | `Map` |\n| Key types | strings or symbols (others converted) | any value, compared with SameValueZero |\n| Key order | insertion order, but integer-like keys come first | insertion order |\n| Use for | JSON-like output | numeric/object keys, ordered results |\n\n- The object has **no prototype**, so keys like `toString` or `constructor` are safe, but you cannot call `result.hasOwnProperty()`. Use `Object.hasOwn(result, key)`.\n- Groups keep the original item order.\n- Works with arrays, Sets, generators and other iterables.\n- It does not mutate the input and does not copy items (shallow references).\n\n### Replaces\nThe classic `reduce` pattern: `arr.reduce((g, x) => ((g[f(x)] ??= []).push(x), g), {})`. The native method is shorter and avoids prototype-pollution pitfalls with keys such as `__proto__`.\n\n### Typical uses\nGroup orders by status, products by category, events by day, or bucket numbers into ranges (return a label from the callback).",
+      "keyPoints": [
+        "Object.groupBy returns a null-prototype object of arrays; Map.groupBy returns a Map.",
+        "Use Map.groupBy when keys are not strings.",
+        "The callback receives (item, index).",
+        "Group order inside each bucket matches the original order.",
+        "Standardised in ES2024; older engines need a fallback."
+      ],
+      "pitfalls": [
+        "Calling result.hasOwnProperty fails because the object has no prototype.",
+        "Integer-like keys in an object are reordered to the front regardless of insertion order."
+      ],
+      "examples": [
+        {
+          "title": "Grouping with both APIs",
+          "language": "javascript",
+          "code": "const products = [\n  { name: 'Pen', cat: 'office', price: 3 },\n  { name: 'Desk', cat: 'furniture', price: 150 },\n  { name: 'Clip', cat: 'office', price: 1 },\n  { name: 'Lamp', cat: 'furniture', price: 25 },\n];\nconst byCat = Object.groupBy(products, (p) => p.cat);\nconsole.log(Object.keys(byCat), byCat.office.map(p => p.name), Object.getPrototypeOf(byCat));\n\nconst byPriceBand = Map.groupBy(products, (p) => (p.price >= 100 ? 'premium' : p.price >= 10 ? 'mid' : 'cheap'));\nfor (const [band, items] of byPriceBand) console.log(band, items.map(p => p.name));\n\nconst byEven = Map.groupBy([1, 2, 3, 4, 5], (n) => n % 2 === 0);\nconsole.log(byEven.get(true), byEven.get(false));\nconsole.log(Object.groupBy('hello world', (ch) => (/[aeiou]/.test(ch) ? 'vowel' : 'other')).vowel);",
+          "explanation": "Needs Node 21+ (Node 24 is fine)."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does Object.groupBy return an object with a null prototype?",
+          "a": "So that group names like constructor or __proto__ cannot clash with inherited properties."
+        },
+        {
+          "q": "When would you use Map.groupBy instead?",
+          "a": "When the grouping key is not a string, such as a number, boolean or object, or when you want guaranteed insertion order."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-change-by-copy",
+      "title": "Non-mutating Array Methods: toSorted, toReversed, toSpliced, with (ES2023)",
+      "level": "intermediate",
+      "summary": "Copy-then-change array methods plus findLast, at and flat tools that make immutable updates easy.",
+      "description": "**Support:** ES2023. Node 20+, Chrome 110+, Firefox 115+, Safari 16+. TypedArrays have `toSorted`, `toReversed` and `with` too.\n\nThe old `sort`, `reverse` and `splice` mutate the original array, which causes bugs in React state, Redux reducers and shared data. ES2023 adds **change-by-copy** versions that return a modified copy and leave the source untouched.\n\n| Mutating | Copying version | Notes |\n|---|---|---|\n| `arr.sort(cmp)` | `arr.toSorted(cmp)` | still needs a comparator for numbers |\n| `arr.reverse()` | `arr.toReversed()` | |\n| `arr.splice(i, d, ...items)` | `arr.toSpliced(i, d, ...items)` | returns the **new array**, not the removed items |\n| `arr[i] = v` | `arr.with(i, v)` | throws `RangeError` if the index is out of range |\n\n### Related search helpers\n- `findLast(fn)` and `findLastIndex(fn)` (ES2023) search from the end.\n- `at(-1)` (ES2022) reads from the end.\n- `Array.prototype.group` was **not** shipped; use `Object.groupBy`.\n\n### Sparse arrays\nThe copying methods read holes as `undefined` and always produce dense arrays.\n\n### Remember\nThese make a **shallow** copy: objects inside are still shared. They are O(n) per call, so avoid in tight loops over huge arrays; use them where clarity and immutability matter.",
+      "keyPoints": [
+        "toSorted, toReversed, toSpliced and with return new arrays and leave the source unchanged.",
+        "toSpliced returns the modified copy, unlike splice which returns removed items.",
+        "with(i, v) replaces one element immutably and throws RangeError for invalid indexes.",
+        "findLast and findLastIndex search from the end.",
+        "Copies are shallow; nested objects are shared."
+      ],
+      "pitfalls": [
+        "toSorted without a comparator still sorts numbers as strings.",
+        "Old runtimes (Node 18 and below) lack these methods; polyfill or transpile."
+      ],
+      "examples": [
+        {
+          "title": "Immutable updates",
+          "language": "javascript",
+          "code": "const original = [5, 1, 10, 3];\nconsole.log(original.toSorted(), original.toSorted((a, b) => a - b));\nconsole.log(original.toReversed(), original.with(1, 99), original.toSpliced(1, 2, 'a', 'b', 'c'));\nconsole.log(original);\nconsole.log(original.findLast(n => n > 2), original.findLastIndex(n => n > 100), original.at(-2));\ntry { original.with(10, 0); } catch (e) { console.log(e.name); }\n\n// immutable state update\nconst state = { todos: [{ id: 1, done: false }, { id: 2, done: false }] };\nconst next = { ...state, todos: state.todos.with(0, { ...state.todos[0], done: true }) };\nconsole.log(state.todos[0].done, next.todos[0].done, next.todos[1] === state.todos[1]);",
+          "explanation": "Original array is never changed."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does toSpliced return compared with splice?",
+          "a": "toSpliced returns the new modified array without changing the original; splice mutates and returns the removed elements."
+        },
+        {
+          "q": "Why are these methods useful in React?",
+          "a": "State must not be mutated; copying methods allow sorting or updating items without touching the previous state object."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-promise-async-helpers",
+      "title": "Promise.withResolvers, Promise.try, Array.fromAsync",
+      "level": "advanced",
+      "summary": "Newer async helpers that remove boilerplate: externally resolved promises, safe sync-or-async wrapping, and collecting async iterables.",
+      "description": "### Promise.withResolvers (ES2024)\nBefore: `let resolve, reject; const promise = new Promise((res, rej) => { resolve = res; reject = rej; });`\nNow: `const { promise, resolve, reject } = Promise.withResolvers();`. Great for turning event callbacks, queues and \"wait until X happens\" flows into promises. Node 22+, modern browsers.\n\n### Promise.try (ES2025)\n`Promise.try(fn, ...args)` runs `fn` immediately (synchronously) and returns a promise. A synchronous throw becomes a rejection, and a normal return value (or returned promise) is wrapped. It fixes the classic bug where `new Promise(r => r(fn()))` or `Promise.resolve().then(fn)` either delays the call or leaks sync errors. Available in Node 24 (V8 12.8+) and current browsers.\n\n### Array.fromAsync\n`await Array.fromAsync(asyncIterable, mapFn)` collects an async iterable (or a sync iterable of promises) into an array. It awaits each element **sequentially**, unlike `Promise.all(array)`. Shipped in all current engines since about 2023-24 (Node 22+).\n\n### Related existing features\n- `Promise.any`, `allSettled` (ES2020-21) and `for await...of` (ES2018).\n- `AbortSignal.timeout(ms)` and `AbortSignal.any([...])` for cancellation (web platform, Node 20+).\n- `await` at the top level of modules (ES2022).\n\n### Use cases\nTest helpers, deferred values, event-to-promise adapters, wrapping library functions that may be sync or async, and reading streams into arrays.",
+      "keyPoints": [
+        "Promise.withResolvers returns { promise, resolve, reject } without an executor closure.",
+        "Promise.try turns synchronous throws into rejections and runs the function immediately.",
+        "Array.fromAsync collects async iterables into an array, awaiting sequentially.",
+        "All three are available in Node 24 and current evergreen browsers.",
+        "AbortSignal.timeout complements them for cancellation."
+      ],
+      "pitfalls": [
+        "Promise.try calls the function synchronously, unlike Promise.resolve().then(fn).",
+        "Array.fromAsync is sequential; use Promise.all for parallel awaiting."
+      ],
+      "examples": [
+        {
+          "title": "Deferred, try and fromAsync",
+          "language": "javascript",
+          "code": "const sleep = (ms) => new Promise(r => setTimeout(r, ms));\n(async () => {\n  const { promise, resolve } = Promise.withResolvers();\n  setTimeout(() => resolve('event happened'), 5);\n  console.log(await promise);\n\n  const risky = (n) => { if (n < 0) throw new Error('negative'); return n * 2; };\n  console.log(await Promise.try(risky, 4));\n  console.log(await Promise.try(risky, -1).catch(e => 'caught: ' + e.message));\n  console.log(await Promise.try(async () => 'async result'));\n  let order = [];\n  const p = Promise.try(() => { order.push('fn ran'); return 1; });\n  order.push('after call');\n  await p;\n  console.log(order);\n\n  async function* ticks() { for (let i = 1; i <= 3; i++) { await sleep(2); yield i; } }\n  console.log(await Array.fromAsync(ticks()), await Array.fromAsync(ticks(), x => x * 10));\n  console.log(await Array.fromAsync([Promise.resolve('a'), 'b']));\n})();",
+          "explanation": "Three helpers in one script."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What problem does Promise.try solve?",
+          "a": "It lets you start a function that may be sync or async and always get a promise, with synchronous exceptions converted to rejections, while still running the function immediately."
+        },
+        {
+          "q": "How does Array.fromAsync differ from Promise.all?",
+          "a": "fromAsync consumes an async iterable one element at a time; Promise.all awaits an existing array of promises concurrently."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-set-methods",
+      "title": "Set Methods: union, intersection, difference and more (ES2025)",
+      "level": "intermediate",
+      "summary": "Seven new Set methods that finally give set algebra natively, with notes on set-like arguments and support.",
+      "description": "**Support:** ES2025. Node 22+, Chrome 122+, Firefox 127+, Safari 17+.\n\nBefore ES2025 you had to write `new Set([...a].filter(x => b.has(x)))`. Now `Set.prototype` has:\n\n| Method | Returns | Meaning |\n|---|---|---|\n| `a.union(b)` | new Set | in a or b |\n| `a.intersection(b)` | new Set | in both |\n| `a.difference(b)` | new Set | in a but not b |\n| `a.symmetricDifference(b)` | new Set | in exactly one |\n| `a.isSubsetOf(b)` | boolean | every item of a is in b |\n| `a.isSupersetOf(b)` | boolean | a contains every item of b |\n| `a.isDisjointFrom(b)` | boolean | no shared items |\n\n### Details\n- Methods are **non-mutating**; they return a new `Set` and leave both inputs alone.\n- The argument only needs to be **set-like**: an object with `size`, `has()` and `keys()`. A `Map` qualifies (its keys are used), an `Array` does **not** and throws a `TypeError`.\n- The result order follows spec rules (items from `a` first for union; for `intersection` order depends on which set is smaller).\n- Equality is SameValueZero: `NaN` equals `NaN`, objects by reference.\n\n### Use cases\nPermissions (`required.isSubsetOf(granted)`), tag filtering, diffing selected ids, removing duplicates between lists.\n\n### Not included\nThere is no in-place mutation variant (no `unionWith`); use `for (const x of b) a.add(x)` for that.",
+      "keyPoints": [
+        "Seven new methods: union, intersection, difference, symmetricDifference, isSubsetOf, isSupersetOf, isDisjointFrom.",
+        "They return new Sets; they never mutate.",
+        "The argument must be set-like (size, has, keys); arrays are rejected.",
+        "A Map can be passed as a set-like argument.",
+        "Part of ES2025 and available in Node 22+."
+      ],
+      "pitfalls": [
+        "Passing an array throws a TypeError; wrap it with new Set(array).",
+        "Do not depend on exact result ordering of intersection across engines."
+      ],
+      "examples": [
+        {
+          "title": "Set algebra",
+          "language": "javascript",
+          "code": "const frontend = new Set(['html', 'css', 'js']);\nconst backend = new Set(['js', 'sql', 'node']);\nconsole.log(frontend.union(backend));\nconsole.log(frontend.intersection(backend), frontend.difference(backend), frontend.symmetricDifference(backend));\nconst required = new Set(['read']);\nconst granted = new Set(['read', 'write']);\nconsole.log(required.isSubsetOf(granted), granted.isSupersetOf(required), frontend.isDisjointFrom(new Set(['go'])));\nconsole.log(frontend.union(new Map([['rust', 1]])));\ntry { frontend.union(['x']); } catch (e) { console.log(e.name); }\nconsole.log(frontend.union(new Set(['x'])).size, frontend.size);",
+          "explanation": "Runs on Node 22+."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Do the new Set methods mutate the Set?",
+          "a": "No. They return a new Set (or a boolean for the is* methods) and leave the originals unchanged."
+        },
+        {
+          "q": "What does set-like mean for the argument?",
+          "a": "An object with a numeric size property and has() and keys() methods; arrays do not qualify."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-iterator-helpers",
+      "title": "Iterator Helpers: map, filter, take, drop, flatMap, toArray (ES2025)",
+      "level": "advanced",
+      "summary": "Lazy array-like methods on iterators and generators, so you can process infinite or huge sequences without building arrays.",
+      "description": "**Support:** ES2025. Node 22+ (V8 12+), Chrome 122+, Firefox 131+, Safari 18.4+.\n\nArrays have `map` and `filter`, but iterators (generators, `Map.prototype.entries()`, `Set.prototype.values()`...) did not. ES2025 adds a global `Iterator` and these methods on `Iterator.prototype`:\n\n| Method | Returns | Lazy? |\n|---|---|---|\n| `map(fn)`, `filter(fn)` | iterator | yes |\n| `take(n)`, `drop(n)` | iterator | yes |\n| `flatMap(fn)` | iterator (fn returns an iterable) | yes |\n| `toArray()` | array | consumes |\n| `forEach(fn)` | undefined | consumes |\n| `reduce(fn, init)` | value | consumes |\n| `some`, `every`, `find` | boolean / item | stops early |\n| `Iterator.from(x)` | wraps any iterable or iterator | - |\n\n### Why lazy matters\n`naturals().filter(isEven).map(square).take(3).toArray()` processes only as many numbers as needed, even though `naturals()` is infinite. With arrays you would need the whole array first.\n\n### Details\n- Each helper returns a new iterator that is itself iterable and has the helpers, so chains work.\n- Callbacks receive `(value, counter)`.\n- Values are consumed once; an iterator cannot be rewound.\n- `take`, `find`, `some` and `every` call `return()` on the source to release resources.\n- Async iterator helpers are a separate proposal and are **not** available yet.\n- `Iterator` can be extended: `class MyIt extends Iterator { next() {...} }` gains all helpers.",
+      "keyPoints": [
+        "Iterator helpers run lazily and process one item at a time through the chain.",
+        "take and drop let you slice infinite generators.",
+        "toArray, forEach, reduce, some, every and find consume the iterator.",
+        "Iterator.from wraps plain iterators so they gain the helper methods.",
+        "Async iterator helpers are not part of ES2025."
+      ],
+      "pitfalls": [
+        "An iterator is exhausted after one pass; calling toArray twice gives an empty array the second time.",
+        "Helpers are not available on arrays themselves; call arr.values() first."
+      ],
+      "examples": [
+        {
+          "title": "Lazy pipeline over an infinite generator",
+          "language": "javascript",
+          "code": "function* naturals() { let n = 1; while (true) yield n++; }\nconst firstSquaresOfEvens = naturals()\n  .filter((n) => n % 2 === 0)\n  .map((n) => n * n)\n  .take(4)\n  .toArray();\nconsole.log(firstSquaresOfEvens);\n\nconst logged = [];\nconst result = naturals().map((n) => (logged.push(n), n)).drop(2).take(2).toArray();\nconsole.log(result, logged);\n\nconst m = new Map([['a', 1], ['b', 2], ['c', 3]]);\nconsole.log(m.entries().filter(([, v]) => v > 1).map(([k]) => k).toArray());\nconsole.log(new Set([3, 1, 2]).values().reduce((s, x) => s + x, 0));\nconsole.log([10, 20, 30].values().some(x => x > 25), naturals().find(n => n * n > 50));\nconsole.log(Iterator.from({ next() { return this.i++ < 3 ? { value: this.i, done: false } : { done: true }; }, i: 0 }).toArray());\nconsole.log([1, 2].values().flatMap(x => [x, x * 10]).toArray(), typeof Iterator);",
+          "explanation": "Node 22+."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the advantage of iterator helpers over array methods?",
+          "a": "They are lazy: they pull one value at a time, so you can work with infinite generators and avoid creating intermediate arrays."
+        },
+        {
+          "q": "Can you reuse an iterator after toArray()?",
+          "a": "No, iterators are single-pass; after being consumed they are done."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-regexp-modern",
+      "title": "Modern RegExp: v flag, duplicate named groups, inline modifiers, RegExp.escape",
+      "level": "advanced",
+      "summary": "Newer regex features: unicodeSets (v), set subtraction and intersection, duplicate named groups, (?i:) modifiers, and RegExp.escape.",
+      "description": "Regex gained several features after named groups and lookbehind (ES2018). Check engine support in older environments.\n\n| Feature | Version | Node 24 |\n|---|---|---|\n| `d` flag (match indices) | ES2022 | yes |\n| `v` flag (unicodeSets) | ES2024 | yes |\n| Duplicate named groups (in different alternatives) | ES2025 | yes |\n| Inline modifiers `(?i:...)`, `(?-i:...)` | ES2025 | yes |\n| `RegExp.escape(str)` | ES2025 | yes (V8 13.6) |\n\n### The `v` flag\nAn upgrade to `u`. In a character class you can use:\n- **Set subtraction**: `[\\p{L}--[a-z]]` letters except lowercase ASCII.\n- **Intersection**: `[\\p{Script=Greek}&&\\p{Letter}]`.\n- **Nested classes**: `[[a-z]--[aeiou]]` consonants.\n- **String properties** such as `\\p{RGI_Emoji}` (matches whole emoji sequences).\n- Stricter syntax: characters like `(`, `)`, `[`, `{`, `}`, `/`, `-`, `|` must be escaped inside classes.\nYou cannot combine `u` and `v`.\n\n### Duplicate named groups\n`/(?<y>\\d{4})-\\d\\d|\\d\\d-(?<y>\\d{4})/` lets the same name appear in different alternatives; whichever branch matched fills `groups.y`.\n\n### Modifiers\n`(?i:abc)def` makes only `abc` case-insensitive; `(?-i:...)` turns it off inside an `i` regex. Supported flags: `i`, `m`, `s`.\n\n### RegExp.escape\nEscapes text so it can be used literally in a regex: `new RegExp(RegExp.escape(userInput))`. Replaces homemade escapers.\n\n### Also useful\nThe `d` flag gives `match.indices` with start/end positions for every group.",
+      "keyPoints": [
+        "The v flag adds set subtraction (--), intersection (&&) and emoji string properties.",
+        "Duplicate named groups are allowed in separate alternatives.",
+        "(?i:...) applies a flag to only part of a pattern.",
+        "RegExp.escape safely escapes user text for literal matching.",
+        "u and v cannot be used together."
+      ],
+      "pitfalls": [
+        "Under the v flag, unescaped special characters inside classes are syntax errors.",
+        "Older browsers lack v flag, modifiers and RegExp.escape; feature-detect with try/new RegExp."
+      ],
+      "examples": [
+        {
+          "title": "Four modern regex features",
+          "language": "javascript",
+          "code": "console.log(/[\\p{L}--[a-z]]/v.test('a'), /[\\p{L}--[a-z]]/v.test('A'), /[\\p{L}--[a-z]]/v.test('b'));\nconsole.log('hello world'.match(/[[a-z]--[aeiou]]+/gv));\nconsole.log(/^[\\p{Script=Greek}&&\\p{Letter}]+$/v.test('αβγ'));\n\nconst date = /(?<year>\\d{4})-\\d{2}|\\d{2}\\/(?<year>\\d{4})/;\nconsole.log(date.exec('2024-05').groups.year, date.exec('05/2023').groups.year);\n\nconsole.log(/(?i:hello) World/.test('HELLO World'), /(?i:hello) World/.test('HELLO world'));\nconsole.log(/a(?-i:b)c/i.test('AbC'), /a(?-i:b)c/i.test('ABC'));\n\nconst userInput = 'price (USD) [2024] $5.00?';\nconst safe = new RegExp(RegExp.escape(userInput));\nconsole.log(safe.test(userInput), RegExp.escape('a.b'));\n\nconst m = /b(?<second>c)/d.exec('abcd');\nconsole.log(m.indices[0], m.indices.groups.second);",
+          "explanation": "Verified on Node 24."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does the v flag add over u?",
+          "a": "Set operations (subtraction and intersection) inside character classes, nested classes and properties of strings such as emoji sequences, with stricter syntax."
+        },
+        {
+          "q": "Why use RegExp.escape?",
+          "a": "It escapes regex special characters in user-provided text so it matches literally and safely."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-using",
+      "title": "using and Explicit Resource Management",
+      "level": "advanced",
+      "summary": "Automatic cleanup with using and await using, Symbol.dispose, and DisposableStack. Stage 3 proposal, supported in Node 24 and Chrome 134+.",
+      "description": "**Status (be careful):** Explicit Resource Management is a **TC39 Stage 3** proposal at the time of writing, not yet part of the ECMAScript spec. V8 ships it in **Chrome 134+ and Node 24**, and TypeScript 5.2+ and Babel can compile it. Firefox and Safari support is still arriving, so check before using it in browser code.\n\n### The idea\nA `using` declaration disposes a resource automatically when the block ends, whether it ends normally, by `return`, `break` or by throwing, like Python's `with` or C#'s `using`. It replaces `try/finally` boilerplate.\n\n```js\n{\n  using file = openFile();       // calls file[Symbol.dispose]() at block exit\n  await using db = await connect(); // calls db[Symbol.asyncDispose]()\n}\n```\n\n### Pieces\n| Piece | Role |\n|---|---|\n| `Symbol.dispose` | method name for sync cleanup |\n| `Symbol.asyncDispose` | method name for async cleanup (awaited) |\n| `using x = v` | block-scoped, `const`-like binding; `null`/`undefined` allowed |\n| `await using x = v` | async disposal; allowed in async functions and modules |\n| `DisposableStack` / `AsyncDisposableStack` | collect many cleanups: `use()`, `adopt()`, `defer()`, `dispose()` |\n| `SuppressedError` | thrown when disposal fails while another error is propagating |\n\n### Rules\n- Resources dispose in **reverse order** of declaration.\n- The value must have the dispose method, otherwise a `TypeError` is thrown at the declaration.\n- Errors thrown by several disposers are combined into a `SuppressedError`.\n- Great for locks, file handles, DB transactions, timers and temporary state (for example \"disable logging until block end\").",
+      "keyPoints": [
+        "using disposes a resource at the end of its block, even on errors.",
+        "Implement [Symbol.dispose]() or [Symbol.asyncDispose]() on your objects.",
+        "Disposal order is the reverse of declaration order.",
+        "DisposableStack handles dynamic or many resources.",
+        "Stage 3 proposal; works in Node 24 and Chrome 134+, transpile elsewhere."
+      ],
+      "pitfalls": [
+        "Assuming browser-wide support: Firefox and Safari lag behind.",
+        "using is block scoped; use it inside a function or block, not for module-lifetime values."
+      ],
+      "examples": [
+        {
+          "title": "Automatic cleanup in reverse order",
+          "language": "javascript",
+          "code": "const logs = [];\nconst resource = (name) => ({\n  name,\n  [Symbol.dispose]() { logs.push(`dispose ${name}`); },\n});\nfunction work() {\n  using a = resource('A');\n  using b = resource('B');\n  logs.push('working with ' + a.name + b.name);\n  return 'done';\n}\nconsole.log(work(), logs);\n\nlogs.length = 0;\ntry {\n  (function () {\n    using x = resource('X');\n    throw new Error('boom');\n  })();\n} catch (e) { console.log(e.message, logs); }\n\nconst stack = new DisposableStack();\nstack.defer(() => console.log('deferred cleanup'));\nstack.use(resource('S'));\nconsole.log('before dispose');\nstack.dispose();\n(async () => {\n  await using conn = { async [Symbol.asyncDispose]() { await null; console.log('async closed'); } };\n  console.log('using conn');\n})();",
+          "explanation": "Requires Node 24 (V8 13.4+)."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does a using declaration do?",
+          "a": "It calls the object's Symbol.dispose method when the enclosing block exits, in reverse declaration order, even if an error is thrown."
+        },
+        {
+          "q": "What is the standard status of using?",
+          "a": "A Stage 3 TC39 proposal shipped in V8 (Node 24, Chrome 134+); not yet in the ECMAScript spec or all browsers."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-temporal",
+      "title": "Temporal: The Modern Date and Time API",
+      "level": "advanced",
+      "summary": "Overview of Temporal, the immutable replacement for Date with time zones, calendars and exact durations, and how to use it today.",
+      "description": "**Status:** Temporal is a TC39 proposal that has been at **Stage 3** for years. It has started shipping in browsers (Firefox first, then Chromium-based browsers) but is **not available in Node 24** (`typeof Temporal` is `'undefined'`). Check current support on caniuse/MDN, or use the `@js-temporal/polyfill` package. The examples below are therefore view-only.\n\n### Why replace Date?\n`Date` is mutable, zero-based for months, mixes local/UTC confusingly, has no real time-zone support and parses inconsistently. Temporal fixes all of that with **immutable** types and clear naming.\n\n| Type | Represents |\n|---|---|\n| `Temporal.Instant` | exact moment (ns since epoch), no zone |\n| `Temporal.ZonedDateTime` | instant + time zone + calendar (DST-aware) |\n| `Temporal.PlainDate` | calendar date, no time or zone (birthdays) |\n| `Temporal.PlainTime` | wall-clock time |\n| `Temporal.PlainDateTime` | date + time without zone |\n| `Temporal.PlainYearMonth` / `PlainMonthDay` | partial dates |\n| `Temporal.Duration` | length of time (`P1Y2M3DT4H`) |\n| `Temporal.Now` | current instant, zone, plain date |\n\n### Main differences\n- Months are **1-12**.\n- Arithmetic returns new objects: `date.add({ months: 1 })`, `since()`, `until()`, `round()`.\n- Comparisons with `Temporal.PlainDate.compare(a, b)` and `.equals()`.\n- Parsing is strict ISO 8601 (with extensions), so invalid strings throw instead of guessing.\n- Non-Gregorian calendars are supported (`calendar: 'hebrew'`).\n- Time zone transitions (DST) are handled by `ZonedDateTime`, so \"same wall time tomorrow\" is correct.\n\n### Today\nUse `Date` plus `Intl.DateTimeFormat` for simple tasks, a polyfill or library (date-fns, Luxon) for complex time zone logic, and plan migration to Temporal.",
+      "keyPoints": [
+        "Temporal types are immutable and months start at 1.",
+        "Instant is an exact moment; PlainDate has no zone; ZonedDateTime adds time zone and calendar.",
+        "Duration arithmetic and rounding are first-class operations.",
+        "Stage 3 and shipping in some browsers, not in Node 24; use a polyfill if needed.",
+        "Use feature detection: if (typeof Temporal !== 'undefined')."
+      ],
+      "pitfalls": [
+        "Do not assume Temporal exists in your target runtime without feature detection.",
+        "Mixing Temporal types requires explicit conversion (toPlainDate, toZonedDateTime)."
+      ],
+      "examples": [
+        {
+          "title": "Temporal API sketch (view only)",
+          "language": "text",
+          "lang": "javascript",
+          "code": "// Requires a runtime with Temporal (or @js-temporal/polyfill)\nconst today = Temporal.Now.plainDateISO();\nconst launch = Temporal.PlainDate.from('2026-03-15');\nconsole.log(launch.add({ months: 1, days: 10 }).toString());\nconsole.log(today.until(launch, { largestUnit: 'day' }).days);\n\nconst meeting = Temporal.ZonedDateTime.from('2026-03-08T09:00[America/New_York]');\nconsole.log(meeting.add({ days: 1 }).toString());       // keeps 09:00 across DST change\nconsole.log(meeting.withTimeZone('Asia/Kolkata').toString());\n\nconst d = Temporal.Duration.from({ hours: 1, minutes: 90 });\nconsole.log(d.round({ largestUnit: 'hour' }).toString()); // PT2H30M\nconsole.log(Temporal.Instant.from('2026-01-01T00:00:00Z').epochMilliseconds);\n\n// feature detection\nif (typeof Temporal === 'undefined') console.log('Temporal not available here');",
+          "explanation": "Not runnable on Node 24; use browsers that ship Temporal or the polyfill."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why was Temporal created?",
+          "a": "Date is mutable, has confusing zero-based months, weak time zone and parsing support; Temporal provides immutable types, explicit zones and calendars, and precise arithmetic."
+        },
+        {
+          "q": "What is the difference between Instant and ZonedDateTime?",
+          "a": "Instant is an exact point in time without a zone; ZonedDateTime pairs that instant with a time zone and calendar so human-readable fields and DST rules apply."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-import-attributes-tla",
+      "title": "Import Attributes, JSON Modules and Top-level await",
+      "level": "advanced",
+      "summary": "Load JSON with import ... with { type: 'json' }, plus top-level await in modules and dynamic import options.",
+      "description": "### Import attributes (ES2025)\nSyntax: `import data from './config.json' with { type: 'json' };`. The `with { ... }` clause passes **attributes** that tell the host how to treat the module. The standard attribute is `type: 'json'`, which lets you import JSON as a module safely (the response must be JSON, never executed as code).\n\n| Form | Example |\n|---|---|\n| Static import | `import cfg from './cfg.json' with { type: 'json' }` |\n| Dynamic import | `const { default: cfg } = await import('./cfg.json', { with: { type: 'json' } })` |\n| Re-export | `export { default } from './cfg.json' with { type: 'json' }` |\n\n- Node 22+ supports it (Node 20 used the older `assert` keyword, now **removed**). Chrome 123+, Safari 17.2+, Firefox 138+.\n- The JSON default export is a shared, parsed object; mutations affect all importers.\n- CSS modules (`type: 'css'`) exist in some browsers; they are not part of the core language.\n\n### Top-level await (ES2022)\nIn ES modules you can use `await` outside functions:\n\n```js\nconst config = await fetch('/config.json').then(r => r.json());\nexport const api = new Client(config);\n```\n- The module becomes async; modules that import it **wait** for it to finish.\n- It works only in modules (not classic scripts or CommonJS `require`).\n- Great for configuration loading, optional dependencies and database connections; avoid slow awaits on the critical startup path.\n- A rejected top-level await fails the whole module graph.\n\n### Related\n`import.meta.url`, `import.meta.dirname` and `import.meta.filename` (Node 20.11+), and `import.meta.resolve()`.",
+      "keyPoints": [
+        "import x from './f.json' with { type: 'json' } is the standard way to import JSON.",
+        "Dynamic import takes the same attributes in a second argument.",
+        "Top-level await works only in ES modules and delays importers until it resolves.",
+        "Node 20 used assert; modern code must use with.",
+        "Avoid long top-level awaits on startup paths."
+      ],
+      "pitfalls": [
+        "Using the old assert keyword on Node 22+ fails; switch to with.",
+        "Top-level await in a CommonJS file is a SyntaxError."
+      ],
+      "examples": [
+        {
+          "title": "Modules with attributes and TLA",
+          "language": "text",
+          "lang": "javascript",
+          "code": "// config.json  ->  { \"api\": \"https://api.example.com\", \"retries\": 3 }\n\n// main.mjs\nimport config from './config.json' with { type: 'json' };\nconsole.log(config.api, config.retries);\n\n// dynamic import with attributes\nconst { default: same } = await import('./config.json', { with: { type: 'json' } });\nconsole.log(same === config); // true: same module instance\n\n// top-level await: no async wrapper needed\nconst res = await fetch('https://example.com/data.json');\nexport const data = await res.json();\n\n// handy import.meta values (Node 20.11+)\nconsole.log(import.meta.url, import.meta.dirname, import.meta.filename);",
+          "explanation": "Needs real module files (type: module or .mjs)."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you import a JSON file as an ES module?",
+          "a": "import data from './file.json' with { type: 'json' }; the with clause provides the import attribute."
+        },
+        {
+          "q": "What does top-level await do to modules that import the awaiting module?",
+          "a": "They wait until its top-level await completes before they start executing."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-decorators",
+      "title": "Decorators Overview",
+      "level": "advanced",
+      "summary": "What the standard decorator proposal does, the syntax, current support status and the difference from TypeScript's legacy decorators.",
+      "description": "**Status (honest summary):** The standard decorators proposal is **TC39 Stage 3**. TypeScript 5.0+ (without `experimentalDecorators`), Babel (`@babel/plugin-proposal-decorators`) and some bundlers implement it. **Node 24 and most browsers do not run decorators natively**, so the examples below are view-only and need a compiler. Always check the current proposal stage before relying on native support.\n\n### What is a decorator?\nA function that wraps or replaces a class element **at definition time**, written with `@` before the element. It receives the original value and a `context` object and may return a replacement.\n\n```js\nfunction logged(value, context) {\n  if (context.kind === 'method') {\n    return function (...args) { console.log(`call ${context.name}`); return value.apply(this, args); };\n  }\n}\nclass Api { @logged fetchUser(id) { /* ... */ } }\n```\n\n### What can be decorated?\n| Target | `context.kind` | Return |\n|---|---|---|\n| Class | `'class'` | new class or nothing |\n| Method | `'method'` | replacement function |\n| Getter / setter | `'getter'` / `'setter'` | replacement function |\n| Field | `'field'` | initializer wrapper `(initial) => newInitial` |\n| `accessor x` (auto-accessor) | `'accessor'` | `{ get, set, init }` |\n\n`context` also provides `name`, `static`, `private`, `access` and `addInitializer(fn)`. Decorators can take arguments by being factories: `@retry(3)`.\n\n### Differences from legacy TypeScript decorators\nThe old `experimentalDecorators` used a different signature `(target, key, descriptor)` and powered Angular and NestJS. The standard version has no parameter decorators yet, and it is **not** compatible with the legacy one; frameworks migrate gradually.\n\n### Use cases\nLogging, timing, validation, memoization, dependency injection metadata, event binding and reactive state (for example MobX and Lit use decorators heavily).",
+      "keyPoints": [
+        "Decorators are Stage 3 and need a compiler (TypeScript 5+, Babel) today.",
+        "The syntax is @name placed before a class, method, getter, setter, field or accessor.",
+        "A decorator receives (value, context) and can return a replacement.",
+        "Legacy TypeScript decorators (experimentalDecorators) have a different API.",
+        "Decorator factories take arguments, like @retry(3)."
+      ],
+      "pitfalls": [
+        "Mixing legacy and standard decorators in the same project causes confusing errors.",
+        "Decorators are not natively supported in Node 24, so a plain node file with @ fails to parse."
+      ],
+      "examples": [
+        {
+          "title": "A method decorator with a factory (view only)",
+          "language": "text",
+          "lang": "javascript",
+          "code": "function logged(value, context) {\n  if (context.kind !== 'method') throw new TypeError('only methods');\n  return function (...args) {\n    console.log(`-> ${String(context.name)}(${args.join(', ')})`);\n    const result = value.apply(this, args);\n    console.log(`<- ${result}`);\n    return result;\n  };\n}\n\nfunction retry(times) {                       // decorator factory\n  return (value, context) => function (...args) {\n    for (let i = 1; ; i++) {\n      try { return value.apply(this, args); }\n      catch (e) { if (i >= times) throw e; }\n    }\n  };\n}\n\nclass Calculator {\n  @logged\n  add(a, b) { return a + b; }\n\n  @retry(3)\n  flaky() { if (Math.random() < 0.5) throw new Error('fail'); return 'ok'; }\n\n  accessor count = 0;   // auto-accessor, can be decorated too\n}\nnew Calculator().add(2, 3);",
+          "explanation": "Compile with TypeScript 5+ or Babel to run."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What arguments does a standard method decorator receive?",
+          "a": "The original method (value) and a context object describing kind, name, static, private status and utilities such as addInitializer."
+        },
+        {
+          "q": "Can you use decorators in Node.js without a compiler?",
+          "a": "Not natively at the time of writing (Node 24); use TypeScript 5+, Babel or a bundler plugin."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-small-gems",
+      "title": "Small Modern Gems: Error.cause, hasOwn, structuredClone, hashbang, at and more",
+      "level": "intermediate",
+      "summary": "Handy features from ES2019 to ES2025 that are easy to miss: Error cause, Object.hasOwn, structuredClone, findLast, hashbang, AggregateError, Error.isError and more.",
+      "description": "A tour of small but useful features, all runnable on Node 24 unless noted.\n\n| Feature | Version | What it does |\n|---|---|---|\n| `new Error(msg, { cause })` | ES2022 | chain the underlying error |\n| `Object.hasOwn(o, k)` | ES2022 | safe own-property check |\n| `arr.at(-1)`, `str.at(-1)` | ES2022 | negative indexing |\n| Class static blocks, `#x in obj` | ES2022 | advanced class features |\n| `structuredClone(v)` | web platform / Node 17+ | deep copy supporting cycles, Date, Map, Set |\n| `Array.prototype.findLast` | ES2023 | search from the end |\n| Hashbang `#!/usr/bin/env node` | ES2023 | first line allowed in scripts and modules |\n| `str.replaceAll`, `Promise.any`, `AggregateError` | ES2021 | |\n| Logical assignment `??=` | ES2021 | |\n| Numeric separators `1_000` | ES2021 | |\n| `WeakRef`, `FinalizationRegistry` | ES2021 | weak references |\n| `Object.fromEntries`, `flat`, `flatMap`, `trimStart` | ES2019 | |\n| Optional catch binding `catch {}` | ES2019 | |\n| `BigInt`, dynamic `import()`, `?.` / `??` | ES2020 | |\n| `Error.isError(v)` | recent (V8 13.4+) | reliable error brand check across realms |\n| `Float16Array`, `Math.f16round` | ES2025 | half-precision floats |\n| `JSON.rawJSON` | recent | write exact number text into JSON |\n| Duplicate named groups, `Promise.try` | ES2025 | covered in other topics |\n\n### Error cause\nUse `cause` to keep the original error when you add context: `throw new Error('Cannot load profile', { cause: err })`. Logs and DevTools display the chain.\n\n### Not available yet (Node 24)\n`Uint8Array.fromBase64`, `Math.sumPrecise`, `Map.prototype.getOrInsert`, async iterator helpers and `Temporal` are newer additions or proposals; always feature-detect before using them.",
+      "keyPoints": [
+        "Error cause preserves the original exception while adding context.",
+        "Object.hasOwn replaces hasOwnProperty.call and works on null-prototype objects.",
+        "structuredClone is the built-in deep clone.",
+        "findLast, at, and replaceAll round out the standard library.",
+        "A hashbang line lets scripts be run directly as CLI tools."
+      ],
+      "pitfalls": [
+        "structuredClone cannot copy functions or class prototypes.",
+        "Check engine support before using features from the last two years."
+      ],
+      "examples": [
+        {
+          "title": "Quick tour",
+          "language": "javascript",
+          "code": "try {\n  try { JSON.parse('{bad json'); }\n  catch (err) { throw new Error('Config load failed', { cause: err }); }\n} catch (e) {\n  console.log(e.message, '<-', e.cause.name);\n}\nconst dict = Object.create(null); dict.k = 1;\nconsole.log(Object.hasOwn(dict, 'k'), [1, 2, 3].at(-1), 'abc'.at(-2), [1, 2, 3, 4].findLast(n => n % 2 === 1));\nconst copy = structuredClone({ when: new Date(0), tags: new Set(['a']) });\nconsole.log(copy.when.toISOString(), copy.tags.has('a'));\nconsole.log(1_000_000, 10n ** 20n, null ?? 'dflt', [1, [2, [3]]].flat(Infinity));\nPromise.any([Promise.reject(1), Promise.reject(2)]).catch(e => console.log(e.constructor.name, e.errors));\nclass Registry {\n  static #count = 0;\n  static { Registry.ready = true; }\n  #id = ++Registry.#count;\n  static has(o) { return #id in o; }\n}\nconsole.log(Registry.has(new Registry()), Registry.has({}), Registry.ready);\nconsole.log(Error.isError(new TypeError('x')), Error.isError({ message: 'fake' }), Math.f16round(1.337), new Float16Array([1.5, 2.1])[1]);\nconsole.log(JSON.stringify({ big: JSON.rawJSON('12345678901234567890') }));",
+          "explanation": "Several features in one script."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is Error cause used for?",
+          "a": "To attach the original error to a new, more descriptive error, preserving the chain for debugging."
+        },
+        {
+          "q": "Why prefer Object.hasOwn over obj.hasOwnProperty?",
+          "a": "It works for objects without a prototype and cannot be shadowed by an own property named hasOwnProperty."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-latest-unicode-buffers",
+      "title": "Well-formed Strings, Resizable ArrayBuffer, transfer and Atomics.waitAsync",
+      "level": "advanced",
+      "summary": "ES2024 additions for binary and concurrent data: isWellFormed/toWellFormed, resizable and transferable ArrayBuffers, and non-blocking Atomics.waitAsync.",
+      "description": "All features in this topic are **ES2024** and run on Node 22+ and current browsers.\n\n### Well-formed strings\nJavaScript strings are UTF-16; a **lone surrogate** (half of an emoji pair) is invalid Unicode. `str.isWellFormed()` returns `false` if one exists and `str.toWellFormed()` replaces each with U+FFFD. This avoids `URIError` from `encodeURIComponent` and corrupt data when sending text to APIs that require valid Unicode.\n\n### Resizable ArrayBuffer\n`new ArrayBuffer(8, { maxByteLength: 64 })` creates a buffer you can grow with `buf.resize(n)`. Properties: `resizable`, `maxByteLength`. TypedArrays created **without a fixed length** track the buffer (\"length-tracking\"). `SharedArrayBuffer` has the growable equivalent `grow(n)`. Useful for streaming parsers and avoiding copies.\n\n### transfer()\n`buf.transfer(newLength?)` moves the contents into a **new** ArrayBuffer and detaches the old one (its `byteLength` becomes 0, `detached` is `true`). `transferToFixedLength()` returns a non-resizable copy. It makes zero-copy hand-offs between workers explicit and efficient.\n\n### Atomics.waitAsync\n`Atomics.wait` blocks a thread, which is forbidden on the browser main thread. `Atomics.waitAsync(int32Array, index, expected, timeout)` returns `{ async, value }` where `value` is a promise (when `async` is true) that resolves `\"ok\"` after `Atomics.notify`, or `\"timed-out\"`. If the value differs immediately it returns `{ async: false, value: \"not-equal\" }`. It lets the main thread coordinate with workers over `SharedArrayBuffer` without freezing the UI (browsers need cross-origin isolation for SharedArrayBuffer).\n\n### Related\n`Float16Array` and `Math.f16round` (ES2025), `Atomics.pause` is newer and not yet universal.",
+      "keyPoints": [
+        "isWellFormed detects lone surrogates; toWellFormed replaces them with U+FFFD.",
+        "Resizable ArrayBuffer uses maxByteLength and resize().",
+        "transfer() moves data to a new buffer and detaches the original.",
+        "Atomics.waitAsync returns a promise instead of blocking the thread.",
+        "SharedArrayBuffer in browsers needs cross-origin isolation."
+      ],
+      "pitfalls": [
+        "A detached ArrayBuffer cannot be used again; typed array views on it become length 0.",
+        "Resizing shrinks views silently; length-tracking views change length automatically."
+      ],
+      "examples": [
+        {
+          "title": "Buffers, well-formed strings and waitAsync",
+          "language": "javascript",
+          "code": "const bad = 'ok\\uD83D';   // lone high surrogate\nconsole.log(bad.isWellFormed(), bad.toWellFormed().charCodeAt(2).toString(16));\ntry { encodeURIComponent(bad); } catch (e) { console.log(e.name); }\nconsole.log(encodeURIComponent(bad.toWellFormed()));\n\nconst buf = new ArrayBuffer(4, { maxByteLength: 16 });\nconst view = new Uint8Array(buf);          // length-tracking\nconsole.log(buf.resizable, buf.maxByteLength, view.length);\nbuf.resize(12);\nconsole.log(buf.byteLength, view.length);\nview[0] = 42;\nconst moved = buf.transfer();\nconsole.log(buf.detached, buf.byteLength, moved.byteLength, new Uint8Array(moved)[0]);\nconst fixed = moved.transferToFixedLength(6);\nconsole.log(fixed.resizable, fixed.byteLength);\n\nconst sab = new SharedArrayBuffer(8);\nconst ia = new Int32Array(sab);\nconst r = Atomics.waitAsync(ia, 0, 0, 1000);\nconsole.log(r.async);\nr.value.then((v) => console.log('wait result:', v));\nsetTimeout(() => { Atomics.store(ia, 0, 1); Atomics.notify(ia, 0); }, 5);\nconsole.log(Atomics.waitAsync(ia, 1, 99).value);",
+          "explanation": "Node 22+."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does ArrayBuffer.prototype.transfer do?",
+          "a": "It creates a new buffer with the same contents (optionally resized) and detaches the original so it can no longer be used."
+        },
+        {
+          "q": "Why was Atomics.waitAsync added?",
+          "a": "Atomics.wait blocks the thread and is disallowed on the browser main thread; waitAsync returns a promise so the main thread can wait for a worker notification without freezing."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

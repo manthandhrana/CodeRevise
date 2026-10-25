@@ -1,0 +1,222 @@
+{
+  "id": "js-fundamentals",
+  "title": "JavaScript Fundamentals",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-intro-how-it-works",
+      "title": "What is JavaScript and How It Runs",
+      "level": "beginner",
+      "summary": "JavaScript is a single-threaded, interpreted/JIT-compiled language that runs in browsers and in Node.js.",
+      "description": "JavaScript (JS) is the programming language of the web. It runs inside every browser and, with **Node.js**, also on servers and your own machine. It is **dynamically typed** (a variable can hold any type), **single-threaded** (one thing at a time) and **multi-paradigm** (you can write procedural, object-oriented or functional code).\n\n### How the engine runs your code\nEvery browser ships a JavaScript engine (V8 in Chrome and Node, SpiderMonkey in Firefox, JavaScriptCore in Safari). The engine does this:\n\n1. **Parsing** - the lexer breaks the source into tokens, the parser builds an **AST** (abstract syntax tree).\n2. **Compilation** - the AST is turned into bytecode and hot code is optimised by a **JIT** (just-in-time) compiler.\n3. **Execution** - the engine creates an **execution context**, pushes it on the **call stack** and runs it.\n\n### Where data lives\n- **Call stack** - keeps track of which function is running now (LIFO: last in, first out). Primitives and references usually live here.\n- **Heap** - a large memory area for objects, arrays and functions.\n- **Web APIs / event loop** - timers, DOM events and network calls are handled outside the stack and their callbacks are queued (see the Event Loop topic).\n\n### Running JavaScript\n- In a browser: add `<script src=\"app.js\"></script>` or use the DevTools console.\n- In Node.js: `node file.js`.\n- Use `console.log()` to print values while learning.\n\nJavaScript is not Java. The name was a marketing decision; they are different languages. The official standard is **ECMAScript (ES)**, and new versions have been released every year since ES2015.",
+      "keyPoints": [
+        "JS is dynamically typed, single-threaded and has first-class functions",
+        "Engine = parse to AST, compile (JIT), execute using a call stack and heap",
+        "ECMAScript is the standard, JavaScript is the implementation you use",
+        "Same language runs in browsers (with DOM/BOM) and in Node.js (with fs, http...)"
+      ],
+      "pitfalls": [
+        "Java and JavaScript are unrelated languages",
+        "Single-threaded does not mean it cannot do async work - the browser/Node provide that"
+      ],
+      "examples": [
+        {
+          "title": "Your first program",
+          "language": "javascript",
+          "explanation": "console.log prints to the console. The call stack runs these lines from top to bottom.",
+          "code": "console.log(\"Hello, JavaScript!\");\n\nfunction first() {\n  console.log(\"first start\");\n  second();\n  console.log(\"first end\");\n}\nfunction second() {\n  console.log(\"second runs inside first\");\n}\nfirst();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Is JavaScript compiled or interpreted?",
+          "a": "Modern engines do both: they parse to bytecode, interpret it and use a JIT compiler to optimise hot code into machine code at runtime. So it is best described as JIT-compiled."
+        },
+        {
+          "q": "What does single-threaded mean?",
+          "a": "There is only one call stack, so one piece of JavaScript runs at a time. Async work is delegated to the browser or Node and results come back through the event loop."
+        },
+        {
+          "q": "What is the difference between JavaScript and ECMAScript?",
+          "a": "ECMAScript is the language specification (ECMA-262). JavaScript is the implementation of that spec in browsers and Node, plus host APIs like the DOM."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/index.js"
+    },
+    {
+      "id": "js-variables",
+      "title": "Variables: var, let and const",
+      "level": "beginner",
+      "summary": "Variables store values; use const by default, let when reassignment is needed and avoid var.",
+      "description": "A **value** is a piece of data (a number, text, true/false...). A **variable** is a named container that holds a value so you can use it later.\n\n### Declaring variables\n```js\nvar oldWay = 1;      // function scoped, can be redeclared (avoid)\nlet counter = 0;     // block scoped, can be reassigned\nconst PI = 3.14159;  // block scoped, cannot be reassigned\n```\n\n| Feature | `var` | `let` | `const` |\n|---|---|---|---|\n| Scope | function | block | block |\n| Redeclare | yes | no | no |\n| Reassign | yes | yes | no |\n| Hoisted value | `undefined` | TDZ (error) | TDZ (error) |\n\n### Naming rules\n- May contain letters, digits, `_` and `$`.\n- Cannot start with a digit (`123age` is invalid).\n- No spaces or special characters like `@` or `-`.\n- Case sensitive: `age` and `Age` are different.\n- Cannot use reserved words (`class`, `let`, `return`...).\n- Convention: `camelCase` for variables, `UPPER_SNAKE_CASE` for constants, `PascalCase` for classes.\n\n### const does not mean frozen\n`const` stops **re-assignment of the binding**. If it holds an object or array, the contents can still change.\n\n### Best practice\nUse `const` by default. Switch to `let` only if you need to reassign. Do not use `var` in modern code.",
+      "keyPoints": [
+        "const by default, let when you must reassign, avoid var",
+        "let/const are block scoped, var is function scoped",
+        "const prevents re-assignment, not mutation of objects",
+        "Names: letters, digits, _ and $, cannot start with a digit"
+      ],
+      "pitfalls": [
+        "Declaring a global variable without a keyword (x = 5) creates an accidental global",
+        "Using const with an object and expecting it to be immutable",
+        "var inside a loop leaks outside the loop block"
+      ],
+      "examples": [
+        {
+          "title": "Valid names and const mutation",
+          "language": "javascript",
+          "explanation": "const protects the variable binding, not the object it points to.",
+          "code": "var my_firstName = \"John\";\nvar _lastName$ = \"Doe\";\nlet $city = \"New York\";\nconsole.log(my_firstName, _lastName$, $city);\n\nconst user = { name: \"Asha\" };\nuser.name = \"Ravi\";      // allowed - object is mutated\nconsole.log(user);\n\ntry {\n  user = {};             // re-assignment is not allowed\n} catch (e) {\n  console.log(e.name + \": \" + e.message);\n}"
+        },
+        {
+          "title": "var vs let in a block",
+          "language": "javascript",
+          "explanation": "",
+          "code": "if (true) {\n  var a = \"var leaks\";\n  let b = \"let stays inside\";\n}\nconsole.log(a);\ntry {\n  console.log(b);\n} catch (e) {\n  console.log(\"b is not defined here ->\", e.name);\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between var, let and const?",
+          "a": "var is function scoped, hoisted as undefined and can be redeclared. let and const are block scoped and live in the temporal dead zone until declared. const cannot be reassigned."
+        },
+        {
+          "q": "Can we change an object declared with const?",
+          "a": "Yes. const only prevents re-assigning the variable. You can still add, change or delete properties unless you use Object.freeze."
+        },
+        {
+          "q": "What happens if you assign to an undeclared variable?",
+          "a": "In sloppy mode it creates a global variable. In strict mode it throws a ReferenceError."
+        }
+      ],
+      "source": "JS-one-shot/0_variables.js, JS-one-shot/ecmascripts/es2015.js"
+    },
+    {
+      "id": "js-data-types",
+      "title": "Data Types and typeof",
+      "level": "beginner",
+      "summary": "JavaScript has 7 primitive types plus objects; typeof tells you the type of a value.",
+      "description": "Every value in JavaScript has a **type**. There are two groups:\n\n### Primitive types (immutable, copied by value)\n| Type | Example | Notes |\n|---|---|---|\n| `number` | `42`, `3.14`, `NaN`, `Infinity` | one type for ints and floats (64-bit) |\n| `string` | `\"hi\"`, `'hi'`, `` `hi` `` | sequence of UTF-16 characters |\n| `boolean` | `true`, `false` | |\n| `undefined` | `let x;` | variable declared but no value |\n| `null` | `let x = null;` | intentional empty value |\n| `bigint` | `123n` | arbitrary size integers |\n| `symbol` | `Symbol(\"id\")` | unique identifier |\n\n### Non-primitive (reference types)\n`object`, including arrays, functions, dates, maps, sets... They are stored in the heap and variables hold a **reference**.\n\n### typeof operator\n`typeof` returns a string describing the type. Two oddities everyone must know:\n- `typeof null` is `\"object\"` - a historic bug that can never be fixed.\n- `typeof []` is `\"object\"` - use `Array.isArray(value)`.\n- `typeof function(){}` is `\"function\"` (functions are objects, but get their own answer).\n\n### null vs undefined\n- `undefined` - \"no value has been assigned yet\" (the engine's default).\n- `null` - \"there is deliberately no value\" (set by the programmer).\n\nBecause JavaScript is dynamically typed, the same variable can hold a number now and a string later. That is flexible but can cause bugs, so TypeScript is popular for big projects.",
+      "keyPoints": [
+        "7 primitives: number, string, boolean, undefined, null, bigint, symbol",
+        "Everything else is an object (arrays, functions, dates...)",
+        "typeof null === \"object\" is a known historic bug",
+        "Use Array.isArray to detect arrays",
+        "undefined = not assigned, null = intentionally empty"
+      ],
+      "pitfalls": [
+        "typeof on an undeclared variable returns \"undefined\" but reading it throws a ReferenceError",
+        "NaN has type number and is not equal to itself"
+      ],
+      "examples": [
+        {
+          "title": "typeof cheat sheet",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const values = [42, \"hi\", true, undefined, null, 10n, Symbol(\"id\"), {}, [], function () {}, NaN];\nvalues.forEach((v) => console.log(String(typeof v).padEnd(10), \"->\", typeof v === \"symbol\" ? \"Symbol\" : v));\n\nconsole.log(Array.isArray([]), Array.isArray({}));\nconsole.log(null == undefined, null === undefined);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the result of typeof null and why?",
+          "a": "It is \"object\". It is a bug from the first version of JavaScript where null used the same type tag as objects. It is kept for backward compatibility."
+        },
+        {
+          "q": "What are primitive data types?",
+          "a": "number, string, boolean, undefined, null, bigint and symbol. They are immutable and compared/copied by value."
+        },
+        {
+          "q": "Difference between null and undefined?",
+          "a": "undefined means a variable has not been given a value; null is an explicit \"no value\" assigned by the developer. null == undefined is true, null === undefined is false."
+        }
+      ],
+      "source": "JS-one-shot/1_datatypes.js"
+    },
+    {
+      "id": "js-type-coercion",
+      "title": "Type Conversion, Coercion and Truthy/Falsy",
+      "level": "beginner",
+      "summary": "JavaScript silently converts types in expressions; learn the rules so the output never surprises you.",
+      "description": "**Type coercion** is the automatic conversion of a value from one type to another. **Explicit conversion** is when you do it yourself with `Number()`, `String()`, `Boolean()`.\n\n### The + operator\n- If **either** operand is a string, `+` concatenates: `\"5\" + 3` is `\"53\"`.\n- Otherwise it adds numbers.\n- Operators `- * / %` always convert to numbers: `\"9\" - 5` is `4`.\n\n### Conversion rules\n| Value | to Number | to Boolean |\n|---|---|---|\n| `\"\"` | `0` | `false` |\n| `\"12\"` | `12` | `true` |\n| `\"abc\"` | `NaN` | `true` |\n| `null` | `0` | `false` |\n| `undefined` | `NaN` | `false` |\n| `true` / `false` | `1` / `0` | - |\n| `[]` | `0` | `true` |\n\n### Falsy values\nExactly **eight** values are falsy: `false`, `0`, `-0`, `0n`, `\"\"`, `null`, `undefined`, `NaN`. Everything else is **truthy**, including `\"0\"`, `\"false\"`, `[]`, `{}` and `function(){}`.\n\n### Explicit conversions\n```js\nNumber(\"42\");     // 42\n+\"42\";            // 42\nString(42);       // \"42\"\n42 + \"\";          // \"42\"\nBoolean(\"hi\");    // true\n!!\"hi\";           // true (double NOT trick)\n```\n\nPrefer explicit conversion in real code so your intention is clear.",
+      "keyPoints": [
+        "+ concatenates if any side is a string, other math operators convert to numbers",
+        "8 falsy values: false, 0, -0, 0n, \"\", null, undefined, NaN",
+        "Empty array and empty object are truthy",
+        "Use Number(), String(), Boolean() for explicit conversion"
+      ],
+      "pitfalls": [
+        "\"5\" + 3 is \"53\" but \"5\" - 3 is 2",
+        "[] + {} and similar tricks are rarely useful, avoid relying on them",
+        "Number(null) is 0 but Number(undefined) is NaN"
+      ],
+      "examples": [
+        {
+          "title": "Interview coercion puzzles",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(10 + \"20\");        // \"1020\"\nconsole.log(9 - \"5\");          // 4\nconsole.log(\"Java\" + \"Script\");\nconsole.log(true + true);      // 2\nconsole.log(false - true);     // -1\nconsole.log(\"vinod\" - \"thapa\");// NaN\nconsole.log(typeof (\" \" + 0)); // string\nconsole.log(\"20\" + 10 + 10);   // \"201010\"\nconsole.log(10 + 10 + \"20\");   // \"2020\"\nconsole.log(typeof (\"5\" - 3)); // number"
+        },
+        {
+          "title": "Truthy and falsy table",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const samples = [0, \"\", \"0\", [], {}, null, undefined, NaN, -1, \"false\"];\nfor (const s of samples) {\n  console.log(typeof s === \"string\" ? `\"${s}\"` : s, \"=>\", Boolean(s));\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the output of \"5\" + 3 and \"5\" - 3?",
+          "a": "\"53\" and 2. The + operator prefers string concatenation when one side is a string, while - converts both sides to numbers."
+        },
+        {
+          "q": "List the falsy values in JavaScript.",
+          "a": "false, 0, -0, 0n, \"\" (empty string), null, undefined and NaN. Everything else is truthy."
+        },
+        {
+          "q": "What does !!value do?",
+          "a": "The first ! converts value to a boolean and negates it, the second ! negates it back, giving the boolean truthiness of value."
+        }
+      ],
+      "source": "JS-one-shot/2_concat_coercion.js, JS-one-shot/1_datatypes.js"
+    },
+    {
+      "id": "js-parse-nan",
+      "title": "parseInt, parseFloat and NaN",
+      "level": "beginner",
+      "summary": "Convert strings to numbers safely and understand why NaN is never equal to itself.",
+      "description": "### parseInt and parseFloat\nBoth read a string from the left and stop at the first invalid character.\n\n- `parseInt(string, radix)` returns an **integer**. Always pass the radix (usually `10`).\n- `parseFloat(string)` returns a **decimal** number.\n- `Number(string)` is stricter: the **whole** string must be a valid number, otherwise `NaN`.\n\n```js\nparseInt(\"42px\");   // 42\nNumber(\"42px\");     // NaN\nparseInt(\"1.9\");    // 1  (truncates)\nparseFloat(\"1.9\");  // 1.9\nparseInt(\"  123 \"); // 123 (whitespace ignored)\n```\n\n### NaN\n`NaN` means \"Not a Number\". It is the result of an impossible numeric operation such as `\"hello\" / 2` or `parseInt(\"xyz\")`. Strangely, `typeof NaN` is `\"number\"`.\n\n**NaN is not equal to anything, even itself**, so `NaN === NaN` is `false`. To test for it use:\n- `Number.isNaN(value)` - true only for the actual NaN value (recommended).\n- `isNaN(value)` - first converts to number, so `isNaN(\"abc\")` is `true`.\n- `Object.is(value, NaN)`.\n\n### Related checks\n- `Number.isFinite(x)` - false for `Infinity` and `NaN`.\n- `Number.isInteger(x)` - true for whole numbers.\n- `Number.isSafeInteger(x)` - within +/- 2^53 - 1.",
+      "keyPoints": [
+        "parseInt stops at the first invalid char, Number needs a fully valid string",
+        "Always give parseInt a radix: parseInt(s, 10)",
+        "NaN !== NaN, so use Number.isNaN()",
+        "typeof NaN is \"number\""
+      ],
+      "pitfalls": [
+        "[\"1\",\"2\",\"3\"].map(parseInt) gives [1, NaN, NaN] because map passes the index as radix",
+        "Global isNaN(\"abc\") returns true because it coerces first"
+      ],
+      "examples": [
+        {
+          "title": "Parsing and NaN checks",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(parseInt(\"123\"), parseInt(\"42.5\"), parseInt(\"077\"), parseInt(\"xyz\"));\nconsole.log(parseFloat(\"1.9abc\"), Number(\"1.9abc\"));\nconsole.log(NaN === NaN, Number.isNaN(NaN), isNaN(\"vinod\"), Number.isNaN(\"vinod\"));\nconsole.log([\"1\", \"2\", \"3\"].map(parseInt));\nconsole.log([\"1\", \"2\", \"3\"].map(Number));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is NaN === NaN false?",
+          "a": "By the IEEE 754 floating point rule NaN is unordered and never equal to any value, including itself. Use Number.isNaN or Object.is to detect it."
+        },
+        {
+          "q": "Difference between parseInt and Number?",
+          "a": "parseInt reads as many valid leading characters as it can (\"42px\" gives 42). Number requires the entire string to be numeric and returns NaN otherwise."
+        },
+        {
+          "q": "Why does [\"1\",\"2\",\"3\"].map(parseInt) return [1, NaN, NaN]?",
+          "a": "map passes (value, index, array), so parseInt receives the index as its radix: parseInt(\"2\", 1) and parseInt(\"3\", 2) are NaN."
+        }
+      ],
+      "source": "JS-one-shot/1_datatypes.js"
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+{
+ "id": "html-semantics-metadata",
+ "title": "Semantics & Document Metadata",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "html-semantic-elements",
+   "title": "Semantic HTML & Page Layout Elements",
+   "level": "intermediate",
+   "summary": "header, nav, main, section, article, aside, footer describe the role of each part of a page.",
+   "description": "A **semantic** element tells you what its content *is*, not just how it looks. `<div>` and `<span>` are non-semantic; `<header>`, `<nav>` and `<footer>` are semantic.\n\n### Why semantics?\n- **Accessibility** - screen readers can jump between landmarks (nav, main...).\n- **SEO** - search engines understand which part is the main content.\n- **Maintainability** - `<footer>` is easier to find than the 12th `<div class=\"x\">`.\n- **Free default behaviour** - e.g. keyboard and styling support.\n\n### The main layout elements\n| Element | Meaning |\n|---|---|\n| `<header>` | Introductory content / logo / heading of the page or section |\n| `<nav>` | Major navigation links |\n| `<main>` | The dominant content - **only one visible** per page |\n| `<section>` | A thematic group of content, normally with a heading |\n| `<article>` | Self-contained content that makes sense alone (blog post, news item, comment) |\n| `<aside>` | Related but secondary content (sidebar, ads, tips) |\n| `<footer>` | Footer of the page or section (copyright, links) |\n| `<figure>`, `<address>`, `<time>` | More semantics |\n\n### section vs article vs div\n- Could it be syndicated on its own (RSS)? → `article`.\n- A themed chapter with its own heading? → `section`.\n- Only a styling wrapper? → `div`.\n\n### Typical page skeleton\n```\nbody\n ├ header (logo + nav)\n ├ main\n │   ├ article\n │   └ aside\n └ footer\n```\n\nLandmarks like `header` and `footer` map to ARIA roles *banner* and *contentinfo* only when they are direct children of `<body>`.",
+   "keyPoints": [
+    "Semantic elements describe meaning; div/span do not.",
+    "Use one main element per page.",
+    "article = standalone content; section = themed group; aside = secondary.",
+    "Semantics improve accessibility, SEO and maintainability.",
+    "Use div only when no semantic element fits."
+   ],
+   "pitfalls": [
+    "Div soup: replacing all semantic tags with divs and classes.",
+    "Using section as a generic wrapper with no heading.",
+    "Several visible main elements on one page."
+   ],
+   "examples": [
+    {
+     "title": "A semantic page layout",
+     "language": "web",
+     "html": "<header>\n  <h1>🚀 Thapa Tech</h1>\n  <nav><a href=\"#\">Home</a> <a href=\"#\">Courses</a> <a href=\"#\">Contact</a></nav>\n</header>\n<main>\n  <section class=\"hero\">\n    <h2>Learn Web Development</h2>\n    <p>Tutorials, tips and projects in simple language.</p>\n    <button>See my works</button>\n  </section>\n  <article>\n    <h2>Why choose us?</h2>\n    <p>In-depth tutorials, practical examples and hands-on projects.</p>\n  </article>\n  <aside>\n    <h3>Latest video</h3>\n    <p>Building responsive web layouts.</p>\n  </aside>\n</main>\n<footer><p>&copy; 2026 Thapa Tech. All rights reserved.</p></footer>",
+     "css": "body{font-family:sans-serif;margin:0}\nheader{background:#222;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}\nheader nav a{color:#ffb703;margin-left:10px;text-decoration:none}\nmain{display:grid;grid-template-columns:2fr 1fr;gap:12px;padding:12px}\n.hero{grid-column:1/-1;background:#e9f5ff;padding:12px;border-radius:8px}\narticle{background:#f6f6f6;padding:12px;border-radius:8px}\naside{background:#fff7e0;padding:12px;border-radius:8px}\nfooter{background:#222;color:#ccc;padding:8px 16px;text-align:center}",
+     "js": "",
+     "explanation": "Each part uses an element that states its role; CSS Grid lays them out."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is semantic HTML and why use it?",
+     "a": "Using elements that convey meaning (header, nav, main, article...) rather than generic divs. It helps accessibility, SEO and code readability."
+    },
+    {
+     "q": "Difference between article and section?",
+     "a": "article is self-contained, independently distributable content; section is a thematic grouping of content, normally with its own heading."
+    },
+    {
+     "q": "How many main elements can a page have?",
+     "a": "One visible main element per page."
+    },
+    {
+     "q": "Difference between header and head?",
+     "a": "head holds document metadata and is not displayed; header is a visible introductory block of a page or section."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/semantic.html"
+  },
+  {
+   "id": "html-details-summary",
+   "title": "details & summary (Native Accordion)",
+   "level": "intermediate",
+   "summary": "Create expandable/collapsible content with zero JavaScript.",
+   "description": "`<details>` creates a **disclosure widget**: content that the user can open and close. `<summary>` is the always-visible label (the first child).\n\n```html\n<details>\n  <summary>What is HTML?</summary>\n  <p>HTML is the standard markup language for web pages.</p>\n</details>\n```\n\n### Why it is great\n- Works **without JavaScript**.\n- Keyboard accessible (Enter/Space toggles) and announced as expanded/collapsed to screen readers.\n- Perfect for FAQs, \"read more\", filters and advanced options.\n\n### Attributes\n- `open` - starts expanded.\n- `name=\"group\"` - details elements with the same name act as an **exclusive accordion** (opening one closes the others) in modern browsers.\n\n### JavaScript\n- `details.open` gets/sets the state.\n- The `toggle` event fires when it opens or closes.\n\n### Styling\n- The marker is a triangle: style it with `summary::marker`, or hide it with `list-style: none`.\n- You can animate the content with CSS (e.g. `interpolate-size` / `::details-content` in new browsers) or JavaScript.\n\n### When not to use\nDo not hide critical information the user must see, and do not use it for tab interfaces (tabs use ARIA roles).",
+   "keyPoints": [
+    "details = widget; summary = visible clickable label.",
+    "open attribute makes it start expanded.",
+    "Same name attribute makes an exclusive accordion.",
+    "Built-in keyboard and screen reader support.",
+    "toggle event fires on state change."
+   ],
+   "pitfalls": [
+    "Placing something before summary - summary must be the first child.",
+    "Hiding essential content inside collapsed details.",
+    "Removing the marker and giving no visual cue."
+   ],
+   "examples": [
+    {
+     "title": "FAQ accordion without JavaScript",
+     "language": "web",
+     "html": "<details open name=\"faq\">\n  <summary>What is HTML?</summary>\n  <p>HyperText Markup Language - the structure of web pages.</p>\n</details>\n<details name=\"faq\">\n  <summary>Do I need JavaScript for this?</summary>\n  <p>No! Opening and closing is built into the browser.</p>\n</details>\n<details name=\"faq\">\n  <summary>Can only one stay open?</summary>\n  <p>Yes, because all three share name=\"faq\".</p>\n</details>\n<p id=\"log\"></p>",
+     "css": "body{font-family:sans-serif}\ndetails{border:1px solid #ccc;border-radius:8px;padding:8px 12px;margin:6px 0}\nsummary{cursor:pointer;font-weight:bold}",
+     "js": "document.querySelectorAll('details').forEach(function (d) {\n  d.addEventListener('toggle', function () {\n    document.getElementById('log').textContent = d.querySelector('summary').textContent + ' is now ' + (d.open ? 'open' : 'closed');\n  });\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are details and summary used for?",
+     "a": "To create native expand/collapse content: summary is the visible heading, the rest of details is revealed on click."
+    },
+    {
+     "q": "How do you make several details behave like an accordion?",
+     "a": "Give them the same name attribute so opening one closes the others."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-dialog-popover",
+   "title": "dialog & the popover Attribute",
+   "level": "advanced",
+   "summary": "Native modal dialogs with dialog and lightweight popovers with the popover attribute.",
+   "description": "Modals and popups used to need big JavaScript libraries. Modern HTML has them built in.\n\n### The dialog element\n`<dialog>` is a box that can be shown **modally** or non-modally.\n\n```js\ndialog.showModal(); // modal: blocks the page, adds a ::backdrop, traps focus, Esc closes\ndialog.show();      // non-modal\ndialog.close(\"ok\"); // closes, sets dialog.returnValue\n```\n\nBenefits of `showModal()`: focus is moved into the dialog, the rest of the page becomes inert, **Esc closes it**, and the dialog sits in the *top layer* (no z-index battles).\n\n### Closing with a form\nA form with `method=\"dialog\"` closes the dialog on submit and puts the button's value in `returnValue`:\n\n```html\n<form method=\"dialog\"><button value=\"cancel\">Cancel</button><button value=\"ok\">OK</button></form>\n```\n\nStyling: `dialog::backdrop { background: rgba(0,0,0,.5) }`.\n\n### The popover attribute\n`popover` turns **any element** into a light-dismiss popup (menus, tooltips, toasts) - no JavaScript:\n\n```html\n<button popovertarget=\"menu\">Open</button>\n<div id=\"menu\" popover>Hello!</div>\n```\n\n- `popover=\"auto\"` (default): closes on click outside or Esc and closes other auto popovers.\n- `popover=\"manual\"`: you control closing.\n- `popovertargetaction=\"show|hide|toggle\"`.\n\nUse **dialog** for decisions that must block the page and **popover** for non-blocking floating UI.",
+   "keyPoints": [
+    "dialog.showModal() gives a modal with backdrop, focus trapping and Esc.",
+    "form method=\"dialog\" closes the dialog and sets returnValue.",
+    "popover + popovertarget creates popups without JS.",
+    "Both render in the top layer - no z-index issues.",
+    "Use dialog for blocking tasks, popover for light UI."
+   ],
+   "pitfalls": [
+    "Using the open attribute directly instead of showModal() - no backdrop or focus trap.",
+    "Forgetting an accessible name (aria-labelledby) on the dialog.",
+    "Using a popover for important confirmations."
+   ],
+   "examples": [
+    {
+     "title": "Modal dialog and popover",
+     "language": "web",
+     "html": "<button id=\"open\">Open modal dialog</button>\n<dialog id=\"dlg\" aria-labelledby=\"t\">\n  <h3 id=\"t\">Delete this file?</h3>\n  <p>This action cannot be undone.</p>\n  <form method=\"dialog\">\n    <button value=\"cancel\">Cancel</button>\n    <button value=\"ok\">Yes, delete</button>\n  </form>\n</dialog>\n<p id=\"res\">Result: -</p>\n<hr>\n<button popovertarget=\"tip\">Show popover</button>\n<div id=\"tip\" popover>👋 I am a popover. Click outside or press Esc.</div>",
+     "css": "body{font-family:sans-serif}\ndialog{border:none;border-radius:12px;padding:20px;box-shadow:0 10px 40px #0005}\ndialog::backdrop{background:rgba(0,0,0,.45)}\n[popover]{padding:12px;border-radius:8px;border:1px solid #ccc}",
+     "js": "var dlg = document.getElementById('dlg');\ndocument.getElementById('open').addEventListener('click', function () { dlg.showModal(); });\ndlg.addEventListener('close', function () {\n  document.getElementById('res').textContent = 'Result: ' + (dlg.returnValue || 'closed with Esc');\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between dialog.show() and dialog.showModal()?",
+     "a": "showModal makes it modal: backdrop, focus trapped, rest of page inert, Esc closes. show() is non-modal."
+    },
+    {
+     "q": "What is the popover attribute?",
+     "a": "A global attribute that makes an element a top-layer popup toggled by a button with popovertarget, with light dismiss and no JavaScript."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-head-metadata",
+   "title": "The head: title, meta, link, base, style, script",
+   "level": "intermediate",
+   "summary": "Everything that goes inside head and what each element does.",
+   "description": "The `<head>` holds metadata - data *about* the page. Order matters a little: put `charset` first.\n\n### Elements allowed in head\n| Element | Purpose |\n|---|---|\n| `<title>` | Page title (tab, bookmarks, search result headline). **Required** |\n| `<meta charset=\"UTF-8\">` | Character encoding - within the first 1024 bytes |\n| `<meta name=\"viewport\" ...>` | Responsive scaling on mobile |\n| `<meta name=\"description\">` | Search snippet |\n| `<meta name=\"theme-color\">` | Browser UI colour on mobile |\n| `<link rel=\"stylesheet\" href>` | External CSS |\n| `<link rel=\"icon\" href>` | Favicon |\n| `<link rel=\"canonical\" href>` | Preferred URL for SEO |\n| `<link rel=\"preload / preconnect\">` | Resource hints |\n| `<base href>` | Base URL for all relative links (use carefully) |\n| `<style>` | Internal CSS |\n| `<script>` | JavaScript |\n| `<noscript>` | Fallback when JS is disabled |\n\n### meta http-equiv\n`<meta http-equiv=\"refresh\" content=\"5;url=/new\">` redirects - avoid; use server redirects.\n\n### Favicons and manifests\n`<link rel=\"icon\" href=\"/favicon.ico\" sizes=\"any\">`, `<link rel=\"apple-touch-icon\">` and `<link rel=\"manifest\" href=\"/site.webmanifest\">` for PWA info.\n\n### A good head template\nCharset → viewport → title → description → canonical → icons → CSS → scripts (with `defer`).",
+   "keyPoints": [
+    "title is required; keep it unique per page.",
+    "meta charset should be first, ideally in the first 1024 bytes.",
+    "link connects CSS, icons, canonical URL and hints.",
+    "Use script with defer in the head to avoid blocking.",
+    "base changes how ALL relative URLs resolve - use rarely."
+   ],
+   "pitfalls": [
+    "Same title on every page.",
+    "Placing meta charset after other content.",
+    "Using http-equiv refresh for redirects."
+   ],
+   "examples": [
+    {
+     "title": "A well-organised head",
+     "language": "text",
+     "code": "<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n  <title>CodeRevise - Learn HTML Fast</title>\n  <meta name=\"description\" content=\"Revise HTML from basics to advanced with examples.\" />\n  <meta name=\"theme-color\" content=\"#e34c26\" />\n  <link rel=\"canonical\" href=\"https://example.com/html\" />\n  <link rel=\"icon\" href=\"/favicon.svg\" type=\"image/svg+xml\" />\n  <link rel=\"stylesheet\" href=\"/css/main.css\" />\n  <script src=\"/js/app.js\" defer></script>\n</head>",
+     "explanation": ""
+    },
+    {
+     "title": "Reading head info with JavaScript",
+     "language": "web",
+     "html": "<h3>Document head info</h3><ul id=\"o\"></ul>",
+     "css": "body{font-family:sans-serif}",
+     "js": "document.title = 'Changed from JS';\nvar m = document.createElement('meta'); m.name = 'description'; m.content = 'Added dynamically'; document.head.appendChild(m);\nvar lines = ['title = ' + document.title,\n  'meta tags = ' + document.getElementsByTagName('meta').length,\n  'description = ' + document.querySelector('meta[name=description]').content];\nlines.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; document.getElementById('o').appendChild(li); });",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Which element in head is mandatory?",
+     "a": "The title element."
+    },
+    {
+     "q": "What does <link rel=\"canonical\"> do?",
+     "a": "It tells search engines which URL is the preferred version of a page, avoiding duplicate content."
+    },
+    {
+     "q": "What does the base element do?",
+     "a": "It sets the base URL against which all relative URLs on the page are resolved."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/seo.html"
+  },
+  {
+   "id": "html-seo-meta-tags",
+   "title": "SEO Basics & Meta Tags",
+   "level": "intermediate",
+   "summary": "Help search engines understand and rank a page: title, description, headings, alt text and robots.",
+   "description": "**SEO** (Search Engine Optimization) is making your pages easy for search engines to find, understand and show. HTML does a large part of it.\n\n### The top on-page items\n1. **`<title>`** - unique, descriptive, ~50-60 characters, keyword near the start.\n2. **`<meta name=\"description\">`** - a ~150-160 character summary shown under the title in results. It does not rank directly but boosts click-through.\n3. **One `<h1>`** with a clear heading hierarchy below.\n4. **Image `alt` text** and compressed images.\n5. **Semantic HTML** and descriptive link text.\n6. **Open Graph tags** for social sharing (next topic).\n\n### Meta robots\n`<meta name=\"robots\" content=\"index, follow\">` is the default. Use `noindex` to keep a page out of search results and `nofollow` to not follow its links. Per-link control: `rel=\"nofollow\"`.\n\n### meta keywords\n`<meta name=\"keywords\">` is **ignored by Google** today. It is harmless but pointless.\n\n### More SEO factors\n| Area | Tip |\n|---|---|\n| Content | Original, useful, matches search intent |\n| URLs | Short, readable, hyphen separated |\n| Mobile | Responsive layout + viewport meta |\n| Speed | Optimised images, defer scripts, fewer requests |\n| Links | Internal links to related pages, quality external links |\n| Structure | `canonical`, sitemap.xml, robots.txt, structured data |\n\nGood HTML cannot replace good content - it simply removes obstacles.",
+   "keyPoints": [
+    "A unique title and description per page are the basics.",
+    "One h1 and a clear heading hierarchy.",
+    "alt text, semantic HTML and compressed images help.",
+    "robots meta controls indexing; keywords meta is ignored.",
+    "Mobile friendliness and speed are ranking factors."
+   ],
+   "pitfalls": [
+    "Keyword stuffing in title/description.",
+    "Duplicate titles and descriptions across pages.",
+    "Accidentally leaving noindex on production pages."
+   ],
+   "examples": [
+    {
+     "title": "SEO-ready head and body start",
+     "language": "text",
+     "code": "<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Learn Web Development - Free Tutorials | Thapa Technical</title>\n  <meta name=\"description\" content=\"Learn front-end and back-end web development with simple tutorials, tips and projects in Hindi.\">\n  <meta name=\"author\" content=\"Thapa Technical\">\n  <meta name=\"robots\" content=\"index, follow\">\n  <link rel=\"canonical\" href=\"https://example.com/\">\n</head>\n<body>\n  <h1>Welcome to Thapa Technical - Your Web Development Learning Hub</h1>\n  <img src=\"hero.webp\" alt=\"Student building a website with HTML\" width=\"800\" height=\"400\">\n</body>",
+     "explanation": ""
+    },
+    {
+     "title": "How a search result looks (concept)",
+     "language": "web",
+     "html": "<div class=\"serp\">\n  <div class=\"url\">https://example.com › html-course</div>\n  <div class=\"t\">Learn Web Development - Free Tutorials | Thapa Technical</div>\n  <div class=\"d\">Learn front-end and back-end web development with simple tutorials, tips and projects in Hindi.</div>\n</div>",
+     "css": ".serp{font-family:Arial,sans-serif;max-width:560px}\n.url{color:#188038;font-size:13px}\n.t{color:#1a0dab;font-size:20px;margin:2px 0}\n.d{color:#4d5156;font-size:14px}",
+     "js": "",
+     "explanation": "Your title and meta description become this snippet."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Name the top HTML-related SEO elements.",
+     "a": "title, meta description, a single h1 with proper headings, image alt text, semantic markup, canonical link and structured data."
+    },
+    {
+     "q": "What does <meta name=\"robots\" content=\"noindex, nofollow\"> do?",
+     "a": "It asks search engines not to index the page and not to follow its links."
+    },
+    {
+     "q": "Does the meta keywords tag help ranking?",
+     "a": "No. Major search engines ignore it."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/seo.html"
+  },
+  {
+   "id": "html-open-graph-social",
+   "title": "Open Graph & Twitter Card Meta Tags",
+   "level": "intermediate",
+   "summary": "Control how your page looks when shared on WhatsApp, Facebook, LinkedIn and X.",
+   "description": "When someone pastes your URL into WhatsApp, Slack, LinkedIn or Facebook, the app fetches the page and reads **Open Graph** meta tags to build a preview card (title, description, image).\n\n### Essential Open Graph tags\n```html\n<meta property=\"og:title\" content=\"CodeRevise - Learn HTML Fast\">\n<meta property=\"og:description\" content=\"Revise HTML from basics to advanced.\">\n<meta property=\"og:image\" content=\"https://example.com/cover.jpg\">\n<meta property=\"og:url\" content=\"https://example.com/html\">\n<meta property=\"og:type\" content=\"website\">\n<meta property=\"og:site_name\" content=\"CodeRevise\">\n```\n\nNotice they use **`property`**, not `name`.\n\n### Twitter / X cards\n```html\n<meta name=\"twitter:card\" content=\"summary_large_image\">\n<meta name=\"twitter:title\" content=\"...\">\n<meta name=\"twitter:image\" content=\"https://example.com/cover.jpg\">\n```\nIf Twitter tags are missing, X falls back to Open Graph.\n\n### Image tips\n- Use an **absolute URL** (https://...).\n- Recommended size ~ 1200x630 px (1.91:1).\n- Keep under ~5 MB; JPG/PNG are the safest.\n- Add `og:image:alt` for accessibility.\n\n### Testing\nSocial platforms cache previews. Use their debugger tools (Facebook Sharing Debugger, LinkedIn Post Inspector) to refresh.\n\n### og:type values\n`website`, `article`, `video.movie`, `profile`, `product`...",
+   "keyPoints": [
+    "Open Graph uses meta property=\"og:...\" tags.",
+    "og:title, og:description, og:image, og:url are the core four.",
+    "Use absolute https URLs and ~1200x630 images.",
+    "twitter:card selects the X card layout.",
+    "Platforms cache previews - use debuggers to refresh."
+   ],
+   "pitfalls": [
+    "Using a relative path for og:image.",
+    "Using name instead of property for og tags.",
+    "Changing the image but not clearing the platform cache."
+   ],
+   "examples": [
+    {
+     "title": "Social meta tags in head",
+     "language": "text",
+     "code": "<head>\n  <title>CodeRevise - Learn HTML Fast</title>\n  <meta property=\"og:type\" content=\"website\">\n  <meta property=\"og:title\" content=\"CodeRevise - Learn HTML Fast\">\n  <meta property=\"og:description\" content=\"Revise HTML from basics to advanced with runnable examples.\">\n  <meta property=\"og:image\" content=\"https://example.com/images/cover-1200x630.jpg\">\n  <meta property=\"og:image:alt\" content=\"HTML logo on an orange background\">\n  <meta property=\"og:url\" content=\"https://example.com/html\">\n  <meta name=\"twitter:card\" content=\"summary_large_image\">\n</head>",
+     "explanation": ""
+    },
+    {
+     "title": "How a link preview card looks (concept)",
+     "language": "web",
+     "html": "<div class=\"card\">\n  <div class=\"img\">🧡 HTML</div>\n  <div class=\"meta\">\n    <small>EXAMPLE.COM</small>\n    <strong>CodeRevise - Learn HTML Fast</strong>\n    <span>Revise HTML from basics to advanced with runnable examples.</span>\n  </div>\n</div>",
+     "css": ".card{max-width:380px;border:1px solid #ccc;border-radius:10px;overflow:hidden;font-family:sans-serif}\n.img{background:#e34c26;color:#fff;font-size:34px;height:120px;display:flex;align-items:center;justify-content:center}\n.meta{padding:10px;display:flex;flex-direction:column;gap:3px}\nsmall{color:#666}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is Open Graph?",
+     "a": "A protocol (created by Facebook) using meta property=\"og:*\" tags so sites can control how a page appears when shared on social platforms."
+    },
+    {
+     "q": "Which four OG tags are essential?",
+     "a": "og:title, og:description, og:image and og:url."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-viewport-lang-dir",
+   "title": "Viewport, Language & Text Direction",
+   "level": "intermediate",
+   "summary": "Make pages scale properly on phones and declare language and direction for global audiences.",
+   "description": "### Responsive viewport meta\nMobile browsers pretend to be ~980px wide and shrink the page unless you tell them otherwise:\n\n```html\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n```\n\n- `width=device-width` - use the real device width.\n- `initial-scale=1.0` - 100% zoom at load.\n- Do **not** add `user-scalable=no` or `maximum-scale=1` - it blocks zoom and harms accessibility.\n\nWithout it, your CSS media queries do not behave as expected on phones.\n\n### Language: lang attribute\n`<html lang=\"hi\">` sets the page language. Why it matters:\n- Screen readers use the correct pronunciation.\n- Browsers offer the right translation and spell checking, hyphenation.\n- Search engines serve the right audience.\n\nYou can override on any element: `<p lang=\"fr\">Bonjour</p>`. Use BCP 47 codes: `en`, `en-US`, `hi`, `ar`, `zh-Hans`.\n\n### Text direction: dir\n`dir=\"ltr\"` (left-to-right), `dir=\"rtl\"` (Arabic, Hebrew) or `dir=\"auto\"`. `<bdi>` and `<bdo>` isolate or override direction for inline text.\n\n### Multi-language sites\n- `<link rel=\"alternate\" hreflang=\"hi\" href=\"/hi/\">` tells search engines about translated versions.\n- Always save the file as **UTF-8** and keep `<meta charset=\"UTF-8\">` so Devanagari, Arabic or emoji render correctly.\n\nThe course sample page is written entirely in Hindi using `lang=\"hi\"`.",
+   "keyPoints": [
+    "viewport meta with width=device-width is required for responsive design.",
+    "Never disable user zoom.",
+    "lang on html helps screen readers, translation and SEO.",
+    "dir=\"rtl\" supports right-to-left languages.",
+    "Use UTF-8 for multilingual text."
+   ],
+   "pitfalls": [
+    "Missing viewport meta - the page looks tiny on phones.",
+    "lang=\"en\" on a Hindi page - screen reader mispronounces text.",
+    "Saving the file in a non-UTF-8 encoding."
+   ],
+   "examples": [
+    {
+     "title": "Hindi and RTL text",
+     "language": "web",
+     "html": "<p lang=\"en\">English: Welcome to my website</p>\n<p lang=\"hi\">हिन्दी: मेरी वेबसाइट में आपका स्वागत है</p>\n<p lang=\"ar\" dir=\"rtl\">العربية: مرحبا بكم في موقعي</p>\n<p>User comment direction auto: <bdi>مرحبا</bdi> said hello</p>",
+     "css": "body{font-family:sans-serif;line-height:1.8}\np{background:#f5f5f5;padding:6px 10px;border-radius:6px}",
+     "js": "",
+     "explanation": "The Arabic line flows right-to-left because of dir=\"rtl\"."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why do we need the viewport meta tag?",
+     "a": "Without it mobile browsers render at a wide virtual width and zoom out; width=device-width makes the layout match the device width."
+    },
+    {
+     "q": "Why set lang on the html element?",
+     "a": "For screen reader pronunciation, translation tools, spell checking and search engine targeting."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/langHindi.html"
+  }
+ ]
+}

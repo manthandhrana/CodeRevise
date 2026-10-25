@@ -1,0 +1,847 @@
+{
+  "id": "js-err-messages",
+  "title": "Error Messages Decoder",
+  "level": "intermediate",
+  "topics": [
+    {
+      "source": "",
+      "pitfalls": [
+        "?. only protects one hop: a?.b.c still throws if b is undefined - write a?.b?.c.",
+        "Wrapping the whole thing in try/catch hides the missing data instead of fixing the flow."
+      ],
+      "id": "js-err-msg-cannot-read",
+      "title": "\"Cannot read properties of undefined (reading 'x')\"",
+      "level": "beginner",
+      "summary": "The #1 JavaScript error: you used a dot or bracket on undefined or null. Learn every variant and the fixes.",
+      "description": "This is the most common runtime error. JavaScript tried to **read** (or **set**) a property on a value that is `undefined` or `null`, and those two values have no properties at all.\n\n| Message (Chrome / Node 16+) | Why | Fix |\n|---|---|---|\n| `Cannot read properties of undefined (reading 'name')` | `user.name` where `user` is `undefined` | check `user` first, or `user?.name` |\n| `Cannot read properties of null (reading 'value')` | `document.getElementById(\"x\").value`, element not found | run script after DOM loads; null-check |\n| `Cannot set properties of undefined (setting 'x')` | `obj.a.x = 1` where `obj.a` is undefined | create `obj.a = {}` first |\n| `Cannot destructure property 'a' of 'undefined' as it is undefined.` | `const {a} = undefined` or a function called without its object argument | default value `= {}` |\n| `Cannot read properties of undefined (reading '0')` | `arr[0]` on undefined | `arr?.[0]` |\n| `Cannot read private member #p from an object whose class did not declare it` | `#p` read on a wrong object | call with the correct `this` |\n\n**Older / other engines say the same thing differently**: old Chrome/Node ≤ 14 `Cannot read property 'x' of undefined`; Firefox `obj is undefined` / `can't access property \"x\", obj is undefined`; Safari `undefined is not an object (evaluating 'obj.x')`.\n\n### How to read it\nThe word in parentheses is the **property you tried to read**, not the variable that is undefined. In `a.b.c.d` with message \"reading 'c'\", the broken value is `a.b`. Use the stack trace line number, then log each link of the chain.\n\n### Common causes\n- Data from an API has not arrived yet (first render before `fetch` finishes).\n- Misspelled property so the previous step returned `undefined`.\n- Function without `return` (returns `undefined`) whose result is chained.\n- `querySelector` / `getElementById` returned `null`.\n- Array method result like `find()` returning `undefined`.\n\n### Prevention\nOptional chaining `a?.b?.c`, defaults `const {a = 1} = obj ?? {}`, early return guards, and validating JSON from servers.",
+      "keyPoints": [
+        "The property name in the message is what you tried to read; the undefined value is the thing BEFORE the dot.",
+        "undefined/null have no properties, so any .x or [x] on them throws.",
+        "Fix with optional chaining (?.), default values (??, = {}) and guard clauses.",
+        "Typical sources: async data not loaded, find() miss, querySelector null, missing return.",
+        "Older engines word it \"Cannot read property 'x' of undefined\" - same bug."
+      ],
+      "examples": [
+        {
+          "title": "Trigger and fix every variant",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst config = {};\nshow(() => config.db.host);                 // reading 'host'\nshow(() => { config.db.port = 5432; });     // setting 'port'\nshow(() => null.length);\nshow(() => [][0].id);                       // reading 'id'\nshow(() => { const { a } = undefined; });\nshow(() => { function greet({ name }) {} greet(); });\n\n// Fixes\nconsole.log(config.db?.host);               // undefined\nconfig.db ??= {};                           // create when missing\nconfig.db.port = 5432;\nconsole.log(config.db.port);\nfunction greet({ name = \"guest\" } = {}) { return \"hi \" + name; }\nconsole.log(greet());",
+          "explanation": ""
+        },
+        {
+          "title": "Which value is the culprit?",
+          "language": "javascript",
+          "code": "const data = { user: { profile: null } };\ntry {\n  console.log(data.user.profile.email);\n} catch (e) {\n  console.log(e.message);\n  // \"reading 'email'\" -> data.user.profile is the null one\n  console.log(\"profile is\", data.user.profile);\n}\nconsole.log(data.user.profile?.email ?? \"no email\");",
+          "explanation": ""
+        },
+        {
+          "title": "Async data not loaded yet",
+          "language": "javascript",
+          "code": "let state = { items: undefined };\nfunction renderCount() { return state.items.length; }\ntry { renderCount(); } catch (e) { console.log(\"before load:\", e.message); }\n\nstate = { items: [1, 2, 3] };\nconsole.log(\"after load:\", renderCount());\n\nconst safeCount = () => state.items?.length ?? 0;\nstate = { items: undefined };\nconsole.log(\"safe:\", safeCount());",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Cannot read properties of undefined (reading 'x')\" mean?",
+          "a": "You accessed property x on a value that is undefined. The undefined value is the expression before the dot; x is the property you tried to read."
+        },
+        {
+          "q": "How do you prevent it?",
+          "a": "Use optional chaining (a?.b), default values (?? or = {}), guard clauses, and make sure asynchronous data exists before reading it."
+        },
+        {
+          "q": "Why is optional chaining not always enough?",
+          "a": "It short-circuits only at the place you put it. a?.b.c still throws if b is undefined, so every nullable link needs its own ?."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "document.querySelectorAll(...).map is not a function - NodeList has forEach but not map; use Array.from first.",
+        "fetch(url).json() fails because fetch returns a Promise; await it first."
+      ],
+      "id": "js-err-msg-not-a-function",
+      "title": "\"x is not a function\" and \"x is not a constructor\"",
+      "level": "beginner",
+      "summary": "You called something that is not callable - or used new on something that cannot be constructed.",
+      "description": "**\"x is not a function\"** appears when you put `()` after a value that is not a function. **\"x is not a constructor\"** appears when you use `new` on something that cannot be constructed (arrow functions, methods, `Math.max`, objects).\n\nThe text before \"is not a function\" is a copy of the **source expression**, which makes it easy to locate.\n\n| Message | Why | Fix |\n|---|---|---|\n| `obj.go is not a function` | method missing, misspelled or undefined | check name / spelling / that the object is what you expect |\n| `f is not a function` | `f` is a number, string, object, `undefined` | check what was assigned to `f` |\n| `\"abc\".push is not a function` | wrong type: `push` is an array method | use the right type or `split(\"\")` |\n| `data.map is not a function` | `data` is an object / `undefined`, not an array | `Array.isArray`, `Object.values(data).map` |\n| `number 3 is not a function` | passed a non-function as callback: `[1].map(3)` | pass `x => ...` |\n| `undefined is not a function` | calling an expression result of undefined (e.g. `undefined()`, bad `callback`) | default no-op `callback = () => {}` |\n| `(intermediate value)(...) is not a function` | missing semicolon before `(` on the next line | add `;` |\n| `f is not a constructor` | `new` on an arrow function, method, `Math.max` | use `function` / `class` |\n| `Class extends value 5 is not a constructor or null` | `class B extends 5`, wrong import | extend a real class |\n| `Promise resolver undefined is not a function` | `new Promise()` without executor | pass `(resolve, reject) => ...` |\n\n### Typical causes\n- Module import mismatch: `import fn from \"./x\"` when it was a **named** export (you got `undefined`), or a circular import that is not ready yet.\n- Calling an **array method on a NodeList / object** or a Promise (`fetch(url).json()` - forgot `await`).\n- Overwriting a function with a variable of the same name (`let name = ...` shadows).\n- Missing semicolon before an IIFE or template line.\n- Calling `this.method` with a lost `this`.\n\n### Debug trick\n`console.log(typeof thing)` right before the call, and `console.log(Object.keys(obj))` to see the real methods.",
+      "keyPoints": [
+        "The text before \"is not a function\" is the exact expression you called.",
+        "Check typeof, the import style (default vs named) and whether you forgot await.",
+        "Arrow functions, object methods and built-in functions are not constructors.",
+        "A missing semicolon before ( can turn two statements into one call.",
+        "Give callbacks a default (callback = () => {}) when they are optional."
+      ],
+      "examples": [
+        {
+          "title": "Trigger the family",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst user = { name: \"Asha\" };\nshow(() => user.save());\nshow(() => { const total = 5; total(); });\nshow(() => \"text\".push(\"x\"));\nshow(() => [1, 2].map(3));\nshow(() => undefined());\nshow(() => { const arrow = () => {}; new arrow(); });\nshow(() => new Math.max(1, 2));\nshow(() => { class B extends 5 {} });\nshow(() => new Promise());\nshow(() => Promise.resolve(1).json());",
+          "explanation": ""
+        },
+        {
+          "title": "Missing semicolon surprise",
+          "language": "javascript",
+          "code": "const a = 1\nconst b = 2\nconst result = (function () {\n  return \"iife ran\";\n})\n// next line starts with ( -> parsed as a call on the previous expression!\ntry {\n  eval(\"var x = 5\\n(function(){ return 1 })()\");\n} catch (e) { console.log(e.name + \": \" + e.message); }\nconsole.log(result());",
+          "explanation": "Without the semicolon, 5(function(){...}) is parsed as a call."
+        },
+        {
+          "title": "Defensive calls",
+          "language": "javascript",
+          "code": "function run(callback = () => {}) { return callback(); }\nconsole.log(run());                       // undefined (no-op)\nconsole.log(run(() => \"custom\"));\n\nfunction safeCall(fn, ...args) {\n  if (typeof fn !== \"function\") throw new TypeError(\"expected a function, got \" + typeof fn);\n  return fn(...args);\n}\ntry { safeCall(\"nope\"); } catch (e) { console.log(e.message); }\nconsole.log(safeCall(Math.max, 1, 9, 3));\nconst handlers = { onSave: undefined };\nconsole.log(handlers.onSave?.());         // optional call -> undefined",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does querySelectorAll(\"li\").map fail?",
+          "a": "It returns a NodeList, which has forEach but not map. Convert with Array.from(list) or [...list] first."
+        },
+        {
+          "q": "What can cause \"x is not a constructor\"?",
+          "a": "Using new on an arrow function, a method shorthand, a built-in non-constructor (Math.max) or a wrongly imported value."
+        },
+        {
+          "q": "How does a missing semicolon produce \"is not a function\"?",
+          "a": "A line starting with ( or [ continues the previous expression, so the previous value gets called or indexed."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "A variable declared in a try block with let is invisible in catch/finally.",
+        "Using const in a for loop counter (for (const i = 0; i < 3; i++)) throws on the first increment."
+      ],
+      "id": "js-err-msg-scope",
+      "title": "\"x is not defined\", \"before initialization\" and \"Assignment to constant variable\"",
+      "level": "beginner",
+      "summary": "Scope and declaration errors: missing variables, TDZ access, const reassignment and duplicate declarations.",
+      "description": "These messages all come from **how variables are declared and scoped**.\n\n| Message | Type | Why | Fix |\n|---|---|---|---|\n| `x is not defined` | ReferenceError | no variable `x` visible here (typo, out of scope, missing import/script) | declare/import it, fix spelling |\n| `Cannot access 'x' before initialization` | ReferenceError | TDZ: `let/const/class` used before its line | move declaration up |\n| `Assignment to constant variable.` | TypeError | reassigning a `const` | use `let` or mutate instead |\n| `Identifier 'x' has already been declared` | SyntaxError | `let/const/class` twice in the same scope (or `let` and `var`) | rename / remove |\n| `x is not defined` in strict mode | ReferenceError | assignment to an undeclared name | add `let` |\n| `Missing initializer in const declaration` | SyntaxError | `const a;` | give a value |\n| `Cannot access 'x' before initialization` with a function parameter default | ReferenceError | `function f(a = b, b){}` | reorder parameters |\n\n### \"x is not defined\" - checklist\n1. Is it spelled and cased the same? (JavaScript is case-sensitive: `Total` vs `total`.)\n2. Is the variable declared in an **inner scope** (inside `if`, `for`, a function) and used outside? `let`/`const` are block scoped.\n3. Is the library loaded? `$ is not defined`, `React is not defined`, `axios is not defined` mean the `<script>` is missing, loaded later, or not imported.\n4. Is the code running where the global exists? `window`, `document` (Node), `process`, `require`, `module` (browser / ES modules).\n5. Did the script that defines it fail earlier? One syntax error in a file prevents all its names from existing.\n\n### const does not mean immutable\n`const` fixes the **binding**, not the value: `const arr = []; arr.push(1)` works, `arr = []` throws. Use `Object.freeze` for shallow immutability.\n\n### TDZ in classes and loops\n`class` declarations are not hoisted for use: `new A(); class A {}` throws. The same for `const fn = () => ...` called before its definition, while `function` declarations are fully hoisted.",
+      "keyPoints": [
+        "not defined = no such name in scope; before initialization = name exists but TDZ.",
+        "const cannot be reassigned, but its object can still be mutated.",
+        "Declaring the same let/const name twice in one scope is a SyntaxError at parse time.",
+        "\"$ is not defined\" / \"React is not defined\" means a missing import or script order problem.",
+        "Function declarations are hoisted completely; const/let/class arrow functions are not."
+      ],
+      "examples": [
+        {
+          "title": "Scope errors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => console.log(missing));\nshow(() => { console.log(early); const early = 1; });\nshow(() => { const price = 10; price = 20; });\nshow(() => { const list = []; list.push(1); console.log(\"mutating const array is fine\", list); });\nshow(() => { if (true) { let inner = 1; } console.log(inner); });\nshow(() => { for (const i = 0; i < 2; i++) {} });\nshow(() => new Later());\nclass Later {}",
+          "explanation": "The last line shows a class TDZ: new Later() ran before the class line was reached."
+        },
+        {
+          "title": "Duplicate declarations are parse errors",
+          "language": "javascript",
+          "code": "const snippets = [\n  \"let a = 1; let a = 2;\",\n  \"const b = 1; var b = 2;\",\n  \"function f(x) { let x = 1; }\",\n  \"const c;\",\n  \"let let = 1;\",\n];\nfor (const code of snippets) {\n  try { (0, eval)(code); } catch (e) { console.log(e.name + \": \" + e.message); }\n}",
+          "explanation": ""
+        },
+        {
+          "title": "function vs const hoisting",
+          "language": "javascript",
+          "code": "console.log(declared());          // works: function declarations are hoisted\nfunction declared() { return \"hoisted\"; }\n\ntry { expression(); }              // TDZ\ncatch (e) { console.log(e.name + \": \" + e.message); }\nconst expression = () => \"not hoisted\";\n\nconsole.log(typeof legacy);        // \"undefined\" (var is hoisted, value is not)\nvar legacy = 1;",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between \"x is not defined\" and \"Cannot access x before initialization\"?",
+          "a": "The first means no binding named x exists in scope. The second means the let/const/class binding exists but you read it before the declaration executed (TDZ)."
+        },
+        {
+          "q": "Why does const arr = []; arr.push(1) work?",
+          "a": "const prevents reassigning the variable, not changing the object it points to. Use Object.freeze to block mutations."
+        },
+        {
+          "q": "What does \"$ is not defined\" tell you?",
+          "a": "jQuery (or another library global) is not loaded before your code runs: wrong script order, failed CDN request or missing import."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "const [state, setState] = useCustomHook() fails with \"undefined is not iterable\" when the hook forgot to return an array.",
+        "for (const x of \"abc\") works because strings are iterable - but for (const x of 123) does not."
+      ],
+      "id": "js-err-msg-iterable",
+      "title": "\"x is not iterable\" and \"Cannot convert undefined or null to object\"",
+      "level": "intermediate",
+      "summary": "Errors from spread, for...of, destructuring, Object.keys and friends when given values of the wrong shape.",
+      "description": "Several language features **expect a particular shape** and throw `TypeError` when they do not get it.\n\n### \"x is not iterable\"\n`for...of`, spread `[...x]`, array destructuring `const [a] = x`, `new Map(x)`, `new Set(x)`, `Array.from`, `Promise.all(x)` and `yield*` all require an **iterable** (an object with `[Symbol.iterator]`). Arrays, strings, Maps, Sets and NodeLists are iterable. **Plain objects, numbers, `undefined`, `null` are not.**\n\n### \"Cannot convert undefined or null to object\"\nThrown by `Object.keys/values/entries/assign/freeze/getPrototypeOf` and by object spread in some positions when the argument is `undefined` or `null`.\n\n| Message | Cause | Fix |\n|---|---|---|\n| `o is not iterable` | `for (x of obj)` / `[...obj]` with a plain object | `Object.entries(obj)` or make it iterable |\n| `undefined is not iterable (cannot read property Symbol(Symbol.iterator))` | `const [a, b] = undefined` (e.g. React `useState` returned nothing; function returned nothing) | return an array / default `= []` |\n| `number 5 is not iterable (cannot read property Symbol(Symbol.iterator))` | `new Map(5)`, `Object.fromEntries(5)` | pass an array |\n| `Cannot convert undefined or null to object` | `Object.keys(undefined)` | `Object.keys(obj ?? {})` |\n| `Iterator value 1 is not an entry object` | `new Map([1])` - items must be `[key, value]` | use pairs |\n| `Result of the Symbol.iterator method is not an object` | custom iterator returned wrong thing | return `{ next() }` |\n| `Iterator result 1 is not an object` | `next()` must return `{ value, done }` | fix `next` |\n| `Cannot convert object to primitive value` | object with no usable `toString/valueOf` in `+` or template string | define `toString` |\n| `Cannot use 'in' operator to search for 'a' in abc` | `\"a\" in \"abc\"` (right side must be an object) | use `includes` |\n\n### Quick fixes\n- Make an object iterable: `Object.entries(obj)`, `Object.values(obj)`, or implement `[Symbol.iterator]`.\n- Default parameters/destructuring: `const [first = 0] = list ?? []`.\n- Check the type: `Symbol.iterator in Object(value)`.",
+      "keyPoints": [
+        "Iterable = has [Symbol.iterator]: arrays, strings, Maps, Sets, NodeLists. Plain objects are NOT.",
+        "for...of / spread / array destructuring / Map / Set / Promise.all all need iterables.",
+        "Object.keys/values/entries/assign throw on null/undefined: pass obj ?? {}.",
+        "Map/Object.fromEntries need [key, value] pairs.",
+        "A custom iterator must return { value, done } objects."
+      ],
+      "examples": [
+        {
+          "title": "Not iterable",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst obj = { a: 1, b: 2 };\nshow(() => { for (const x of obj); });\nshow(() => [...obj]);\nshow(() => { const [first] = obj; });\nshow(() => { const [a, b] = undefined; });\nshow(() => new Map(5));\nshow(() => new Map([1, 2]));\nshow(() => Object.fromEntries([1]));\nshow(() => { const it = { [Symbol.iterator]() { return 1; } }; [...it]; });\nconsole.log([...Object.entries(obj)]);",
+          "explanation": ""
+        },
+        {
+          "title": "Cannot convert undefined or null to object",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nlet settings;\nshow(() => Object.keys(settings));\nshow(() => Object.entries(null));\nshow(() => Object.assign(undefined, {}));\nshow(() => Object.getPrototypeOf(null));\nconsole.log(Object.keys(settings ?? {}));\nconsole.log({ ...settings, extra: true });      // spread of undefined in an object literal is allowed",
+          "explanation": ""
+        },
+        {
+          "title": "Making an object iterable",
+          "language": "javascript",
+          "code": "const range = {\n  from: 1, to: 4,\n  [Symbol.iterator]() {\n    let n = this.from, end = this.to;\n    return { next: () => (n <= end ? { value: n++, done: false } : { value: undefined, done: true }) };\n  },\n};\nconsole.log([...range]);\nfor (const n of range) console.log(\"n =\", n);\nconst [first, second] = range;\nconsole.log(first, second);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is a plain object not iterable?",
+          "a": "It has no Symbol.iterator method. Use Object.keys/values/entries to get an array, or add [Symbol.iterator] yourself."
+        },
+        {
+          "q": "What throws \"Cannot convert undefined or null to object\"?",
+          "a": "Object.keys, Object.values, Object.entries, Object.assign (target), Object.freeze and similar when called with undefined or null. Guard with ?? {}."
+        },
+        {
+          "q": "What does a valid iterator look like?",
+          "a": "An object whose next() returns { value, done } and which is returned by obj[Symbol.iterator]()."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Calling response.json() on an HTML error page throws SyntaxError - check response.ok and content-type first.",
+        "localStorage.getItem(\"x\") returns null (or the string \"undefined\") - JSON.parse(null) gives null but \"undefined\" throws."
+      ],
+      "id": "js-err-msg-json",
+      "title": "JSON Errors: Unexpected token, Unexpected end of JSON input, circular structure",
+      "level": "intermediate",
+      "summary": "Decode every JSON.parse and JSON.stringify message, in both old and new V8 wording.",
+      "description": "JSON is stricter than JavaScript object syntax. `JSON.parse` throws **SyntaxError**, `JSON.stringify` throws **TypeError**.\n\n### JSON.parse messages\n| Input | New message (Chrome 114+/Node 20+) | Older wording |\n|---|---|---|\n| `\"\"` (empty string / empty response body) | `Unexpected end of JSON input` | same |\n| `\"<html>\"` (HTML error page) | `Unexpected token '<', \"<html>\" is not valid JSON` | `Unexpected token < in JSON at position 0` |\n| `\"undefined\"` / `JSON.parse(undefined)` | `\"undefined\" is not valid JSON` | `Unexpected token u in JSON at position 0` |\n| `\"[object Object]\"` (object turned into a string) | `\"[object Object]\" is not valid JSON` | `Unexpected token o in JSON at position 1` |\n| `{name: 'a'}` (unquoted key / single quotes) | `Expected property name or '}' in JSON at position 1` | `Unexpected token n in JSON at position 1` |\n| `{\"a\":1,}` (trailing comma) | `Expected double-quoted property name in JSON at position 7` | `Unexpected token } ...` |\n| `{\"a\":1` (truncated) | `Expected ',' or '}' after property value in JSON at position 6` | `Unexpected end of JSON input` |\n| `{\"a\":1}}` | `Unexpected non-whitespace character after JSON at position 7` | `Unexpected token } in JSON at position 7` |\n\nThe first characters of the message tell you the cause: `<` = HTML page, `u`/`\"undefined\"` = you parsed `undefined`, `o`/`[object Object]` = you parsed an object (it was already parsed!), empty = empty body.\n\n### JSON.stringify errors\n| Message | Cause | Fix |\n|---|---|---|\n| `Converting circular structure to JSON --> starting at object with constructor 'Object' --- property 'self' closes the circle` | an object references itself (DOM nodes, React elements, parent links) | remove the cycle, use a replacer, or `structuredClone` |\n| `Do not know how to serialize a BigInt` | `BigInt` value | `toString()` in a replacer or `BigInt.prototype.toJSON` |\n\n### Fix pattern\n```js\nasync function getJson(res) {\n  const text = await res.text();                 // read once as text\n  if (!text) return null;                        // empty body (204)\n  try { return JSON.parse(text); }\n  catch { throw new Error(\"Server sent invalid JSON: \" + text.slice(0, 80)); }\n}\n```",
+      "keyPoints": [
+        "JSON requires double quotes, no trailing commas, no comments, no undefined/functions.",
+        "\"Unexpected token <\" means you received HTML (404/500 page or wrong URL), not JSON.",
+        "\"[object Object]\" or \"undefined\" is not valid JSON means you parsed a non-string.",
+        "Empty body gives \"Unexpected end of JSON input\" - check for 204 / empty responses.",
+        "Circular structure and BigInt are the TypeErrors of JSON.stringify."
+      ],
+      "examples": [
+        {
+          "title": "JSON.parse messages",
+          "language": "javascript",
+          "code": "const inputs = [\n  \"\", \"<html>\", \"undefined\", \"[object Object]\", \"{name: 'a'}\",\n  '{\"a\":1,}', '{\"a\":1', '{\"a\":1}}', \"{'a':1}\", \"NaN\", \"01\",\n];\nfor (const text of inputs) {\n  try { JSON.parse(text); console.log(JSON.stringify(text), \"-> ok\"); }\n  catch (e) { console.log(JSON.stringify(text), \"->\", e.message); }\n}\ntry { JSON.parse(undefined); } catch (e) { console.log(\"parse(undefined) ->\", e.message); }\ntry { JSON.parse({}); } catch (e) { console.log(\"parse({}) ->\", e.message); }",
+          "explanation": ""
+        },
+        {
+          "title": "JSON.stringify messages",
+          "language": "javascript",
+          "code": "const node = { name: \"root\", child: { name: \"leaf\" } };\nnode.child.parent = node;\ntry { JSON.stringify(node); } catch (e) { console.log(e.name + \": \" + e.message); }\n\ntry { JSON.stringify({ id: 10n }); } catch (e) { console.log(e.name + \": \" + e.message); }\n\n// Fixes\nconst seen = new WeakSet();\nconst text = JSON.stringify(node, (key, value) => {\n  if (typeof value === \"object\" && value !== null) {\n    if (seen.has(value)) return \"[Circular]\";\n    seen.add(value);\n  }\n  return value;\n});\nconsole.log(text);\nconsole.log(JSON.stringify({ id: 10n }, (k, v) => (typeof v === \"bigint\" ? v.toString() : v)));",
+          "explanation": ""
+        },
+        {
+          "title": "A safe parser",
+          "language": "javascript",
+          "code": "function safeParse(text, fallback = null) {\n  if (typeof text !== \"string\") return fallback;       // undefined, objects...\n  try { return JSON.parse(text); }\n  catch (e) {\n    console.log(\"bad JSON (\" + text.slice(0, 20) + \"): \" + e.message);\n    return fallback;\n  }\n}\nconsole.log(safeParse('{\"ok\":true}'));\nconsole.log(safeParse(\"\"));\nconsole.log(safeParse(\"<html>\"));\nconsole.log(safeParse(undefined, []));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Unexpected token < in JSON at position 0\" mean?",
+          "a": "The text started with \"<\", which means you received HTML (an error page or index.html) where JSON was expected. Check the URL, status code and content-type."
+        },
+        {
+          "q": "Why do I get \"Unexpected end of JSON input\"?",
+          "a": "You tried to parse an empty or truncated string, e.g. an empty response body or a half-written file."
+        },
+        {
+          "q": "How do you stringify an object with circular references?",
+          "a": "Break the cycle, use a replacer that tracks seen objects (WeakSet), or use a library such as flatted. Plain JSON cannot represent cycles."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "A getter/setter that touches its own property name recurses forever - use a different backing field (_name or #name).",
+        "new Array(n) with a float or user-provided negative number throws; clamp and floor first."
+      ],
+      "id": "js-err-msg-range",
+      "title": "RangeError Messages: Stack Size, Array Length, Time Value, toFixed",
+      "level": "intermediate",
+      "summary": "Maximum call stack size exceeded, Invalid array length, Invalid time value, toFixed digits, Invalid count value and friends.",
+      "description": "Every `RangeError` message names the rule that was broken. Here are the ones you will see most.\n\n| Message | Trigger | Fix |\n|---|---|---|\n| `Maximum call stack size exceeded` | infinite or very deep recursion; a getter/setter calling itself; `toString` calling `String(this)` | add a base case, loop, trampolines, `obj._x` backing field |\n| `Invalid array length` | `new Array(-1)`, `new Array(1.5)`, `arr.length = -1`, `new Array(2**32)` | use non-negative integers below 2^32 |\n| `Invalid time value` | `new Date(\"abc\").toISOString()` or `Intl.DateTimeFormat().format(invalidDate)` | validate with `isNaN(date)` |\n| `toFixed() digits argument must be between 0 and 100` | `(1).toFixed(101)` or `-1` | clamp digits |\n| `toPrecision() argument must be between 1 and 100` | `(1).toPrecision(0)` | 1-100 |\n| `toExponential() argument must be between 0 and 100` | `(1).toExponential(-1)` | 0-100 |\n| `toString() radix argument must be between 2 and 36` | `(10).toString(37)` | 2-36 |\n| `Invalid count value: -1` | `\"a\".repeat(-1)`, `repeat(Infinity)` | finite non-negative count |\n| `Invalid string length` | string grows beyond ~512 MB (e.g. `\"a\".repeat(2**30)` or endless `+=`) | process in chunks |\n| `Invalid typed array length: -1` | `new Uint8Array(-1)` | size >= 0 |\n| `byte length of Uint32Array should be a multiple of 4` | buffer size mismatch | align buffer |\n| `Offset is outside the bounds of the DataView` | `getInt32(0)` on 1 byte buffer | check `byteLength` |\n| `Invalid code point -1` | `String.fromCodePoint(-1)` | 0-0x10FFFF |\n| `Invalid index : 5` | `arr.with(5, x)` out of range | check length |\n| `The normalization form should be one of NFC, NFD, NFKC, NFKD.` | `\"a\".normalize(\"x\")` | valid form |\n\n### Stack overflow in detail\nEach function call pushes a frame onto the call stack. A typical browser/Node stack holds roughly **10,000-12,000 simple frames**. Common accidental causes:\n- Recursive function without a base case or whose argument never moves toward it.\n- Two functions calling each other.\n- A setter that assigns to its own property: `set name(v) { this.name = v }`.\n- `Math.max(...hugeArray)` - spread passes each element as an argument (limit ~100,000+).\n- Mutual re-rendering, event handlers that trigger themselves.\n\nFix with a base case, iteration, an explicit stack (array), memoization or `setTimeout`/microtask chunking.",
+      "keyPoints": [
+        "Maximum call stack size exceeded = runaway recursion (check base case and self-calling setters).",
+        "Array lengths must be integers from 0 to 2^32 - 1.",
+        "toFixed/toExponential allow 0-100 digits, toPrecision 1-100, toString radix 2-36.",
+        "Invalid time value comes from invalid Date objects - validate with isNaN(date).",
+        "Giant spread arguments (Math.max(...big)) can also blow the stack."
+      ],
+      "examples": [
+        {
+          "title": "Trigger them all",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nfunction recurse(n) { return recurse(n + 1) + 1; }\nshow(recurse.bind(null, 0));\nshow(() => new Array(-1));\nshow(() => new Array(1.5));\nshow(() => new Array(2 ** 32));\nshow(() => { const a = []; a.length = -1; });\nshow(() => new Date(\"abc\").toISOString());\nshow(() => (1).toFixed(101));\nshow(() => (1).toPrecision(0));\nshow(() => (10).toString(1));\nshow(() => \"x\".repeat(-1));\nshow(() => \"x\".repeat(2 ** 30));\nshow(() => new Uint32Array(new ArrayBuffer(5)));\nshow(() => new DataView(new ArrayBuffer(1)).getInt32(0));\nshow(() => [1, 2].with(5, 0));",
+          "explanation": ""
+        },
+        {
+          "title": "Self-recursive setter",
+          "language": "javascript",
+          "code": "class Bad {\n  set name(v) { this.name = v; }            // calls the setter again\n  get name() { return this.name; }          // calls the getter again\n}\nconst b = new Bad();\ntry { b.name = \"x\"; } catch (e) { console.log(e.name + \": \" + e.message); }\n\nclass Good {\n  #name = \"\";\n  set name(v) { this.#name = String(v).trim(); }\n  get name() { return this.#name; }\n}\nconst g = new Good(); g.name = \"  Asha \";\nconsole.log(g.name);",
+          "explanation": ""
+        },
+        {
+          "title": "Spread blows the stack, reduce does not",
+          "language": "javascript",
+          "code": "const big = Array.from({ length: 200000 }, (_, i) => i);\ntry { console.log(Math.max(...big)); }\ncatch (e) { console.log(e.name + \": \" + e.message); }\nconsole.log(big.reduce((m, x) => (x > m ? x : m), -Infinity));",
+          "explanation": "The exact spread limit depends on the engine; very large spreads may throw RangeError."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the call stack and why can it overflow?",
+          "a": "The call stack stores one frame per active function call. Deep or infinite recursion exhausts it and the engine throws RangeError: Maximum call stack size exceeded."
+        },
+        {
+          "q": "Why does a setter that sets this.name cause a stack overflow?",
+          "a": "Assigning this.name invokes the same setter again, endlessly. Store the value in another property (_name or a #private field)."
+        },
+        {
+          "q": "What causes \"Invalid time value\"?",
+          "a": "Calling toISOString or Intl formatting on an invalid Date (NaN time), e.g. from new Date(\"garbage\"). Check Number.isNaN(date.getTime()) first."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Passing obj.method as a callback loses this: use an arrow function or bind.",
+        "A derived constructor that returns without calling super() throws even if it never uses this."
+      ],
+      "id": "js-err-msg-classes",
+      "title": "Class and Constructor Errors: \"without 'new'\", \"Must call super\", \"Illegal invocation\"",
+      "level": "intermediate",
+      "summary": "Errors around classes, new, super(), private fields and calling built-in methods with the wrong this.",
+      "description": "| Message | Type | Why | Fix |\n|---|---|---|---|\n| `Class constructor A cannot be invoked without 'new'` | TypeError | `A()` instead of `new A()` (also when you `.call` a class) | use `new` |\n| `Constructor Map requires 'new'` / `Promise constructor cannot be invoked without 'new'` | TypeError | built-in called without `new` | use `new` |\n| `Must call super constructor in derived class before accessing 'this' or returning from derived constructor` | ReferenceError | used `this` before `super()` or forgot `super()` entirely | call `super(...)` first |\n| `'super' keyword unexpected here` | SyntaxError | `super()` outside a derived constructor, `super.x` outside a method | use in the right place |\n| `Class extends value X is not a constructor or null` | TypeError | wrong import / undefined parent | fix the parent |\n| `A class may only have one constructor` | SyntaxError | two `constructor` methods | merge |\n| `Cannot read private member #p from an object whose class did not declare it` | TypeError | `obj.#p` with an object not created by that class | check `#p in obj` |\n| `Private field '#p' must be declared in an enclosing class` | SyntaxError | typo or used outside the class | declare it |\n| `Illegal invocation` | TypeError | browser API method called with the wrong `this` (`const q = document.querySelector; q(\"a\")`) | `.bind(document)` or call as method |\n| `Method Map.prototype.get called on incompatible receiver undefined` | TypeError | JS built-in method detached from its object | keep the object: `map.get(k)` |\n| `f is not a constructor` | TypeError | `new` on an arrow function | use `function`/`class` |\n| `Generator is already running` | TypeError | `it.next()` called from inside the generator | restructure |\n\n### \"Must call super constructor...\"\nIn a `class B extends A`, the object is created **by the parent constructor**. Until `super()` runs there is no `this`. Even a derived class with an empty constructor must call `super()`:\n```js\nclass B extends A { constructor() { super(); this.x = 1; } }\n```\nIf you do not write a constructor at all, JavaScript generates one that calls `super(...args)` for you.\n\n### \"Illegal invocation\"\nBrowser (WebIDL) methods check that `this` is a real host object. Detached methods lose `this`:\n```js\nconst qs = document.querySelector;\nqs(\"p\");                          // TypeError: Illegal invocation\nconst ok = document.querySelector.bind(document);\n```\nCommon in callbacks: `setTimeout(window.alert...)`, `arr.map(document.getElementById)` or storing `console.log` in older browsers.",
+      "keyPoints": [
+        "Classes cannot be called without new; arrow functions cannot be called with new.",
+        "In a derived class call super() before touching this.",
+        "Illegal invocation = browser method lost its this: bind it or call it as a method.",
+        "Built-in methods detached from their object say \"called on incompatible receiver\".",
+        "Private #fields can only be accessed on instances created by that class."
+      ],
+      "examples": [
+        {
+          "title": "Class errors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nclass A { constructor() { this.a = 1; } }\nclass B extends A { constructor() { this.b = 2; super(); } }\nclass C extends A { constructor() { } }\nclass D extends A { constructor() { super(); this.d = 4; } }\nshow(() => A());\nshow(() => new B());\nshow(() => new C());\nshow(() => console.log(new D()));\nshow(() => Map());\nshow(() => Promise());\nshow(() => { const f = () => {}; new f(); });\nshow(() => { const get = Map.prototype.get; get(\"x\"); });\nshow(() => { class P { #secret = 1; static read(o) { return o.#secret; } } P.read({}); });",
+          "explanation": ""
+        },
+        {
+          "title": "Fixing a lost this",
+          "language": "javascript",
+          "code": "class Counter {\n  count = 0;\n  inc() { this.count++; return this.count; }\n  incArrow = () => { this.count++; return this.count; };\n}\nconst c = new Counter();\nconst detached = c.inc;\ntry { detached(); } catch (e) { console.log(e.name + \": \" + e.message); }\n\nconst bound = c.inc.bind(c);\nconsole.log(bound(), c.incArrow.call(null));   // arrow field keeps this\nconsole.log([1, 2].map(() => c.inc()));",
+          "explanation": ""
+        },
+        {
+          "title": "Illegal invocation in the browser",
+          "language": "web",
+          "html": "<p>Check the console tab.</p>",
+          "css": "",
+          "js": "const qs = document.querySelector;\ntry { qs('p'); } catch (e) { console.log(e.name + ': ' + e.message); }\nconst bound = document.querySelector.bind(document);\nconsole.log('bound works:', bound('p') !== null);\ntry { const t = HTMLElement.prototype.click; t(); } catch (e) { console.log(e.name + ': ' + e.message); }",
+          "explanation": "Expected message in Chrome: TypeError: Illegal invocation."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why can't I use this before super()?",
+          "a": "In a derived class the this object is created by the parent constructor. Before super() returns, this is uninitialised, so accessing it throws a ReferenceError."
+        },
+        {
+          "q": "What causes \"Class constructor X cannot be invoked without 'new'\"?",
+          "a": "Calling a class like a function (X(), X.call(obj)) or transpiling mismatch where an ES5 caller invokes an ES2015 class. Use new."
+        },
+        {
+          "q": "What is \"Illegal invocation\"?",
+          "a": "A browser (host) method was called with a this that is not the right host object, usually after detaching it from its object. Bind it or call it on the object."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "A missing closing quote can make the parser report the error many lines further down.",
+        "Copy-pasting code from chat or Word may bring in smart quotes and non-breaking spaces."
+      ],
+      "id": "js-err-msg-syntax-parse",
+      "title": "Syntax Messages: Unexpected token, Unexpected identifier, Invalid or unexpected token",
+      "level": "beginner",
+      "summary": "Decode the parser errors you get from typos: missing brackets, quotes, commas and operators.",
+      "description": "Parser errors appear before your program runs, in the console with a file and line number. The message names the **first token that did not fit**. (Examples are runnable here through `eval` because a parse error in your own script would stop everything.)\n\n| Message | Typical mistake | Example |\n|---|---|---|\n| `Unexpected token '}'` | extra closing bracket, or missing code before it | `if (x) { }}` |\n| `Unexpected token ')'` | extra `)` / missing argument | `f(1,)` is fine, `f(,1)` not |\n| `Unexpected token ','` | double comma / comma in the wrong place | `({a:1,,})` |\n| `Unexpected token '='` | assigning where an expression is expected | `yield = 1` |\n| `Unexpected identifier 'bar'` | two names in a row: missing operator, comma, or semicolon | `foo bar`, `{a b}` |\n| `Unexpected identifier 's'` | apostrophe inside a single quoted string | `'it's'` |\n| `Unexpected number` | number where an operator is expected | `x.1` |\n| `Unexpected string` | string literal right after another value | `\"a\" \"b\"` |\n| `Invalid or unexpected token` | illegal character, unterminated string, pasted smart quote, `@`, `var 1a` | `\"abc` |\n| `missing ) after argument list` | forgot `)` or a `,` between arguments | `console.log(\"a\" \"b\")` |\n| `Unexpected end of input` | opened `{ ( [ `` ` but never closed | `if (x) {` |\n| `Missing initializer in const declaration` | `const a;` | give a value |\n| `Invalid left-hand side in assignment` | `1 = 2`, `a + b = c`, `f() = 1` | use `===` for comparing |\n| `Unexpected token 'else'` | stray `;` or missing brace before `else` | |\n| `Unexpected token '<'` | JSX/HTML in a `.js` file or an HTML page served as a script | check the script URL |\n\n### Finding the real mistake\n1. Go to the reported line, then **look at the previous 1-3 lines** (unclosed `( [ {` or missing comma).\n2. Use editor bracket matching and auto-format (Prettier): wrong indentation reveals missing braces.\n3. Smart quotes (\"curly\") pasted from documents cause `Invalid or unexpected token`.\n4. If the error is on line 1 of a file you did not write, the server probably returned **HTML** instead of JavaScript (404 page): `Unexpected token '<'`.\n5. Binary-search: comment out half of the file.",
+      "keyPoints": [
+        "The error shows the first token that did not fit; the real mistake is usually just before it.",
+        "\"Unexpected end of input\" = something was opened but never closed.",
+        "\"Unexpected identifier\" = two words in a row (missing operator, comma or semicolon).",
+        "\"Unexpected token <\" in a script = the server sent HTML (wrong path / 404).",
+        "Smart quotes and invisible characters cause \"Invalid or unexpected token\"."
+      ],
+      "examples": [
+        {
+          "title": "Parser errors on demand",
+          "language": "javascript",
+          "code": "const snippets = [\n  \"foo bar\",\n  \"var s = 'it's'\",\n  \"console.log('a' 'b')\",\n  \"console.log('hi'\",\n  \"if (true) {\",\n  \"}\",\n  \"({a:1,,})\",\n  \"var 1a = 5\",\n  \"'unterminated\",\n  \"const a;\",\n  \"1 = 2\",\n  \"x = {a b}\",\n  \"var x = 5; x.1\",\n  \"for (let i = 0; i < 3; i++\",\n  \"@\",\n];\nfor (const code of snippets) {\n  try { (0, eval)(code); console.log(code, \"-> ok\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Same error, different reports",
+          "language": "javascript",
+          "code": "// the code below is missing a closing parenthesis on line 2 but the error is reported at the end\nconst source = [\n  \"function total(items) {\",\n  \"  return items.reduce((a, b) => a + b, 0;\",\n  \"}\",\n  \"console.log(total([1,2]));\",\n].join(\"\\n\");\ntry { (0, eval)(source); } catch (e) { console.log(e.name + \": \" + e.message); }\n\nconst fixed = source.replace(\"0;\", \"0);\");\n(0, eval)(fixed);",
+          "explanation": ""
+        },
+        {
+          "title": "Quote traps",
+          "language": "javascript",
+          "code": "const bad = [\n  \"var a = 'it's fine';\",\n  \"var b = “hello”;\",\n  \"var c = 'line one\\nline two';\",\n];\nfor (const code of bad) {\n  try { (0, eval)(code); } catch (e) { console.log(e.message); }\n}\nconst good = [\"it's fine\", 'say \"hi\"', \"it\\\\'s\", \"template: \" + \"multi\\nline\"];\nconsole.log(good.join(\" | \"));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Unexpected end of input\" mean?",
+          "a": "The file ended while the parser still expected more code, because a bracket, parenthesis, brace or string was left open."
+        },
+        {
+          "q": "Why do I get \"Unexpected token <\" when loading a script?",
+          "a": "The browser received HTML (usually a 404 page or index.html fallback) instead of JavaScript. The < is the first character of \"<!DOCTYPE html>\"."
+        },
+        {
+          "q": "What is the difference between \"Unexpected token\" and \"Unexpected identifier\"?",
+          "a": "Unexpected token reports a punctuation/keyword that does not fit; Unexpected identifier means a variable-like word appeared where an operator, comma or semicolon should be."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Mixing require() and import in the same Node file causes both families of errors.",
+        "Classes and ES modules are always in strict mode, so legacy sloppy code can suddenly fail after moving it."
+      ],
+      "id": "js-err-msg-syntax-semantic",
+      "title": "Syntax Messages: Modules, await, Redeclaration, Illegal return, Strict Mode",
+      "level": "intermediate",
+      "summary": "Early errors that are syntactically valid-looking: import/export outside a module, await outside async, duplicates, strict-mode rules.",
+      "description": "These are SyntaxErrors raised because the code violates a **rule of the language**, not because of a typo.\n\n| Message | Why | Fix |\n|---|---|---|\n| `Cannot use import statement outside a module` | `import` in a classic script or CommonJS Node file | `<script type=\"module\">`, `\"type\":\"module\"` in package.json, or `.mjs` |\n| `Unexpected token 'export'` | `export` in a classic script / CommonJS | same as above |\n| `require is not defined in ES module scope` (ReferenceError) | `require()` inside an ES module | use `import` or `createRequire` |\n| `Cannot use 'import.meta' outside a module` | `import.meta` in classic script | make it a module |\n| `await is only valid in async functions and the top level bodies of modules` | `await` in a normal function or classic script | add `async` or use a module |\n| `Identifier 'x' has already been declared` | duplicate `let/const/class` (or `let` + `var` + function param) | rename |\n| `Illegal return statement` | `return` outside a function | wrap in a function |\n| `Illegal break statement` / `Illegal continue statement: no surrounding iteration statement` | `break` outside loop/switch | restructure |\n| `Rest parameter must be last formal parameter` | `function f(...a, b)` | move `...rest` last |\n| `Invalid regular expression: /(/: Unterminated group` | bad regex literal | fix the regex |\n| `Octal literals are not allowed in strict mode.` | `010` | use `0o10` |\n| `Delete of an unqualified identifier in strict mode.` | `delete x` | delete properties only |\n| `Strict mode code may not include a with statement` | `with` | remove `with` |\n| `Unary operator used immediately before exponentiation expression...` | `-1 ** 2` | `(-1) ** 2` |\n| `Illegal 'use strict' directive in function with non-simple parameter list` | defaults/rest + `\"use strict\"` | move the directive |\n\n### Browser module errors (not SyntaxErrors but related)\n- `Failed to resolve module specifier \"lodash\". Relative references must start with either \"/\", \"./\", or \"../\"` - bare imports need a bundler or import map.\n- `Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of \"text/html\"` - wrong path (404 page).\n- `Uncaught SyntaxError: The requested module './x.js' does not provide an export named 'y'` - wrong named import or default vs named mismatch.",
+      "keyPoints": [
+        "import/export need a module context: type=\"module\", .mjs or \"type\":\"module\".",
+        "await needs an async function or a module (top-level await).",
+        "let/const/class names must be unique within one scope.",
+        "Strict mode (and modules/classes, which are always strict) bans with, octal literals, duplicate params.",
+        "\"does not provide an export named\" = wrong import name; check default vs named export."
+      ],
+      "examples": [
+        {
+          "title": "Runtime-parsed rule violations",
+          "language": "javascript",
+          "code": "const snippets = [\n  \"import x from 'y'\",\n  \"export const a = 1\",\n  \"await 1\",\n  \"function f() { await 1 }\",\n  \"let a; let a;\",\n  \"return 1\",\n  \"break\",\n  \"function f(...a, b) {}\",\n  \"'use strict'; var x = 010;\",\n  \"'use strict'; with ({}) {}\",\n  \"'use strict'; delete x;\",\n  \"-1 ** 2\",\n  \"x ?? y || z\",\n  \"function g(a = 1) { 'use strict'; }\",\n  \"class A { constructor(){} constructor(){} }\",\n  \"label: label: 1\",\n];\nfor (const code of snippets) {\n  try { (0, eval)(code); console.log(\"ok:\", code); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}",
+          "explanation": "Messages are V8 wording; Firefox and Safari word them differently."
+        },
+        {
+          "title": "Fixes",
+          "language": "javascript",
+          "code": "// await needs async\nasync function load() { const v = await Promise.resolve(42); return v; }\nload().then((v) => console.log(\"async ok:\", v));\n\n// mixing ?? with || needs parentheses\nconst x = null, y = 0, z = 5;\nconsole.log((x ?? y) || z);\n\n// exponent with unary minus\nconsole.log((-1) ** 2, -(1 ** 2));\n\n// rest parameter last\nfunction f(first, ...rest) { return [first, rest]; }\nconsole.log(f(1, 2, 3));",
+          "explanation": ""
+        },
+        {
+          "title": "Module setup in a browser and in Node",
+          "language": "text",
+          "lang": "markup",
+          "code": "<!-- Browser: allow import/export and top-level await -->\n<script type=\"module\" src=\"./main.js\"></script>\n\n<!-- package.json for Node -->\n{ \"type\": \"module\" }\n\n<!-- import map to allow bare specifiers without a bundler -->\n<script type=\"importmap\">\n{ \"imports\": { \"lodash\": \"./vendor/lodash.js\" } }\n</script>",
+          "explanation": "Typical fixes for module-related SyntaxErrors."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Cannot use import statement outside a module\" mean?",
+          "a": "The file is treated as a classic script (or CommonJS). Load it with type=\"module\", name it .mjs or set \"type\": \"module\" in package.json."
+        },
+        {
+          "q": "Why is await only valid in async functions?",
+          "a": "await pauses the function until a promise settles, which only makes sense inside an async function (or a module with top-level await). Otherwise the parser treats await as a normal identifier or errors."
+        },
+        {
+          "q": "What makes a script strict?",
+          "a": "The \"use strict\" directive, ES modules, and class bodies. Strict mode turns many silent mistakes (undeclared assignments, duplicate parameters, writing to read-only properties) into errors."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Number(2n ** 64n) loses precision silently - check Number.isSafeInteger first.",
+        "Template literals with a Symbol throw; use sym.description."
+      ],
+      "id": "js-err-msg-bigint-symbol",
+      "title": "BigInt and Symbol Conversion Errors",
+      "level": "intermediate",
+      "summary": "\"Cannot mix BigInt and other types\", \"Cannot convert a Symbol value to a string\" and related type-conversion errors.",
+      "description": "JavaScript is famous for silent type coercion, but two primitive types **refuse** implicit conversion: `BigInt` and `Symbol`. This makes these errors common when new code meets old code.\n\n### BigInt\n| Message | Type | Trigger | Fix |\n|---|---|---|---|\n| `Cannot mix BigInt and other types, use explicit conversions` | TypeError | `1n + 1`, `2n * 3` | convert: `BigInt(1)` or `Number(1n)` |\n| `Cannot convert a BigInt value to a number` | TypeError | `+1n`, `Math.max(1n)`, `Math.round(2n)` | `Number(x)` |\n| `Do not know how to serialize a BigInt` | TypeError | `JSON.stringify({a: 1n})` | send as string |\n| `The number 1.5 cannot be converted to a BigInt because it is not an integer` | RangeError | `BigInt(1.5)` | round first |\n| `Cannot convert abc to a BigInt` | SyntaxError | `BigInt(\"abc\")` | validate string |\n| `Division by zero` | RangeError | `1n / 0n` | check divisor |\n| `BigInt is not a constructor` | TypeError | `new BigInt(1)` | call without `new` |\n\nComparisons are allowed: `1n < 2` and `1n == 1` work, but `1n === 1` is `false` (different types).\n\n### Symbol\n| Message | Trigger | Fix |\n|---|---|---|\n| `Cannot convert a Symbol value to a string` | `\"\" + sym`, `${sym}` | `String(sym)` or `sym.toString()` / `sym.description` |\n| `Cannot convert a Symbol value to a number` | `+sym` | do not |\n| `Symbol is not a constructor` | `new Symbol()` | `Symbol(\"x\")` |\n\n`String(sym)` is the one explicit conversion that **works**; implicit conversion does not.\n\n### Why these exist\nMixing precision-safe integers (BigInt) with floating-point numbers would silently lose information, so the language forces you to decide. Symbols are unique keys, so turning them into text or numbers would be meaningless.\n\n### Fix pattern\nConvert at the boundary: parse API IDs as strings or BigInt consistently, `Number(big)` only when the value is safe (`Number.isSafeInteger`), and add a `BigInt.prototype.toJSON` or a replacer for JSON.",
+      "keyPoints": [
+        "BigInt never mixes with Number in arithmetic: convert explicitly.",
+        "Math functions and unary + do not accept BigInt.",
+        "JSON.stringify throws on BigInt - serialise as a string.",
+        "Symbols cannot be implicitly turned into strings or numbers; use String(sym) or sym.description.",
+        "Comparison (<, ==) between BigInt and Number works; === does not."
+      ],
+      "examples": [
+        {
+          "title": "BigInt errors and fixes",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => 1n + 1);\nshow(() => +1n);\nshow(() => Math.max(1n, 2n));\nshow(() => JSON.stringify({ a: 1n }));\nshow(() => BigInt(1.5));\nshow(() => BigInt(\"abc\"));\nshow(() => 1n / 0n);\nshow(() => new BigInt(1));\n\nconsole.log(1n + BigInt(1), Number(5n) + 1);\nconsole.log(1n < 2, 1n == 1, 1n === 1, typeof 1n);\nconsole.log(JSON.stringify({ a: 10n }, (k, v) => (typeof v === \"bigint\" ? v + \"n\" : v)));",
+          "explanation": ""
+        },
+        {
+          "title": "Symbol errors and fixes",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst id = Symbol(\"userId\");\nshow(() => \"\" + id);\nshow(() => id + 1);\nshow(() => +id);\nshow(() => new Symbol());\nshow(() => (\"id: \" + id.description));\nconsole.log(String(id), id.toString(), id.description);\nconst obj = { [id]: 1, name: \"n\" };\nconsole.log(Object.keys(obj), JSON.stringify(obj), Object.getOwnPropertySymbols(obj).length);",
+          "explanation": ""
+        },
+        {
+          "title": "Safe conversion helper",
+          "language": "javascript",
+          "code": "function toNumber(value) {\n  if (typeof value === \"bigint\") {\n    if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER)) {\n      throw new RangeError(\"BigInt \" + value + \" is too large for a Number\");\n    }\n    return Number(value);\n  }\n  return Number(value);\n}\nconsole.log(toNumber(123n));\ntry { toNumber(2n ** 64n); } catch (e) { console.log(e.name + \": \" + e.message); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does 1n + 1 throw?",
+          "a": "BigInt and Number cannot be mixed implicitly because the conversion could lose precision. Convert one side explicitly with BigInt() or Number()."
+        },
+        {
+          "q": "How do you JSON-serialise a BigInt?",
+          "a": "JSON.stringify throws. Convert to a string in a replacer, or define BigInt.prototype.toJSON to return a string."
+        },
+        {
+          "q": "How can you turn a Symbol into text?",
+          "a": "Use String(sym), sym.toString() or sym.description; implicit coercion (+, template literal) throws TypeError."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "reduce with an initial value of the wrong type (0 vs []) gives confusing results instead of errors.",
+        "Object.entries(arr) vs arr.entries(): the second returns an iterator, not an array."
+      ],
+      "id": "js-err-msg-arrays",
+      "title": "Array Errors: \"Reduce of empty array\", map/forEach not a function, not extensible",
+      "level": "beginner",
+      "summary": "Common array-related messages and how to avoid them.",
+      "description": "| Message | Why | Fix |\n|---|---|---|\n| `Reduce of empty array with no initial value` | `[].reduce((a, b) => a + b)` | provide an initial value: `.reduce(fn, 0)` |\n| `x.map is not a function` | `x` is an object, string, Set, NodeList, `undefined` | `Array.isArray(x)`, `Array.from(x)`, `[...x]` |\n| `x.forEach is not a function` | same: `x` is not an array | convert first |\n| `Array.prototype.map called on null or undefined` | `Array.prototype.map.call(null, fn)` | pass a real array |\n| `Invalid array length` | negative / fractional / too large length | validate |\n| `Cannot add property 1, object is not extensible` | `push` onto a frozen or sealed array | copy: `[...arr, x]` |\n| `Cannot assign to read only property '0' of object '[object Array]'` | writing to a frozen array in strict mode | copy first |\n| `Cannot delete property '1' of [object Array]` | `pop()` / `delete` on frozen array | copy first |\n| `Invalid index : 5` | `arr.with(5, x)` out of range | check `index < length` |\n| `The comparison function must be either a function or undefined: x` | `sort(\"x\")` or `sort(null)` | pass a function |\n| `Iterator value 1 is not an entry object` | `Object.fromEntries([1])` / `new Map([1])` | pass `[k, v]` pairs |\n| `Spread syntax requires ...iterable[Symbol.iterator] to be a function` | spread of non-iterable in a call | convert |\n| `undefined is not iterable (cannot read property Symbol(Symbol.iterator))` | destructuring/spread of `undefined` | default `= []` |\n\n### Reduce of empty array\n`reduce` without a second argument uses the first element as the starting accumulator. An empty array has no first element, so it throws. **Always give an initial value** unless you are sure the array is non-empty.\n\n### \"x.map is not a function\" - API data\nThe most common real cause is an API returning `{ items: [...] }` or `{ error: \"...\" }` while you call `data.map`. Check the actual shape (`console.log(data)`), normalise at the boundary: `const list = Array.isArray(data) ? data : data.items ?? []`.\n\n### Other array gotchas that look like errors\n- `arr[arr.length]` is `undefined`, not an error (off-by-one).\n- `sort()` without comparator sorts numbers as strings (`[10, 2].sort()` → `[10, 2]`).\n- `arr.length = 0` clears the array in place.",
+      "keyPoints": [
+        "Always pass an initial value to reduce: arr.reduce(fn, 0).",
+        "x.map is not a function nearly always means x is not an array (check the API shape).",
+        "Frozen/sealed arrays reject push/pop/assignment: copy with spread.",
+        "sort(compareFn) accepts only a function or undefined.",
+        "NodeList and Set need Array.from(...) before using map/filter."
+      ],
+      "examples": [
+        {
+          "title": "Trigger and fix",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => [].reduce((a, b) => a + b));\nconst apiData = { items: [1] };\nshow(() => apiData.map((x) => x));\nshow(() => Array.prototype.map.call(null, (x) => x));\nshow(() => Object.freeze([1, 2]).push(3));\nshow(() => { \"use strict\"; Object.freeze([1])[0] = 9; });\nshow(() => [3, 1].sort(\"desc\"));\nshow(() => [1, 2].with(5, 0));\n\nconsole.log([].reduce((a, b) => a + b, 0));\nconst data = { items: [1, 2, 3] };\nconst list = Array.isArray(data) ? data : data.items ?? [];\nconsole.log(list.map((x) => x * 2));",
+          "explanation": ""
+        },
+        {
+          "title": "NodeList-like and Set values",
+          "language": "javascript",
+          "code": "const set = new Set([1, 2, 3]);\ntry { set.map((x) => x); } catch (e) { console.log(e.message); }\nconsole.log(Array.from(set).map((x) => x * 2));\nconsole.log([...set].filter((x) => x > 1));\n\nconst arrayLike = { 0: \"a\", 1: \"b\", length: 2 };\ntry { arrayLike.forEach(console.log); } catch (e) { console.log(e.message); }\nconsole.log(Array.from(arrayLike));",
+          "explanation": ""
+        },
+        {
+          "title": "Immutable updates avoid \"not extensible\"",
+          "language": "javascript",
+          "code": "const frozen = Object.freeze([1, 2, 3]);\ntry { frozen.push(4); } catch (e) { console.log(e.name + \": \" + e.message); }\nconst next = [...frozen, 4];\nconsole.log(next, frozen);\nconsole.log(frozen.toSorted((a, b) => b - a), frozen.with(0, 99), frozen);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does [].reduce(fn) throw?",
+          "a": "Without an initial value reduce takes the first element as the accumulator; an empty array has none, so it throws TypeError: Reduce of empty array with no initial value."
+        },
+        {
+          "q": "Why do I get \"map is not a function\" on data from an API?",
+          "a": "The data is not an array (often an object wrapper like { data: [...] } or an error object). Inspect the shape and normalise it."
+        },
+        {
+          "q": "How do you add to a frozen array?",
+          "a": "You can't mutate it; create a new array with spread, concat or the immutable methods (toSorted, with, toSpliced)."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Object.freeze is shallow - nested objects remain mutable.",
+        "Frozen state objects often cause errors only in strict-mode code paths, so tests may pass while production fails."
+      ],
+      "id": "js-err-msg-readonly",
+      "title": "Property Errors: read only, not extensible, redefine, getter-only",
+      "level": "intermediate",
+      "summary": "Messages from frozen, sealed and accessor properties: \"Cannot assign to read only property\", \"Cannot add property\", \"Cannot redefine property\".",
+      "description": "Property attributes (`writable`, `configurable`, `enumerable`) and object integrity levels (`preventExtensions`, `seal`, `freeze`) control what you may do with an object. Violations are **silent in sloppy mode** but throw `TypeError` in **strict mode** (modules and classes are always strict).\n\n| Message | Why | Fix |\n|---|---|---|\n| `Cannot assign to read only property 'a' of object '#<Object>'` | write to a non-writable property (frozen, `writable:false`, `Math.PI`, `NaN`) | copy the object, or define it writable |\n| `Cannot add property b, object is not extensible` | new key on a frozen/sealed/prevented object | add before freezing, or copy |\n| `Cannot delete property 'a' of #<Object>` | delete on a frozen/sealed object, non-configurable property | do not delete |\n| `Cannot set property a of #<Object> which has only a getter` | assigning to an accessor without a setter | add `set a(v)` |\n| `Cannot redefine property: x` | `defineProperty` on a non-configurable property | define as `configurable: true` |\n| `Cannot create property 'x' on string 'abc'` | setting a property on a primitive in strict mode | primitives are immutable |\n| `Cannot assign to read only property 'length' of string 'abc'` | writing `str.length` | strings are immutable |\n| `Cannot define property x, object is not extensible` | `defineProperty` on a non-extensible object | |\n| `Cannot assign to read only property 'name' of function` | writing `fn.name` | use `defineProperty` |\n\n### Where it hides\n- **Redux / React state** that was frozen (Immer, `Object.freeze` in dev mode): mutate a copy instead.\n- **Imported ES module bindings** are read-only: `import { x } from \"./m\"; x = 1` throws `Assignment to constant variable`.\n- `Object.freeze` is shallow - nested objects can still change.\n- Third-party objects (`window.location` pieces, `Math`, `Intl` constants).\n\n### Sloppy vs strict\nIn sloppy mode `frozen.a = 2` does nothing silently, which hides bugs; in strict mode you get the TypeError. That is one more reason to use modules/strict mode.\n\n### Check before writing\n`Object.getOwnPropertyDescriptor(obj, \"a\")` shows `writable` / `configurable` / `get` / `set`. `Object.isFrozen(obj)`, `Object.isSealed`, `Object.isExtensible`.",
+      "keyPoints": [
+        "Strict mode (modules, classes) throws on writes that sloppy mode ignores silently.",
+        "freeze = no add/remove/change; seal = no add/remove but values may change; preventExtensions = no add.",
+        "Accessor without a setter: assignment throws in strict mode.",
+        "Non-configurable properties cannot be redefined or deleted.",
+        "Fix by copying: { ...obj, a: 2 } or structuredClone."
+      ],
+      "examples": [
+        {
+          "title": "Strict-mode property errors",
+          "language": "javascript",
+          "code": "\"use strict\";\nfunction show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst frozen = Object.freeze({ a: 1, nested: { n: 1 } });\nshow(() => { frozen.a = 2; });\nshow(() => { frozen.b = 3; });\nshow(() => { delete frozen.a; });\nfrozen.nested.n = 99;                       // shallow freeze: allowed\nconsole.log(\"nested changed:\", frozen.nested.n);\n\nconst withGetter = { get total() { return 5; } };\nshow(() => { withGetter.total = 10; });\n\nshow(() => { const o = {}; Object.defineProperty(o, \"x\", { value: 1 }); Object.defineProperty(o, \"x\", { value: 2 }); });\nshow(() => { \"abc\".length = 1; });\nshow(() => { \"abc\".extra = 1; });\nshow(() => { Math.PI = 3; });\nshow(() => { Object.seal({ a: 1 }).b = 2; });",
+          "explanation": ""
+        },
+        {
+          "title": "Inspect before writing",
+          "language": "javascript",
+          "code": "const o = Object.freeze({ a: 1 });\nconsole.log(Object.getOwnPropertyDescriptor(o, \"a\"));\nconsole.log(Object.isFrozen(o), Object.isSealed(o), Object.isExtensible(o));\n\nconst sealed = Object.seal({ a: 1 });\nsealed.a = 2;                               // allowed\nconsole.log(sealed.a, Object.isFrozen(sealed), Object.isSealed(sealed));\n\nconst copy = { ...o, a: 2 };\nconsole.log(copy, o);",
+          "explanation": ""
+        },
+        {
+          "title": "Accessors: add a setter",
+          "language": "javascript",
+          "code": "\"use strict\";\nclass Temp {\n  #c = 0;\n  get celsius() { return this.#c; }\n  get fahrenheit() { return this.#c * 9 / 5 + 32; }       // getter only\n  set celsius(v) { if (typeof v !== \"number\") throw new TypeError(\"number required\"); this.#c = v; }\n}\nconst t = new Temp();\nt.celsius = 100;\nconsole.log(t.fahrenheit);\ntry { t.fahrenheit = 50; } catch (e) { console.log(e.name + \": \" + e.message); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does writing to a frozen object throw only sometimes?",
+          "a": "In sloppy mode the write is silently ignored; in strict mode (modules, classes, \"use strict\") it throws TypeError: Cannot assign to read only property."
+        },
+        {
+          "q": "Does Object.freeze make nested objects immutable?",
+          "a": "No. It is shallow; freeze nested objects recursively or use immutable data structures."
+        },
+        {
+          "q": "What is \"Cannot set property x of #<Object> which has only a getter\"?",
+          "a": "You assigned to an accessor property defined with only get. Define a setter or stop writing to it."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Object.create(null) objects have no toString: string concatenation throws.",
+        "\"key\" in array checks indexes, not values: use includes()."
+      ],
+      "id": "js-err-msg-object-api",
+      "title": "Object API Errors: defineProperty, prototypes, instanceof, in, WeakMap, Proxy",
+      "level": "advanced",
+      "summary": "Messages from Object.defineProperty, setPrototypeOf, the in and instanceof operators, WeakMap keys, Proxy and Reflect.",
+      "description": "These errors come from the reflective / meta-programming parts of the language.\n\n| Message | Why | Fix |\n|---|---|---|\n| `Object.defineProperty called on non-object` | first argument is a primitive or `undefined` | pass an object |\n| `Property description must be an object: 1` | third argument is not an object | pass `{ value, writable... }` |\n| `Getter must be a function: 1` | `{ get: 1 }` | pass a function |\n| `Invalid property descriptor. Cannot both specify accessors and a value or writable attribute` | mixing `get` with `value` | choose one style |\n| `Object prototype may only be an Object or null: 1` | `Object.create(1)` / `setPrototypeOf({}, 1)` | object or `null` |\n| `Cyclic __proto__ value` | prototype chain would loop | fix the chain |\n| `Right-hand side of 'instanceof' is not callable` | `x instanceof {}` | use a constructor |\n| `Right-hand side of 'instanceof' is not an object` | `x instanceof 5` | |\n| `Cannot use 'in' operator to search for 'a' in abc` | `\"a\" in \"abc\"` (right side primitive) | `includes` / wrap in `Object()` |\n| `Invalid value used as weak map key` | `new WeakMap().set(1, 1)` | keys must be objects (or non-registered symbols) |\n| `Invalid value used in weak set` | `WeakSet.add(\"a\")` | objects only |\n| `WeakRef: invalid target` | `new WeakRef(1)` | object target |\n| `Cannot create proxy with a non-object as target or handler` | `new Proxy({}, null)` | pass objects |\n| `Cannot perform 'get' on a proxy that has been revoked` | used after `revoke()` | do not use after revoke |\n| `Reflect.ownKeys called on non-object` | `Reflect` with primitive | wrap or check |\n| `Cannot convert object to primitive value` | `Object.create(null)` in string/number context | define `toString` |\n| `'get' on proxy: property 'x' is a read-only and non-configurable data property...` | Proxy invariant violated | respect invariants |\n\n### Reading a descriptor error\nObject descriptors have two flavours: **data** (`value`, `writable`) and **accessor** (`get`, `set`). They cannot be combined. `configurable` and `enumerable` apply to both.\n\n### Prototype safety\n`Object.create(null)` makes a truly empty dictionary: no `toString`, so `\"\" + obj` throws `Cannot convert object to primitive value`. Great for lookups, but remember to define what you need.\n\n### Tip\nMany of these messages name the **argument position** of the wrong value, so the fix is to read the docs for the function's parameter list and verify each argument's type.",
+      "keyPoints": [
+        "defineProperty needs an object target and an object descriptor; data and accessor styles cannot mix.",
+        "Prototypes may only be objects or null.",
+        "The right side of in must be an object; the right side of instanceof must be callable.",
+        "WeakMap/WeakSet/WeakRef accept only objects (and non-registered symbols).",
+        "Proxy needs object target and handler, and cannot be used after revoke()."
+      ],
+      "examples": [
+        {
+          "title": "Reflection errors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => Object.defineProperty(1, \"x\", { value: 1 }));\nshow(() => Object.defineProperty({}, \"x\", 1));\nshow(() => Object.defineProperty({}, \"x\", { get: 1 }));\nshow(() => Object.defineProperty({}, \"x\", { get() {}, value: 1 }));\nshow(() => Object.create(1));\nshow(() => { const a = {}; const b = Object.create(a); Object.setPrototypeOf(a, b); });\nshow(() => ({}) instanceof ({}));\nshow(() => ({}) instanceof 5);\nshow(() => \"a\" in \"abc\");\nshow(() => new WeakMap().set(1, 1));\nshow(() => new WeakSet().add(\"a\"));\nshow(() => new WeakRef(1));\nshow(() => new Proxy({}, null));\nshow(() => { const r = Proxy.revocable({}, {}); r.revoke(); r.proxy.x; });\nshow(() => Reflect.ownKeys(1));\nshow(() => \"\" + Object.create(null));",
+          "explanation": ""
+        },
+        {
+          "title": "Correct usage",
+          "language": "javascript",
+          "code": "const o = {};\nObject.defineProperty(o, \"id\", { value: 7, enumerable: true });\nObject.defineProperty(o, \"double\", { get() { return this.id * 2; }, enumerable: true });\nconsole.log(o, o.double);\n\nconst dict = Object.create(null);\ndict.key = 1;\nconsole.log(\"key\" in dict, Object.keys(dict), String(Object.getPrototypeOf(dict)));\ndict.toString = () => \"[dict]\";\nconsole.log(\"\" + dict);\n\nconst cache = new WeakMap();\nconst k = {};\ncache.set(k, \"data\");\nconsole.log(cache.get(k), cache.has({}));",
+          "explanation": ""
+        },
+        {
+          "title": "Proxy invariants",
+          "language": "javascript",
+          "code": "const target = {};\nObject.defineProperty(target, \"fixed\", { value: 1, writable: false, configurable: false });\nconst p = new Proxy(target, { get() { return 2; } });\ntry { p.fixed; } catch (e) { console.log(e.name + \": \" + e.message); }\nconst ok = new Proxy({}, { get: (t, k) => \"prop:\" + String(k) });\nconsole.log(ok.anything);",
+          "explanation": "A proxy may not lie about non-writable, non-configurable properties."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between a data and an accessor descriptor?",
+          "a": "A data descriptor has value and writable; an accessor descriptor has get and/or set. A single descriptor cannot contain both kinds."
+        },
+        {
+          "q": "Why does \"a\" in \"abc\" throw?",
+          "a": "The in operator requires an object on the right-hand side to look up property names; strings are primitives. Use \"abc\".includes(\"a\")."
+        },
+        {
+          "q": "What keys can a WeakMap use?",
+          "a": "Objects (and non-registered symbols). Primitives like numbers and strings throw TypeError: Invalid value used as weak map key."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "In string form regex backslashes must be doubled (\"\\\\d+\" ) - a lone backslash gives \"\\ at end of pattern\".",
+        "new Date(\"2024-13-45\") yields Invalid Date silently; only later calls throw."
+      ],
+      "id": "js-err-msg-regex-string-url",
+      "title": "Regex, String, Date and URL Messages",
+      "level": "intermediate",
+      "summary": "Invalid regular expression, matchAll/replaceAll flags, Invalid URL, Invalid Date and similar text-related errors.",
+      "description": "### Regular expressions\nInvalid patterns throw `SyntaxError` in the form `Invalid regular expression: /pattern/: reason` (as the newest V8 prints it).\n\n| Reason | Cause | Fix |\n|---|---|---|\n| `Unterminated group` | `(abc` | close with `)` |\n| `Unterminated character class` | `[a-z` | close with `]` |\n| `Nothing to repeat` | `*abc`, `+`, `?` at the start; `a**` | add something before the quantifier, or escape `\\*` |\n| `\\ at end of pattern` | `new RegExp(\"\\\\\")` (one backslash) | double escapes in strings: `\"\\\\\\\\\"` |\n| `numbers out of order in {} quantifier` | `a{2,1}` | min <= max |\n| `Duplicate capture group name` | `(?<n>a)(?<n>b)` | unique names |\n| `Invalid flags supplied to RegExp constructor 'z'` | unknown flag | `dgimsuvy` only |\n| `Invalid regular expression flags` | same, in a literal `/a/zz` | |\n\n### String methods that reject RegExp\n- `String.prototype.matchAll called with a non-global RegExp argument` - add the `g` flag.\n- `String.prototype.replaceAll called with a non-global RegExp argument` - add `g` or use `replace`.\n- `First argument to String.prototype.startsWith must not be a regular expression` - pass a string.\n\n### Date and URL\n| Message | Cause | Fix |\n|---|---|---|\n| `Invalid time value` | formatting an invalid `Date` | validate |\n| `Invalid Date` (not an error, a string) | `String(new Date(\"x\"))` | check `isNaN(date)` |\n| `Invalid URL` | `new URL(\"abc\")`, missing scheme | give a base: `new URL(\"/path\", location.origin)` |\n| `Failed to construct 'URL': Invalid URL` | browser wording of the same error | same |\n| `URI malformed` | bad percent-encoding | see URIError |\n| `Invalid count value: -1` | `repeat(-1)` | |\n\n### ReDoS - catastrophic backtracking\nA pattern like `/(a+)+$/` against `\"aaaa...b\"` takes exponential time and freezes the page. It does not throw; it hangs. Avoid nested quantifiers, validate input length first, or use safer parsing.\n\n### Escaping user input\nWhen building a RegExp from user text, escape special characters: `s.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")`. Otherwise a search for `(` throws `Unterminated group`.",
+      "keyPoints": [
+        "RegExp errors are SyntaxErrors with a reason after the pattern (Unterminated group, Nothing to repeat...).",
+        "matchAll and replaceAll with a regex need the g flag.",
+        "new URL(relative) needs a base; invalid input throws TypeError: Invalid URL.",
+        "Escape user input before putting it in new RegExp().",
+        "Nested quantifiers cause catastrophic backtracking (ReDoS), a hang rather than an error."
+      ],
+      "examples": [
+        {
+          "title": "Regex and string errors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => new RegExp(\"(\"));\nshow(() => new RegExp(\"[a-z\"));\nshow(() => new RegExp(\"*abc\"));\nshow(() => new RegExp(\"a{2,1}\"));\nshow(() => new RegExp(\"(?<n>a)(?<n>b)\"));\nshow(() => new RegExp(\"a\", \"z\"));\nshow(() => \"aaa\".matchAll(/a/));\nshow(() => \"aaa\".replaceAll(/a/, \"b\"));\nshow(() => \"abc\".startsWith(/a/));\nconsole.log(\"aaa\".replaceAll(/a/g, \"b\"), [...\"a1b2\".matchAll(/\\d/g)].map((m) => m[0]));",
+          "explanation": ""
+        },
+        {
+          "title": "URL and Date",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); console.log(\"no error\"); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => new URL(\"abc\"));\nshow(() => new URL(\"/path\"));\nshow(() => new Date(\"garbage\").toISOString());\nconsole.log(new URL(\"/path?q=1\", \"https://example.com\").href);\nconsole.log(String(new Date(\"garbage\")), Number.isNaN(new Date(\"garbage\").getTime()));\nfunction parseUrl(text, base) {\n  try { return new URL(text, base); } catch { return null; }\n}\nconsole.log(parseUrl(\"nope\"), parseUrl(\"https://a.dev/x\")?.hostname);\nconsole.log(URL.canParse ? URL.canParse(\"abc\") : \"URL.canParse not available\");",
+          "explanation": ""
+        },
+        {
+          "title": "Escape user input for RegExp",
+          "language": "javascript",
+          "code": "function escapeRegExp(text) {\n  return text.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\");\n}\nconst search = \"what? (really\";\ntry { new RegExp(search); } catch (e) { console.log(\"unescaped:\", e.message); }\nconst safe = new RegExp(escapeRegExp(search), \"i\");\nconsole.log(safe.test(\"WHAT? (REALLY\"), safe.source);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does replaceAll throw with a regex?",
+          "a": "replaceAll requires the g flag when given a RegExp, otherwise it throws TypeError. Add g or use replace for the first match."
+        },
+        {
+          "q": "Why must you escape user input before new RegExp?",
+          "a": "Characters like ( [ * + ? have special meaning. Unescaped they can throw SyntaxError or change the pattern. Escape them (or use includes for plain text)."
+        },
+        {
+          "q": "What is catastrophic backtracking?",
+          "a": "A regex with nested quantifiers can take exponential time on certain inputs, freezing the thread. Avoid ambiguous patterns and limit input length."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Calling appendChild with a string fails: use append(\"text\") or createTextNode.",
+        "A \"tainted canvas\" error means the image came from another origin without CORS headers."
+      ],
+      "id": "js-err-msg-web-api",
+      "title": "Browser Messages: \"Failed to execute 'x' on 'Y'\", \"Failed to fetch\", \"Illegal invocation\"",
+      "level": "intermediate",
+      "summary": "How to read the \"Failed to ...\" family of messages thrown by DOM and Web APIs, and why browsers word them differently.",
+      "description": "Errors thrown by **browser (Web IDL) APIs** have a recognisable shape:\n\n`Failed to execute '<method>' on '<Interface>': <reason>`\n`Failed to construct '<Interface>': <reason>`\n`Failed to read the '<property>' property from '<Interface>': <reason>`\n`Failed to set the '<property>' property on '<Interface>': <reason>`\n\nThey are usually a `TypeError` (wrong argument count/type) or a `DOMException` (see the DOMException reference). Read the three parts: **what you called, on which object, and why it was rejected**.\n\n| Message | Cause | Fix |\n|---|---|---|\n| `Failed to execute 'querySelector' on 'Document': '##' is not a valid selector.` | invalid CSS selector (DOMException SyntaxError) | escape IDs with `CSS.escape()` |\n| `Failed to execute 'appendChild' on 'Node': parameter 1 is not of type 'Node'.` | passed a string/null/jQuery object | pass a Node, use `append` for text |\n| `Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.` | wrong parent (NotFoundError) | use `node.remove()` |\n| `Failed to execute 'fetch' on 'Window': Failed to parse URL from /x` | invalid URL (often in Node) | use absolute URL |\n| `Failed to execute 'atob' on 'Window': The string to be decoded is not correctly encoded.` | not Base64 | validate / use URL-safe replace |\n| `Failed to execute 'getImageData' on 'CanvasRenderingContext2D': The canvas has been tainted by cross-origin data.` | cross-origin image on canvas | CORS image + `crossOrigin=\"anonymous\"` |\n| `Failed to construct 'URL': Invalid URL` | no scheme / base | add base |\n| `Failed to construct 'Worker': Script at 'file:///...' cannot be accessed from origin 'null'` | opened via `file://` | serve over HTTP |\n| `Failed to read the 'localStorage' property from 'Window': Access is denied for this document.` | storage blocked (SecurityError) | try/catch |\n| `Failed to execute 'setItem' on 'Storage': Setting the value of 'x' exceeded the quota.` | QuotaExceededError | free space |\n| `TypeError: Failed to fetch` | network down, CORS blocked, DNS, mixed content, adblock | see fetch topics |\n| `Illegal invocation` | method used without its object | `.bind(document)` |\n\n### Browser differences\n| Chrome | Firefox | Safari |\n|---|---|---|\n| `Failed to fetch` | `NetworkError when attempting to fetch resource.` | `Load failed` |\n| `Cannot read properties of undefined (reading 'x')` | `can't access property \"x\", obj is undefined` | `undefined is not an object (evaluating 'obj.x')` |\n| `x is not a function` | `x is not a function` | `x is not a function. (In 'x()', 'x' is undefined)` |\nNever match on message text across browsers - use `name` and your own error classes.",
+      "keyPoints": [
+        "The pattern is: Failed to <verb> <method> on <Interface>: <reason> - read the reason.",
+        "Chrome says \"Failed to fetch\", Firefox \"NetworkError when attempting to fetch resource\", Safari \"Load failed\".",
+        "Use node.remove() instead of parent.removeChild(node) to avoid NotFoundError.",
+        "Wrap storage, clipboard and permission APIs in try/catch.",
+        "Messages differ per browser - branch on e.name or your own classes."
+      ],
+      "examples": [
+        {
+          "title": "DOM API errors in the browser",
+          "language": "web",
+          "html": "<div id=\"box\"></div>",
+          "css": "",
+          "js": "function show(label, fn) {\n  try { fn(); console.log(label, '-> ok'); }\n  catch (e) { console.log(label, '->', e.name + ': ' + e.message); }\n}\nshow('bad selector', () => document.querySelector('##'));\nshow('appendChild(string)', () => document.getElementById('box').appendChild('text'));\nshow('removeChild(stranger)', () => document.body.removeChild(document.createElement('p')));\nshow('null element', () => document.getElementById('missing').textContent = 'hi');\nshow('Illegal invocation', () => { const q = document.querySelector; q('div'); });\nshow('new URL', () => new URL('abc'));\nshow('safe alternatives', () => {\n  document.getElementById('box').append('text is ok');\n  const detached = document.createElement('p');\n  detached.remove();            // never throws\n});",
+          "explanation": "Open the console tab: each line prints the exact message your browser uses."
+        },
+        {
+          "title": "Be browser-independent",
+          "language": "javascript",
+          "code": "async function load(url) {\n  try {\n    const res = await fetch(url);\n    return res.ok ? \"ok\" : \"http \" + res.status;\n  } catch (e) {\n    // Chrome: TypeError \"Failed to fetch\"; Firefox: \"NetworkError when attempting...\"; Safari: \"Load failed\"\n    return e instanceof TypeError ? \"network failure\" : \"other: \" + e.name;\n  }\n}\nload(\"http://localhost:1/never-open\").then(console.log);",
+          "explanation": "The classification uses the error class, not the message text."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Failed to execute 'removeChild' on 'Node'\" mean?",
+          "a": "The node you tried to remove is not a child of the node you called removeChild on. Use child.remove() or the correct parent."
+        },
+        {
+          "q": "Why do Chrome and Firefox show different fetch error messages?",
+          "a": "The specification only says fetch rejects with a TypeError; each browser chooses its own text (\"Failed to fetch\", \"NetworkError when attempting to fetch resource.\", \"Load failed\")."
+        },
+        {
+          "q": "What is a tainted canvas?",
+          "a": "A canvas that has drawn cross-origin image data without CORS permission; reading pixels (getImageData, toDataURL) then throws a SecurityError."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Searching only the message text can mislead: the same message can have different causes."
+      ],
+      "id": "js-err-msg-cheatsheet",
+      "title": "Quick Lookup: 40 Common Messages in One Table",
+      "level": "beginner",
+      "summary": "A single revision table of the most frequent error messages, their type and the first thing to check.",
+      "description": "Use this as a **first-aid index**. Find the message, learn the type and the first thing to check.\n\n| # | Message | Type | First thing to check |\n|---|---|---|---|\n| 1 | Cannot read properties of undefined (reading 'x') | TypeError | the value BEFORE the dot is undefined |\n| 2 | Cannot read properties of null (reading 'x') | TypeError | element not found / null from API |\n| 3 | Cannot set properties of undefined (setting 'x') | TypeError | parent object missing |\n| 4 | x is not a function | TypeError | spelling, import, await |\n| 5 | x is not a constructor | TypeError | arrow function / wrong import |\n| 6 | x is not defined | ReferenceError | typo, scope, missing script |\n| 7 | Cannot access 'x' before initialization | ReferenceError | move declaration up (TDZ) |\n| 8 | Assignment to constant variable. | TypeError | const reassigned |\n| 9 | x is not iterable | TypeError | plain object / undefined in spread or for-of |\n| 10 | Cannot destructure property 'a' of 'undefined' as it is undefined. | TypeError | default parameter |\n| 11 | Cannot convert undefined or null to object | TypeError | Object.keys(null) |\n| 12 | Unexpected token '<' (script) | SyntaxError | server sent HTML |\n| 13 | Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON | SyntaxError | API returned HTML |\n| 14 | Unexpected end of JSON input | SyntaxError | empty body |\n| 15 | \"undefined\" is not valid JSON | SyntaxError | parsing undefined |\n| 16 | Converting circular structure to JSON | TypeError | object cycle |\n| 17 | Maximum call stack size exceeded | RangeError | recursion without base case |\n| 18 | Invalid array length | RangeError | negative / fractional length |\n| 19 | Invalid time value | RangeError | invalid Date |\n| 20 | toFixed() digits argument must be between 0 and 100 | RangeError | digits |\n| 21 | Class constructor X cannot be invoked without 'new' | TypeError | add new |\n| 22 | Must call super constructor in derived class... | ReferenceError | super() first |\n| 23 | Cannot mix BigInt and other types | TypeError | convert explicitly |\n| 24 | Illegal invocation | TypeError | lost this on a browser method |\n| 25 | Failed to execute 'x' on 'Y' | TypeError / DOMException | read the reason |\n| 26 | Unexpected identifier | SyntaxError | missing operator/comma |\n| 27 | Invalid or unexpected token | SyntaxError | unterminated string, bad character |\n| 28 | missing ) after argument list | SyntaxError | check commas/parentheses |\n| 29 | Unexpected end of input | SyntaxError | unclosed bracket |\n| 30 | Cannot use import statement outside a module | SyntaxError | type=\"module\" |\n| 31 | await is only valid in async functions... | SyntaxError | add async |\n| 32 | Identifier 'x' has already been declared | SyntaxError | duplicate let/const |\n| 33 | Illegal return statement | SyntaxError | return outside function |\n| 34 | Rest parameter must be last formal parameter | SyntaxError | reorder |\n| 35 | Invalid regular expression: ... | SyntaxError | regex syntax |\n| 36 | Reduce of empty array with no initial value | TypeError | pass initial value |\n| 37 | Object.defineProperty called on non-object | TypeError | first arg object |\n| 38 | Cannot redefine property: x | TypeError | configurable false |\n| 39 | Cannot assign to read only property 'x' of object | TypeError | frozen / strict mode |\n| 40 | Failed to fetch | TypeError | CORS, offline, mixed content |\n| 41 | Uncaught (in promise) | any | missing catch on a promise |\n| 42 | ResizeObserver loop completed with undelivered notifications. | benign | layout loop; usually safe to ignore |\n\n### Workflow for any message\n1. Read the **type** (what class of problem), then the **message**, then the **file:line** in the stack.\n2. Reproduce with the smallest input; log the value just before the failing line.\n3. Fix the *cause* (missing data, wrong type), not the symptom (try/catch).",
+      "keyPoints": [
+        "Read type -> message -> stack frame, in that order.",
+        "Most TypeErrors are \"the value before the dot is not what you assumed\".",
+        "Parse-time SyntaxErrors stop the whole script; runtime ones can be caught.",
+        "\"Uncaught (in promise)\" means a rejected promise had no catch.",
+        "Fix causes, not symptoms: avoid blanket try/catch."
+      ],
+      "examples": [
+        {
+          "title": "A tiny error decoder",
+          "language": "javascript",
+          "code": "const hints = [\n  [/Cannot read properties of (undefined|null) \\(reading '(.+)'\\)/, (m) => \"The value before .\" + m[2] + \" is \" + m[1] + \". Check it or use ?.\"],\n  [/(.+) is not a function/, (m) => m[1] + \" is not callable: check spelling, imports, await.\"],\n  [/(.+) is not defined/, (m) => \"No variable \" + m[1] + \" in scope: typo, scope or missing import.\"],\n  [/Cannot access '(.+)' before initialization/, (m) => \"Move the declaration of \" + m[1] + \" above its first use (TDZ).\"],\n  [/is not iterable/, () => \"Spread / for-of / destructuring needs an array, string, Map or Set.\"],\n  [/Assignment to constant variable/, () => \"Use let, or mutate instead of reassigning.\"],\n  [/Maximum call stack/, () => \"Infinite recursion: add a base case.\"],\n  [/JSON/, () => \"Invalid JSON: log the raw text, check for HTML or empty body.\"],\n];\nfunction decode(error) {\n  for (const [re, fn] of hints) {\n    const m = error.message.match(re);\n    if (m) return error.name + \" -> \" + fn(m);\n  }\n  return error.name + \" -> no hint\";\n}\nconst attempts = [\n  () => ({}).a.b, () => null.x, () => undefined.go(), () => notHere, () => { z; let z; },\n  () => { const [a] = 5; }, () => { const c = 1; c = 2; }, () => JSON.parse(\"<p>\"),\n  () => (function f() { f(); })(),\n];\nfor (const fn of attempts) { try { fn(); } catch (e) { console.log(decode(e)); } }",
+          "explanation": "A real tool could power an error helper or a linter hint."
+        },
+        {
+          "title": "Message variants across engines",
+          "language": "javascript",
+          "code": "// Do not match message text. Use your own error classes or the type:\nfunction kindOf(e) {\n  if (e instanceof TypeError) return \"TypeError (wrong type / null access)\";\n  if (e instanceof RangeError) return \"RangeError\";\n  if (e instanceof ReferenceError) return \"ReferenceError\";\n  if (e instanceof SyntaxError) return \"SyntaxError\";\n  return \"other\";\n}\nfor (const fn of [() => null.x, () => new Array(-1), () => nope, () => JSON.parse(\"{\")]) {\n  try { fn(); } catch (e) { console.log(kindOf(e)); }\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you approach an unknown error message?",
+          "a": "Read the type, the message and the first stack frame in your own code. Reproduce minimally, inspect the values just before the failing line and fix the underlying data or logic."
+        },
+        {
+          "q": "What does \"Uncaught (in promise)\" mean?",
+          "a": "A promise was rejected and no catch handler (or try/catch around await) handled it. The rejection reaches the global unhandledrejection event."
+        },
+        {
+          "q": "Which error types stop the whole script before it runs?",
+          "a": "Early SyntaxErrors found at parse time. Other types occur at runtime and can be caught."
+        }
+      ]
+    }
+  ]
+}

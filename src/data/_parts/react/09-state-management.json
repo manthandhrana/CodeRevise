@@ -1,0 +1,205 @@
+{
+ "id": "react-state-management",
+ "title": "State Management",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-redux-toolkit",
+   "title": "Redux Toolkit: Store and Slices",
+   "level": "intermediate",
+   "summary": "Redux Toolkit is the modern, low-boilerplate way to use Redux for predictable global state.",
+   "description": "**Redux** keeps application state in one **store** and changes it through dispatched **actions** handled by pure **reducers**. The classic setup was verbose; **Redux Toolkit (RTK)** is now the official, recommended way to write Redux.\n\n### The data flow\n\n1. A component dispatches an action: `dispatch(addTodo(\"Buy milk\"))`.\n2. The reducer computes the new state.\n3. The store notifies subscribers; `useSelector` re-renders components whose selected data changed.\n\n### RTK building blocks\n\n| API | Purpose |\n| --- | --- |\n| `configureStore` | creates the store (DevTools and thunk included) |\n| `createSlice` | defines name, initial state, reducers; generates action creators |\n| `Provider` | gives the store to React |\n| `useSelector(fn)` | read a piece of state |\n| `useDispatch()` | get `dispatch` |\n| `createAsyncThunk` | async logic with pending/fulfilled/rejected actions |\n| `createSelector` | memoized derived data |\n\n### Immer inside\n\nInside `createSlice` reducers you may **write \"mutating\" code** (`state.items.push(x)`). Immer turns it into an immutable update behind the scenes. Outside slices, still treat state as immutable.\n\n### Good practices\n\n- Keep state **serializable** (no functions, class instances, Dates).\n- Store the minimum; derive the rest with selectors.\n- One slice per feature (`features/cart/cartSlice.js`).\n- Select small pieces (`state => state.cart.items.length`) to reduce re-renders.\n- Use typed hooks (`useAppSelector`) with TypeScript.\n- Don't put form field state or local UI toggles in Redux.",
+   "keyPoints": [
+    "One store, actions describe events, reducers are pure",
+    "createSlice generates actions and reducer",
+    "Immer allows \"mutating\" syntax inside slices",
+    "useSelector subscribes to a state slice; useDispatch sends actions",
+    "Keep state serializable and feature-based"
+   ],
+   "pitfalls": [
+    "Putting everything (including form inputs) in Redux.",
+    "Selecting the entire state in useSelector, re-rendering on every change."
+   ],
+   "examples": [
+    {
+     "title": "Counter slice, store and component",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// features/counter/counterSlice.js\nimport { createSlice } from \"@reduxjs/toolkit\";\n\nconst counterSlice = createSlice({\n  name: \"counter\",\n  initialState: { value: 0 },\n  reducers: {\n    increment: (state) => { state.value += 1; },       // Immer makes this safe\n    addBy: (state, action) => { state.value += action.payload; },\n    reset: () => ({ value: 0 }),\n  },\n});\nexport const { increment, addBy, reset } = counterSlice.actions;\nexport default counterSlice.reducer;\n\n// app/store.js\nimport { configureStore } from \"@reduxjs/toolkit\";\nimport counter from \"../features/counter/counterSlice\";\nexport const store = configureStore({ reducer: { counter } });\n\n// main.jsx\nimport { Provider } from \"react-redux\";\n// <Provider store={store}><App /></Provider>\n\n// Counter.jsx\nimport { useSelector, useDispatch } from \"react-redux\";\nimport { increment, addBy } from \"./counterSlice\";\n\nexport function Counter() {\n  const value = useSelector((s) => s.counter.value);\n  const dispatch = useDispatch();\n  return (\n    <>\n      <p>{value}</p>\n      <button onClick={() => dispatch(increment())}>+1</button>\n      <button onClick={() => dispatch(addBy(5))}>+5</button>\n    </>\n  );\n}"
+    },
+    {
+     "title": "Redux flow in miniature (useReducer + context)",
+     "language": "react",
+     "css": "",
+     "code": "// A tiny store showing the same Redux ideas: actions -> reducer -> state\nconst StoreCtx = createContext(null);\n\nfunction todosReducer(state, action) {\n  switch (action.type) {\n    case \"todos/added\": return [...state, { id: state.length + 1, text: action.payload, done: false }];\n    case \"todos/toggled\": return state.map((t) => (t.id === action.payload ? { ...t, done: !t.done } : t));\n    default: return state;\n  }\n}\n\nfunction StoreProvider({ children }) {\n  const [state, dispatch] = useReducer(todosReducer, [{ id: 1, text: \"Read about Redux\", done: false }]);\n  return <StoreCtx.Provider value={{ state, dispatch }}>{children}</StoreCtx.Provider>;\n}\nconst useStore = () => useContext(StoreCtx);\n\nfunction TodoList() {\n  const { state, dispatch } = useStore();\n  return (\n    <ul>\n      {state.map((t) => (\n        <li key={t.id} onClick={() => dispatch({ type: \"todos/toggled\", payload: t.id })}\n          style={{ cursor: \"pointer\", textDecoration: t.done ? \"line-through\" : \"none\" }}>{t.text}</li>\n      ))}\n    </ul>\n  );\n}\nfunction AddTodo() {\n  const { dispatch } = useStore();\n  const [text, setText] = useState(\"\");\n  return (\n    <form onSubmit={(e) => { e.preventDefault(); if (text) dispatch({ type: \"todos/added\", payload: text }); setText(\"\"); }}>\n      <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"New todo\" />\n      <button>Add</button>\n    </form>\n  );\n}\nfunction Counter() {\n  const { state } = useStore();\n  return <small>{state.filter((t) => !t.done).length} remaining</small>;\n}\n\nfunction App() {\n  return (\n    <StoreProvider>\n      <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n        <AddTodo /><TodoList /><Counter />\n      </div>\n    </StoreProvider>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is Redux Toolkit and why use it?",
+     "a": "RTK is the official toolset for Redux. It removes boilerplate with configureStore and createSlice, includes Immer, thunks and DevTools, and encodes best practices."
+    },
+    {
+     "q": "Why can you \"mutate\" state inside createSlice?",
+     "a": "RTK uses Immer, which tracks your changes to a draft and produces a new immutable state."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-rtk-thunks-query",
+   "title": "createAsyncThunk and RTK Query",
+   "level": "advanced",
+   "summary": "Handle async logic with thunks, or let RTK Query manage fetching and caching for you.",
+   "description": "### createAsyncThunk\n\nFor async work (API calls) inside Redux, RTK provides `createAsyncThunk`. It dispatches three actions automatically: `pending`, `fulfilled` and `rejected`. You handle them in `extraReducers`.\n\n```js\nexport const fetchUsers = createAsyncThunk(\"users/fetch\", async (_, { rejectWithValue }) => {\n  const res = await fetch(\"/api/users\");\n  if (!res.ok) return rejectWithValue(\"Failed\");\n  return res.json();\n});\n```\n\nState shape: `{ items: [], status: \"idle\" | \"loading\" | \"succeeded\" | \"failed\", error: null }`.\n\n### RTK Query\n\nWriting thunks, loading flags and caching by hand is repetitive. **RTK Query** is a data fetching and caching tool included in Redux Toolkit. You define an **API slice** with endpoints and it generates hooks.\n\n```js\nexport const api = createApi({\n  reducerPath: \"api\",\n  baseQuery: fetchBaseQuery({ baseUrl: \"/api\" }),\n  tagTypes: [\"Post\"],\n  endpoints: (b) => ({\n    getPosts: b.query({ query: () => \"posts\", providesTags: [\"Post\"] }),\n    addPost: b.mutation({\n      query: (body) => ({ url: \"posts\", method: \"POST\", body }),\n      invalidatesTags: [\"Post\"],\n    }),\n  }),\n});\nexport const { useGetPostsQuery, useAddPostMutation } = api;\n```\n\n### Features\n\n- Automatic caching, deduplication and refetching.\n- **Tags** for cache invalidation: a mutation invalidates tags, related queries refetch.\n- Generated hooks with `isLoading`, `isFetching`, `error`, `data`.\n- Optimistic updates via `onQueryStarted`.\n- Polling, conditional `skip`, code-splitting with `injectEndpoints`.\n\n### RTK Query vs TanStack Query\n\nBoth solve server state. Choose RTK Query if you already use Redux; otherwise TanStack Query is lighter and framework-agnostic.",
+   "keyPoints": [
+    "createAsyncThunk generates pending/fulfilled/rejected actions",
+    "Handle them in extraReducers",
+    "RTK Query generates hooks and cache for endpoints",
+    "Tags connect mutations to query invalidation",
+    "Prefer RTK Query over hand-written thunks for fetching"
+   ],
+   "pitfalls": [
+    "Writing manual fetch thunks for every endpoint when RTK Query would do.",
+    "Forgetting to add api.reducer and api.middleware to the store."
+   ],
+   "examples": [
+    {
+     "title": "RTK Query API slice",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { configureStore } from \"@reduxjs/toolkit\";\nimport { createApi, fetchBaseQuery } from \"@reduxjs/toolkit/query/react\";\n\nexport const api = createApi({\n  reducerPath: \"api\",\n  baseQuery: fetchBaseQuery({ baseUrl: \"/api\" }),\n  tagTypes: [\"Post\"],\n  endpoints: (build) => ({\n    getPosts: build.query({ query: () => \"posts\", providesTags: [\"Post\"] }),\n    addPost: build.mutation({\n      query: (body) => ({ url: \"posts\", method: \"POST\", body }),\n      invalidatesTags: [\"Post\"],\n    }),\n  }),\n});\nexport const { useGetPostsQuery, useAddPostMutation } = api;\n\nexport const store = configureStore({\n  reducer: { [api.reducerPath]: api.reducer },\n  middleware: (getDefault) => getDefault().concat(api.middleware),\n});\n\n// Component\nfunction Posts() {\n  const { data = [], isLoading, error } = useGetPostsQuery();\n  const [addPost, { isLoading: saving }] = useAddPostMutation();\n  if (isLoading) return <p>Loading...</p>;\n  if (error) return <p>Failed</p>;\n  return (\n    <>\n      <ul>{data.map((p) => <li key={p.id}>{p.title}</li>)}</ul>\n      <button disabled={saving} onClick={() => addPost({ title: \"Hello\" })}>Add</button>\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the three actions of createAsyncThunk?",
+     "a": "pending when the promise starts, fulfilled when it resolves, and rejected when it fails."
+    },
+    {
+     "q": "How does RTK Query refetch after a mutation?",
+     "a": "Mutations list invalidatesTags; queries that provide those tags are automatically refetched."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-zustand",
+   "title": "Zustand",
+   "level": "intermediate",
+   "summary": "Zustand is a tiny hook-based global store with no providers and almost no boilerplate.",
+   "description": "**Zustand** (German for \"state\") is a minimalist state library. You create a store with `create`, and it returns a hook. No Provider, no reducers, no action types required.\n\n```js\nimport { create } from \"zustand\";\n\nconst useCart = create((set, get) => ({\n  items: [],\n  add: (item) => set((s) => ({ items: [...s.items, item] })),\n  clear: () => set({ items: [] }),\n  total: () => get().items.reduce((sum, i) => sum + i.price, 0),\n}));\n```\n\n### Using it\n\n```jsx\nconst count = useCart((s) => s.items.length);   // selector\nconst add = useCart((s) => s.add);\n```\n\nPassing a **selector** means the component re-renders only when that slice changes. Selecting the whole store re-renders on every change.\n\n### Features\n\n- Works outside React (`useCart.getState()`, `useCart.setState()`, `subscribe`).\n- Middleware: `persist` (localStorage), `devtools` (Redux DevTools), `immer`.\n- Async actions are just async functions that call `set`.\n- Very small (~1 KB) and fast; built on `useSyncExternalStore`.\n- `useShallow` selects multiple fields without extra renders.\n\n### Compared with Redux\n\nLess ceremony and learning curve, flexible structure. Redux gives stricter conventions, richer DevTools and RTK Query, which suits very large teams.\n\n### Tips\n\n- Split the store into slices by feature for big apps.\n- Keep actions inside the store next to the data.\n- Don't use it for server cache; use TanStack Query for that.",
+   "keyPoints": [
+    "create() returns a hook; no Provider needed",
+    "Select only the needed slice to limit re-renders",
+    "set merges state shallowly",
+    "Middleware: persist, devtools, immer",
+    "Accessible outside components via getState"
+   ],
+   "pitfalls": [
+    "Calling useStore() without a selector and re-rendering on every change.",
+    "Mutating state objects directly instead of using set."
+   ],
+   "examples": [
+    {
+     "title": "A mini Zustand built with useSyncExternalStore",
+     "language": "react",
+     "css": "",
+     "code": "const { useSyncExternalStore } = React;\n\nfunction createStore(initializer) {\n  let state;\n  const listeners = new Set();\n  const set = (partial) => {\n    const next = typeof partial === \"function\" ? partial(state) : partial;\n    state = { ...state, ...next };\n    listeners.forEach((l) => l());\n  };\n  const get = () => state;\n  state = initializer(set, get);\n  const subscribe = (l) => { listeners.add(l); return () => listeners.delete(l); };\n  return function useStore(selector = (s) => s) {\n    return useSyncExternalStore(subscribe, () => selector(state));\n  };\n}\n\nconst useCart = createStore((set) => ({\n  items: [],\n  add: (name) => set((s) => ({ items: [...s.items, name] })),\n  clear: () => set({ items: [] }),\n}));\n\nfunction Badge() {\n  const n = useCart((s) => s.items.length);\n  return <b>Cart: {n}</b>;\n}\nfunction Buttons() {\n  const add = useCart((s) => s.add);\n  const clear = useCart((s) => s.clear);\n  return (\n    <>\n      <button onClick={() => add(\"Item\")}>Add item</button>\n      <button onClick={clear}>Clear</button>\n    </>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Badge /> <Buttons />\n    </div>\n  );\n}",
+     "explanation": "This shows how such a store works internally."
+    },
+    {
+     "title": "Real Zustand with persist",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { create } from \"zustand\";\nimport { persist, devtools } from \"zustand/middleware\";\n\nexport const useTheme = create(\n  devtools(\n    persist(\n      (set) => ({\n        mode: \"light\",\n        toggle: () => set((s) => ({ mode: s.mode === \"light\" ? \"dark\" : \"light\" })),\n      }),\n      { name: \"theme-storage\" }\n    )\n  )\n);\n\nfunction ThemeButton() {\n  const mode = useTheme((s) => s.mode);\n  const toggle = useTheme((s) => s.toggle);\n  return <button onClick={toggle}>Mode: {mode}</button>;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does Zustand not need a Provider?",
+     "a": "The store lives in module scope and components subscribe through the generated hook, so no React context is required."
+    },
+    {
+     "q": "How do you avoid unnecessary re-renders in Zustand?",
+     "a": "Use selectors (and useShallow for multiple fields) so a component updates only when its selected data changes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-jotai-recoil",
+   "title": "Jotai, Recoil and Atomic State",
+   "level": "intermediate",
+   "summary": "Atomic libraries model state as small independent atoms that components subscribe to individually.",
+   "description": "**Atomic state management** splits global state into many small pieces called **atoms**. A component subscribes only to the atoms it uses, so updates are precise. Derived values are separate atoms computed from others.\n\n### Jotai\n\nMinimal, ~3 KB, API like `useState`.\n\n```jsx\nimport { atom, useAtom, useAtomValue } from \"jotai\";\n\nconst countAtom = atom(0);\nconst doubleAtom = atom((get) => get(countAtom) * 2);   // derived atom\n\nfunction Counter() {\n  const [count, setCount] = useAtom(countAtom);\n  const double = useAtomValue(doubleAtom);\n}\n```\n\nStrengths: no Provider needed (optional for scoping), great TypeScript, async atoms with Suspense, `atomWithStorage`, small and active.\n\n### Recoil\n\nCreated by Meta with `atom`, `selector`, `useRecoilState`, `RecoilRoot`. It popularized atomic state but the repository was **archived** (development stopped), so new projects should prefer **Jotai** (similar model) or Zustand.\n\n### Other options\n\n| Library | Style |\n| --- | --- |\n| **Valtio** | proxy-based, mutate objects, auto-tracking |\n| **MobX** | observable objects and reactions |\n| **XState Store** | event-driven stores and machines |\n| **Nanostores** | tiny framework-agnostic atoms |\n\n### When atoms shine\n\nMany independent pieces of state, dynamic or derived state graphs, fine-grained re-render control, and code-splitting state with components.",
+   "keyPoints": [
+    "Atoms are small independent units of state",
+    "Derived atoms compute from other atoms",
+    "Jotai: minimal useState-like API",
+    "Recoil is archived; prefer Jotai or Zustand",
+    "Valtio/MobX use proxies and observables"
+   ],
+   "pitfalls": [
+    "Creating atoms inside components (new atom each render).",
+    "Starting new projects on Recoil."
+   ],
+   "examples": [
+    {
+     "title": "Atoms in miniature (shared state through a subscription)",
+     "language": "react",
+     "css": "",
+     "code": "const { useSyncExternalStore } = React;\n\nfunction atom(initial) {\n  let value = initial;\n  const subs = new Set();\n  return {\n    get: () => value,\n    set: (v) => { value = typeof v === \"function\" ? v(value) : v; subs.forEach((s) => s()); },\n    subscribe: (s) => { subs.add(s); return () => subs.delete(s); },\n  };\n}\nfunction useAtom(a) {\n  const v = useSyncExternalStore(a.subscribe, a.get);\n  return [v, a.set];\n}\n\nconst countAtom = atom(1);\nconst nameAtom = atom(\"Asha\");\n\nfunction Count() {\n  const [c, setC] = useAtom(countAtom);\n  console.log(\"Count rendered\");\n  return <button onClick={() => setC((x) => x + 1)}>count: {c}</button>;\n}\nfunction Name() {\n  const [n, setN] = useAtom(nameAtom);\n  console.log(\"Name rendered\");\n  return <input value={n} onChange={(e) => setN(e.target.value)} />;\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Count /> <Name />\n      <p><small>Typing in the input does not re-render Count (see console).</small></p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an atom in Jotai?",
+     "a": "A small unit of state; components subscribe to the atoms they read, and derived atoms compute values from other atoms."
+    },
+    {
+     "q": "Why is Recoil not recommended for new projects?",
+     "a": "Its repository was archived and it is no longer actively developed, so alternatives like Jotai or Zustand are safer."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-state-management-choice",
+   "title": "Choosing State Management: Context vs Redux vs Zustand",
+   "level": "intermediate",
+   "summary": "Pick tools by the kind of state: local, shared UI, server cache, URL, forms.",
+   "description": "There is no single \"best\" state library. First classify the state, then pick the simplest tool.\n\n### Kinds of state\n\n| Kind | Examples | Best tool |\n| --- | --- | --- |\n| **Local UI** | modal open, input text | `useState` / `useReducer` |\n| **Shared UI (few components)** | selected tab, wizard step | lift state up |\n| **Global client state** | theme, cart, auth user, sidebar | Context, Zustand, Redux, Jotai |\n| **Server state** | users, products, orders | **TanStack Query / RTK Query** |\n| **URL state** | filters, page, sort | router search params |\n| **Form state** | values, errors, touched | React Hook Form |\n\n### Decision guide\n\n- **Context + hooks:** small apps, low-frequency data (theme, locale, auth). No extra dependency. Beware re-renders of all consumers.\n- **Zustand / Jotai:** medium apps, need selectors and little boilerplate.\n- **Redux Toolkit:** large teams, strict structure, middleware, time-travel debugging, complex workflows, RTK Query.\n- **TanStack Query:** whenever data comes from a server. This removes most \"global state\".\n\n### Rules of thumb\n\n1. Start with local state. Lift only when needed.\n2. Don't put server data into a client store; use a cache library.\n3. Don't keep derived data; compute it.\n4. Keep state as close to where it is used as possible.\n5. Avoid one giant global store for everything.\n\n### Migration is easy\n\nBecause components access state through hooks, you can swap Context for Zustand later without redesigning the UI.",
+   "keyPoints": [
+    "Classify state: local, shared, server, URL, form",
+    "Server state belongs in TanStack Query/RTK Query",
+    "Context is fine for low-frequency globals",
+    "Zustand/Jotai for light global stores; RTK for big structured apps",
+    "Start local, lift only when needed"
+   ],
+   "pitfalls": [
+    "Reaching for Redux for a small app with two pieces of global state.",
+    "Duplicating server data into a client store."
+   ],
+   "examples": [
+    {
+     "title": "Decision cheat sheet",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// Where should this state live?\n//\n// Only one component needs it?            -> useState\n// A few siblings need it?                 -> lift to common parent\n// Many distant components, rarely changes -> Context (theme, auth, locale)\n// Many components, changes often          -> Zustand / Jotai / Redux Toolkit\n// It comes from a backend                 -> TanStack Query / RTK Query\n// It should survive refresh/be shareable  -> URL (search params)\n// It is a form                            -> React Hook Form"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Context API or Redux: how do you choose?",
+     "a": "Use Context for simple, low-frequency data like theme or auth; use Redux Toolkit (or Zustand) when many components need frequently changing shared state with selectors, middleware and DevTools."
+    },
+    {
+     "q": "Where should server data be stored?",
+     "a": "In a server-state cache such as TanStack Query or RTK Query, not copied into a general client store."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

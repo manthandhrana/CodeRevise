@@ -1,0 +1,209 @@
+{
+ "id": "py-advanced",
+ "title": "Advanced Python",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "py-asyncio",
+   "title": "async/await and asyncio",
+   "level": "advanced",
+   "summary": "Run many I/O-bound tasks concurrently on one thread with coroutines and the event loop.",
+   "description": "`asyncio` provides **cooperative concurrency**: many tasks share one thread, and each one voluntarily pauses at `await` when it is waiting (for a network response, a file, a timer), letting others run. It is ideal for **I/O-bound** work such as thousands of HTTP requests, web sockets or database calls. It does not speed up CPU-bound code.\n\n### Key concepts\n- `async def` defines a **coroutine function**; calling it returns a coroutine object that has not run yet.\n- `await` suspends the current coroutine until the awaited thing finishes.\n- The **event loop** schedules coroutines; start it with `asyncio.run(main())`.\n- `asyncio.create_task(coro)` schedules a coroutine to run concurrently.\n- `asyncio.gather(*coros)` waits for many and returns results in order.\n- `asyncio.TaskGroup` (3.11+) is the structured, safer alternative to `gather`.\n- `asyncio.sleep(n)` is the non-blocking sleep; `time.sleep` blocks everything.\n- Timeouts: `asyncio.timeout(5)` or `asyncio.wait_for`.\n\n### Async libraries\nUse `httpx` or `aiohttp` instead of `requests`, `asyncpg` or `aiosqlite` for databases. FastAPI and Starlette are async-first.\n\n### Rules of thumb\n- Never call blocking functions inside a coroutine; if you must, use `await asyncio.to_thread(func)`.\n- Limit concurrency with `asyncio.Semaphore` so you do not open 10,000 connections at once.\n- An `async` library only helps if the whole call chain is async.",
+   "keyPoints": [
+    "async def creates a coroutine; await pauses it",
+    "asyncio.run starts the event loop",
+    "gather or TaskGroup run coroutines concurrently",
+    "Great for I/O-bound work, no help for CPU-bound work",
+    "Blocking calls inside a coroutine freeze the whole loop"
+   ],
+   "pitfalls": [
+    "Calling a coroutine without await (it never runs)",
+    "Using time.sleep or requests inside async code",
+    "Unbounded concurrency overwhelming a server"
+   ],
+   "examples": [
+    {
+     "title": "Concurrent tasks with gather",
+     "language": "text",
+     "code": "import asyncio\nimport time\n\nasync def fetch(name, delay):\n    await asyncio.sleep(delay)          # stands in for a network call\n    return f\"{name} done after {delay}s\"\n\nasync def main():\n    start = time.perf_counter()\n    results = await asyncio.gather(\n        fetch(\"A\", 1),\n        fetch(\"B\", 2),\n        fetch(\"C\", 1.5),\n    )\n    for r in results:\n        print(r)\n    print(f\"total about {time.perf_counter() - start:.1f}s, not 4.5s\")\n\nasyncio.run(main())\n\n# Concurrency limit with a semaphore\nasync def limited(sem, n):\n    async with sem:\n        await asyncio.sleep(0.1)\n        return n * n\n\nasync def run_many():\n    sem = asyncio.Semaphore(5)\n    return await asyncio.gather(*(limited(sem, n) for n in range(20)))",
+     "explanation": "The three tasks overlap, so the total time is about the longest one (2 seconds)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between concurrency and parallelism?",
+     "a": "Concurrency is managing many tasks that make progress in overlapping time; parallelism is literally executing at the same time on several cores. asyncio gives concurrency on one thread."
+    },
+    {
+     "q": "When should you use asyncio?",
+     "a": "For I/O-bound workloads with many waiting operations, such as scraping many pages, API servers and chat systems."
+    },
+    {
+     "q": "What happens if you call time.sleep() inside a coroutine?",
+     "a": "It blocks the entire event loop, so no other task can run during that time."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-threads-processes-gil",
+   "title": "Threading, Multiprocessing and the GIL",
+   "level": "advanced",
+   "summary": "Choose between threads, processes and async, and understand why the GIL matters.",
+   "description": "### The GIL\nCPython has a **Global Interpreter Lock**: only one thread executes Python bytecode at a time. It simplifies memory management but means **threads do not run Python code in parallel**. The GIL is released while waiting for I/O and inside many C extensions (NumPy, hashing, compression). Python 3.13 introduced an experimental free-threaded build that removes the GIL.\n\n### Choosing the tool\n| Workload | Best tool |\n|---|---|\n| Many network/file waits (I/O-bound) | `threading`, `ThreadPoolExecutor` or `asyncio` |\n| Heavy computation (CPU-bound) | `multiprocessing`, `ProcessPoolExecutor` |\n| Thousands of connections | `asyncio` |\n\n### concurrent.futures\nThe simplest high-level API:\n```python\nfrom concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor\nwith ThreadPoolExecutor(max_workers=8) as pool:\n    results = list(pool.map(download, urls))\n```\nSwap in `ProcessPoolExecutor` for CPU-bound functions.\n\n### Threads\nShare memory, cheap, but need locks (`threading.Lock`) around shared mutable state to avoid race conditions. Use `queue.Queue` for safe communication.\n\n### Processes\nEach process has its own interpreter and memory, so there is no GIL contention, but data must be pickled between processes and startup is heavier. On Windows and macOS code must be protected with `if __name__ == \"__main__\":`.\n\n### Scraping context\nThreads or asyncio are the usual choice for downloading many pages; processes are for heavy parsing afterwards.",
+   "keyPoints": [
+    "The GIL allows one thread to run Python bytecode at a time",
+    "Threads help I/O-bound tasks, processes help CPU-bound tasks",
+    "ThreadPoolExecutor and ProcessPoolExecutor share one API",
+    "Protect shared state with locks or use queue.Queue",
+    "multiprocessing needs the __main__ guard on Windows/macOS"
+   ],
+   "pitfalls": [
+    "Expecting threads to speed up CPU-bound loops",
+    "Race conditions from unprotected shared variables",
+    "Passing unpicklable objects to a process pool"
+   ],
+   "examples": [
+    {
+     "title": "Thread pool and process pool",
+     "language": "text",
+     "code": "from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor\nimport requests\n\ndef fetch_status(url):\n    return url, requests.get(url, timeout=10).status_code\n\ndef is_prime(n):\n    if n < 2:\n        return False\n    return all(n % i for i in range(2, int(n ** 0.5) + 1))\n\nif __name__ == \"__main__\":\n    urls = [\"https://example.com\", \"https://httpbin.org/get\"]\n    with ThreadPoolExecutor(max_workers=5) as pool:     # I/O bound\n        for url, status in pool.map(fetch_status, urls):\n            print(status, url)\n\n    numbers = range(1_000_000, 1_000_050)\n    with ProcessPoolExecutor() as pool:                  # CPU bound\n        flags = list(pool.map(is_prime, numbers))\n    print(sum(flags), \"primes found\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the GIL?",
+     "a": "A mutex in CPython that lets only one thread execute Python bytecode at a time, which simplifies memory management but limits CPU parallelism in threads."
+    },
+    {
+     "q": "How do you get true parallelism in Python?",
+     "a": "Use multiprocessing or ProcessPoolExecutor (separate processes), native extensions that release the GIL, or the experimental free-threaded build."
+    },
+    {
+     "q": "Threads or asyncio for I/O?",
+     "a": "Both work. asyncio scales to many more connections with less overhead but needs async libraries; threads work with ordinary blocking libraries."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-performance-memory",
+   "title": "Memory Management and Performance",
+   "level": "advanced",
+   "summary": "How Python manages memory, and practical tools to profile and speed up code.",
+   "description": "### Memory model\nEverything is an object on the heap. CPython uses **reference counting**: when an object's count drops to zero it is freed immediately. A **cyclic garbage collector** (`gc` module) additionally cleans up reference cycles. Small integers and interned strings are cached, which is why `is` can appear to work for them but should never be relied on.\n\n### Reduce memory\n- Use **generators** and iterators instead of building huge lists.\n- `__slots__` or `@dataclass(slots=True)` removes the per-instance `__dict__`.\n- Use `array`, `numpy` or `bytes` for large numeric data.\n- Read files in chunks or line by line.\n- `weakref` references objects without keeping them alive.\n\n### Measure first\n```python\nimport timeit\ntimeit.timeit(\"sum(range(1000))\", number=10_000)\n```\n- `cProfile` and `pstats` find hot functions: `python -m cProfile -s cumtime app.py`.\n- `tracemalloc` tracks memory allocations.\n- `line_profiler`, `memory_profiler` and `py-spy` are popular third-party tools.\n\n### Common speed-ups\n1. Choose the right data structure: `set`/`dict` lookups instead of list scans.\n2. Use built-ins and comprehensions; they run in C.\n3. Cache repeated work with `functools.lru_cache`.\n4. Move work out of loops; avoid repeated attribute lookups and string concatenation.\n5. Use NumPy vectorisation for numeric work.\n6. For real bottlenecks consider Cython, Numba or rewriting in a faster language.\n\nRule: **make it correct, measure, then optimise the proven bottleneck.**",
+   "keyPoints": [
+    "CPython uses reference counting plus a cycle collector",
+    "Generators and slots reduce memory",
+    "Profile with cProfile, timeit and tracemalloc before optimising",
+    "Right data structure beats micro-optimisation",
+    "Vectorise numeric loops with NumPy"
+   ],
+   "pitfalls": [
+    "Optimising without measuring",
+    "Holding references (caches, globals) that prevent garbage collection",
+    "Using lists for membership tests on large data"
+   ],
+   "examples": [
+    {
+     "title": "__slots__ and generator laziness",
+     "language": "python",
+     "code": "class Plain:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n\nclass Slotted:\n    __slots__ = (\"x\", \"y\")\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n\np, s = Plain(1, 2), Slotted(1, 2)\nprint(hasattr(p, \"__dict__\"), hasattr(s, \"__dict__\"))\ntry:\n    s.z = 3\nexcept AttributeError:\n    print(\"slotted objects reject new attributes\")\n\nsquares = (n * n for n in range(10 ** 8))   # nothing computed yet\nprint(next(squares), next(squares), next(squares))\nprint(sum(n * n for n in range(1000)))\n\nimport timeit\nfast = timeit.timeit(\"5000 in s\", setup=\"s = set(range(10000))\", number=2000)\nslow = timeit.timeit(\"5000 in l\", setup=\"l = list(range(10000))\", number=2000)\nprint(\"set lookup faster than list:\", fast < slow)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does Python manage memory?",
+     "a": "Through reference counting for immediate reclamation and a generational cyclic garbage collector for reference cycles."
+    },
+    {
+     "q": "How would you find a performance bottleneck?",
+     "a": "Profile with cProfile (and a visualiser or line_profiler), identify the hot spots, then optimise algorithms and data structures before micro-optimising."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-testing-pytest",
+   "title": "Testing with unittest and pytest",
+   "level": "advanced",
+   "summary": "Write automated tests, use fixtures and parametrisation, and mock external services.",
+   "description": "Automated tests give you confidence to change code. Python ships with `unittest`; most projects use **pytest** because tests are plain functions with simple `assert` statements.\n\n### pytest basics\n```python\n# test_math.py\ndef add(a, b):\n    return a + b\n\ndef test_add():\n    assert add(2, 3) == 5\n```\nRun with `pytest`. Files named `test_*.py` and functions named `test_*` are discovered automatically; failures show a clear diff of expected vs actual.\n\n### Features you need\n- **Fixtures**: reusable setup/teardown, injected by parameter name.\n- **Parametrize**: one test, many inputs: `@pytest.mark.parametrize(\"a,b,exp\", [...])`.\n- `pytest.raises(ValueError)` to assert exceptions.\n- `tmp_path` fixture for temporary files; `monkeypatch` to patch env vars and attributes.\n- Markers (`@pytest.mark.slow`) and `-k` to select tests.\n\n### Mocking\n`unittest.mock.patch` replaces a dependency (HTTP call, clock, database) with a fake so tests are fast and deterministic. Patch where the name is **used**, not where it is defined.\n\n### unittest style\nClass based: `class TestX(unittest.TestCase)` with `self.assertEqual`. pytest runs these too.\n\n### Good practice\n- One behaviour per test, named clearly.\n- Test the public behaviour, not private details.\n- Measure with `pytest --cov`.\n- Frameworks help: `pytest-django`, Flask's `test_client()`, FastAPI's `TestClient`.",
+   "keyPoints": [
+    "pytest discovers test_*.py files and test_* functions",
+    "Plain assert is enough; pytest explains failures",
+    "Fixtures provide reusable setup, parametrize multiplies cases",
+    "Mock external services with unittest.mock.patch",
+    "Run coverage with pytest --cov"
+   ],
+   "pitfalls": [
+    "Tests that depend on each other or on execution order",
+    "Hitting real network or databases in unit tests",
+    "Patching the wrong import path"
+   ],
+   "examples": [
+    {
+     "title": "pytest with fixture, parametrize and mock",
+     "language": "text",
+     "code": "import pytest\nfrom unittest.mock import patch\n\n# app.py\nimport requests\n\ndef get_title(url):\n    return requests.get(url, timeout=10).json()[\"title\"]\n\ndef divide(a, b):\n    return a / b\n\n# test_app.py\n@pytest.fixture\ndef numbers():\n    return [1, 2, 3]\n\ndef test_sum(numbers):\n    assert sum(numbers) == 6\n\n@pytest.mark.parametrize(\"a,b,expected\", [(6, 3, 2), (5, 2, 2.5), (0, 4, 0)])\ndef test_divide(a, b, expected):\n    assert divide(a, b) == expected\n\ndef test_divide_by_zero():\n    with pytest.raises(ZeroDivisionError):\n        divide(1, 0)\n\ndef test_get_title():\n    with patch(\"app.requests.get\") as fake_get:\n        fake_get.return_value.json.return_value = {\"title\": \"Hello\"}\n        assert get_title(\"http://x.test\") == \"Hello\"",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is pytest preferred over unittest?",
+     "a": "Simpler syntax with plain assert, powerful fixtures, parametrisation, better failure output and a large plugin ecosystem."
+    },
+    {
+     "q": "What is a fixture?",
+     "a": "A function that provides setup data or resources to tests by name injection and can clean up afterwards."
+    },
+    {
+     "q": "Why mock external services in tests?",
+     "a": "To keep tests fast, deterministic and independent of network or third-party availability."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-packaging",
+   "title": "Packaging and Project Structure",
+   "level": "advanced",
+   "summary": "Structure a project, declare dependencies in pyproject.toml and build distributable packages.",
+   "description": "Good structure and packaging make a project installable, testable and shareable.\n\n### Recommended layout\n```text\nmyproject/\n  pyproject.toml\n  README.md\n  src/\n    mypkg/\n      __init__.py\n      core.py\n  tests/\n    test_core.py\n```\nThe `src/` layout prevents accidentally importing the local folder instead of the installed package.\n\n### pyproject.toml\nThe modern single configuration file (PEP 517/518/621):\n```toml\n[build-system]\nrequires = [\"setuptools>=68\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"mypkg\"\nversion = \"0.1.0\"\ndependencies = [\"requests>=2.31\"]\n\n[project.scripts]\nmytool = \"mypkg.cli:main\"\n```\n\n### Workflow\n- `pip install -e .` installs in editable mode while developing.\n- `python -m build` creates a wheel and sdist; `twine upload dist/*` publishes to PyPI.\n- Entry points under `[project.scripts]` create command-line tools.\n\n### Dependency tools\n`pip` + `venv`, **Poetry**, **uv**, **pipenv**, **pip-tools**. They resolve and lock versions so installs are reproducible.\n\n### Quality tooling\n`ruff` (lint + format), `black`, `mypy`, `pre-commit`, `pytest`, plus CI (GitHub Actions) running them on each push.\n\n### Versions\nUse semantic versioning; pin application dependencies exactly, but give libraries loose ranges.",
+   "keyPoints": [
+    "pyproject.toml is the modern standard config file",
+    "Use src/ layout and pip install -e . during development",
+    "python -m build creates a wheel and sdist",
+    "Entry points create CLI commands",
+    "Lock dependencies for reproducible installs"
+   ],
+   "pitfalls": [
+    "Committing virtual environments or secrets",
+    "Unpinned dependencies breaking production later",
+    "Importing from the working directory instead of the installed package"
+   ],
+   "examples": [
+    {
+     "title": "Build and use a package",
+     "language": "text",
+     "code": "# develop\npython -m venv .venv && source .venv/bin/activate\npip install -e \".[dev]\"\npytest\n\n# release\npip install build twine\npython -m build            # creates dist/mypkg-0.1.0-py3-none-any.whl\ntwine upload dist/*\n\n# use\npip install mypkg\nmytool --help",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a wheel?",
+     "a": "A pre-built distribution format (.whl) that installs quickly without running a build step."
+    },
+    {
+     "q": "Why pin dependency versions?",
+     "a": "So installs are reproducible and an upstream release cannot silently break your application."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

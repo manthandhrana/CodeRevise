@@ -1,0 +1,281 @@
+{
+ "id": "css-motion",
+ "title": "Transforms, Transitions and Animations",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-transform-2d",
+   "title": "2D Transforms: translate, scale, rotate, skew",
+   "level": "intermediate",
+   "summary": "Move, resize, rotate and skew elements without affecting layout.",
+   "description": "The `transform` property changes how an element is **drawn** without changing the space it occupies in the layout. That makes it perfect (and cheap) for animation.\n\n### Functions\n| Function | Example | Effect |\n|---|---|---|\n| `translate(x, y)` | `translate(50px, 20px)` | move; also `translateX/Y` |\n| `scale(s)` / `scale(x, y)` | `scale(1.2)` | resize (1 = original) |\n| `rotate(angle)` | `rotate(45deg)` | clockwise for positive |\n| `skew(x, y)` | `skewX(20deg)` | slant |\n\n### Combine functions\n```css\ntransform: translateX(100px) scale(.5) rotate(45deg);\n```\nFunctions are applied **right to left** in terms of coordinate effect, so order matters (rotate then translate moves along the rotated axis).\n\n### Individual transform properties\nModern browsers also provide separate properties - easier to animate independently:\n\n```css\ntranslate: 100px 20px;\nrotate: 45deg;\nscale: .5;\n```\n\n### transform-origin\nThe pivot point: `transform-origin: top left;`, `center` (default), `50% 100%`, etc. Pendulums rotate around the top (used in the Newton's cradle project).\n\n### Key facts\n- Percent in `translate` refers to the element's **own size** (hence the centering trick `translate(-50%, -50%)`).\n- Transforms create a stacking context and a containing block for fixed children.\n- Inline elements cannot be transformed - set `display: inline-block` or block.\n- Layout does not change: neighbours do not move.",
+   "keyPoints": [
+    "transform draws differently but does not change layout",
+    "translate, scale, rotate, skew and their X/Y variants",
+    "Order of combined functions matters",
+    "transform-origin sets the pivot",
+    "translate/rotate/scale individual properties exist"
+   ],
+   "pitfalls": [
+    "Transforming an inline element (no effect)",
+    "Expecting siblings to move when an element is scaled",
+    "Two transform declarations overriding each other instead of combining"
+   ],
+   "examples": [
+    {
+     "title": "Hover transforms",
+     "language": "web",
+     "html": "<div class=\"row\"><div class=\"b t\">translate</div><div class=\"b s\">scale</div><div class=\"b r\">rotate</div><div class=\"b k\">skew</div></div>",
+     "css": ".row { display: flex; gap: 24px; padding: 30px 10px; font-family: sans-serif; }\n.b { width: 80px; height: 80px; background: #4861ec; color: #fff; display: grid; place-items: center; transition: transform .4s; font-size: 14px; }\n.t:hover { transform: translate(0, -20px); }\n.s:hover { transform: scale(1.4); }\n.r:hover { transform: rotate(45deg); }\n.k:hover { transform: skew(-20deg, 0); }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "transform-origin",
+     "language": "web",
+     "html": "<div class=\"doors\"><div class=\"d left\">origin: left</div><div class=\"d top\">origin: top</div><div class=\"d br\">origin: bottom right</div></div>",
+     "css": ".doors { display: flex; gap: 40px; padding: 30px; font: 13px sans-serif; }\n.d { width: 90px; height: 90px; background: #16a34a; color: #fff; display: grid; place-items: center; transition: rotate .5s; }\n.left { transform-origin: left; } .top { transform-origin: top; } .br { transform-origin: bottom right; }\n.d:hover { rotate: 40deg; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you combine multiple transforms?",
+     "a": "List them in one transform declaration separated by spaces, e.g. transform: scale(1.5) rotate(45deg) translate(20px, 30px); or use the separate translate/rotate/scale properties."
+    },
+    {
+     "q": "Does transform affect layout?",
+     "a": "No. The element keeps its original layout space; only its painted position changes."
+    },
+    {
+     "q": "What does transform-origin do?",
+     "a": "It sets the point around which transforms such as rotate and scale are applied; the default is the center."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/advanced_css/transform/index.html, style.css"
+  },
+  {
+   "id": "css-transform-3d",
+   "title": "3D Transforms and Perspective",
+   "level": "advanced",
+   "summary": "Use perspective, rotateX/Y and preserve-3d to build flip cards and 3D scenes.",
+   "description": "CSS can transform elements in 3D space with a few extra properties.\n\n### Core ideas\n- **perspective** - distance between the viewer and the z=0 plane. Smaller value = stronger 3D effect.\n- **rotateX / rotateY / rotateZ** - rotate around an axis.\n- **translateZ** - move toward (+) or away (-) from the viewer.\n- **transform-style: preserve-3d** - lets children live in the same 3D space instead of being flattened.\n- **backface-visibility: hidden** - hide the back of an element when it is turned around.\n\n### Two ways to set perspective\n```css\n.scene { perspective: 1000px; }                 /* applies to children (shared vanishing point) */\n.item  { transform: perspective(600px) rotateY(30deg); } /* per element */\n```\n`perspective-origin` moves the vanishing point.\n\n### Flip card recipe\n```css\n.card { transform-style: preserve-3d; transition: transform .8s; }\n.card:hover { transform: rotateY(180deg); }\n.front, .back { position: absolute; inset: 0; backface-visibility: hidden; }\n.back { transform: rotateY(180deg); }\n```\n\n### Tips\n- Parent needs perspective; the rotating element needs preserve-3d if it has 3D children.\n- `overflow: hidden`, `opacity<1` or `filter` on an element flattens its children (breaks preserve-3d).\n- Animate with transforms only - GPU friendly.\n- Provide a reduced-motion alternative for big spinning effects.",
+   "keyPoints": [
+    "perspective on the parent creates depth",
+    "rotateX/Y and translateZ move in 3D",
+    "transform-style: preserve-3d keeps children in 3D space",
+    "backface-visibility: hidden for flip cards",
+    "overflow/opacity/filter can flatten 3D"
+   ],
+   "pitfalls": [
+    "Forgetting perspective, so rotateY looks flat",
+    "Back face visible because backface-visibility is not set on both faces",
+    "Applying preserve-3d on an element whose parent flattens it"
+   ],
+   "examples": [
+    {
+     "title": "Flip card",
+     "language": "web",
+     "html": "<div class=\"scene\"><div class=\"card\"><div class=\"face front\">Front</div><div class=\"face back\">Back</div></div></div>",
+     "css": ".scene { perspective: 700px; width: 180px; height: 110px; font-family: sans-serif; }\n.card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .8s; }\n.scene:hover .card { transform: rotateY(180deg); }\n.face { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: bold; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }\n.front { background: linear-gradient(135deg,#6a11cb,#2575fc); }\n.back { background: linear-gradient(135deg,#f06,#fc0); transform: rotateY(180deg); }",
+     "js": "",
+     "code": "",
+     "explanation": "Hover the card to flip it."
+    },
+    {
+     "title": "Perspective rotate",
+     "language": "web",
+     "html": "<div class=\"stage\"><div class=\"plane\">rotateY(180deg) on hover</div></div>",
+     "css": ".stage { perspective: 600px; padding: 20px; }\n.plane { width: 220px; height: 90px; background: #4861ec; color: #fff; display: grid; place-items: center; font: 14px sans-serif; transition: transform 2s linear; }\n.plane:hover { transform: rotateY(180deg); }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does the perspective property do?",
+     "a": "It defines how far the viewer is from the z=0 plane; applied to a parent it gives its transformed children a 3D depth effect."
+    },
+    {
+     "q": "How do you build a flip card?",
+     "a": "Parent with perspective; inner wrapper with preserve-3d rotating on hover; front and back faces absolutely positioned with backface-visibility: hidden, back pre-rotated 180deg."
+    },
+    {
+     "q": "What is preserve-3d?",
+     "a": "transform-style: preserve-3d makes child elements keep their own 3D positions instead of being flattened into the parent's plane."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/advanced_css/perspective.html, transform/style.css"
+  },
+  {
+   "id": "css-transitions",
+   "title": "Transitions",
+   "level": "intermediate",
+   "summary": "Animate property changes smoothly between two states with duration, easing and delay.",
+   "description": "A **transition** animates a property from its old value to its new value when the state changes (hover, focus, class toggle by JavaScript...).\n\n### Properties\n| Property | Purpose |\n|---|---|\n| `transition-property` | which properties (`all`, `color`, `transform`...) |\n| `transition-duration` | time, e.g. `0.3s` or `300ms` |\n| `transition-timing-function` | easing: `ease`, `linear`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier()`, `steps()` |\n| `transition-delay` | wait before starting |\n\n### Shorthand\n```css\ntransition: property duration timing-function delay;\ntransition: background-color .3s ease-in-out, transform .3s ease-out;\n```\n\n### Where to put it\nPut `transition` on the **base** element (not only on :hover) so the animation works in both directions:\n\n```css\n.btn { background: #865dff; transition: all .3s linear; }\n.btn:hover { background: #d80032; transform: translateY(-3px); }\n```\n\n### What can transition\nOnly properties with **interpolatable** values: colors, lengths, numbers, transforms, shadows, filters. `display` and `auto` sizes cannot (use `max-height`, `grid-template-rows: 0fr -> 1fr` or `transition-behavior: allow-discrete`).\n\n### Best practice\n- Animate **transform and opacity** (compositor-friendly) instead of width/height/top/left.\n- Avoid `transition: all` in production; list the properties.\n- Keep durations 150-400ms for UI feedback.\n- Respect `prefers-reduced-motion`.",
+   "keyPoints": [
+    "Transition animates between two states automatically",
+    "Shorthand: property duration timing delay",
+    "Define it on the base state to animate both ways",
+    "Only interpolatable properties can transition",
+    "Prefer transform and opacity for performance"
+   ],
+   "pitfalls": [
+    "Putting transition only on :hover (no animation on mouse-out)",
+    "Trying to transition display: none or height: auto",
+    "transition: all causing unexpected animations"
+   ],
+   "examples": [
+    {
+     "title": "Button and image hover",
+     "language": "web",
+     "html": "<a href=\"#\" class=\"btn\">Listen Now</a> <div class=\"img\">scale</div>",
+     "css": "body { font-family: sans-serif; background: #080a0c; padding: 24px; display: flex; gap: 40px; align-items: center; }\n.btn { display: inline-block; width: 140px; text-align: center; padding: 10px 20px; border: 3px solid #fff; color: #fff; text-decoration: none; font-weight: bold; border-radius: 5px; transition: all .5s linear; }\n.btn:hover { background: #0062ff; width: 220px; box-shadow: 0 19px 38px rgba(255,255,255,.4); }\n.img { width: 70px; height: 70px; background: linear-gradient(135deg,#f06,#48f); color: #fff; display: grid; place-items: center; border-radius: 10px; transition: scale 1s linear; }\n.img:hover { scale: 1.3; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Easing comparison",
+     "language": "web",
+     "html": "<div class=\"track\"><i class=\"e1\"></i><span>linear</span></div><div class=\"track\"><i class=\"e2\"></i><span>ease-in-out</span></div><div class=\"track\"><i class=\"e3\"></i><span>steps(5)</span></div>",
+     "css": "body { font-family: sans-serif; font-size: 12px; }\n.track { position: relative; height: 34px; background: #e2e8f0; margin-bottom: 8px; width: 320px; }\n.track:hover i { transform: translateX(280px); }\ni { position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; background: #2965f1; border-radius: 6px; transition: transform 2s; }\n.e1 { transition-timing-function: linear; }\n.e2 { transition-timing-function: ease-in-out; }\n.e3 { transition-timing-function: steps(5); }\nspan { position: absolute; right: 6px; top: 10px; color: #475569; }",
+     "js": "",
+     "code": "",
+     "explanation": "Hover a track to compare how each timing function moves the square."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you create a button that changes background smoothly on hover?",
+     "a": "Set transition: background-color .3s on the button and change background-color in :hover."
+    },
+    {
+     "q": "Which properties can be transitioned?",
+     "a": "Animatable properties with interpolable values such as color, opacity, transform, width, box-shadow; not display or auto values."
+    },
+    {
+     "q": "Why is transform preferred over left/top for animation?",
+     "a": "Transforms can be handled by the compositor on the GPU without layout or paint, giving smoother animation."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/advanced_css/transition/index.html, style.css, transition_hover.html"
+  },
+  {
+   "id": "css-keyframes",
+   "title": "Keyframe Animations",
+   "level": "intermediate",
+   "summary": "Define multi-step animations with @keyframes and the animation-* properties.",
+   "description": "Transitions need a trigger and only go from A to B. **Animations** can run automatically, loop, and have many steps.\n\n### 1. Define keyframes\n```css\n@keyframes trip {\n  0%   { background: #ffbb5c; transform: translate(0, 0); }\n  50%  { background: #000;    transform: translate(200px, 80px); }\n  100% { background: #ffbb5c; transform: translate(0, 0); }\n}\n/* or from { } to { } */\n```\n\n### 2. Attach it\n| Property | Meaning |\n|---|---|\n| `animation-name` | the @keyframes name |\n| `animation-duration` | length of one cycle |\n| `animation-timing-function` | easing per cycle (`linear`, `ease-in-out`, `steps()`) |\n| `animation-delay` | wait before start |\n| `animation-iteration-count` | number or `infinite` |\n| `animation-direction` | `normal`, `reverse`, `alternate`, `alternate-reverse` |\n| `animation-fill-mode` | `none`, `forwards`, `backwards`, `both` |\n| `animation-play-state` | `running` / `paused` |\n\nShorthand: `animation: trip 2.5s linear 0s infinite alternate both;`\n\n### fill-mode explained\n- `forwards`: keep the last keyframe styles after finishing.\n- `backwards`: apply the first keyframe during the delay.\n- `both`: both of the above.\n\n### Notes\n- No trigger needed - it can run on page load.\n- You can have multiple animations: `animation: spin 2s linear infinite, pulse 1s ease-in-out infinite;`\n- Use `animation-delay` with negative values to start in the middle.\n- JavaScript can pause/restart by toggling classes.\n- Animate `transform` and `opacity` for the best performance and respect `prefers-reduced-motion`.",
+   "keyPoints": [
+    "@keyframes defines the steps; animation-* applies them",
+    "infinite, alternate, and fill-mode control repetition",
+    "animation-fill-mode: forwards keeps the end state",
+    "No hover/trigger is required",
+    "Multiple animations separated by commas"
+   ],
+   "pitfalls": [
+    "Missing animation-duration (default 0s, so nothing happens)",
+    "Animation snapping back because fill-mode is none",
+    "Animating width/top/left causing layout thrashing"
+   ],
+   "examples": [
+    {
+     "title": "Moving, color-changing ball",
+     "language": "web",
+     "html": "<div class=\"track\"><div class=\"ball\"></div></div>",
+     "css": ".track { width: 100%; height: 120px; background: #2b3033; }\n.ball { width: 60px; height: 60px; border-radius: 50%; background: #ffbb5c; margin: 20px; animation: trip 3s linear infinite alternate; box-shadow: 0 0 0 10px #353f6d; }\n@keyframes trip {\n  0%   { background-color: #ffbb5cb5; transform: translate(0, 0); }\n  25%  { background-color: #fcbf49;   transform: translate(120px, 0); }\n  50%  { background-color: #000;      transform: translate(120px, 30px); }\n  75%  { background-color: #fcbf49;   transform: translate(0, 30px); }\n  100% { background-color: #ffbb5cb5; transform: translate(0, 0); }\n}",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "fill-mode: forwards",
+     "language": "web",
+     "html": "<div class=\"b\">forwards</div><div class=\"b none\">none (snaps back)</div>",
+     "css": ".b { width: 120px; padding: 12px; margin: 8px 0; background: #2965f1; color: #fff; font: 13px sans-serif; animation: grow 1.5s ease-out forwards; }\n.none { animation-fill-mode: none; }\n@keyframes grow { from { width: 120px; } to { width: 260px; background: #16a34a; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is a pseudo-class like :hover needed to start a CSS animation?",
+     "a": "No. Animations can start automatically on load; hover is only one way to trigger them (via changing the animation property)."
+    },
+    {
+     "q": "What does animation-fill-mode do?",
+     "a": "It defines styles applied before the animation starts and after it ends: backwards, forwards or both."
+    },
+    {
+     "q": "How do you make an animation go back and forth?",
+     "a": "animation-direction: alternate (with iteration-count > 1 or infinite)."
+    },
+    {
+     "q": "Transition vs animation?",
+     "a": "Transitions interpolate between two states when a property changes; animations use keyframes, can run on their own, loop and have multiple steps."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/advanced_css/animation/index.html, style.css, animation.html"
+  },
+  {
+   "id": "css-animation-patterns",
+   "title": "Animation Patterns: Spinner, Pulse, Skeleton, Typing",
+   "level": "advanced",
+   "summary": "Reusable keyframe recipes for loaders, attention effects and text effects.",
+   "description": "Most UI animations are small recipes. Learn them once and reuse them.\n\n### 1. Spinner (rotate)\n```css\n@keyframes spin { to { rotate: 360deg; } }\n.spinner { animation: spin 1s linear infinite; }\n```\n\n### 2. Pulse (attention)\n```css\n@keyframes pulse { 0%,100% { scale: 1; } 50% { scale: 1.15; } }\n```\nFor a ripple, animate `box-shadow` from `0 0 0 0 rgba(...)` to `0 0 0 20px transparent`.\n\n### 3. Skeleton shimmer (loading placeholders)\nA gradient wider than the box slides across:\n```css\n.skeleton { background: linear-gradient(90deg,#eee 25%,#f8f8f8 50%,#eee 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }\n@keyframes shimmer { to { background-position: -200% 0; } }\n```\n\n### 4. Typing effect\nUse `width` from `0` to `100%` with `steps()` and a blinking border.\n\n### 5. Fade/slide in\n`opacity: 0; translate: 0 20px;` -> `opacity: 1; translate: 0;` with `animation-fill-mode: both` and staggered `animation-delay`.\n\n### 6. Bounce / shake / float\nShake uses rotate keyframes (+20deg, -20deg). Float uses `translateY` with `alternate`.\n\n### Guidelines\n- Use `transform`/`opacity` only when possible.\n- Stagger with custom properties: `animation-delay: calc(var(--i) * 80ms);`\n- Always add:\n```css\n@media (prefers-reduced-motion: reduce) {\n  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }\n}\n```",
+   "keyPoints": [
+    "Spinner = rotate 360deg infinite linear",
+    "Skeleton = moving gradient via background-position",
+    "Typing = width animation with steps()",
+    "Stagger with delay and custom properties",
+    "Always provide a prefers-reduced-motion fallback"
+   ],
+   "pitfalls": [
+    "Infinite animations running off-screen wasting CPU",
+    "Using ease instead of linear for continuous spinners (looks jerky)",
+    "Ignoring reduced-motion preferences"
+   ],
+   "examples": [
+    {
+     "title": "Loaders and skeleton",
+     "language": "web",
+     "html": "<div class=\"row\"><div class=\"spin\"></div><div class=\"pulse\"></div><div class=\"dots\"><i></i><i></i><i></i></div></div>\n<div class=\"sk\" style=\"width:220px;height:16px;margin-top:16px\"></div><div class=\"sk\" style=\"width:160px;height:16px;margin-top:8px\"></div>",
+     "css": ".row { display: flex; gap: 30px; align-items: center; }\n.spin { width: 34px; height: 34px; border: 4px solid #cbd5e1; border-top-color: #2965f1; border-radius: 50%; animation: spin 1s linear infinite; }\n.pulse { width: 34px; height: 34px; background: #e11d48; border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }\n.dots i { display: inline-block; width: 10px; height: 10px; margin: 0 3px; background: #16a34a; border-radius: 50%; animation: bounce .8s ease-in-out infinite alternate; }\n.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }\n.sk { border-radius: 6px; background: linear-gradient(90deg,#e2e8f0 25%,#f8fafc 50%,#e2e8f0 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }\n@keyframes spin { to { transform: rotate(360deg); } }\n@keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }\n@keyframes bounce { to { transform: translateY(-12px); } }\n@keyframes shimmer { to { background-position: -200% 0; } }\n@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Typing effect",
+     "language": "web",
+     "html": "<h2 class=\"type\">Hello, CSS animations!</h2>",
+     "css": ".type { width: 19ch; font: 700 22px \"Courier New\", monospace; white-space: nowrap; overflow: hidden; border-right: 3px solid #0f172a; animation: typing 3s steps(19) infinite alternate, blink .7s step-end infinite; }\n@keyframes typing { from { width: 0; } to { width: 19ch; } }\n@keyframes blink { 50% { border-color: transparent; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you create a loading spinner in CSS?",
+     "a": "A circle with a colored top border and an infinite linear keyframe animation rotating from 0 to 360deg."
+    },
+    {
+     "q": "How do you make a typing effect?",
+     "a": "Use a monospace font, animate the width from 0 to the text length in ch units with steps(), hide overflow and add a blinking caret border."
+    },
+    {
+     "q": "How do you respect users who prefer less motion?",
+     "a": "Use @media (prefers-reduced-motion: reduce) to disable or shorten animations."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/textreveal/index.html, project/neonloader/index.html"
+  }
+ ]
+}

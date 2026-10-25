@@ -1,0 +1,264 @@
+{
+  "id": "js-under-the-hood",
+  "title": "Under the Hood: Scope, Closures and this",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-execution-context",
+      "title": "Execution Context and the Call Stack",
+      "level": "intermediate",
+      "summary": "Every run of code happens inside an execution context created in two phases and tracked on the call stack.",
+      "description": "When JavaScript runs code it creates an **execution context** - an environment that stores variables, functions, the scope chain and the value of `this`.\n\n### Types of contexts\n- **Global execution context** - created first; `this` is `window` (browser) or `globalThis`/`module.exports` in Node.\n- **Function execution context** - created every time a function is called.\n- **Eval context** - rarely used.\n\n### Two phases\n1. **Creation (memory) phase**\n   - Creates the variable environment.\n   - `var` variables are stored with the value `undefined`.\n   - Function declarations are stored with their whole body.\n   - `let`/`const` are registered but **uninitialised** (temporal dead zone).\n   - Sets up the scope chain and `this`.\n2. **Execution phase** - runs line by line, assigning values and calling functions.\n\n### The call stack\nA **LIFO** (last in, first out) stack of execution contexts. Calling a function **pushes** a context; returning **pops** it. The global context stays at the bottom.\n\n```js\nfunction first() { second(); }\nfunction second() { third(); }\nfunction third() { console.log(\"done\"); }\nfirst();\n// stack: global -> first -> second -> third, then unwinds\n```\n\n### Stack overflow\nToo many nested calls (usually infinite recursion) throw `RangeError: Maximum call stack size exceeded`.\n\n### Heap\nObjects, arrays and functions live in the **heap**; the stack only keeps references and primitives. Async callbacks (timers, events) wait outside the stack and are moved back by the event loop only when the stack is empty.",
+      "keyPoints": [
+        "Global and function execution contexts",
+        "Creation phase hoists declarations, execution phase runs code",
+        "Call stack is LIFO; functions are pushed and popped",
+        "Stack overflow comes from endless recursion",
+        "Heap stores objects, stack stores execution contexts"
+      ],
+      "pitfalls": [
+        "Thinking hoisting physically moves code - it is memory allocation in the creation phase",
+        "Blocking the stack with heavy loops freezes the page"
+      ],
+      "examples": [
+        {
+          "title": "Watching the stack order",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function firstFunction() {\n  console.log(\"1. first starts\");\n  secondFunction();\n  console.log(\"4. first ends\");\n}\nfunction secondFunction() {\n  console.log(\"2. second starts\");\n  setTimeout(() => console.log(\"6. timer callback (after the stack is empty)\"), 0);\n  thirdFunction();\n  console.log(\"3b. second ends\");\n}\nfunction thirdFunction() {\n  console.log(\"3a. third runs\");\n}\nfirstFunction();\nconsole.log(\"5. global ends\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is an execution context?",
+          "a": "The environment where code is evaluated, holding variable environment, scope chain and this. There is a global context and one per function call."
+        },
+        {
+          "q": "What happens in the creation phase?",
+          "a": "Memory is allocated: var variables are set to undefined, function declarations are stored fully, let/const are reserved but uninitialised, and scope chain and this are set."
+        },
+        {
+          "q": "What is the call stack?",
+          "a": "A LIFO structure that tracks which function is currently executing and where to return after it finishes."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/index.js, JS-one-shot/how_js_works/call_stack.html"
+    },
+    {
+      "id": "js-scope",
+      "title": "Scope and the Scope Chain",
+      "level": "intermediate",
+      "summary": "Scope decides where a variable is visible: global, function or block, resolved by lexical scoping.",
+      "description": "**Scope** is the area of code where a variable can be accessed.\n\n### Kinds of scope\n- **Global scope** - declared outside any function/block; visible everywhere.\n- **Function scope** - variables declared inside a function (`var`, `let`, `const`) are visible only inside it.\n- **Block scope** - `let` and `const` inside `{ }` (if, for, while, plain block) stay inside the block. `var` ignores blocks.\n- **Module scope** - top level of an ES module is not global.\n\n### Lexical scoping\nThe scope of a variable is decided by **where it is written** in the source, not where the function is called. An inner function can read variables of the functions that **enclose** it.\n\n### Scope chain\nWhen a variable is used, the engine looks in the current scope; if not found it goes to the outer scope, and so on up to global. If nothing is found, a `ReferenceError` is thrown. Inner variables **shadow** outer variables with the same name.\n\n```js\nconst x = \"global\";\nfunction outer() {\n  const x = \"outer\";\n  function inner() { console.log(x); } // \"outer\"\n  inner();\n}\n```\n\n### Global leaks\nAssigning to an undeclared name (`count = 1`) creates a global (error in strict mode). Variables declared with `var` at the top of a script become properties of `window`; `let` and `const` do not.\n\n### Best practices\nKeep variables in the smallest scope, avoid globals, and prefer `const`.",
+      "keyPoints": [
+        "Global, function, block (and module) scope",
+        "let/const are block scoped, var is function scoped",
+        "Lexical scope: determined by where code is written",
+        "Scope chain searches inner to outer",
+        "Inner variables shadow outer ones"
+      ],
+      "pitfalls": [
+        "var in a block is visible outside the block",
+        "Implicit globals from missing declarations",
+        "Shadowing makes it easy to modify the wrong variable"
+      ],
+      "examples": [
+        {
+          "title": "Scope chain and block scope",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const globalVariable = \"I am global\";\n\nfunction myFunction() {\n  const functionVariable = \"I am in function scope\";\n  if (true) {\n    const blockVariable = \"I am block scoped\";\n    var leaky = \"var ignores blocks\";\n    console.log(globalVariable, \"|\", functionVariable, \"|\", blockVariable);\n  }\n  console.log(leaky);\n  try {\n    console.log(blockVariable);\n  } catch (e) {\n    console.log(\"blockVariable ->\", e.name);\n  }\n}\nmyFunction();\n\nconst name = \"global\";\nfunction outer() {\n  const name = \"outer\";\n  return function inner() { return name; };\n}\nconsole.log(outer()());"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is lexical scoping?",
+          "a": "Variable access is determined by the position of the code in the source: an inner function can use variables of the scopes physically around it, regardless of where it is called."
+        },
+        {
+          "q": "What is the scope chain?",
+          "a": "The ordered list of scopes the engine walks, from the current one outward to global, when resolving an identifier."
+        },
+        {
+          "q": "Difference between function scope and block scope?",
+          "a": "var is function scoped (visible in the entire function). let and const are block scoped (visible only inside the nearest { })."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/scope.js, JS-one-shot/how_js_works/scope.html"
+    },
+    {
+      "id": "js-hoisting-tdz",
+      "title": "Hoisting and the Temporal Dead Zone",
+      "level": "intermediate",
+      "summary": "Declarations are registered before code runs: var is undefined, functions are usable, let/const are in the TDZ.",
+      "description": "**Hoisting** is the behaviour where declarations are processed before the code runs, so they appear \"moved to the top\" of their scope. Nothing really moves; the engine allocates memory during the creation phase.\n\n### What hoists how\n| Declaration | Before its line |\n|---|---|\n| `var x = 5` | exists, value `undefined` |\n| `function f(){}` | fully usable |\n| `let` / `const` | in **TDZ** - ReferenceError |\n| `class C {}` | in TDZ - ReferenceError |\n| `var f = function(){}` | `f` is `undefined`, calling it is a TypeError |\n| `const f = () => {}` | TDZ - ReferenceError |\n\n### Temporal dead zone (TDZ)\nThe time between entering a scope and the line where a `let`/`const` is declared. Accessing the variable there throws `ReferenceError: Cannot access 'x' before initialization`. It exists to catch bugs, which is one reason `var` is discouraged.\n\n### Function vs variable priority\nWhen a function declaration and a `var` share a name, the function is hoisted first; the `var` assignment later overwrites it at run time.\n\n### Rules of thumb\n- Declare variables at the top of their scope.\n- Prefer `const`/`let`.\n- Define functions before use, even though declarations allow otherwise.\n- Function **expressions** and arrow functions are not hoisted like declarations.\n\nHoisting is one of the most asked interview topics, usually with output-based questions.",
+      "keyPoints": [
+        "var is hoisted and initialised to undefined",
+        "Function declarations are hoisted with their body",
+        "let/const/class are hoisted but in the TDZ until declared",
+        "Function expressions and arrows follow their variable's rules",
+        "Only declarations hoist, not initialisations"
+      ],
+      "pitfalls": [
+        "var x = 5 hoists only the declaration, the assignment stays in place",
+        "typeof on a TDZ variable still throws",
+        "Calling a function expression before assignment gives TypeError, not ReferenceError"
+      ],
+      "examples": [
+        {
+          "title": "Hoisting results",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(a);            // undefined (var hoisted)\nvar a = 10;\n\nconsole.log(sayHi());      // works - declaration hoisted\nfunction sayHi() { return \"hi from hoisted function\"; }\n\ntry {\n  console.log(b);\n} catch (e) {\n  console.log(\"let b ->\", e.name, \"-\", e.message);\n}\nlet b = 5;\n\ntry {\n  expr();\n} catch (e) {\n  console.log(\"var expr ->\", e.name);\n}\nvar expr = function () {};\n\nvar v = 1;\nfunction test() {\n  console.log(v);          // undefined - local v is hoisted\n  var v = 2;\n}\ntest();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is hoisting?",
+          "a": "JavaScript processes declarations during the creation phase before executing code, so variables and functions can be referenced earlier in their scope. var is undefined until assigned, functions are fully available, let/const are in the TDZ."
+        },
+        {
+          "q": "What is the temporal dead zone?",
+          "a": "The period from the start of a block until a let/const/class declaration is evaluated, in which accessing the binding throws a ReferenceError."
+        },
+        {
+          "q": "Are let and const hoisted?",
+          "a": "Yes, they are hoisted but not initialised, so they cannot be accessed before their declaration line."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/hoisting.js"
+    },
+    {
+      "id": "js-closures",
+      "title": "Closures",
+      "level": "intermediate",
+      "summary": "A closure is a function together with the variables from the scope where it was created.",
+      "description": "A **closure** is created when a function remembers the variables of its **lexical scope** even after the outer function has finished. Every function in JavaScript forms a closure; it becomes interesting when the inner function outlives the outer one.\n\n```js\nfunction makeCounter() {\n  let count = 0;            // private variable\n  return function () {      // closure over count\n    count++;\n    return count;\n  };\n}\nconst counter = makeCounter();\ncounter(); // 1\ncounter(); // 2\n```\n\nThe call stack frame of `makeCounter` is gone, but `count` lives on in memory because the returned function still references it. The garbage collector frees it only when the closure itself is unreachable.\n\n### Why closures matter\n- **Data privacy** (module pattern, private state).\n- **Function factories** (`multiplier(2)`).\n- **Callbacks and event handlers** that remember context.\n- **Memoization, debounce, throttle, once, curry**.\n- **React hooks** rely on closures.\n\n### Each call gets its own copy\n`makeCounter()` called twice gives two independent counters.\n\n### Closures capture variables, not values\nThe inner function sees the **current** value of the variable, not a snapshot. This is the cause of the classic `var` in a loop bug - fixed by `let` (new binding per iteration) or an IIFE.\n\n### Cost\nClosed-over variables stay in memory. Avoid capturing huge objects you do not need and remove event listeners when done to prevent leaks.",
+      "keyPoints": [
+        "Inner function keeps access to outer variables after outer returns",
+        "Each call to the outer function creates a new closure",
+        "Used for private state, factories and callbacks",
+        "Closures capture variables by reference, not values",
+        "Can cause memory leaks if they hold large objects"
+      ],
+      "pitfalls": [
+        "var in loops with setTimeout prints the final value",
+        "Forgetting that all closures share the same variable",
+        "Keeping DOM nodes alive in long-lived closures"
+      ],
+      "examples": [
+        {
+          "title": "Counter and multiplier",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function makeCounter() {\n  let count = 0;\n  return {\n    increment: () => ++count,\n    decrement: () => --count,\n    get value() { return count; },\n  };\n}\nconst c1 = makeCounter(), c2 = makeCounter();\nc1.increment(); c1.increment(); c2.increment();\nconsole.log(c1.value, c2.value, c1.count);\n\nfunction multiplier(factor) {\n  return (number) => number * factor;\n}\nconst double = multiplier(2);\nconsole.log(double(5), multiplier(10)(5));\n\nfunction once(fn) {\n  let done = false, result;\n  return (...args) => (done ? result : ((done = true), (result = fn(...args))));\n}\nconst init = once(() => { console.log(\"initialising...\"); return 42; });\nconsole.log(init(), init());"
+        },
+        {
+          "title": "Loop closure bug and fix",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const withVar = [];\nfor (var i = 0; i < 3; i++) withVar.push(() => i);\nconsole.log(withVar.map((f) => f()));      // [3, 3, 3]\n\nconst withLet = [];\nfor (let j = 0; j < 3; j++) withLet.push(() => j);\nconsole.log(withLet.map((f) => f()));      // [0, 1, 2]\n\nconst withIife = [];\nfor (var k = 0; k < 3; k++) withIife.push(((n) => () => n)(k));\nconsole.log(withIife.map((f) => f()));     // [0, 1, 2]"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is a closure?",
+          "a": "A function bundled with references to its surrounding (lexical) scope, which lets it access outer variables even after the outer function has returned."
+        },
+        {
+          "q": "Give a practical use of closures.",
+          "a": "Data hiding (private variables), function factories, memoization, debounce/throttle, and keeping state in callbacks and event handlers."
+        },
+        {
+          "q": "Why does a var loop with setTimeout print the same number?",
+          "a": "All callbacks close over the same function-scoped variable, which has its final value when they run. let creates a fresh binding per iteration."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/closure.js, JS-one-shot/advancedJS/functions/index.js"
+    },
+    {
+      "id": "js-this-keyword",
+      "title": "The this Keyword",
+      "level": "intermediate",
+      "summary": "this is decided by how a function is called, not where it is written - except in arrow functions.",
+      "description": "`this` is a keyword that refers to the object that is **executing** the current code. Its value depends on **how the function is called** (the call site).\n\n### Rules in order of priority\n1. **`new` binding** - `new Fn()`: `this` is the newly created object.\n2. **Explicit binding** - `fn.call(obj)`, `apply`, `bind`: `this` is `obj`.\n3. **Implicit binding** - `obj.method()`: `this` is the object before the dot.\n4. **Default binding** - plain call `fn()`: `this` is the global object (`window`), or `undefined` in strict mode and modules.\n5. **Arrow functions** - no own `this`; it is taken lexically from the enclosing scope.\n\n### Other contexts\n- Global scope: `window` in browsers, `module.exports`/`{}` in Node modules.\n- DOM event handler (normal function): the element (`event.currentTarget`).\n- Class methods: the instance - but only if called as `instance.method()`.\n\n### Losing this\n```js\nconst user = { name: \"Asha\", hi() { return this.name; } };\nconst f = user.hi;\nf();                 // undefined - detached method\nsetTimeout(user.hi, 0); // same problem\n```\nFixes: `user.hi.bind(user)`, an arrow wrapper `() => user.hi()`, or arrow-function class fields.\n\n### Quick tip\nLook at what is on the **left of the dot** at the moment of the call. No dot means default binding.",
+      "keyPoints": [
+        "this depends on the call site",
+        "obj.method() gives this = obj",
+        "Plain function calls give undefined (strict) or window",
+        "call/apply/bind set this explicitly",
+        "Arrow functions inherit this from the enclosing scope"
+      ],
+      "pitfalls": [
+        "Passing obj.method as a callback loses this",
+        "Arrow functions as object methods do not point to the object",
+        "Nested regular functions inside methods get their own this"
+      ],
+      "examples": [
+        {
+          "title": "this in different calls",
+          "language": "javascript",
+          "explanation": "",
+          "code": "(function () {\n  \"use strict\";\n  const obj = {\n    name: \"Kodyfier\",\n    regular() { return this && this.name; },\n    delayed() {\n      return [1].map(() => this.name);        // arrow keeps obj as this\n    },\n  };\n  console.log(obj.regular());\n  const detached = obj.regular;\n  console.log(detached());                     // undefined in strict mode\n  console.log(obj.delayed());\n\n  function Person(name) { this.name = name; }\n  console.log(new Person(\"Ravi\").name);\n  console.log(detached.call({ name: \"borrowed\" }));\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How is the value of this determined?",
+          "a": "By the call site: new binding, explicit call/apply/bind, implicit object before the dot, or default (global/undefined). Arrow functions use the this of their enclosing scope."
+        },
+        {
+          "q": "What is this inside an arrow function?",
+          "a": "The same this as the surrounding (lexical) scope where the arrow was defined; it cannot be changed with call, apply or bind."
+        },
+        {
+          "q": "Why does setTimeout(obj.method, 100) lose this?",
+          "a": "The method is passed as a bare function and later called without an object, so default binding applies. Use bind or an arrow wrapper."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-call-apply-bind",
+      "title": "call, apply and bind",
+      "level": "intermediate",
+      "summary": "Borrow methods and fix this with call, apply and bind.",
+      "description": "Every function has three methods to set `this` explicitly.\n\n### call\nInvokes the function **immediately** with a given `this` and arguments passed one by one.\n```js\ngreet.call(person, \"Hello\", \"!\");\n```\n\n### apply\nSame as `call`, but arguments are passed as an **array**.\n```js\ngreet.apply(person, [\"Hello\", \"!\"]);\n```\nWith the spread operator, `call(person, ...args)` has largely replaced `apply`.\n\n### bind\nReturns a **new function** with `this` (and optionally some arguments) permanently fixed. It does **not** call the function.\n```js\nconst greetJohn = greet.bind(person, \"Hi\");\ngreetJohn(\"?\");\n```\n\n### Summary\n| Method | Calls now? | Arguments | Returns |\n|---|---|---|---|\n| `call` | yes | comma separated | function result |\n| `apply` | yes | array | function result |\n| `bind` | no | comma separated (partial) | new function |\n\n### Use cases\n- **Method borrowing**: `Array.prototype.slice.call(arguments)`, or using `greet` of one object on another.\n- **Fixing this** in callbacks and event handlers.\n- **Partial application**: `const double = multiply.bind(null, 2)`.\n- `Math.max.apply(null, arr)` before spread existed.\n\n### Details\n- A bound function's `this` cannot be changed again by `call`/`apply`.\n- `bind` on an arrow function does not change `this`.\n- Passing `null`/`undefined` as `this` uses the global object (sloppy mode) or stays `undefined` (strict).",
+      "keyPoints": [
+        "call: invoke now, arguments separated",
+        "apply: invoke now, arguments in an array",
+        "bind: returns a new function with fixed this",
+        "All three are used to borrow methods and fix this",
+        "bind supports partial application"
+      ],
+      "pitfalls": [
+        "Using bind inside render loops creates a new function every time",
+        "Arrow functions ignore call/apply/bind for this",
+        "Calling bind result with new ignores the bound this"
+      ],
+      "examples": [
+        {
+          "title": "Borrowing a method",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const bioData = {\n  name: \"Thapa Technical\",\n  age: 30,\n  greet() {\n    console.log(`Hi, I'm ${this.name}. I'm ${this.age} years old.`);\n  },\n};\nconst student = { name: \"vinod\", age: 29 };\n\nbioData.greet();\nbioData.greet.call(student);\nbioData.greet.apply(student);\nconst bound = bioData.greet.bind(student);\nbound();\n\nfunction intro(greeting, punct) {\n  return `${greeting}, ${this.name}${punct}`;\n}\nconsole.log(intro.call(student, \"Hello\", \"!\"));\nconsole.log(intro.apply(student, [\"Hey\", \"?\"]));\n\nconst multiply = (a, b) => a * b;\nconst double = multiply.bind(null, 2);\nconsole.log(double(21));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between call, apply and bind?",
+          "a": "call and apply invoke the function immediately; call takes arguments individually and apply takes an array. bind returns a new function with this (and optional arguments) permanently set."
+        },
+        {
+          "q": "Can you change the this of a bound function?",
+          "a": "No. Once bound, later call/apply/bind cannot override this."
+        },
+        {
+          "q": "Write a polyfill idea for bind.",
+          "a": "Return a function that calls the original with the stored this and the combined arguments: Function.prototype.myBind = function (ctx, ...a) { const fn = this; return function (...b) { return fn.apply(ctx, [...a, ...b]); }; };"
+        }
+      ],
+      "source": "JS-one-shot/objects/bonus.js"
+    }
+  ]
+}

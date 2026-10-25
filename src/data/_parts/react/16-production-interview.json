@@ -1,0 +1,518 @@
+{
+ "id": "react-production-interview",
+ "title": "Deployment, Production and Interview Prep",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "react-build-deploy",
+   "title": "Building and Deploying a React App",
+   "level": "intermediate",
+   "summary": "Build static files with Vite and host them anywhere, remembering the SPA fallback and base path.",
+   "description": "A client-side React app is just **static files**: one `index.html`, hashed JS and CSS bundles and assets. Deployment means building them and serving them over HTTPS.\n\n### Build\n\n`npm run build` runs `vite build`, creating a `dist/` folder with minified, tree-shaken, code-split and **content-hashed** files (for example `index-8f3a2c.js`). Hashes allow aggressive caching: set `Cache-Control: public, max-age=31536000, immutable` for `/assets/*` and **no-cache** for `index.html`.\n\n### Preview before shipping\n\n`npm run preview` serves `dist/` locally. Test the production build, not just the dev server.\n\n### Two classic gotchas\n\n1. **SPA fallback.** With React Router, `/dashboard` is not a real file. The host must serve `index.html` for unknown paths, otherwise a refresh gives 404 (see Vercel/Netlify topic, Nginx `try_files`).\n2. **Base path.** If the site lives at `https://user.github.io/my-repo/`, set `base: \"/my-repo/\"` in `vite.config.js` (and `basename` in the router).\n\n### Hosting options\n\n| Type | Examples |\n| --- | --- |\n| Static hosts / CDNs | Vercel, Netlify, Cloudflare Pages, GitHub Pages, S3 + CloudFront, Firebase Hosting |\n| Containers | Docker + Nginx on any cloud |\n| Node/SSR | Next.js on Vercel, Node servers |\n\n### Production checklist\n\n- Environment variables set for the production build.\n- HTTPS, compression (Brotli/gzip) and a CDN.\n- Error monitoring (Sentry) with source maps uploaded privately.\n- Analytics and Web Vitals.\n- CI pipeline: install, lint, type-check, test, build, deploy previews for pull requests.",
+   "keyPoints": [
+    "npm run build creates hashed static files in dist/",
+    "Cache assets long-term; never cache index.html",
+    "SPA hosting needs a fallback to index.html",
+    "Set base path for sub-folder deployments",
+    "Test with npm run preview and CI before shipping"
+   ],
+   "pitfalls": [
+    "Refreshing a deep link returns 404 because the fallback is missing.",
+    "Deploying without setting production env variables."
+   ],
+   "examples": [
+    {
+     "title": "Dockerfile + nginx for an SPA",
+     "language": "text",
+     "lang": "docker",
+     "code": "# build stage\nFROM node:22-alpine AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nARG VITE_API_URL\nENV VITE_API_URL=$VITE_API_URL\nRUN npm run build\n\n# serve stage\nFROM nginx:alpine\nCOPY --from=build /app/dist /usr/share/nginx/html\nCOPY nginx.conf /etc/nginx/conf.d/default.conf\nEXPOSE 80"
+    },
+    {
+     "title": "nginx.conf SPA fallback and caching",
+     "language": "text",
+     "lang": "text",
+     "code": "server {\n  listen 80;\n  root /usr/share/nginx/html;\n  index index.html;\n\n  location /assets/ {\n    add_header Cache-Control \"public, max-age=31536000, immutable\";\n  }\n  location / {\n    add_header Cache-Control \"no-cache\";\n    try_files $uri /index.html;   # SPA fallback\n  }\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does refreshing a React Router URL give a 404 on some hosts?",
+     "a": "Because the server looks for a real file at that path; configure a rewrite so all unknown routes return index.html and let the client router handle them."
+    },
+    {
+     "q": "Why hash filenames in the build?",
+     "a": "Content hashes change when the file changes, so assets can be cached forever while users still get new versions after a deploy."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-vercel-netlify",
+   "title": "Deploying to Vercel and Netlify",
+   "level": "beginner",
+   "summary": "Connect a Git repository and get automatic builds, preview URLs and HTTPS, with a rewrite for client-side routing.",
+   "description": "Vercel and Netlify are the easiest ways to publish a React app. Both integrate with GitHub/GitLab: every push builds and deploys, and every pull request gets a **preview URL**.\n\n### Steps (both platforms)\n\n1. Push your project to GitHub.\n2. Import the repository on the platform.\n3. Framework preset: **Vite**. Build command `npm run build`, output directory `dist`.\n4. Add **environment variables** in the dashboard (they are used at build time).\n5. Deploy. You get an HTTPS URL; add a custom domain and DNS records.\n\n### SPA routing\n\n- **Vercel:** add `vercel.json` with a rewrite to `/index.html` (Next.js needs nothing).\n- **Netlify:** add `public/_redirects` containing `/* /index.html 200`, or `netlify.toml`.\n\n### Useful features\n\n| Feature | Vercel | Netlify |\n| --- | --- | --- |\n| Preview deployments | yes | yes |\n| Serverless functions | `api/` folder | `netlify/functions` |\n| Edge functions / middleware | yes | yes |\n| Forms, identity | - | built-in forms |\n| Rollbacks | instant, one click | instant, one click |\n\n### Tips\n\n- Set `NODE_VERSION` to match local development.\n- Never commit `.env` secrets; use the dashboard.\n- For secrets (API keys), call a serverless function from the front end.\n- Use branch deploys for staging, main for production.\n- Watch build logs: case-sensitive imports (`Button.jsx` vs `button.jsx`) work on Windows/macOS but fail on Linux builds.",
+   "keyPoints": [
+    "Import the Git repo; preset Vite; output dir dist",
+    "Env variables are configured in the dashboard",
+    "Add a rewrite to index.html for client routing",
+    "Every PR gets a preview URL",
+    "Case-sensitive file names break Linux builds"
+   ],
+   "pitfalls": [
+    "Forgetting the rewrite rule, so deep links 404.",
+    "Case mismatch in import paths that only fails in CI."
+   ],
+   "examples": [
+    {
+     "title": "vercel.json rewrite",
+     "language": "text",
+     "lang": "json",
+     "code": "{\n  \"rewrites\": [{ \"source\": \"/(.*)\", \"destination\": \"/index.html\" }]\n}"
+    },
+    {
+     "title": "Netlify: _redirects and netlify.toml",
+     "language": "text",
+     "lang": "text",
+     "code": "# public/_redirects\n/*    /index.html   200\n\n# netlify.toml\n[build]\n  command = \"npm run build\"\n  publish = \"dist\"\n\n[[redirects]]\n  from = \"/*\"\n  to = \"/index.html\"\n  status = 200"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you configure client-side routing on Netlify?",
+     "a": "Add a redirect rule \"/* /index.html 200\" (in _redirects or netlify.toml) so all paths serve the SPA entry."
+    },
+    {
+     "q": "When do environment variables apply for static Vite apps on these hosts?",
+     "a": "At build time; changing a variable requires a new build and deploy."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-seo",
+   "title": "SEO for React Apps",
+   "level": "intermediate",
+   "summary": "Client-rendered SPAs are hard for crawlers; use SSR/SSG, proper metadata, and sitemaps for content that must rank.",
+   "description": "A plain Vite React app ships an almost empty HTML file and builds the page with JavaScript. Google can run JavaScript but with delay and limits, and many other crawlers and social previews (WhatsApp, X, LinkedIn) **do not**. So for public content pages, SEO needs extra work.\n\n### Options (from simplest to strongest)\n\n1. **Better metadata in CSR:** per-page `<title>` and `<meta>` with `react-helmet-async` (or React 19 native `<title>`). Works for Google eventually, not for social previews.\n2. **Prerendering / static generation:** generate HTML for each route at build time (`vite-plugin-ssr`/Vike, `react-snap`, Astro, Next.js SSG). Great for blogs and docs.\n3. **SSR (server-side rendering):** the server returns full HTML per request. Next.js, Remix/React Router framework mode, TanStack Start.\n4. **Hybrid:** SSR/SSG for marketing pages and CSR for the logged-in app. Many companies split `www` from `app`.\n\n### Checklist\n\n- Unique `<title>` (under about 60 chars) and meta `description` per page.\n- Semantic HTML: one `h1`, headings in order, real `<a href>` links for navigation (crawlers follow anchors, not onClick).\n- Open Graph and Twitter card tags for sharing.\n- `canonical` link, `robots.txt` and `sitemap.xml`.\n- Proper **status codes** (a client-rendered 404 page still returns 200 - a \"soft 404\").\n- Structured data (JSON-LD).\n- Fast Core Web Vitals; image `alt` text.\n- Avoid content that only appears after interaction.\n\n### Test\n\nUse \"View Source\", Google Search Console's URL Inspection, and the Rich Results Test.",
+   "keyPoints": [
+    "CSR pages are weak for crawlers and social previews",
+    "Use SSR/SSG (Next.js, Astro, prerender) for public content",
+    "Unique title, description, canonical, OG tags per page",
+    "Use real anchor links and semantic headings",
+    "Provide sitemap.xml and proper status codes"
+   ],
+   "pitfalls": [
+    "Relying on onClick navigation with no href.",
+    "One title for the whole site because the SPA never updates it."
+   ],
+   "examples": [
+    {
+     "title": "Per-page metadata",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// React 19: render tags anywhere, they are hoisted to <head>\nfunction ProductPage({ product }) {\n  return (\n    <article>\n      <title>{product.name} | My Shop</title>\n      <meta name=\"description\" content={product.summary} />\n      <link rel=\"canonical\" href={`https://myshop.com/products/${product.slug}`} />\n      <meta property=\"og:title\" content={product.name} />\n      <meta property=\"og:image\" content={product.image} />\n      <h1>{product.name}</h1>\n    </article>\n  );\n}\n\n// React 18: react-helmet-async\n// import { Helmet } from \"react-helmet-async\";\n// <Helmet><title>{product.name} | My Shop</title></Helmet>"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is SEO harder for single-page apps?",
+     "a": "The initial HTML is nearly empty and content is built by JavaScript, which some crawlers and social scrapers do not execute or execute late."
+    },
+    {
+     "q": "How can you improve SEO of a React site?",
+     "a": "Use SSR or static generation, add unique titles and meta tags, semantic HTML and real links, a sitemap, and good Core Web Vitals."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-pwa",
+   "title": "Progressive Web Apps (PWA)",
+   "level": "advanced",
+   "summary": "Make your app installable and offline-capable with a web manifest and a service worker.",
+   "description": "A **PWA** is a web app that can be **installed** on a phone or desktop, works **offline** or on poor networks, and can send push notifications. It needs three things:\n\n1. **HTTPS** (or localhost).\n2. A **web app manifest** (`manifest.webmanifest`): name, short name, icons (192 and 512 px), `start_url`, `display: \"standalone\"`, theme and background colors.\n3. A **service worker**: a script that runs in the background, intercepts network requests and serves cached responses.\n\n### With Vite\n\n`vite-plugin-pwa` (Workbox under the hood) generates the manifest and service worker automatically:\n\n- `registerType: \"autoUpdate\"` or `\"prompt\"` to manage updates.\n- **Precache** the build files (app shell).\n- **Runtime caching** strategies: *CacheFirst* (fonts, images), *NetworkFirst* (API data), *StaleWhileRevalidate* (balanced).\n\n### Concepts\n\n| Strategy | Behavior |\n| --- | --- |\n| Cache first | fastest, may be stale |\n| Network first | fresh, falls back to cache offline |\n| Stale-while-revalidate | cached now, update in background |\n\n### Challenges\n\n- **Updates:** users may keep an old version; show a \"New version available - Refresh\" prompt.\n- **Cache invalidation** and versioning.\n- Do not cache authenticated API responses carelessly.\n- Offline UX: queue writes (Background Sync, IndexedDB), show offline banners (`navigator.onLine`).\n- Test in Chrome DevTools -> Application tab and Lighthouse PWA audit.",
+   "keyPoints": [
+    "Manifest + service worker + HTTPS",
+    "vite-plugin-pwa generates both with Workbox",
+    "Choose caching strategy per resource type",
+    "Provide an update prompt for new versions",
+    "Be careful caching private data"
+   ],
+   "pitfalls": [
+    "Users stuck on an old cached version with no update flow.",
+    "Caching API responses that contain personal data."
+   ],
+   "examples": [
+    {
+     "title": "vite-plugin-pwa configuration",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\nimport { VitePWA } from \"vite-plugin-pwa\";\n\nexport default defineConfig({\n  plugins: [\n    react(),\n    VitePWA({\n      registerType: \"prompt\",\n      manifest: {\n        name: \"My Notes\",\n        short_name: \"Notes\",\n        start_url: \"/\",\n        display: \"standalone\",\n        theme_color: \"#0ea5e9\",\n        background_color: \"#ffffff\",\n        icons: [\n          { src: \"pwa-192.png\", sizes: \"192x192\", type: \"image/png\" },\n          { src: \"pwa-512.png\", sizes: \"512x512\", type: \"image/png\" },\n        ],\n      },\n      workbox: {\n        runtimeCaching: [\n          {\n            urlPattern: ({ url }) => url.pathname.startsWith(\"/api/\"),\n            handler: \"NetworkFirst\",\n            options: { cacheName: \"api\", networkTimeoutSeconds: 3 },\n          },\n        ],\n      },\n    }),\n  ],\n});"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What makes a web app a PWA?",
+     "a": "It is served over HTTPS, has a web manifest so it can be installed, and registers a service worker that enables offline behavior and caching."
+    },
+    {
+     "q": "What is a service worker?",
+     "a": "A background script that sits between the app and the network, intercepting requests to cache assets, serve offline content and handle push notifications."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-security",
+   "title": "Security: XSS, dangerouslySetInnerHTML and Best Practices",
+   "level": "intermediate",
+   "summary": "React escapes content by default; XSS appears when you bypass it or trust unsafe data and URLs.",
+   "description": "React protects you from most **XSS (cross-site scripting)** because values placed in JSX are **escaped**. A string containing `<script>` is displayed as text, not executed.\n\n### How XSS still happens\n\n1. **`dangerouslySetInnerHTML`** inserts raw HTML. If it contains user-provided content, attackers can run scripts through attributes like `onerror`.\n   - Sanitize with **DOMPurify** first: `{ __html: DOMPurify.sanitize(html) }`.\n   - Better: render Markdown to React elements (react-markdown) rather than HTML.\n2. **Unsafe URLs:** `<a href={userUrl}>` with `javascript:alert(1)`. Validate that URLs start with `http:`, `https:` or `mailto:`.\n3. **Direct DOM access:** `ref.current.innerHTML = ...`, `eval`, `new Function`, `document.write`.\n4. **Server-side rendering:** embedding JSON in a `<script>` tag without escaping `<`.\n5. **Vulnerable dependencies and supply-chain attacks.**\n\n### Token storage\n\nTokens in `localStorage` are readable by any XSS. Prefer **HttpOnly, Secure, SameSite cookies** for session tokens, plus **CSRF** protection (SameSite, CSRF tokens).\n\n### Other practices\n\n- Set a **Content-Security-Policy** header to restrict scripts.\n- Run `npm audit`, use lockfiles, enable Dependabot.\n- Never put secrets in the front end (env vars are public).\n- Validate and authorize on the **server**; client checks are only UX.\n- Use `rel=\"noopener noreferrer\"` with `target=\"_blank\"` (modern browsers imply noopener).\n- Be careful with third-party scripts and iframes (`sandbox`).",
+   "keyPoints": [
+    "JSX escapes values by default",
+    "dangerouslySetInnerHTML needs sanitized input (DOMPurify)",
+    "Validate URLs; block javascript: links",
+    "Prefer HttpOnly cookies over localStorage tokens",
+    "CSP, dependency audits, server-side validation"
+   ],
+   "pitfalls": [
+    "Rendering user HTML with dangerouslySetInnerHTML unsanitized.",
+    "Putting secrets in client-side env variables."
+   ],
+   "examples": [
+    {
+     "title": "JSX escapes malicious strings",
+     "language": "react",
+     "css": "",
+     "code": "const payload = '<img src=x onerror=\"alert(1)\"> <script>alert(2)</script>';\n\nfunction safeUrl(url) {\n  try {\n    const u = new URL(url, \"https://example.com\");\n    return [\"http:\", \"https:\", \"mailto:\"].includes(u.protocol) ? url : \"#\";\n  } catch (e) {\n    return \"#\";\n  }\n}\n\nfunction App() {\n  const links = [\"https://react.dev\", \"javascript:alert('xss')\"];\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>User comment (escaped automatically):</p>\n      <pre style={{ background: \"#f1f5f9\", padding: 8, whiteSpace: \"pre-wrap\" }}>{payload}</pre>\n      <ul>\n        {links.map((l) => (\n          <li key={l}>\n            <a href={safeUrl(l)} target=\"_blank\" rel=\"noopener noreferrer\">{l}</a>\n            {safeUrl(l) === \"#\" && \" (blocked)\"}\n          </li>\n        ))}\n      </ul>\n    </div>\n  );\n}",
+     "explanation": "The payload is shown as text and never runs; the URL helper blocks javascript: links."
+    },
+    {
+     "title": "Sanitizing HTML before dangerouslySetInnerHTML",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import DOMPurify from \"dompurify\";\n\nexport function RichText({ html }) {\n  const clean = DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });\n  return <div dangerouslySetInnerHTML={{ __html: clean }} />;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does React protect against XSS by default?",
+     "a": "JSX escapes any value embedded in markup before putting it in the DOM, so strings are treated as text, not HTML."
+    },
+    {
+     "q": "When is dangerouslySetInnerHTML safe?",
+     "a": "Only with trusted or properly sanitized HTML (for example processed by DOMPurify); never with raw user input."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-common-mistakes",
+   "title": "Common React Mistakes and Bugs",
+   "level": "beginner",
+   "summary": "A checklist of mistakes that beginners and experienced developers still make.",
+   "description": "Review this list before every code review.\n\n### State and rendering\n\n1. **Mutating state:** `state.push(x)`, `obj.a = 1`. Always copy.\n2. **Expecting immediate updates:** reading state right after `setState`. Use the next render or the updater function.\n3. **Missing keys / index keys** in dynamic lists.\n4. **Derived state in `useState`:** duplicating props or computed values.\n5. **Defining components inside components:** they remount every render and lose state.\n6. **Calling hooks conditionally** or after an early return.\n\n### Effects\n\n7. **Missing or wrong dependencies** (stale closures) and disabling the lint rule.\n8. **Infinite loops:** `setState` in an effect with an object/array dependency recreated each render.\n9. **No cleanup** for timers, listeners and subscriptions.\n10. **Using effects for things that are not effects:** transforming data, handling clicks, resetting state on prop change.\n11. **Async function as the effect callback.**\n\n### Props and events\n\n12. `onClick={fn()}` instead of `onClick={fn}`.\n13. Forgetting `e.preventDefault()` in forms.\n14. Passing new object/function props to memoized children.\n\n### Other\n\n15. Fetching in the render body.\n16. Using `useRef` value in render expecting updates.\n17. Putting secrets in client code; trusting client validation.\n18. Ignoring loading/error/empty states.\n19. Over-using global state/context for local concerns.\n20. Premature optimization (`memo` and `useCallback` everywhere).",
+   "keyPoints": [
+    "Do not mutate state; use immutable updates",
+    "Use stable keys; define components at module level",
+    "Keep hook rules and honest dependency arrays",
+    "Clean up effects and avoid unnecessary effects",
+    "Handle loading, error and empty states"
+   ],
+   "pitfalls": [
+    "Silencing exhaustive-deps instead of fixing the logic.",
+    "Declaring a component inside another component."
+   ],
+   "examples": [
+    {
+     "title": "Bug: component defined inside another component",
+     "language": "react",
+     "css": "",
+     "code": "function Broken() {\n  const [count, setCount] = useState(0);\n  // BAD: new component type on every render -> remount -> state lost\n  function Inner() {\n    const [text, setText] = useState(\"\");\n    return <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"Type, then click +1\" />;\n  }\n  return (\n    <div>\n      <button onClick={() => setCount(count + 1)}>+1 ({count})</button>\n      <Inner />\n    </div>\n  );\n}\n\nfunction Inner2() {\n  const [text, setText] = useState(\"\");\n  return <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"Type, then click +1\" />;\n}\nfunction Fixed() {\n  const [count, setCount] = useState(0);\n  return (\n    <div>\n      <button onClick={() => setCount(count + 1)}>+1 ({count})</button>\n      <Inner2 />\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <h4>Broken (input resets)</h4><Broken />\n      <h4>Fixed (module-level component)</h4><Fixed />\n    </div>\n  );\n}",
+     "explanation": "Type in the input, then click the button; the input state resets because Inner is a new component every render."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is defining a component inside another component a mistake?",
+     "a": "Each parent render creates a new function identity, so React sees a different component type, unmounts the old one and mounts a new one, losing its state and hurting performance."
+    },
+    {
+     "q": "What is a stale closure?",
+     "a": "A function that captured old state or props from an earlier render, usually because a dependency was missing from an effect or callback."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-anti-patterns",
+   "title": "React Anti-patterns and Better Alternatives",
+   "level": "intermediate",
+   "summary": "Recognize patterns that look reasonable but cause bugs, and use the better alternative.",
+   "description": "| Anti-pattern | Why it hurts | Better |\n| --- | --- | --- |\n| `useEffect` to sync state from props | extra renders, bugs | compute during render, or reset with `key` |\n| Copying props into state | ignores later prop changes | use the prop directly; or `key` to reset |\n| Many booleans (`isLoading`, `isError`...) | impossible states | one `status` value or reducer |\n| Prop drilling through 5 layers | brittle, noisy | composition (`children`), context |\n| Giant context with everything | all consumers re-render | split contexts, or a store with selectors |\n| Index as key in dynamic lists | state jumps between rows | stable ids |\n| God component (500 lines) | untestable | split components and custom hooks |\n| Fetching in `useEffect` everywhere | duplicate code, no cache | TanStack Query / loaders |\n| Storing server data in Redux/Context | stale caches | server-state library |\n| `setState` in render | infinite loop | event handlers/effects |\n| Boolean prop explosion | confusing API | variants, composition |\n| Deep prop spreading `{...props}` blindly | leaks unknown props to DOM | pick and forward only what's needed |\n| `any` everywhere in TypeScript | no safety | model the types |\n| Premature `memo` / `useCallback` | noise, no gain | measure, then optimize |\n| `useEffect` for event logic (\"when X changes, do Y after click\") | hard to follow | do it in the event handler |\n\n### A mental model\n\nIf you want to *respond to something the user did*, use an **event handler**. If you want to *keep something outside React in sync with state*, use an **effect**. If you can *calculate it*, do it in **render**.\n\n### Reset state with a key\n\nInstead of an effect that resets form state when `userId` changes, render `<Profile key={userId} />`. React treats it as a new component and starts with fresh state.",
+   "keyPoints": [
+    "Prefer derivation over syncing state with effects",
+    "Use keys to reset state",
+    "One status value beats many booleans",
+    "Handlers for user events, effects for external sync",
+    "Choose composition over drilling and giant contexts"
+   ],
+   "pitfalls": [
+    "Using useEffect as a general \"when this changes\" tool.",
+    "Spreading all props onto DOM elements."
+   ],
+   "examples": [
+    {
+     "title": "Resetting state with a key instead of an effect",
+     "language": "react",
+     "css": "",
+     "code": "function EditForm({ user }) {\n  // initial state comes from props only once; key resets it\n  const [name, setName] = useState(user.name);\n  return (\n    <p>\n      <input value={name} onChange={(e) => setName(e.target.value)} />\n    </p>\n  );\n}\n\nfunction App() {\n  const users = [{ id: 1, name: \"Asha\" }, { id: 2, name: \"Ravi\" }];\n  const [id, setId] = useState(1);\n  const user = users.find((u) => u.id === id);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      {users.map((u) => <button key={u.id} onClick={() => setId(u.id)} style={{ marginRight: 6 }}>{u.name}</button>)}\n      <EditForm key={user.id} user={user} />\n      <small>Edit the name, switch user and back: each user starts fresh.</small>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is copying props to state usually an anti-pattern?",
+     "a": "The state only reads the prop on the first render, so later prop changes are ignored and the data can go out of sync. Use the prop directly or reset with a key."
+    },
+    {
+     "q": "When should you use an effect versus an event handler?",
+     "a": "Use an event handler for responses to user actions; use an effect only to synchronize with systems outside React."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-interview-basic",
+   "title": "Interview Questions: Basic",
+   "level": "beginner",
+   "summary": "Rapid-fire answers to the fundamentals most React interviews start with.",
+   "description": "**1. What is React?** A JavaScript library for building UIs from components.\n\n**2. What is JSX?** Syntax that looks like HTML in JavaScript, compiled to `createElement`/`jsx` calls.\n\n**3. Virtual DOM?** A lightweight object tree React diffs against the previous one to apply minimal DOM updates.\n\n**4. Props vs state?** Props are read-only inputs from the parent; state is memory owned by the component that triggers re-renders.\n\n**5. Why keys in lists?** Stable identity so React can match, reorder and preserve state.\n\n**6. Controlled vs uncontrolled?** Controlled inputs get value from state via `onChange`; uncontrolled keep it in the DOM (read with refs).\n\n**7. What is a Fragment?** `<>...</>` groups children without an extra DOM node.\n\n**8. Why can't you modify state directly?** React compares references; mutation skips re-render and breaks assumptions. Copy instead.\n\n**9. What is lifting state up?** Moving shared state to the closest common parent.\n\n**10. What is prop drilling?** Passing props through components that do not use them; solve with composition or context.\n\n**11. What does useEffect do?** Runs side effects after render; dependencies control when; cleanup undoes setup.\n\n**12. Class vs function components?** Function components with hooks are standard; classes remain for error boundaries.\n\n**13. What is React.StrictMode?** A dev-only wrapper that double-invokes renders/effects to surface bugs.\n\n**14. What are synthetic events?** React's cross-browser wrapper around native events.",
+   "keyPoints": [
+    "Know definitions: JSX, VDOM, props, state, keys",
+    "Controlled vs uncontrolled, lifting state",
+    "useEffect dependencies and cleanup",
+    "Never mutate state",
+    "Explain with a tiny example"
+   ],
+   "pitfalls": [
+    "Reciting definitions without being able to show code.",
+    "Saying the Virtual DOM is always faster than the real DOM."
+   ],
+   "examples": [
+    {
+     "title": "Props vs state at a glance",
+     "language": "react",
+     "css": "",
+     "code": "function Greeting({ name }) {\n  // name is a prop: read-only here\n  return <h3>Hello, {name}</h3>;\n}\n\nfunction App() {\n  // state is owned here and changes over time\n  const [name, setName] = useState(\"Asha\");\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Greeting name={name} />\n      <input value={name} onChange={(e) => setName(e.target.value)} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between a controlled and an uncontrolled component?",
+     "a": "A controlled component's value lives in React state and is updated with onChange; an uncontrolled component stores its value in the DOM and you read it via a ref or FormData."
+    },
+    {
+     "q": "What is the purpose of keys?",
+     "a": "To give list elements stable identities so React can efficiently update, reorder and preserve their state."
+    },
+    {
+     "q": "Why must component names start with a capital letter?",
+     "a": "JSX treats lowercase tags as DOM elements and capitalized names as components."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-interview-intermediate",
+   "title": "Interview Questions: Intermediate",
+   "level": "intermediate",
+   "summary": "Hooks, context, performance and patterns questions for mid-level roles.",
+   "description": "**1. useMemo vs useCallback?** `useMemo` caches a computed value; `useCallback` caches a function. Both need honest dependencies.\n\n**2. When does a component re-render?** State change, parent re-render, context change.\n\n**3. What does React.memo do?** Skips re-render when props are shallow-equal. Useless if props are new objects/functions each time.\n\n**4. useRef uses?** DOM access, mutable values (timer ids, previous value) without re-render.\n\n**5. useEffect vs useLayoutEffect?** After paint vs before paint (measure layout, avoid flicker).\n\n**6. How do you avoid race conditions in fetching?** Cleanup with ignore flag or `AbortController`; or TanStack Query.\n\n**7. Context drawbacks?** Every consumer re-renders on value change; no selectors.\n\n**8. useReducer vs useState?** Reducer centralizes complex transitions; good for related state.\n\n**9. What is a custom hook?** A function using hooks to share logic; each call has its own state.\n\n**10. What are error boundaries?** Class components catching render errors in children; not for event handlers/async.\n\n**11. What are portals?** Render children into another DOM node; events still bubble through React tree.\n\n**12. Code splitting?** `lazy` + `Suspense` + dynamic import.\n\n**13. HOC vs render props vs hooks?** Three ways to share logic; hooks are simplest.\n\n**14. What is reconciliation?** Diffing algorithm using element type and keys.\n\n**15. How do you handle forms?** Controlled state, or React Hook Form + Zod.",
+   "keyPoints": [
+    "Hooks: when to memoize and what dependencies mean",
+    "Re-render triggers and how to stop them",
+    "Race conditions, cleanup and AbortController",
+    "Context trade-offs, reducer use cases",
+    "Error boundaries, portals, lazy loading"
+   ],
+   "pitfalls": [
+    "Saying memoization always improves performance.",
+    "Not knowing the limits of error boundaries."
+   ],
+   "examples": [
+    {
+     "title": "Stale closure explained",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [count, setCount] = useState(0);\n  const [msg, setMsg] = useState(\"\");\n  const latest = useRef(count);\n  latest.current = count;\n\n  function showLater() {\n    setTimeout(() => {\n      setMsg(\"closure saw \" + count + \", ref saw \" + latest.current);\n    }, 1500);\n  }\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setCount(count + 1)}>+1 ({count})</button>{\" \"}\n      <button onClick={showLater}>Show later (1.5s)</button>\n      <p>{msg}</p>\n      <small>Click Show later, then +1 a few times: the closure keeps the old number.</small>\n    </div>\n  );\n}",
+     "explanation": "Click +1 three times quickly, then click Show later: it shows the value at click time."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between useMemo and React.memo?",
+     "a": "useMemo caches a value inside a component; React.memo caches a component's rendered output based on its props."
+    },
+    {
+     "q": "What is the difference between useEffect and useLayoutEffect?",
+     "a": "useEffect runs after the browser paints; useLayoutEffect runs synchronously after DOM updates but before paint, suited to measurements and preventing flicker."
+    },
+    {
+     "q": "How do you prevent unnecessary re-renders?",
+     "a": "Colocate state, pass children, use memo with stable props, split context, and virtualize long lists; measure with the Profiler first."
+    },
+    {
+     "q": "Why can context cause performance problems?",
+     "a": "Any change to the provider value re-renders all consumers because there are no selectors."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-interview-advanced",
+   "title": "Interview Questions: Advanced",
+   "level": "advanced",
+   "summary": "Internals, concurrent features, architecture and server components questions for senior roles.",
+   "description": "**1. How does React Fiber work?** Fiber is the reconciler's data structure: a linked tree of units of work that can be paused, resumed and prioritized.\n\n**2. Render vs commit phase?** Render is pure and interruptible; commit applies DOM changes and runs layout effects synchronously.\n\n**3. What is concurrent rendering?** The ability to prepare updates in the background and prioritize urgent ones; enabled by `createRoot`.\n\n**4. useTransition vs useDeferredValue?** Transition wraps the update; deferred value wraps the value you receive.\n\n**5. What is tearing and useSyncExternalStore?** Inconsistent UI from external store changes mid-render; the hook gives tear-free reads.\n\n**6. How do hooks work internally?** A linked list per component, matched by call order; hence the Rules of Hooks.\n\n**7. What are Server Components?** Components that render on the server only, shipping no JS, able to access data directly.\n\n**8. SSR vs SSG vs ISR vs CSR?** HTML per request, at build, at build + revalidation, in the browser.\n\n**9. What is hydration?** Attaching event handlers and state to server-rendered HTML; mismatches cause errors.\n\n**10. How do you design state for a large app?** Classify: local, shared, server, URL, form; use the right tool for each.\n\n**11. How would you optimize a slow list?** Profile, virtualize, memoize rows, stable keys, pagination, move state down.\n\n**12. What is the React Compiler?** Build-time automatic memoization.\n\n**13. Suspense mechanics?** A component throws a promise; the boundary shows a fallback until it resolves.\n\n**14. How do you test React apps?** RTL for behavior, MSW for network, Playwright for E2E.",
+   "keyPoints": [
+    "Fiber, render/commit, priorities and concurrency",
+    "Hooks internals and tearing",
+    "RSC, SSR, hydration, streaming",
+    "State architecture and performance strategy",
+    "Compiler, Suspense and testing approach"
+   ],
+   "pitfalls": [
+    "Memorizing internals without connecting them to practical effects.",
+    "Treating Server Components as just SSR."
+   ],
+   "examples": [
+    {
+     "title": "Transition keeps typing responsive",
+     "language": "react",
+     "css": "",
+     "code": "const ITEMS = Array.from({ length: 3000 }, (_, i) => \"Entry \" + i);\n\nfunction Results({ q }) {\n  const rows = ITEMS.filter((x) => x.includes(q)).slice(0, 200);\n  return <ul style={{ maxHeight: 120, overflow: \"auto\" }}>{rows.map((r) => <li key={r}>{r}</li>)}</ul>;\n}\n\nfunction App() {\n  const [input, setInput] = useState(\"\");\n  const [q, setQ] = useState(\"\");\n  const [pending, start] = useTransition();\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input value={input} onChange={(e) => { setInput(e.target.value); start(() => setQ(e.target.value)); }} placeholder=\"filter\" />\n      {pending && \" ...\"}\n      <Results q={q} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the difference between rendering and committing in React.",
+     "a": "Rendering calls components to compute the next UI and must be pure and interruptible; committing applies the changes to the DOM and runs layout effects and then passive effects."
+    },
+    {
+     "q": "What is hydration and why can mismatches occur?",
+     "a": "Hydration attaches React to server-rendered HTML. Mismatches occur if the client renders different output (Date.now, random, window checks), so initial render must match the server."
+    },
+    {
+     "q": "How would you approach performance of a large React app?",
+     "a": "Measure with the Profiler and web vitals, split code, reduce render work via state colocation and memoization, virtualize lists, cache server state, and optimize assets."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-output-questions-1",
+   "title": "Output Questions: State and Rendering",
+   "level": "intermediate",
+   "summary": "Predict the output: batching, updater functions, mutation and falsy values in JSX.",
+   "description": "\"What will this render/print?\" is a favorite interview format. Work out the answer on paper first, then run the example to check.\n\n### Rules to remember\n\n1. **State is a snapshot.** Inside one render/event handler, the variable never changes, even after `setState`.\n2. **Updater functions queue.** `setN(c => c + 1)` applies to the latest queued value; `setN(n + 1)` uses the snapshot.\n3. **Last plain value wins** among multiple `setN(value)` calls in one batch; later updaters run on top of it.\n4. **Mutating state does not trigger a render**, and the UI shows stale data until something else re-renders.\n5. **JSX and falsy values:** `false`, `true`, `null`, `undefined` and the empty string render nothing visible, but the number `0` renders as \"0\".\n6. Objects are not valid as children (it throws), arrays render each item.\n\n### How to analyse\n\nWrite the \"queue\" of updates in order, apply them to the current snapshot, and then think about what React renders after the handler finishes (**once**, because of batching).\n\n### Example 1 expectation\n\nStarting from 0: `setN(n + 1)` (queue: value 1), `setN(n + 1)` (value 1), `setN(c => c + 1)` -> 1 + 1 = **2**.\n\n### Example 2 expectation\n\n`items.push(4); setItems(items)` mutates the same array. React sees the same reference and bails out, so the list does **not** update. Another unrelated click then reveals it.\n\n### Example 3 expectation\n\n`{0 && ...}` renders `0`; `{false}`, `{null}`, `{undefined}` render nothing; `{\"\" && ...}` renders nothing.",
+   "keyPoints": [
+    "State is a snapshot per render",
+    "Plain values: last wins; updaters chain",
+    "Mutated state does not re-render",
+    "0 renders, false/null/undefined do not",
+    "Multiple updates in one handler cause a single render"
+   ],
+   "pitfalls": [
+    "Assuming each setState triggers its own render.",
+    "Forgetting that 0 && <X /> prints 0."
+   ],
+   "examples": [
+    {
+     "title": "Q1: What does count show after one click?",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [n, setN] = useState(0);\n  function handle() {\n    setN(n + 1);\n    setN(n + 1);\n    setN((c) => c + 1);\n  }\n  return <button onClick={handle} style={{ margin: 12 }}>n = {n}</button>;\n}",
+     "explanation": "Answer: 2"
+    },
+    {
+     "title": "Q2: Will the list update when you click Add?",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [items, setItems] = useState([1, 2, 3]);\n  const [, force] = useState(0);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => { items.push(items.length + 1); setItems(items); }}>Add (mutating)</button>{\" \"}\n      <button onClick={() => force((x) => x + 1)}>Unrelated re-render</button>\n      <p>{items.join(\", \")}</p>\n    </div>\n  );\n}",
+     "explanation": "Answer: no, not until another render happens"
+    },
+    {
+     "title": "Q3: What is rendered inside the boxes?",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const count = 0;\n  const name = \"\";\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <div>box1: [{count && <b>shown</b>}]</div>\n      <div>box2: [{name && <b>shown</b>}]</div>\n      <div>box3: [{false}{null}{undefined}]</div>\n      <div>box4: [{[]}]</div>\n      <div>box5: [{[\"x\"]}]</div>\n    </div>\n  );\n}",
+     "explanation": "Answer: box1 \"0\", box2 empty, box3 empty, box4 empty, box5 \"x\""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What happens if you call setState multiple times in one event handler?",
+     "a": "The updates are batched into a single re-render; plain values overwrite each other and updater functions are applied in sequence."
+    },
+    {
+     "q": "What does {0 && <p>Hi</p>} render?",
+     "a": "It renders the number 0, because && returns the first falsy operand and React renders numbers."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-output-questions-2",
+   "title": "Output Questions: Effects, Closures and Order",
+   "level": "advanced",
+   "summary": "Predict effect order, stale closures and timing in useEffect questions.",
+   "description": "These questions test how well you understand **when** code runs.\n\n### Order of execution on mount\n\nFor a parent containing a child, the sequence is:\n\n1. Parent **render**, then child **render** (parents call children while rendering).\n2. DOM is committed.\n3. Child **effects** run first, then the parent's effects (effects run child-to-parent, like `componentDidMount`).\n4. On a re-render, the previous effect cleanups run before the new effect callbacks.\n\nIn development with `StrictMode` the whole mount sequence is repeated (setup, cleanup, setup).\n\n### Closures\n\nEvery render has its own `props`, `state` and event handlers. A timer created in a render sees the values from **that** render. This is why the alert after 3 seconds shows the old count.\n\n### Effects with dependency arrays\n\n- `[]` effect captures the **first** render's values forever.\n- A `setInterval` in such an effect that uses `count` without the updater always sees `0`, so the count stops at `1`.\n- Fix: use the updater `setCount(c => c + 1)` or include the dependency.\n\n### Ordering of effects and logs\n\nEffects run **after** paint, so logs in render appear before logs in effects. Cleanups of the previous effect run **before** the next effect of the same component.\n\n### Example expectations\n\n- Example 1 logs (without StrictMode): `parent render`, `child render`, `child effect`, `parent effect`.\n- Example 2 shows the stale value after clicking quickly.\n- Example 3: the counter reaches 1 and stops.",
+   "keyPoints": [
+    "Render parent-to-child, effects child-to-parent",
+    "Effects run after paint; cleanup before the next effect",
+    "Handlers and timers capture values of their render",
+    "[] effects see only the first render's values",
+    "Use updater functions to avoid stale state in intervals"
+   ],
+   "pitfalls": [
+    "Forgetting StrictMode doubles the log output in development.",
+    "Expecting setInterval to see the latest state."
+   ],
+   "examples": [
+    {
+     "title": "Q1: In which order are the logs printed?",
+     "language": "react",
+     "css": "",
+     "code": "function Child() {\n  console.log(\"child render\");\n  useEffect(() => {\n    console.log(\"child effect\");\n    return () => console.log(\"child cleanup\");\n  }, []);\n  return <p>child</p>;\n}\nfunction App() {\n  console.log(\"parent render\");\n  useEffect(() => {\n    console.log(\"parent effect\");\n    return () => console.log(\"parent cleanup\");\n  }, []);\n  return <div style={{ padding: 12 }}><Child /></div>;\n}",
+     "explanation": "Open the console tab. Answer: parent render, child render, child effect, parent effect (doubled in StrictMode)."
+    },
+    {
+     "title": "Q2: Why does the interval counter stop at 1?",
+     "language": "react",
+     "css": "",
+     "code": "function Broken() {\n  const [count, setCount] = useState(0);\n  useEffect(() => {\n    const id = setInterval(() => setCount(count + 1), 500);   // always 0 + 1\n    return () => clearInterval(id);\n  }, []);\n  return <p>Broken: {count}</p>;\n}\nfunction Fixed() {\n  const [count, setCount] = useState(0);\n  useEffect(() => {\n    const id = setInterval(() => setCount((c) => c + 1), 500);\n    return () => clearInterval(id);\n  }, []);\n  return <p>Fixed: {count}</p>;\n}\nfunction App() {\n  return <div style={{ fontFamily: \"sans-serif\", padding: 12 }}><Broken /><Fixed /></div>;\n}",
+     "explanation": "Answer: the effect captured count = 0 forever; use setCount(c => c + 1)."
+    },
+    {
+     "title": "Q3: What does the message show?",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [count, setCount] = useState(0);\n  const [msg, setMsg] = useState(\"\");\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setCount(count + 1)}>+1 ({count})</button>{\" \"}\n      <button onClick={() => setTimeout(() => setMsg(\"Count was \" + count), 2000)}>Report in 2s</button>\n      <p>{msg}</p>\n      <small>Click Report, then click +1 several times quickly.</small>\n    </div>\n  );\n}",
+     "explanation": "Answer: the count at the time you clicked, not the latest."
+    }
+   ],
+   "interview": [
+    {
+     "q": "In what order do child and parent useEffect callbacks run on mount?",
+     "a": "Child effects run before parent effects, because React runs effects from the bottom of the tree up after the commit."
+    },
+    {
+     "q": "Why does a setInterval inside useEffect with [] see the initial state forever?",
+     "a": "The callback closes over the values from the first render; use the functional updater or include the dependency to avoid the stale closure."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

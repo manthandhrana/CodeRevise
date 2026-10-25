@@ -1,0 +1,232 @@
+{
+ "id": "react-data-fetching",
+ "title": "Data Fetching",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-fetch-axios",
+   "title": "fetch vs axios in React",
+   "level": "intermediate",
+   "summary": "Both fetch and axios call APIs; axios adds interceptors, automatic JSON and error handling.",
+   "description": "React has no built-in HTTP client. You use the browser's **`fetch`** or a library such as **axios**. Always call them from **effects, event handlers or data libraries**, never in the render body.\n\n### fetch\n\n```js\nconst res = await fetch(\"/api/users\", { headers: { Authorization: `Bearer ${token}` } });\nif (!res.ok) throw new Error(`HTTP ${res.status}`);\nconst users = await res.json();\n```\n\n- Built in, no dependency.\n- Does **not reject on HTTP errors** (404/500) - check `res.ok`.\n- You must call `res.json()` yourself and `JSON.stringify` request bodies and set `Content-Type`.\n- Cancel with `AbortController`.\n\n### axios\n\n```js\nconst { data } = await axios.get(\"/api/users\", { params: { page: 2 } });\n```\n\n- Rejects on non-2xx automatically; `error.response.status`, `error.response.data`.\n- Auto JSON parse and stringify.\n- **Instances** (`axios.create({ baseURL, timeout })`) and **interceptors** to attach tokens, refresh sessions or log errors in one place.\n- Upload/download progress, cancellation via `signal`.\n\n### Which to choose?\n\nUse `fetch` for small apps (and wrap it in a tiny `api()` helper). Use axios if you want interceptors and tidy error handling. Both are fine; what matters more is using **TanStack Query/SWR** for caching and state.\n\n### Good habits\n\n- Keep API calls in a `services/` or `api/` folder, not scattered in components.\n- Read the base URL from env variables.\n- Never put secrets in front-end code.\n- Handle loading, error and empty states.",
+   "keyPoints": [
+    "fetch does not throw on 404/500; check res.ok",
+    "axios rejects on non-2xx and parses JSON automatically",
+    "Interceptors centralize auth and error handling",
+    "Keep API functions in a services folder",
+    "Read base URLs from env variables"
+   ],
+   "pitfalls": [
+    "Calling fetch in the component body, causing an infinite loop of requests.",
+    "Forgetting await res.json() or the Content-Type header on POST."
+   ],
+   "examples": [
+    {
+     "title": "api helper with fetch and axios instance",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// services/api.js - fetch wrapper\nconst BASE = import.meta.env.VITE_API_URL;\n\nexport async function api(path, { method = \"GET\", body, signal } = {}) {\n  const res = await fetch(BASE + path, {\n    method,\n    headers: { \"Content-Type\": \"application/json\" },\n    body: body ? JSON.stringify(body) : undefined,\n    signal,\n  });\n  if (!res.ok) throw new Error(`Request failed: ${res.status}`);\n  return res.status === 204 ? null : res.json();\n}\n\n// services/http.js - axios instance with interceptors\nimport axios from \"axios\";\n\nexport const http = axios.create({ baseURL: BASE, timeout: 8000 });\n\nhttp.interceptors.request.use((config) => {\n  const token = localStorage.getItem(\"token\");\n  if (token) config.headers.Authorization = `Bearer ${token}`;\n  return config;\n});\n\nhttp.interceptors.response.use(\n  (res) => res,\n  (error) => {\n    if (error.response?.status === 401) window.location.assign(\"/login\");\n    return Promise.reject(error);\n  }\n);"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Does fetch throw for a 500 response?",
+     "a": "No. It only rejects on network failures. Check response.ok or response.status and throw yourself."
+    },
+    {
+     "q": "What are axios interceptors?",
+     "a": "Functions that run before every request or after every response, used for adding auth headers, refreshing tokens and global error handling."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-loading-error-states",
+   "title": "Loading, Error and Empty States",
+   "level": "intermediate",
+   "summary": "Every async screen has four states: loading, error, empty and success. Design all of them.",
+   "description": "A request is never just \"data or nothing\". Real users see slow networks, failures and empty results. Handle all of these explicitly.\n\n### The four states\n\n| State | UI |\n| --- | --- |\n| **Loading** | skeleton or spinner (reserve layout to avoid jumping) |\n| **Error** | friendly message + **Retry** button, log details |\n| **Empty** | helpful text and a call to action (\"No orders yet\") |\n| **Success** | the data |\n\n### Modeling\n\nPrefer a single `status` value (`\"idle\" | \"loading\" | \"success\" | \"error\"`) over separate booleans. It avoids impossible combinations and makes the render logic a simple switch.\n\n### UX details\n\n- Show **skeletons** rather than a spinner for content-heavy pages.\n- Keep previous data visible while refetching (stale-while-revalidate) and show a subtle indicator.\n- Use a **delay** (e.g. 200 ms) before showing a spinner to avoid flicker on fast requests.\n- Distinguish **network error**, **404** and **500** when it helps.\n- Do not hide forms or lose user input when a submit fails.\n- Provide `aria-busy` and `role=\"alert\"` for accessibility.\n\n### Reuse\n\nCreate a small `<AsyncBoundary status error onRetry empty>` component or rely on TanStack Query's `isPending`, `isError`, `data` flags so each page does not reimplement this.",
+   "keyPoints": [
+    "Handle loading, error, empty and success",
+    "Use one status value instead of many booleans",
+    "Always offer Retry on errors",
+    "Prefer skeletons and keep stale data while refetching",
+    "Announce errors to assistive technology"
+   ],
+   "pitfalls": [
+    "Infinite spinner because errors are not caught.",
+    "Showing an empty message while data is still loading."
+   ],
+   "examples": [
+    {
+     "title": "Status-driven list with retry",
+     "language": "react",
+     "css": "",
+     "code": "let attempts = 0;\nfunction fakeLoad(kind) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      attempts += 1;\n      if (kind === \"fail\" && attempts % 2 === 1) reject(new Error(\"Network error\"));\n      else if (kind === \"empty\") resolve([]);\n      else resolve([\"Laptop\", \"Phone\", \"Tablet\"]);\n    }, 500);\n  });\n}\n\nfunction App() {\n  const [kind, setKind] = useState(\"ok\");\n  const [state, setState] = useState({ status: \"idle\", data: [], error: null });\n\n  const load = useCallback(() => {\n    setState((s) => ({ ...s, status: \"loading\", error: null }));\n    fakeLoad(kind)\n      .then((data) => setState({ status: \"success\", data, error: null }))\n      .catch((e) => setState({ status: \"error\", data: [], error: e.message }));\n  }, [kind]);\n\n  useEffect(() => { attempts = 0; load(); }, [load]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      {[\"ok\", \"empty\", \"fail\"].map((k) => (\n        <button key={k} onClick={() => setKind(k)} style={{ marginRight: 6, fontWeight: k === kind ? \"bold\" : \"normal\" }}>{k}</button>\n      ))}\n      <div aria-busy={state.status === \"loading\"} style={{ marginTop: 10 }}>\n        {state.status === \"loading\" && <p>Loading...</p>}\n        {state.status === \"error\" && (\n          <p role=\"alert\" style={{ color: \"crimson\" }}>\n            {state.error} <button onClick={load}>Retry</button>\n          </p>\n        )}\n        {state.status === \"success\" && state.data.length === 0 && <p>No products yet.</p>}\n        {state.status === \"success\" && state.data.length > 0 && (\n          <ul>{state.data.map((d) => <li key={d}>{d}</li>)}</ul>\n        )}\n      </div>\n    </div>\n  );\n}",
+     "explanation": "The first request fails and the retry succeeds (simulated)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Which states should every data-driven component handle?",
+     "a": "Loading, error, empty and success, with a retry option for errors."
+    },
+    {
+     "q": "Why prefer a status string to separate booleans?",
+     "a": "It prevents impossible combinations like loading and error at once and makes rendering a simple switch."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-abort-requests",
+   "title": "Cancelling Requests with AbortController",
+   "level": "intermediate",
+   "summary": "Abort outdated requests when inputs change or components unmount to avoid wasted work and stale UI.",
+   "description": "`AbortController` is a browser API that lets you cancel `fetch` (and many other APIs). It has a `signal` you pass to the request and an `abort()` method.\n\n```js\nconst controller = new AbortController();\nfetch(url, { signal: controller.signal });\ncontroller.abort();   // fetch rejects with name \"AbortError\"\n```\n\n### Why cancel in React\n\n- **Search as you type:** earlier requests are useless once a new query exists.\n- **Unmounting:** the user navigated away; no need to finish.\n- **Race conditions:** an old slow response must never overwrite a newer one.\n- **StrictMode:** the double effect run aborts the first request automatically.\n\n### The pattern\n\nCreate the controller **inside** the effect, pass the signal, and abort in cleanup. In the `catch`, ignore `AbortError`; it is expected.\n\n```jsx\nuseEffect(() => {\n  const controller = new AbortController();\n  fetch(`/api/search?q=${q}`, { signal: controller.signal })\n    .then(r => r.json()).then(setResults)\n    .catch(e => { if (e.name !== \"AbortError\") setError(e); });\n  return () => controller.abort();\n}, [q]);\n```\n\n### Notes\n\n- Aborting does not stop the **server** from working; it only closes the connection from the client side.\n- axios accepts the same `signal` option.\n- `AbortSignal.timeout(5000)` makes a signal that aborts after 5 s.\n- For non-fetch async work, use an `ignore` boolean flag in cleanup.",
+   "keyPoints": [
+    "Pass signal to fetch and call abort() in cleanup",
+    "Ignore AbortError in catch",
+    "Prevents race conditions and unmounted updates",
+    "axios supports signal too",
+    "AbortSignal.timeout adds simple timeouts"
+   ],
+   "pitfalls": [
+    "Creating the controller outside the effect and reusing an already-aborted one.",
+    "Treating AbortError as a real failure and showing an error UI."
+   ],
+   "examples": [
+    {
+     "title": "Search with cancellable fake requests",
+     "language": "react",
+     "css": "",
+     "code": "function fakeSearch(q, signal) {\n  return new Promise((resolve, reject) => {\n    const t = setTimeout(() => resolve([\"result for \" + q + \" #1\", \"result for \" + q + \" #2\"]), 500);\n    signal.addEventListener(\"abort\", () => {\n      clearTimeout(t);\n      reject(new DOMException(\"Aborted\", \"AbortError\"));\n    });\n  });\n}\n\nfunction App() {\n  const [q, setQ] = useState(\"\");\n  const [results, setResults] = useState([]);\n  const [log, setLog] = useState([]);\n\n  useEffect(() => {\n    if (!q) { setResults([]); return; }\n    const controller = new AbortController();\n    fakeSearch(q, controller.signal)\n      .then((r) => setResults(r))\n      .catch((e) => {\n        if (e.name === \"AbortError\") setLog((l) => [...l, \"aborted: \" + q]);\n      });\n    return () => controller.abort();\n  }, [q]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder=\"Type fast...\" />\n      <ul>{results.map((r) => <li key={r}>{r}</li>)}</ul>\n      <small>{log.join(\" | \")}</small>\n    </div>\n  );\n}",
+     "explanation": "The log shows older requests being aborted."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you cancel a fetch request?",
+     "a": "Create an AbortController, pass controller.signal in the fetch options and call controller.abort(); the promise rejects with an AbortError."
+    },
+    {
+     "q": "Why abort in the effect cleanup?",
+     "a": "So that an outdated request is cancelled when dependencies change or the component unmounts, preventing stale results."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-tanstack-query",
+   "title": "TanStack Query (React Query)",
+   "level": "intermediate",
+   "summary": "TanStack Query manages server state: caching, background refetching, retries, pagination and mutations.",
+   "description": "Server data is different from UI state: it is **remote**, **shared**, can become **stale**, and needs caching and synchronization. Hand-written `useEffect` fetching does not solve that. **TanStack Query** (formerly React Query) is the standard library for **server state**.\n\n### What you get for free\n\n- **Caching** by query key and **deduplication** of identical requests.\n- **Stale-while-revalidate**: show cached data instantly, refetch in the background.\n- **Refetch** on window focus, reconnect, interval.\n- **Retries** with backoff, `isPending`/`isError` flags.\n- **Pagination** and **infinite queries**.\n- **Mutations** with cache invalidation and optimistic updates.\n- DevTools to inspect the cache.\n\n### Core API\n\n| API | Purpose |\n| --- | --- |\n| `QueryClientProvider` | provides the client at the app root |\n| `useQuery({ queryKey, queryFn })` | read data |\n| `useMutation({ mutationFn, onSuccess })` | create/update/delete |\n| `queryClient.invalidateQueries({ queryKey })` | mark stale and refetch |\n| `useInfiniteQuery` | load more / infinite scroll |\n| `useSuspenseQuery` | use with Suspense |\n\n### Key concepts\n\n- **queryKey** is the cache id: `[\"todos\", { page }]`. Include every variable the function uses.\n- **staleTime** (how long data is fresh) and **gcTime** (how long unused data stays in cache).\n- Do not copy query data into `useState`; read it directly.\n\n### With Redux?\n\nYou often do not need Redux for server data after adopting TanStack Query; keep Redux/Zustand for client UI state only.",
+   "keyPoints": [
+    "Purpose-built for server state (not client state)",
+    "queryKey identifies cached data",
+    "useQuery reads; useMutation writes + invalidates",
+    "staleTime controls how often it refetches",
+    "Replaces most manual fetch-in-useEffect code"
+   ],
+   "pitfalls": [
+    "Omitting variables from queryKey, so different inputs share a cache entry.",
+    "Copying query data into local state, which then goes stale."
+   ],
+   "examples": [
+    {
+     "title": "useQuery and useMutation",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from \"@tanstack/react-query\";\n\nconst queryClient = new QueryClient();\n\nexport default function Root() {\n  return (\n    <QueryClientProvider client={queryClient}>\n      <Todos />\n    </QueryClientProvider>\n  );\n}\n\nfunction Todos() {\n  const qc = useQueryClient();\n\n  const { data, isPending, isError, error, refetch } = useQuery({\n    queryKey: [\"todos\"],\n    queryFn: () => fetch(\"/api/todos\").then((r) => {\n      if (!r.ok) throw new Error(\"Failed to load\");\n      return r.json();\n    }),\n    staleTime: 60_000,\n  });\n\n  const addTodo = useMutation({\n    mutationFn: (title) =>\n      fetch(\"/api/todos\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({ title }),\n      }).then((r) => r.json()),\n    onSuccess: () => qc.invalidateQueries({ queryKey: [\"todos\"] }),\n  });\n\n  if (isPending) return <p>Loading...</p>;\n  if (isError) return <p>{error.message} <button onClick={() => refetch()}>Retry</button></p>;\n\n  return (\n    <>\n      <ul>{data.map((t) => <li key={t.id}>{t.title}</li>)}</ul>\n      <button onClick={() => addTodo.mutate(\"New task\")} disabled={addTodo.isPending}>\n        Add\n      </button>\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem does TanStack Query solve?",
+     "a": "It manages server state: caching, deduplication, background refetching, retries and mutations, so you do not hand-write fetch effects."
+    },
+    {
+     "q": "What is a query key?",
+     "a": "An array that uniquely identifies cached data, including all variables the query depends on; changing it triggers a new fetch."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-pagination-infinite",
+   "title": "Pagination and Infinite Scroll",
+   "level": "intermediate",
+   "summary": "Load data in pages with page controls or a Load more button, and keep UI state tidy.",
+   "description": "Never load thousands of records at once. Split data into pages.\n\n### Pagination styles\n\n| Style | How | Best for |\n| --- | --- | --- |\n| **Page numbers** | `?page=3&limit=10` | admin tables, search results, bookmarkable pages |\n| **Load more** | append next page | feeds with user control |\n| **Infinite scroll** | auto-load near the bottom (IntersectionObserver) | social feeds |\n| **Cursor-based** | `?after=<cursor>` | large or changing datasets |\n\n### Implementation notes\n\n- Keep `page` in state, or better in the **URL** (`useSearchParams`), so refresh and sharing work.\n- Reset to page 1 when filters/search change.\n- Disable Prev on the first page and Next on the last (`totalPages = Math.ceil(total / limit)`).\n- Keep previous data visible while the next page loads (`placeholderData: keepPreviousData` in TanStack Query).\n- For \"load more\" append results and track `hasMore`.\n- Infinite scroll needs a **sentinel** element observed with `IntersectionObserver`, plus accessible alternatives and a way to reach the footer. Large lists need **virtualization**.\n- `useInfiniteQuery` handles `pages`, `fetchNextPage` and `hasNextPage` for you.\n\n### Offset vs cursor\n\nOffset (`page`) is simple but can skip or duplicate items when data changes. Cursor pagination is stable and faster at depth, so most large APIs use it.",
+   "keyPoints": [
+    "Paginate to limit payload and DOM size",
+    "Keep page in URL state for sharing and refresh",
+    "Reset page when filters change",
+    "Cursor pagination is more stable than offset",
+    "Infinite scroll uses IntersectionObserver or useInfiniteQuery"
+   ],
+   "pitfalls": [
+    "Not resetting to page 1 after a new search, landing on an empty page.",
+    "Infinite scroll with no way to reach the footer or keyboard access."
+   ],
+   "examples": [
+    {
+     "title": "Page numbers over a client-side dataset",
+     "language": "react",
+     "css": "",
+     "code": "const ALL = Array.from({ length: 53 }, (_, i) => \"Item \" + (i + 1));\nconst PAGE_SIZE = 8;\n\nfunction App() {\n  const [page, setPage] = useState(1);\n  const totalPages = Math.ceil(ALL.length / PAGE_SIZE);\n  const start = (page - 1) * PAGE_SIZE;\n  const rows = ALL.slice(start, start + PAGE_SIZE);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <ul>{rows.map((r) => <li key={r}>{r}</li>)}</ul>\n      <button onClick={() => setPage((p) => p - 1)} disabled={page === 1}>Prev</button>\n      <span style={{ margin: \"0 10px\" }}>Page {page} of {totalPages}</span>\n      <button onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>Next</button>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Offset vs cursor pagination?",
+     "a": "Offset uses page/limit and is simple but can skip or repeat items when data changes; cursor uses a pointer to the last item and is stable and faster for large data."
+    },
+    {
+     "q": "Why store the page in the URL?",
+     "a": "It makes pages bookmarkable and shareable, and the state survives refresh and back/forward navigation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-optimistic-updates",
+   "title": "Optimistic Updates",
+   "level": "advanced",
+   "summary": "Update the UI immediately, then roll back if the server request fails.",
+   "description": "Normally you click \"Like\", wait 400 ms for the server, and then the UI changes. With an **optimistic update** the UI changes instantly, assuming success, and rolls back if the request fails. The app feels fast.\n\n### Recipe\n\n1. **Snapshot** the current state.\n2. **Apply** the change locally right away.\n3. **Send** the request.\n4. On **success** keep it (optionally replace with server data).\n5. On **error** restore the snapshot and show a message.\n\n### When it is a good idea\n\n- Low-risk, high-success actions: like, toggle, reorder, rename, mark done.\n- Not for payments or destructive operations where failure is likely or costly.\n\n### Where it is implemented\n\n- **TanStack Query:** `useMutation` with `onMutate` (snapshot + `setQueryData`), `onError` (restore from context) and `onSettled` (`invalidateQueries`).\n- **React 19:** the `useOptimistic` hook shows temporary state during an Action.\n- **Plain state:** like the example below.\n\n### Edge cases\n\n- Cancel in-flight queries before changing the cache to avoid being overwritten.\n- Handle several fast clicks (queue or disable).\n- Use temporary client ids for newly created items and swap with the server id after success.\n- Always give users feedback on failure (toast + rollback).",
+   "keyPoints": [
+    "Show the expected result immediately",
+    "Keep a snapshot to roll back on failure",
+    "Reconcile with server data afterwards",
+    "Use for low-risk, likely-to-succeed actions",
+    "TanStack onMutate/onError or React 19 useOptimistic"
+   ],
+   "pitfalls": [
+    "No rollback path when the request fails.",
+    "Racing responses with multiple rapid toggles."
+   ],
+   "examples": [
+    {
+     "title": "Like button with optimistic update and rollback",
+     "language": "react",
+     "css": "",
+     "code": "let serverCalls = 0;\nfunction fakeLikeApi() {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      serverCalls += 1;\n      serverCalls % 3 === 0 ? reject(new Error(\"Server rejected\")) : resolve();\n    }, 700);\n  });\n}\n\nfunction App() {\n  const [likes, setLikes] = useState(10);\n  const [liked, setLiked] = useState(false);\n  const [error, setError] = useState(\"\");\n  const [busy, setBusy] = useState(false);\n\n  async function toggle() {\n    const snapshot = { likes, liked };\n    setError(\"\");\n    setBusy(true);\n    setLiked(!liked);\n    setLikes(liked ? likes - 1 : likes + 1);\n    try {\n      await fakeLikeApi();\n    } catch (e) {\n      setLikes(snapshot.likes);\n      setLiked(snapshot.liked);\n      setError(e.message + \" - rolled back\");\n    } finally {\n      setBusy(false);\n    }\n  }\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={toggle} disabled={busy}>{liked ? \"Unlike\" : \"Like\"} ({likes})</button>\n      {busy && <small> saving...</small>}\n      {error && <p style={{ color: \"crimson\" }}>{error}</p>}\n    </div>\n  );\n}",
+     "explanation": "Every third click fails in the fake server and the count rolls back."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an optimistic update?",
+     "a": "Updating the UI immediately as if the request had succeeded, then rolling back if the server returns an error."
+    },
+    {
+     "q": "What must you store to roll back?",
+     "a": "A snapshot of the previous state (or cache) taken before applying the optimistic change."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

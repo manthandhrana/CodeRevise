@@ -1,0 +1,7 @@
+{
+  "id": "javascript",
+  "title": "JavaScript",
+  "tagline": "From variables to the event loop - the complete JavaScript revision roadmap.",
+  "description": "Revise JavaScript topic by topic from absolute basics to advanced concepts: data types, functions, arrays, objects, closures, prototypes, async programming, the DOM, browser APIs, modern ES2015+ features and tricky interview questions. Every topic has a clear explanation, runnable examples and interview Q&As.",
+  "color": "#f7df1e"
+}

@@ -1,0 +1,268 @@
+{
+ "id": "css-visual-effects",
+ "title": "Visual Effects",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-box-shadow",
+   "title": "Box Shadow, Text Shadow and Drop Shadow",
+   "level": "intermediate",
+   "summary": "Add depth with box-shadow, glow with text-shadow and shape-aware filter: drop-shadow().",
+   "description": "### box-shadow\n`box-shadow: offset-x offset-y blur spread color;` - only the two offsets are required.\n\n```css\nbox-shadow: 0 4px 12px rgba(0,0,0,.15);      /* soft card */\nbox-shadow: inset 0 0 0 3px #4861ec;          /* inner ring */\nbox-shadow: 0 0 60px 20px #ffb000;            /* glow (spread 20px) */\nbox-shadow: 0 1px 2px #0003, 0 8px 24px #0002; /* layered, more realistic */\n```\n\n- **blur** softens, **spread** grows or shrinks the shadow.\n- `inset` draws inside the box.\n- Shadows follow `border-radius`, take **no layout space** and do not affect surrounding elements.\n- Use `box-shadow: 0 0 0 3px color` as a focus ring that is not clipped.\n\n### text-shadow\n`text-shadow: 2px 2px 5px rgba(0,0,0,.3);` - no spread or inset. Multiple comma-separated shadows give neon or outline effects.\n\n### filter: drop-shadow()\nUnlike box-shadow (rectangular), `drop-shadow()` follows the **alpha shape** of the element: transparent PNGs, SVGs, clip-path shapes and ::after triangles.\n\n```css\nimg { filter: drop-shadow(5px 5px 15px rgba(0,0,0,.4)); }\n```\nNo spread and no inset; the color can be before or after the lengths.\n\n### When to use what\n| Need | Use |\n|---|---|\n| Card elevation | box-shadow |\n| Glow on text | text-shadow |\n| Shadow of an icon/PNG/clipped shape | drop-shadow() |\n\n### Performance\nLarge blurs are expensive when animated. Animate `opacity` of a pseudo-element holding the shadow instead of the shadow itself.",
+   "keyPoints": [
+    "box-shadow: x y blur spread color; inset for inner shadows",
+    "Layer several soft shadows for realism",
+    "text-shadow supports multiple shadows but no spread",
+    "drop-shadow() follows the visible shape (alpha)",
+    "Shadows do not take space in layout"
+   ],
+   "pitfalls": [
+    "Heavy blur radius animated on many elements (jank)",
+    "Using box-shadow on a transparent PNG and getting a square shadow",
+    "Shadow clipped by a parent with overflow: hidden"
+   ],
+   "examples": [
+    {
+     "title": "Three kinds of shadow",
+     "language": "web",
+     "html": "<div class=\"row\"><div class=\"box\">box-shadow</div><div class=\"glow\">glow</div><div class=\"shape\"></div></div>\n<h2 class=\"neon\">Neon text</h2>",
+     "css": "body { font-family: sans-serif; background: #f8fafc; padding: 16px; }\n.row { display: flex; gap: 28px; align-items: center; }\n.box { padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 1px 2px #0003, 0 12px 24px #0002; }\n.glow { width: 70px; height: 70px; border-radius: 50%; background: rgb(174,68,90); box-shadow: 0 0 30px 12px #ffb000; display: grid; place-items: center; color: #fff; }\n.shape { width: 0; height: 0; border-left: 40px solid transparent; border-right: 40px solid transparent; border-bottom: 70px solid #2965f1; filter: drop-shadow(6px 8px 6px rgba(0,0,0,.4)); }\n.neon { color: #fff; background: #111; padding: 10px; text-shadow: 0 0 6px #0ff, 0 0 14px #0ff, 0 0 28px #08f; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between box-shadow and filter: drop-shadow()?",
+     "a": "box-shadow follows the element's rectangular (rounded) box. drop-shadow follows the actual rendered alpha shape, so it works with transparent images and clipped shapes."
+    },
+    {
+     "q": "What do the values in box-shadow mean?",
+     "a": "offset-x, offset-y, blur radius, spread radius, color; plus the optional inset keyword."
+    },
+    {
+     "q": "How do you create an inner shadow?",
+     "a": "Add the inset keyword: box-shadow: inset 0 0 10px #000."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/shadows/box-shadow/style.css, shadows/drop-shadow/style.css"
+  },
+  {
+   "id": "css-filters",
+   "title": "Filters and backdrop-filter",
+   "level": "intermediate",
+   "summary": "Blur, brighten, grayscale and color-shift elements, or the area behind them.",
+   "description": "`filter` applies graphical effects to an element and its content. Effects can be chained with spaces.\n\n| Function | Example | Effect |\n|---|---|---|\n| `blur()` | `blur(5px)` | gaussian blur |\n| `brightness()` | `brightness(1.5)` | lighter/darker |\n| `contrast()` | `contrast(0.8)` | |\n| `grayscale()` | `grayscale(1)` | black and white |\n| `sepia()` | `sepia(.7)` | warm vintage tone |\n| `saturate()` | `saturate(2)` | color intensity |\n| `hue-rotate()` | `hue-rotate(90deg)` | shifts hues |\n| `invert()` | `invert(1)` | negative |\n| `opacity()` | `opacity(.5)` | |\n| `drop-shadow()` | see shadows | |\n\n```css\nimg { filter: blur(3px) grayscale(.5) contrast(1.2); }   /* from the source demo */\nimg:hover { filter: none; transition: filter .3s; }\n```\n\n### backdrop-filter\nApplies the same functions to **what is behind** the element - the basis of frosted-glass UIs.\n\n```css\n.glass { background: rgba(255,255,255,.2); backdrop-filter: blur(10px) saturate(150%); }\n```\nThe element must be at least partially transparent for the effect to be visible. Safari needs the `-webkit-` prefix on older versions.\n\n### Tips\n- Filters create a new stacking context and containing block for fixed children.\n- Animate filter values for smooth hover states (grayscale -> color).\n- Heavy blurs on large areas cost GPU time; keep them small or limited to a few elements.\n- `filter: blur()` on a parent blurs its text too; use `backdrop-filter` for background-only blur.",
+   "keyPoints": [
+    "Chain several filter functions separated by spaces",
+    "grayscale, blur, brightness, contrast, hue-rotate are most useful",
+    "backdrop-filter filters what is behind the element",
+    "filter creates a new stacking context",
+    "Animate filters for polished hover effects"
+   ],
+   "pitfalls": [
+    "Using filter: blur on a container when only the background should blur",
+    "No transparency, so backdrop-filter shows nothing",
+    "Too many large blurred layers hurting scrolling performance"
+   ],
+   "examples": [
+    {
+     "title": "Filter gallery",
+     "language": "web",
+     "html": "<div class=\"g\"><i class=\"a\">none</i><i class=\"b\">grayscale</i><i class=\"c\">blur</i><i class=\"d\">hue-rotate</i><i class=\"e\">sepia + contrast</i></div>",
+     "css": ".g { display: flex; flex-wrap: wrap; gap: 8px; font: 12px sans-serif; color: #fff; }\ni { width: 90px; height: 90px; display: grid; place-items: center; font-style: normal; border-radius: 10px; background: linear-gradient(135deg,#f06,#fc0,#0cf); transition: filter .3s; }\n.b { filter: grayscale(1); }\n.c { filter: blur(3px); }\n.d { filter: hue-rotate(120deg); }\n.e { filter: sepia(.8) contrast(1.3); }\ni:hover { filter: none; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "backdrop-filter",
+     "language": "web",
+     "html": "<div class=\"scene\"><div class=\"glass\">Frosted glass</div></div>",
+     "css": ".scene { height: 160px; display: grid; place-items: center; background: linear-gradient(120deg,#ff0080 0 30%,#7928ca 30% 60%,#00dfd8 60%); border-radius: 12px; }\n.glass { padding: 24px 40px; color: #fff; font: bold 20px sans-serif; background: rgba(255,255,255,.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.4); border-radius: 14px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you combine multiple filters?",
+     "a": "List them in one filter declaration separated by spaces, e.g. filter: blur(3px) grayscale(.5) contrast(1.2)."
+    },
+    {
+     "q": "What is the difference between filter: blur and backdrop-filter: blur?",
+     "a": "filter blurs the element itself and its content; backdrop-filter blurs whatever is rendered behind the element."
+    },
+    {
+     "q": "Why does my backdrop-filter show nothing?",
+     "a": "The element's background is fully opaque or there is no content behind it; use a semi-transparent background."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/filters/index.html, filters/style.css"
+  },
+  {
+   "id": "css-blend-modes",
+   "title": "Blend Modes: mix-blend-mode and background-blend-mode",
+   "level": "advanced",
+   "summary": "Blend overlapping elements or background layers like Photoshop layers.",
+   "description": "**Blend modes** control how colors of overlapping layers combine, like layer modes in Photoshop.\n\n### Two properties\n| Property | Blends |\n|---|---|\n| `mix-blend-mode` | the element with whatever is **behind** it |\n| `background-blend-mode` | the element's own **background layers** (image + color/gradient) |\n| `isolation: isolate` | stops an element's blending from reaching below its group |\n\n### Common modes\n- `multiply` - darkens; white disappears (great for shadows and tinting).\n- `screen` - lightens; black disappears.\n- `overlay`, `soft-light`, `hard-light` - increase contrast.\n- `difference`, `exclusion` - inverted-looking effects, good for cursors.\n- `darken`, `lighten`, `color-dodge`, `color-burn`, `hue`, `saturation`, `color`, `luminosity`.\n\n### Examples\n```css\n.hero {\n  background-color: #ff3368;\n  background-image: url(photo.jpg);\n  background-blend-mode: multiply;   /* tinted photo */\n}\n.title { mix-blend-mode: difference; color: white; } /* text inverts over any background */\n```\n\n### Practical uses\n- Duotone / tinted hero images with no image editing.\n- Text that stays readable over mixed backgrounds (difference).\n- Custom cursors and neon overlays (screen / lighten).\n- Subtle texture overlays with `multiply` or `soft-light`.\n\n### Notes\n- Blend modes create stacking contexts and can affect performance on large layers.\n- Always check contrast manually - blending changes colors dynamically.",
+   "keyPoints": [
+    "mix-blend-mode blends an element with what is behind it",
+    "background-blend-mode blends background layers of the same element",
+    "multiply darkens, screen lightens, difference inverts",
+    "Use isolation: isolate to limit blending scope",
+    "Great for tinted images and adaptive text"
+   ],
+   "pitfalls": [
+    "Applying mix-blend-mode when the backdrop is transparent (no visible effect)",
+    "Unexpected blending with page elements beyond the component (use isolation)",
+    "Relying on blending for essential text without contrast checks"
+   ],
+   "examples": [
+    {
+     "title": "background-blend-mode tint",
+     "language": "web",
+     "html": "<div class=\"t multiply\">multiply</div><div class=\"t screen\">screen</div><div class=\"t overlay\">overlay</div><div class=\"t diff\">difference</div>",
+     "css": "body { display: flex; gap: 8px; font-family: sans-serif; }\n.t { width: 100px; height: 100px; display: grid; place-items: center; color: #fff; font-size: 13px;\n  background-color: #ff3368;\n  background-image: repeating-linear-gradient(45deg, #1e90ff 0 12px, #ffd700 12px 24px); }\n.multiply { background-blend-mode: multiply; }\n.screen { background-blend-mode: screen; }\n.overlay { background-blend-mode: overlay; }\n.diff { background-blend-mode: difference; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "mix-blend-mode text",
+     "language": "web",
+     "html": "<div class=\"bg\"><h1>BLEND</h1></div>",
+     "css": ".bg { height: 120px; background: linear-gradient(90deg, #111 50%, #fff 50%); display: grid; place-items: center; isolation: isolate; }\nh1 { margin: 0; font: 900 64px sans-serif; color: #fff; mix-blend-mode: difference; }",
+     "js": "",
+     "code": "",
+     "explanation": "The text inverts against the black/white halves and stays readable on both."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between mix-blend-mode and background-blend-mode?",
+     "a": "mix-blend-mode blends an element with the content behind it; background-blend-mode blends the element's own background images/colors with each other."
+    },
+    {
+     "q": "What does multiply do?",
+     "a": "It multiplies the color values, so the result is darker; white stays unchanged and black stays black."
+    },
+    {
+     "q": "How do you limit blending to a component?",
+     "a": "Add isolation: isolate on its container so the blend does not reach elements outside."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/background/bg-style.css"
+  },
+  {
+   "id": "css-clip-path",
+   "title": "clip-path and Shapes",
+   "level": "advanced",
+   "summary": "Cut elements into circles, polygons and custom shapes with clip-path.",
+   "description": "`clip-path` defines the visible region of an element. Everything outside the shape is hidden (and not clickable).\n\n### Shape functions\n| Function | Example |\n|---|---|\n| `circle()` | `circle(50% at 50% 50%)` |\n| `ellipse()` | `ellipse(50% 30% at 50% 50%)` |\n| `inset()` | `inset(10px 20px round 12px)` |\n| `polygon()` | `polygon(50% 0, 100% 100%, 0 100%)` triangle |\n| `path()` | SVG path string |\n\n### Polygon examples (from the source course)\n```css\n/* octagon */\nclip-path: polygon(20% 0, 80% 0, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0 80%, 0 20%);\n/* arrow */\nclip-path: polygon(40% 0, 40% 20%, 100% 20%, 100% 80%, 40% 80%, 40% 100%, 0 50%);\n/* circle */\nclip-path: circle();\n```\n\n### Why use it\n- Hero sections with angled edges.\n- Image masks, badges, speech bubbles, arrows, stars.\n- **Animation**: transition between two polygons with the **same number of points**.\n- Reveal effects: animate `clip-path: inset(0 100% 0 0)` to `inset(0)`.\n\n### Notes\n- The clipped area also clips shadows; use `filter: drop-shadow()` on a parent wrapper to add a shadow.\n- Use online generators (like Clippy) to draw polygon points visually.\n- `shape-outside` is the sibling property for wrapping text around a shape.",
+   "keyPoints": [
+    "clip-path hides everything outside the shape",
+    "circle(), ellipse(), inset(), polygon(), path()",
+    "Percentages make shapes responsive",
+    "Animate between shapes with equal point counts",
+    "Shadows get clipped - use drop-shadow on a wrapper"
+   ],
+   "pitfalls": [
+    "Box-shadow disappearing because it is clipped too",
+    "Interpolating polygons with different numbers of points (no animation)",
+    "Clipped parts are not clickable, which may confuse hit areas"
+   ],
+   "examples": [
+    {
+     "title": "Shapes gallery",
+     "language": "web",
+     "html": "<div class=\"s\"><i class=\"tri\"></i><i class=\"oct\"></i><i class=\"arr\"></i><i class=\"cir\"></i><i class=\"star\"></i></div>",
+     "css": ".s { display: flex; gap: 12px; flex-wrap: wrap; }\ni { width: 90px; height: 90px; background: linear-gradient(135deg,#6a11cb,#2575fc); }\n.tri { clip-path: polygon(50% 0, 100% 100%, 0 100%); }\n.oct { clip-path: polygon(20% 0,80% 0,100% 20%,100% 80%,80% 100%,20% 100%,0 80%,0 20%); }\n.arr { clip-path: polygon(40% 0,40% 20%,100% 20%,100% 80%,40% 80%,40% 100%,0 50%); }\n.cir { clip-path: circle(50%); }\n.star { clip-path: polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%); background: gold; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Animated reveal",
+     "language": "web",
+     "html": "<div class=\"r\">Hover to morph</div>",
+     "css": ".r { width: 160px; height: 160px; display: grid; place-items: center; color: #fff; font: bold 16px sans-serif; background: #e11d48;\n  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); transition: clip-path .5s; }\n.r:hover { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is clip-path used for?",
+     "a": "To show only part of an element in a defined shape such as a circle or polygon, enabling custom shapes and reveal animations."
+    },
+    {
+     "q": "Why does my box-shadow disappear with clip-path?",
+     "a": "The shadow is outside the clipped region and gets cut. Wrap the element and apply filter: drop-shadow() on the wrapper."
+    },
+    {
+     "q": "Can clip-path be animated?",
+     "a": "Yes, between shapes of the same type and point count (e.g., two polygons with equal vertices)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/bonus/clippath/index.html"
+  },
+  {
+   "id": "css-glass-neumorphism",
+   "title": "Glassmorphism and Neumorphism Recipes",
+   "level": "advanced",
+   "summary": "Two popular UI styles built from transparency, blur and layered shadows.",
+   "description": "These are visual **styles**, built from properties you already know.\n\n### Glassmorphism\nA frosted-glass card floating over a colorful background.\n\nIngredients:\n1. A vivid/gradient background behind the card.\n2. Semi-transparent background: `rgba(255,255,255,.15)`.\n3. `backdrop-filter: blur(12px) saturate(150%)`.\n4. A thin light border: `1px solid rgba(255,255,255,.3)`.\n5. Soft shadow: `0 8px 32px rgba(0,0,0,.2)`.\n\n### Neumorphism (soft UI)\nElements look extruded from the same-colored surface using **two opposite shadows**: a light one top-left and a dark one bottom-right.\n\n```css\n.neu {\n  background: #e0e5ec;\n  border-radius: 20px;\n  box-shadow: 9px 9px 16px #a3b1c6, -9px -9px 16px #ffffff;\n}\n.neu:active { box-shadow: inset 6px 6px 10px #a3b1c6, inset -6px -6px 10px #fff; }\n```\n\n### Cautions (accessibility)\n- Glass: ensure text contrast against the *worst* area of the background; add a darker tint if needed.\n- Neumorphism: low contrast between element and background - boundaries are hard to see for low-vision users. Use it for decoration, and add clear borders or icons for important controls.\n- Provide `@supports (backdrop-filter: blur(1px))` fallback with a more opaque background.\n\n### Tips\n- Keep blur values moderate (8-16px) for performance.\n- Use CSS variables so one palette generates both light and dark shadows.",
+   "keyPoints": [
+    "Glass = translucent background + backdrop-filter blur + light border",
+    "Neumorphism = same-color surface + light and dark opposite shadows",
+    "Pressed state uses inset shadows",
+    "Check contrast and provide fallbacks",
+    "Keep blur moderate for performance"
+   ],
+   "pitfalls": [
+    "Glass card over a plain white background (effect invisible)",
+    "Neumorphic controls with insufficient contrast",
+    "No fallback when backdrop-filter is unsupported"
+   ],
+   "examples": [
+    {
+     "title": "Glass card",
+     "language": "web",
+     "html": "<div class=\"scene\"><div class=\"glass\"><h3>Glass</h3><p>Frosted card with blur and a light border.</p></div></div>",
+     "css": ".scene { padding: 28px; background: radial-gradient(circle at 20% 20%, #ff0080, transparent 40%), radial-gradient(circle at 80% 70%, #00dfd8, transparent 45%), #4b1d8f; border-radius: 14px; font-family: sans-serif; }\n.glass { max-width: 240px; padding: 18px; color: #fff; background: rgba(255,255,255,.15); backdrop-filter: blur(12px) saturate(150%); -webkit-backdrop-filter: blur(12px) saturate(150%); border: 1px solid rgba(255,255,255,.35); border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.25); }\nh3 { margin: 0 0 6px; }\np { margin: 0; font-size: 14px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Neumorphic button",
+     "language": "web",
+     "html": "<div class=\"surface\"><button class=\"neu\">Press</button><button class=\"neu round\">+</button></div>",
+     "css": ".surface { background: #e0e5ec; padding: 30px; display: flex; gap: 24px; border-radius: 16px; }\n.neu { border: 0; padding: 14px 28px; border-radius: 16px; background: #e0e5ec; color: #4a5568; font: bold 16px sans-serif; cursor: pointer;\n  box-shadow: 8px 8px 14px #a3b1c6, -8px -8px 14px #fff; transition: box-shadow .15s; }\n.neu:active { box-shadow: inset 6px 6px 10px #a3b1c6, inset -6px -6px 10px #fff; }\n.round { border-radius: 50%; width: 56px; height: 56px; padding: 0; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What CSS properties make glassmorphism?",
+     "a": "A translucent background (rgba), backdrop-filter: blur(), a subtle light border and a soft box-shadow over a colorful backdrop."
+    },
+    {
+     "q": "How is neumorphism created in CSS?",
+     "a": "With a background equal to the page surface and two box-shadows: one light (negative offset) and one dark (positive offset); inset shadows for pressed state."
+    },
+    {
+     "q": "What is the main downside of neumorphism?",
+     "a": "Low contrast makes boundaries and states hard to perceive, which hurts accessibility."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

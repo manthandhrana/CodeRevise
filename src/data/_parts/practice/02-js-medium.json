@@ -1,0 +1,2389 @@
+[
+ {
+  "id": "q-flatten-array",
+  "title": "Flatten a Nested Array",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "recursion"
+  ],
+  "statement": "Flatten an arbitrarily deep nested array into a single flat array, keeping order. Try to solve it **without** `Array.prototype.flat`.\n\n**Example**\n\n```\nflattenArray([1, [2, [3, [4]]]]) // [1, 2, 3, 4]\n```",
+  "language": "javascript",
+  "functionName": "flattenArray",
+  "starter": "function flattenArray(arr) {\n  // write your code here\n}",
+  "solution": "function flattenArray(arr) {\n  const out = []\n  for (const item of arr) {\n    if (Array.isArray(item)) out.push(...flattenArray(item))\n    else out.push(item)\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** recursion - arrays are flattened and merged, other values are pushed as is.\n\n**Complexity:** O(n) in the total number of elements (plus recursion depth).",
+  "hints": [
+   "Check each element with `Array.isArray`.",
+   "If it is an array, flatten it recursively and spread the result."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      [
+       2,
+       [
+        3,
+        [
+         4
+        ]
+       ]
+      ]
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3,
+     4
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      [],
+      [
+       []
+      ]
+     ]
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      [
+       "a",
+       [
+        "b"
+       ]
+      ],
+      "c"
+     ]
+    ],
+    "expected": [
+     "a",
+     "b",
+     "c"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-rotate-array",
+  "title": "Rotate Array",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array"
+  ],
+  "statement": "Rotate `arr` to the **right** by `k` steps (`k ≥ 0`, may be larger than the length) and return the new array.\n\n**Example**\n\n```\nrotateArray([1, 2, 3, 4, 5], 2) // [4, 5, 1, 2, 3]\nrotateArray([1, 2, 3], 4)       // [3, 1, 2]\n```",
+  "language": "javascript",
+  "functionName": "rotateArray",
+  "starter": "function rotateArray(arr, k) {\n  // write your code here\n}",
+  "solution": "function rotateArray(arr, k) {\n  if (arr.length === 0) return []\n  const n = k % arr.length\n  if (n === 0) return arr.slice()\n  return [...arr.slice(-n), ...arr.slice(0, -n)]\n}",
+  "solutionExplanation": "**Approach:** normalise k with modulo, then concatenate `slice(-k)` and `slice(0, -k)`.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Rotating by the array length changes nothing - use `k % arr.length`.",
+   "The last k items move to the front."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     2
+    ],
+    "expected": [
+     4,
+     5,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ],
+     0
+    ],
+    "expected": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ],
+     4
+    ],
+    "expected": [
+     3,
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [],
+     3
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      1
+     ],
+     10
+    ],
+    "expected": [
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2
+     ],
+     2
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-array-intersection",
+  "title": "Array Intersection",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "set"
+  ],
+  "statement": "Return the **unique** values present in both arrays. The result keeps the order in which the values first appear in `a`.\n\n**Example**\n\n```\nintersection([1, 2, 2, 3], [2, 3, 4]) // [2, 3]\nintersection([4, 9, 5], [9, 4, 9, 8, 4]) // [4, 9]\n```",
+  "language": "javascript",
+  "functionName": "intersection",
+  "starter": "function intersection(a, b) {\n  // write your code here\n}",
+  "solution": "function intersection(a, b) {\n  const inB = new Set(b)\n  const result = []\n  for (const x of new Set(a)) {\n    if (inB.has(x)) result.push(x)\n  }\n  return result\n}",
+  "solutionExplanation": "**Approach:** Set of `b`, iterate over the unique values of `a`.\n\n**Complexity:** O(n + m).",
+  "hints": [
+   "Put one array in a Set for O(1) lookups.",
+   "Iterate over the unique values of the other array and keep those that are in the set."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      2,
+      3
+     ],
+     [
+      2,
+      3,
+      4
+     ]
+    ],
+    "expected": [
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2
+     ],
+     [
+      3,
+      4
+     ]
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [],
+     [
+      1
+     ]
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      4,
+      9,
+      5
+     ],
+     [
+      9,
+      4,
+      9,
+      8,
+      4
+     ]
+    ],
+    "expected": [
+     4,
+     9
+    ]
+   },
+   {
+    "input": [
+     [
+      "a",
+      "b"
+     ],
+     [
+      "b",
+      "a"
+     ]
+    ],
+    "expected": [
+     "a",
+     "b"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-merge-sorted",
+  "title": "Merge Two Sorted Arrays",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "two-pointers"
+  ],
+  "statement": "Merge two arrays that are already sorted ascending into one sorted array. Do it in a single pass (do not just concatenate and sort).\n\n**Example**\n\n```\nmergeSorted([1, 3, 5], [2, 4, 6]) // [1, 2, 3, 4, 5, 6]\n```",
+  "language": "javascript",
+  "functionName": "mergeSorted",
+  "starter": "function mergeSorted(a, b) {\n  // write your code here\n}",
+  "solution": "function mergeSorted(a, b) {\n  const out = []\n  let i = 0\n  let j = 0\n  while (i < a.length && j < b.length) {\n    if (a[i] <= b[j]) out.push(a[i++])\n    else out.push(b[j++])\n  }\n  while (i < a.length) out.push(a[i++])\n  while (j < b.length) out.push(b[j++])\n  return out\n}",
+  "solutionExplanation": "**Approach:** classic merge step of merge sort with two pointers.\n\n**Complexity:** O(n + m) time, O(n + m) space.",
+  "hints": [
+   "Use one index per array.",
+   "Always push the smaller current element and advance that index.",
+   "Do not forget the leftovers of the array that is not finished yet."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      3,
+      5
+     ],
+     [
+      2,
+      4,
+      6
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6
+    ]
+   },
+   {
+    "input": [
+     [],
+     [
+      1,
+      2
+     ]
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2
+     ],
+     []
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      1,
+      2
+     ],
+     [
+      1,
+      3
+     ]
+    ],
+    "expected": [
+     1,
+     1,
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      -5,
+      0
+     ],
+     [
+      -3,
+      2
+     ]
+    ],
+    "expected": [
+     -5,
+     -3,
+     0,
+     2
+    ]
+   },
+   {
+    "input": [
+     [],
+     []
+    ],
+    "expected": []
+   }
+  ]
+ },
+ {
+  "id": "q-max-subarray",
+  "title": "Maximum Subarray",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "dp",
+   "kadane"
+  ],
+  "statement": "Find the contiguous subarray (at least one element) with the largest sum and return that sum.\n\n**Example**\n\n```\nmaxSubarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]) // 6  (subarray [4, -1, 2, 1])\n```",
+  "language": "javascript",
+  "functionName": "maxSubarray",
+  "starter": "function maxSubarray(nums) {\n  // write your code here\n}",
+  "solution": "function maxSubarray(nums) {\n  let best = nums[0]\n  let current = nums[0]\n  for (let i = 1; i < nums.length; i++) {\n    current = Math.max(nums[i], current + nums[i])\n    best = Math.max(best, current)\n  }\n  return best\n}",
+  "solutionExplanation": "**Approach:** Kadane's algorithm: `current = max(x, current + x)`, `best = max(best, current)`.\n\n**Complexity:** O(n) time, O(1) space.",
+  "hints": [
+   "At each index decide: extend the previous subarray or start a new one here.",
+   "Keep a running \"best ending here\" and a global best."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      -2,
+      1,
+      -3,
+      4,
+      -1,
+      2,
+      1,
+      -5,
+      4
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      1
+     ]
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     [
+      5,
+      4,
+      -1,
+      7,
+      8
+     ]
+    ],
+    "expected": 23
+   },
+   {
+    "input": [
+     [
+      -3,
+      -1,
+      -2
+     ]
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [
+      -2,
+      -1
+     ]
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [
+      0,
+      0,
+      0
+     ]
+    ],
+    "expected": 0
+   }
+  ]
+ },
+ {
+  "id": "q-group-by",
+  "title": "Group By Key",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "object",
+   "hashmap"
+  ],
+  "statement": "Given an array of objects and a property name `key`, return an object whose keys are the distinct values of that property and whose values are arrays of the matching objects (in original order).\n\n**Example**\n\n```\ngroupBy([{ t: \"a\", v: 1 }, { t: \"b\", v: 2 }, { t: \"a\", v: 3 }], \"t\")\n// { a: [{t:\"a\",v:1},{t:\"a\",v:3}], b: [{t:\"b\",v:2}] }\n```",
+  "language": "javascript",
+  "functionName": "groupBy",
+  "starter": "function groupBy(arr, key) {\n  // write your code here\n}",
+  "solution": "function groupBy(arr, key) {\n  const groups = {}\n  for (const item of arr) {\n    const k = item[key]\n    if (!groups[k]) groups[k] = []\n    groups[k].push(item)\n  }\n  return groups\n}",
+  "solutionExplanation": "**Approach:** single pass, push each item into `groups[item[key]]`.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Use an object as accumulator.",
+   "Create the array for a group the first time you see its key."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      {
+       "t": "a",
+       "v": 1
+      },
+      {
+       "t": "b",
+       "v": 2
+      },
+      {
+       "t": "a",
+       "v": 3
+      }
+     ],
+     "t"
+    ],
+    "expected": {
+     "a": [
+      {
+       "t": "a",
+       "v": 1
+      },
+      {
+       "t": "a",
+       "v": 3
+      }
+     ],
+     "b": [
+      {
+       "t": "b",
+       "v": 2
+      }
+     ]
+    }
+   },
+   {
+    "input": [
+     [],
+     "x"
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     [
+      {
+       "age": 20,
+       "n": "x"
+      },
+      {
+       "age": 20,
+       "n": "y"
+      }
+     ],
+     "age"
+    ],
+    "expected": {
+     "20": [
+      {
+       "age": 20,
+       "n": "x"
+      },
+      {
+       "age": 20,
+       "n": "y"
+      }
+     ]
+    }
+   },
+   {
+    "input": [
+     [
+      {
+       "c": "red"
+      }
+     ],
+     "c"
+    ],
+    "expected": {
+     "red": [
+      {
+       "c": "red"
+      }
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-deep-clone",
+  "title": "Deep Clone",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "object",
+   "recursion"
+  ],
+  "statement": "Write `deepClone(value)` that returns a **deep copy** of JSON-like data (objects, arrays, strings, numbers, booleans, `null`). Changing the copy must never change the original. Write it recursively instead of using `JSON.parse(JSON.stringify(...))`.\n\n**Example**\n\n```\nconst a = { x: [1, { y: 2 }] };\nconst b = deepClone(a);\nb.x[1].y = 99;   // a.x[1].y is still 2\n```",
+  "language": "javascript",
+  "functionName": "deepClone",
+  "starter": "function deepClone(value) {\n  // write your code here\n}",
+  "solution": "function deepClone(value) {\n  if (value === null || typeof value !== 'object') return value\n  if (Array.isArray(value)) return value.map(deepClone)\n  const copy = {}\n  for (const key of Object.keys(value)) {\n    copy[key] = deepClone(value[key])\n  }\n  return copy\n}",
+  "solutionExplanation": "**Approach:** recursion on arrays and plain objects, primitives returned directly.\n\n**Complexity:** O(n) in the total size of the structure.",
+  "hints": [
+   "Primitives and `null` can be returned as they are.",
+   "For arrays use `map` recursively.",
+   "For objects create a new object and clone every property."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": {
+       "c": [
+        1,
+        2,
+        {
+         "d": 3
+        }
+       ]
+      }
+     }
+    ],
+    "expected": {
+     "a": 1,
+     "b": {
+      "c": [
+       1,
+       2,
+       {
+        "d": 3
+       }
+      ]
+     }
+    }
+   },
+   {
+    "input": [
+     [
+      1,
+      [
+       2,
+       3
+      ],
+      {
+       "x": null
+      }
+     ]
+    ],
+    "expected": [
+     1,
+     [
+      2,
+      3
+     ],
+     {
+      "x": null
+     }
+    ]
+   },
+   {
+    "input": [
+     null
+    ],
+    "expected": null
+   },
+   {
+    "input": [
+     5
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     "str"
+    ],
+    "expected": "str"
+   },
+   {
+    "input": [
+     {}
+    ],
+    "expected": {}
+   }
+  ]
+ },
+ {
+  "id": "q-pick",
+  "title": "Pick Properties",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "object"
+  ],
+  "statement": "Return a new object containing only the listed `keys` of `obj`. Keys that do not exist on the object are skipped.\n\n**Example**\n\n```\npick({ a: 1, b: 2, c: 3 }, [\"a\", \"c\"]) // { a: 1, c: 3 }\n```",
+  "language": "javascript",
+  "functionName": "pick",
+  "starter": "function pick(obj, keys) {\n  // write your code here\n}",
+  "solution": "function pick(obj, keys) {\n  const out = {}\n  for (const key of keys) {\n    if (Object.prototype.hasOwnProperty.call(obj, key)) out[key] = obj[key]\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** loop over the wanted keys and copy the ones that exist.\n\n**Complexity:** O(k).",
+  "hints": [
+   "Loop over `keys`, not over the object.",
+   "Check `Object.prototype.hasOwnProperty.call(obj, key)` before copying."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": 2,
+      "c": 3
+     },
+     [
+      "a",
+      "c"
+     ]
+    ],
+    "expected": {
+     "a": 1,
+     "c": 3
+    }
+   },
+   {
+    "input": [
+     {
+      "a": 1
+     },
+     [
+      "z"
+     ]
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": 2
+     },
+     []
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "x": {
+       "y": 1
+      },
+      "z": 2
+     },
+     [
+      "x"
+     ]
+    ],
+    "expected": {
+     "x": {
+      "y": 1
+     }
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-omit",
+  "title": "Omit Properties",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "object"
+  ],
+  "statement": "Return a new object with all properties of `obj` **except** the ones listed in `keys`. The original must not be changed.\n\n**Example**\n\n```\nomit({ a: 1, b: 2, c: 3 }, [\"b\"]) // { a: 1, c: 3 }\n```",
+  "language": "javascript",
+  "functionName": "omit",
+  "starter": "function omit(obj, keys) {\n  // write your code here\n}",
+  "solution": "function omit(obj, keys) {\n  const out = {}\n  for (const key of Object.keys(obj)) {\n    if (!keys.includes(key)) out[key] = obj[key]\n  }\n  return out\n}",
+  "solutionExplanation": "**Approach:** copy every own key that is not in the blacklist.\n\n**Complexity:** O(n * k) (use a Set for O(n)).",
+  "hints": [
+   "Loop over the keys of the object.",
+   "Skip a key when `keys.includes(key)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": 2,
+      "c": 3
+     },
+     [
+      "b"
+     ]
+    ],
+    "expected": {
+     "a": 1,
+     "c": 3
+    }
+   },
+   {
+    "input": [
+     {
+      "a": 1
+     },
+     []
+    ],
+    "expected": {
+     "a": 1
+    }
+   },
+   {
+    "input": [
+     {
+      "a": 1
+     },
+     [
+      "a"
+     ]
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": 2
+     },
+     [
+      "z"
+     ]
+    ],
+    "expected": {
+     "a": 1,
+     "b": 2
+    }
+   },
+   {
+    "input": [
+     {},
+     [
+      "a"
+     ]
+    ],
+    "expected": {}
+   }
+  ]
+ },
+ {
+  "id": "q-once",
+  "title": "once() - Run a Function Only Once",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "closure",
+   "higher-order"
+  ],
+  "statement": "Implement a `once(fn)` helper **inside** `onceDemo`: it returns a function that calls `fn` only the first time and afterwards returns the first result without calling `fn` again.\n\n`onceDemo(values)` must create `wrapped = once(x => x * 10)` (the inner function increases a counter `timesRun` whenever it really runs), call `wrapped` with every value of `values` and return `{ results, timesRun }`.\n\n**Example**\n\n```\nonceDemo([1, 2, 3]) // { results: [10, 10, 10], timesRun: 1 }\nonceDemo([])        // { results: [], timesRun: 0 }\n```",
+  "language": "javascript",
+  "functionName": "onceDemo",
+  "starter": "function onceDemo(values) {\n  // write your code here\n}",
+  "solution": "function onceDemo(values) {\n  let timesRun = 0\n  function once(fn) {\n    let called = false\n    let result\n    return function (...args) {\n      if (!called) {\n        called = true\n        result = fn.apply(this, args)\n      }\n      return result\n    }\n  }\n  const wrapped = once((x) => {\n    timesRun++\n    return x * 10\n  })\n  const results = values.map((v) => wrapped(v))\n  return { results, timesRun }\n}",
+  "solutionExplanation": "**Approach:** the wrapper closes over a flag and the cached result.\n\n**Complexity:** O(n) for n calls; each call is O(1) plus the wrapped function once.",
+  "hints": [
+   "A closure lets the returned function remember `called` and `result`.",
+   "Set `called = true` before returning the result."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": {
+     "results": [
+      10,
+      10,
+      10
+     ],
+     "timesRun": 1
+    }
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": {
+     "results": [],
+     "timesRun": 0
+    }
+   },
+   {
+    "input": [
+     [
+      4
+     ]
+    ],
+    "expected": {
+     "results": [
+      40
+     ],
+     "timesRun": 1
+    }
+   },
+   {
+    "input": [
+     [
+      -1,
+      5
+     ]
+    ],
+    "expected": {
+     "results": [
+      -10,
+      -10
+     ],
+     "timesRun": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-memoize",
+  "title": "memoize() - Count the Calls",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "closure",
+   "higher-order",
+   "dp"
+  ],
+  "statement": "Write a generic `memoize(fn)` helper (single numeric argument, cache in a Map) **inside** `memoizedFib(n)`. Then define a recursive Fibonacci function wrapped by `memoize` so that every recursive call goes through the wrapper. The original (unwrapped) function increments a `calls` counter every time it truly runs.\n\nReturn `{ value, calls }` where `value = fib(n)`.\n\n**Example**\n\n```\nmemoizedFib(10) // { value: 55, calls: 11 }\nmemoizedFib(1)  // { value: 1,  calls: 1 }\n```",
+  "language": "javascript",
+  "functionName": "memoizedFib",
+  "starter": "function memoizedFib(n) {\n  // write your code here\n}",
+  "solution": "function memoizedFib(n) {\n  let calls = 0\n  function memoize(fn) {\n    const cache = new Map()\n    return function (x) {\n      if (cache.has(x)) return cache.get(x)\n      const result = fn(x)\n      cache.set(x, result)\n      return result\n    }\n  }\n  const fib = memoize((x) => {\n    calls++\n    return x < 2 ? x : fib(x - 1) + fib(x - 2)\n  })\n  const value = fib(n)\n  return { value, calls }\n}",
+  "solutionExplanation": "**Approach:** Map cache keyed by argument; check before computing.\n\n**Complexity:** O(n) time and space instead of O(2^n).",
+  "hints": [
+   "The recursive calls must reference the **memoized** variable, not the raw function.",
+   "With memoization every argument from n down to 0 runs only once."
+  ],
+  "tests": [
+   {
+    "input": [
+     0
+    ],
+    "expected": {
+     "value": 0,
+     "calls": 1
+    }
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": {
+     "value": 1,
+     "calls": 1
+    }
+   },
+   {
+    "input": [
+     2
+    ],
+    "expected": {
+     "value": 1,
+     "calls": 3
+    }
+   },
+   {
+    "input": [
+     10
+    ],
+    "expected": {
+     "value": 55,
+     "calls": 11
+    }
+   },
+   {
+    "input": [
+     30
+    ],
+    "expected": {
+     "value": 832040,
+     "calls": 31
+    }
+   },
+   {
+    "input": [
+     50
+    ],
+    "expected": {
+     "value": 12586269025,
+     "calls": 51
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-compose",
+  "title": "compose() - Right to Left",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "higher-order",
+   "functional"
+  ],
+  "statement": "Inside `composeApply(names, x)` implement `compose(...fns)` where `compose(f, g, h)(x) = f(g(h(x)))` (right to left). Use this library of functions:\n\n| name | function |\n|---|---|\n| `double` | `x * 2` |\n| `inc` | `x + 1` |\n| `square` | `x * x` |\n| `negate` | `-x` |\n\nCompose the functions named in `names` (in that order) and return the result of applying them to `x`. An empty list returns `x`.\n\n**Example**\n\n```\ncomposeApply([\"double\", \"inc\"], 5) // double(inc(5)) = 12\ncomposeApply([\"inc\", \"double\"], 5) // inc(double(5)) = 11\n```",
+  "language": "javascript",
+  "functionName": "composeApply",
+  "starter": "function composeApply(names, x) {\n  // write your code here\n}",
+  "solution": "function composeApply(names, x) {\n  const library = {\n    double: (v) => v * 2,\n    inc: (v) => v + 1,\n    square: (v) => v * v,\n    negate: (v) => -v,\n  }\n  const compose =\n    (...fns) =>\n    (input) =>\n      fns.reduceRight((acc, fn) => fn(acc), input)\n  return compose(...names.map((name) => library[name]))(x)\n}",
+  "solutionExplanation": "**Approach:** `fns.reduceRight((acc, fn) => fn(acc), x)`.\n\n**Complexity:** O(f) for f composed functions.",
+  "hints": [
+   "`reduceRight` runs from the last function to the first.",
+   "The initial accumulator is the input value `x`."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      "double",
+      "inc"
+     ],
+     5
+    ],
+    "expected": 12
+   },
+   {
+    "input": [
+     [
+      "inc",
+      "double"
+     ],
+     5
+    ],
+    "expected": 11
+   },
+   {
+    "input": [
+     [],
+     7
+    ],
+    "expected": 7
+   },
+   {
+    "input": [
+     [
+      "square",
+      "negate",
+      "inc"
+     ],
+     2
+    ],
+    "expected": 9
+   },
+   {
+    "input": [
+     [
+      "negate"
+     ],
+     4
+    ],
+    "expected": -4
+   },
+   {
+    "input": [
+     [
+      "double",
+      "double",
+      "double"
+     ],
+     1
+    ],
+    "expected": 8
+   }
+  ]
+ },
+ {
+  "id": "q-curry",
+  "title": "curry() - Partial Application",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "closure",
+   "higher-order",
+   "functional"
+  ],
+  "statement": "Inside `curriedAdd3(groups)` write a generic `curry(fn)` that collects arguments (using `fn.length`) until enough have been supplied. Curry `add3 = (a, b, c) => a + b + c`, then call the curried function with each group of arguments in `groups` one after another, i.e. `curried(...groups[0])(...groups[1])...`, and return the final number.\n\n**Example**\n\n```\ncurriedAdd3([[1], [2], [3]]) // 6\ncurriedAdd3([[1, 2], [3]])   // 6\ncurriedAdd3([[1, 2, 3]])     // 6\n```",
+  "language": "javascript",
+  "functionName": "curriedAdd3",
+  "starter": "function curriedAdd3(groups) {\n  // write your code here\n}",
+  "solution": "function curriedAdd3(groups) {\n  function curry(fn) {\n    return function curried(...args) {\n      if (args.length >= fn.length) return fn(...args)\n      return (...more) => curried(...args, ...more)\n    }\n  }\n  const add3 = (a, b, c) => a + b + c\n  let current = curry(add3)\n  for (const group of groups) {\n    current = current(...group)\n  }\n  return current\n}",
+  "solutionExplanation": "**Approach:** recursive closure that accumulates arguments.\n\n**Complexity:** O(total arguments).",
+  "hints": [
+   "If `args.length >= fn.length` call `fn(...args)`.",
+   "Otherwise return a new function that gathers more arguments and calls itself."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1
+      ],
+      [
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       2,
+       3
+      ]
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       2
+      ],
+      [
+       3
+      ]
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      [
+       10
+      ],
+      [
+       20,
+       30
+      ]
+     ]
+    ],
+    "expected": 60
+   },
+   {
+    "input": [
+     [
+      [
+       0
+      ],
+      [
+       0
+      ],
+      [
+       5
+      ]
+     ]
+    ],
+    "expected": 5
+   }
+  ]
+ },
+ {
+  "id": "q-sum-nested",
+  "title": "Sum of Nested Arrays",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "recursion",
+   "array"
+  ],
+  "statement": "Return the sum of all numbers in an array that may contain further arrays at any depth.\n\n**Example**\n\n```\nsumNested([1, [2, [3]], 4]) // 10\nsumNested([])               // 0\n```",
+  "language": "javascript",
+  "functionName": "sumNested",
+  "starter": "function sumNested(arr) {\n  // write your code here\n}",
+  "solution": "function sumNested(arr) {\n  let total = 0\n  for (const item of arr) {\n    total += Array.isArray(item) ? sumNested(item) : item\n  }\n  return total\n}",
+  "solutionExplanation": "**Approach:** recursion over the structure.\n\n**Complexity:** O(n) for n numbers.",
+  "hints": [
+   "The base case is a number - just add it.",
+   "For an array element recurse and add the returned sum."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      [
+       2,
+       [
+        3
+       ]
+      ],
+      4
+     ]
+    ],
+    "expected": 10
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      [
+       [
+        [
+         5
+        ]
+       ]
+      ]
+     ]
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      [
+       -1,
+       [
+        1
+       ]
+      ],
+      [
+       10,
+       [
+        20,
+        [
+         30
+        ]
+       ]
+      ]
+     ]
+    ],
+    "expected": 60
+   }
+  ]
+ },
+ {
+  "id": "q-power-set",
+  "title": "Power Set",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "recursion",
+   "backtracking",
+   "array"
+  ],
+  "statement": "Return all subsets of an array of distinct values. Produce them in this **exact order**: start with `[[]]`; for every element, in order, append a copy of every subset found so far with that element added.\n\n**Example**\n\n```\npowerSet([1, 2, 3])\n// [[], [1], [2], [1,2], [3], [1,3], [2,3], [1,2,3]]\n```",
+  "language": "javascript",
+  "functionName": "powerSet",
+  "starter": "function powerSet(nums) {\n  // write your code here\n}",
+  "solution": "function powerSet(nums) {\n  const subsets = [[]]\n  for (const n of nums) {\n    const size = subsets.length\n    for (let i = 0; i < size; i++) {\n      subsets.push([...subsets[i], n])\n    }\n  }\n  return subsets\n}",
+  "solutionExplanation": "**Approach:** iterative doubling - every new element doubles the number of subsets.\n\n**Complexity:** O(n * 2^n) time and space.",
+  "hints": [
+   "Start with `[[]]` (the empty subset).",
+   "For each number, loop over the subsets that exist right now and push `[...subset, number]`.",
+   "Remember the size before looping, otherwise you loop over what you just added."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     [],
+     [
+      1
+     ],
+     [
+      2
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      3
+     ],
+     [
+      1,
+      3
+     ],
+     [
+      2,
+      3
+     ],
+     [
+      1,
+      2,
+      3
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": [
+     []
+    ]
+   },
+   {
+    "input": [
+     [
+      7
+     ]
+    ],
+    "expected": [
+     [],
+     [
+      7
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      "a",
+      "b"
+     ]
+    ],
+    "expected": [
+     [],
+     [
+      "a"
+     ],
+     [
+      "b"
+     ],
+     [
+      "a",
+      "b"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-valid-parentheses",
+  "title": "Valid Parentheses",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "stack",
+   "string"
+  ],
+  "statement": "The string contains only `( ) [ ] { }`. Return `true` if every bracket is closed by the same type of bracket in the correct order. The empty string is valid.\n\n**Example**\n\n```\nvalidParentheses(\"()[]{}\") // true\nvalidParentheses(\"([)]\")   // false\n```",
+  "language": "javascript",
+  "functionName": "validParentheses",
+  "starter": "function validParentheses(s) {\n  // write your code here\n}",
+  "solution": "function validParentheses(s) {\n  const pairs = { ')': '(', ']': '[', '}': '{' }\n  const stack = []\n  for (const ch of s) {\n    if (ch === '(' || ch === '[' || ch === '{') stack.push(ch)\n    else if (stack.pop() !== pairs[ch]) return false\n  }\n  return stack.length === 0\n}",
+  "solutionExplanation": "**Approach:** stack of opening brackets, match on every closing one.\n\n**Complexity:** O(n) time, O(n) space.",
+  "hints": [
+   "A stack is the natural data structure.",
+   "Push opening brackets; on a closing bracket the top of the stack must be its partner.",
+   "At the end the stack must be empty."
+  ],
+  "tests": [
+   {
+    "input": [
+     "()[]{}"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "(]"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "([)]"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "{[]}"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "(("
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "]"
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-merge-intervals",
+  "title": "Merge Intervals",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "sorting",
+   "intervals"
+  ],
+  "statement": "Given an array of `[start, end]` intervals merge all overlapping ones (intervals that touch, like `[1,4]` and `[4,5]`, also merge) and return the result sorted by start.\n\n**Example**\n\n```\nmergeIntervals([[1,3],[2,6],[8,10],[15,18]]) // [[1,6],[8,10],[15,18]]\n```",
+  "language": "javascript",
+  "functionName": "mergeIntervals",
+  "starter": "function mergeIntervals(intervals) {\n  // write your code here\n}",
+  "solution": "function mergeIntervals(intervals) {\n  const sorted = intervals.map((i) => [...i]).sort((a, b) => a[0] - b[0])\n  const merged = []\n  for (const interval of sorted) {\n    const last = merged[merged.length - 1]\n    if (last && interval[0] <= last[1]) last[1] = Math.max(last[1], interval[1])\n    else merged.push(interval)\n  }\n  return merged\n}",
+  "solutionExplanation": "**Approach:** sort by start, then sweep and extend the last merged interval when overlapping.\n\n**Complexity:** O(n log n) time (sorting), O(n) space.",
+  "hints": [
+   "Sort the intervals by their start value first.",
+   "Compare each interval with the last merged one.",
+   "Overlap means `current.start <= last.end`."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1,
+       3
+      ],
+      [
+       2,
+       6
+      ],
+      [
+       8,
+       10
+      ],
+      [
+       15,
+       18
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      6
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      15,
+      18
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       4
+      ],
+      [
+       4,
+       5
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      5
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       4
+      ],
+      [
+       0,
+       4
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      0,
+      4
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       4
+      ],
+      [
+       2,
+       3
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      4
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       5,
+       6
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       2,
+       3
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      3
+     ],
+     [
+      5,
+      6
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-top-k-frequent",
+  "title": "Top K Frequent Elements",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "hashmap",
+   "sorting"
+  ],
+  "statement": "Return the `k` most frequent numbers of `nums`, ordered by frequency (highest first). When two numbers have the same frequency the **smaller number comes first**.\n\n**Example**\n\n```\ntopKFrequent([1, 1, 1, 2, 2, 3], 2) // [1, 2]\ntopKFrequent([4, 4, 5, 5, 6], 2)    // [4, 5]\n```",
+  "language": "javascript",
+  "functionName": "topKFrequent",
+  "starter": "function topKFrequent(nums, k) {\n  // write your code here\n}",
+  "solution": "function topKFrequent(nums, k) {\n  const freq = new Map()\n  for (const n of nums) freq.set(n, (freq.get(n) || 0) + 1)\n  return [...freq.keys()]\n    .sort((a, b) => freq.get(b) - freq.get(a) || a - b)\n    .slice(0, k)\n}",
+  "solutionExplanation": "**Approach:** frequency map then sort the distinct keys with a two-level comparator.\n\n**Complexity:** O(n + u log u) where u is the number of distinct values.",
+  "hints": [
+   "Count occurrences with a Map.",
+   "Sort the distinct numbers by count descending, then by value ascending.",
+   "Take the first k."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      1,
+      1,
+      2,
+      2,
+      3
+     ],
+     2
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      1
+     ],
+     1
+    ],
+    "expected": [
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      4,
+      4,
+      5,
+      5,
+      6
+     ],
+     2
+    ],
+    "expected": [
+     4,
+     5
+    ]
+   },
+   {
+    "input": [
+     [
+      3,
+      3,
+      2,
+      2,
+      1,
+      1
+     ],
+     3
+    ],
+    "expected": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      -1,
+      -1,
+      2,
+      2,
+      2,
+      3
+     ],
+     1
+    ],
+    "expected": [
+     2
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-longest-substring",
+  "title": "Longest Substring Without Repeating Characters",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "string",
+   "sliding-window",
+   "hashmap"
+  ],
+  "statement": "Return the **length** of the longest substring of `s` that contains no repeated character.\n\n**Example**\n\n```\nlongestSubstring(\"abcabcbb\") // 3  (\"abc\")\nlongestSubstring(\"bbbbb\")    // 1\nlongestSubstring(\"pwwkew\")   // 3  (\"wke\")\n```",
+  "language": "javascript",
+  "functionName": "longestSubstring",
+  "starter": "function longestSubstring(s) {\n  // write your code here\n}",
+  "solution": "function longestSubstring(s) {\n  const lastSeen = new Map()\n  let start = 0\n  let best = 0\n  for (let i = 0; i < s.length; i++) {\n    const ch = s[i]\n    if (lastSeen.has(ch) && lastSeen.get(ch) >= start) start = lastSeen.get(ch) + 1\n    lastSeen.set(ch, i)\n    best = Math.max(best, i - start + 1)\n  }\n  return best\n}",
+  "solutionExplanation": "**Approach:** sliding window + map of last seen indices.\n\n**Complexity:** O(n) time, O(min(n, alphabet)) space.",
+  "hints": [
+   "Use a sliding window with a left pointer `start`.",
+   "Remember the last index of every character in a Map.",
+   "When you see a repeat inside the window, move `start` just past its previous position."
+  ],
+  "tests": [
+   {
+    "input": [
+     "abcabcbb"
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     "bbbbb"
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     "pwwkew"
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     "dvdf"
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     "abba"
+    ],
+    "expected": 2
+   },
+   {
+    "input": [
+     " "
+    ],
+    "expected": 1
+   }
+  ]
+ },
+ {
+  "id": "q-product-except-self",
+  "title": "Product of Array Except Self",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "prefix-sum"
+  ],
+  "statement": "Return an array `out` where `out[i]` is the product of all elements of `nums` **except** `nums[i]`. Do not use division and aim for O(n).\n\n**Example**\n\n```\nproductExceptSelf([1, 2, 3, 4]) // [24, 12, 8, 6]\n```",
+  "language": "javascript",
+  "functionName": "productExceptSelf",
+  "starter": "function productExceptSelf(nums) {\n  // write your code here\n}",
+  "solution": "function productExceptSelf(nums) {\n  const n = nums.length\n  const result = new Array(n).fill(1)\n  let prefix = 1\n  for (let i = 0; i < n; i++) {\n    result[i] = prefix\n    prefix *= nums[i]\n  }\n  let suffix = 1\n  for (let i = n - 1; i >= 0; i--) {\n    result[i] *= suffix\n    suffix *= nums[i]\n  }\n  return result\n}",
+  "solutionExplanation": "**Approach:** prefix and suffix products computed in two passes over the same result array.\n\n**Complexity:** O(n) time, O(1) extra space besides the output.",
+  "hints": [
+   "out[i] = (product of everything to the left) * (product of everything to the right).",
+   "First pass fills prefix products, second pass multiplies in suffix products."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4
+     ]
+    ],
+    "expected": [
+     24,
+     12,
+     8,
+     6
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      0,
+      4
+     ]
+    ],
+    "expected": [
+     0,
+     0,
+     8,
+     0
+    ]
+   },
+   {
+    "input": [
+     [
+      -1,
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     6,
+     -3,
+     -2
+    ]
+   },
+   {
+    "input": [
+     [
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     3,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      0,
+      0
+     ]
+    ],
+    "expected": [
+     0,
+     0
+    ]
+   },
+   {
+    "input": [
+     [
+      5,
+      1,
+      1
+     ]
+    ],
+    "expected": [
+     1,
+     5,
+     5
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-permutations",
+  "title": "Permutations",
+  "difficulty": "hard",
+  "track": "javascript",
+  "tags": [
+   "recursion",
+   "backtracking"
+  ],
+  "statement": "Return all permutations of an array of distinct values. Generate them in this order: choose the first element from left to right, then for every choice recurse on the remaining elements (again left to right).\n\n**Example**\n\n```\npermutations([1, 2, 3])\n// [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]\npermutations([]) // [[]]\n```",
+  "language": "javascript",
+  "functionName": "permutations",
+  "starter": "function permutations(nums) {\n  // write your code here\n}",
+  "solution": "function permutations(nums) {\n  const result = []\n  const used = new Array(nums.length).fill(false)\n  const path = []\n  function backtrack() {\n    if (path.length === nums.length) {\n      result.push([...path])\n      return\n    }\n    for (let i = 0; i < nums.length; i++) {\n      if (used[i]) continue\n      used[i] = true\n      path.push(nums[i])\n      backtrack()\n      path.pop()\n      used[i] = false\n    }\n  }\n  backtrack()\n  return result\n}",
+  "solutionExplanation": "**Approach:** depth-first backtracking with a \"used\" array.\n\n**Complexity:** O(n * n!) time and space for the output.",
+  "hints": [
+   "Backtracking: choose, explore, un-choose.",
+   "Track which indices are already used.",
+   "When the current path has the same length as the input, save a copy."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      2,
+      3
+     ],
+     [
+      1,
+      3,
+      2
+     ],
+     [
+      2,
+      1,
+      3
+     ],
+     [
+      2,
+      3,
+      1
+     ],
+     [
+      3,
+      1,
+      2
+     ],
+     [
+      3,
+      2,
+      1
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      1
+     ]
+    ],
+    "expected": [
+     [
+      1
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": [
+     []
+    ]
+   },
+   {
+    "input": [
+     [
+      1,
+      2
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      2
+     ],
+     [
+      2,
+      1
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      "a",
+      "b"
+     ]
+    ],
+    "expected": [
+     [
+      "a",
+      "b"
+     ],
+     [
+      "b",
+      "a"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-lru-cache",
+  "title": "LRU Cache",
+  "difficulty": "hard",
+  "track": "javascript",
+  "tags": [
+   "design",
+   "hashmap",
+   "cache"
+  ],
+  "statement": "Simulate an **LRU (least recently used) cache** with the given `capacity`. `ops` is a list of operations:\n\n* `[\"put\", key, value]` inserts or updates a key and marks it most recently used. When the size exceeds `capacity` the least recently used key is evicted.\n* `[\"get\", key]` returns the value (and marks the key most recently used) or `-1` when missing.\n\nReturn the array of results of all `get` operations in order.\n\n**Example**\n\n```\nlruCache(2, [[\"put\",1,1],[\"put\",2,2],[\"get\",1],[\"put\",3,3],[\"get\",2]])\n// [1, -1]   (key 2 was evicted)\n```",
+  "language": "javascript",
+  "functionName": "lruCache",
+  "starter": "function lruCache(capacity, ops) {\n  // write your code here\n}",
+  "solution": "function lruCache(capacity, ops) {\n  const cache = new Map()\n  const results = []\n  for (const [op, key, value] of ops) {\n    if (op === 'get') {\n      if (!cache.has(key)) {\n        results.push(-1)\n      } else {\n        const v = cache.get(key)\n        cache.delete(key)\n        cache.set(key, v)\n        results.push(v)\n      }\n    } else {\n      if (cache.has(key)) cache.delete(key)\n      cache.set(key, value)\n      if (cache.size > capacity) {\n        const oldest = cache.keys().next().value\n        cache.delete(oldest)\n      }\n    }\n  }\n  return results\n}",
+  "solutionExplanation": "**Approach:** a Map doubles as hash table and ordering list; re-inserting moves a key to the end, the first key is the LRU.\n\n**Complexity:** O(1) per operation.",
+  "hints": [
+   "A JavaScript `Map` remembers insertion order.",
+   "To mark a key as recently used delete it and set it again.",
+   "`map.keys().next().value` is the oldest key."
+  ],
+  "tests": [
+   {
+    "input": [
+     2,
+     [
+      [
+       "put",
+       1,
+       1
+      ],
+      [
+       "put",
+       2,
+       2
+      ],
+      [
+       "get",
+       1
+      ],
+      [
+       "put",
+       3,
+       3
+      ],
+      [
+       "get",
+       2
+      ],
+      [
+       "put",
+       4,
+       4
+      ],
+      [
+       "get",
+       1
+      ],
+      [
+       "get",
+       3
+      ],
+      [
+       "get",
+       4
+      ]
+     ]
+    ],
+    "expected": [
+     1,
+     -1,
+     -1,
+     3,
+     4
+    ]
+   },
+   {
+    "input": [
+     1,
+     [
+      [
+       "put",
+       1,
+       1
+      ],
+      [
+       "put",
+       2,
+       2
+      ],
+      [
+       "get",
+       1
+      ],
+      [
+       "get",
+       2
+      ]
+     ]
+    ],
+    "expected": [
+     -1,
+     2
+    ]
+   },
+   {
+    "input": [
+     2,
+     [
+      [
+       "put",
+       1,
+       1
+      ],
+      [
+       "put",
+       1,
+       10
+      ],
+      [
+       "get",
+       1
+      ]
+     ]
+    ],
+    "expected": [
+     10
+    ]
+   },
+   {
+    "input": [
+     2,
+     [
+      [
+       "get",
+       5
+      ]
+     ]
+    ],
+    "expected": [
+     -1
+    ]
+   },
+   {
+    "input": [
+     2,
+     [
+      [
+       "put",
+       1,
+       1
+      ],
+      [
+       "put",
+       2,
+       2
+      ],
+      [
+       "put",
+       1,
+       5
+      ],
+      [
+       "put",
+       3,
+       3
+      ],
+      [
+       "get",
+       2
+      ],
+      [
+       "get",
+       1
+      ]
+     ]
+    ],
+    "expected": [
+     -1,
+     5
+    ]
+   },
+   {
+    "input": [
+     3,
+     []
+    ],
+    "expected": []
+   }
+  ]
+ },
+ {
+  "id": "q-coin-change",
+  "title": "Coin Change",
+  "difficulty": "hard",
+  "track": "javascript",
+  "tags": [
+   "dp"
+  ],
+  "statement": "Given coin denominations `coins` (unlimited supply of each) and a target `amount`, return the **fewest number of coins** that make exactly that amount, or `-1` if it is impossible.\n\n**Example**\n\n```\ncoinChange([1, 2, 5], 11) // 3  (5 + 5 + 1)\ncoinChange([2], 3)        // -1\ncoinChange([1], 0)        // 0\n```",
+  "language": "javascript",
+  "functionName": "coinChange",
+  "starter": "function coinChange(coins, amount) {\n  // write your code here\n}",
+  "solution": "function coinChange(coins, amount) {\n  const dp = new Array(amount + 1).fill(Infinity)\n  dp[0] = 0\n  for (let a = 1; a <= amount; a++) {\n    for (const coin of coins) {\n      if (coin <= a && dp[a - coin] + 1 < dp[a]) dp[a] = dp[a - coin] + 1\n    }\n  }\n  return dp[amount] === Infinity ? -1 : dp[amount]\n}",
+  "solutionExplanation": "**Approach:** bottom-up dynamic programming over amounts 0..amount.\n\n**Complexity:** O(amount * coins) time, O(amount) space.",
+  "hints": [
+   "Greedy (largest coin first) fails, e.g. coins [1,3,4] and amount 6.",
+   "Let `dp[a]` be the fewest coins for amount `a`.",
+   "`dp[a] = min(dp[a - coin] + 1)` over all coins."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      5
+     ],
+     11
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     [
+      2
+     ],
+     3
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [
+      1
+     ],
+     0
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      186,
+      419,
+      83,
+      408
+     ],
+     6249
+    ],
+    "expected": 20
+   },
+   {
+    "input": [
+     [
+      1,
+      3,
+      4
+     ],
+     6
+    ],
+    "expected": 2
+   },
+   {
+    "input": [
+     [
+      5,
+      10
+     ],
+     7
+    ],
+    "expected": -1
+   },
+   {
+    "input": [
+     [
+      2,
+      5,
+      10,
+      1
+     ],
+     27
+    ],
+    "expected": 4
+   }
+  ]
+ },
+ {
+  "id": "q-trapping-rain-water",
+  "title": "Trapping Rain Water",
+  "difficulty": "hard",
+  "track": "javascript",
+  "tags": [
+   "array",
+   "two-pointers"
+  ],
+  "statement": "The array `heights` describes an elevation map where each bar has width 1. Return how many units of water are trapped after raining.\n\n**Example**\n\n```\ntrapRain([0,1,0,2,1,0,1,3,2,1,2,1]) // 6\ntrapRain([4,2,0,3,2,5])             // 9\n```",
+  "language": "javascript",
+  "functionName": "trapRain",
+  "starter": "function trapRain(heights) {\n  // write your code here\n}",
+  "solution": "function trapRain(heights) {\n  let left = 0\n  let right = heights.length - 1\n  let leftMax = 0\n  let rightMax = 0\n  let water = 0\n  while (left < right) {\n    if (heights[left] < heights[right]) {\n      leftMax = Math.max(leftMax, heights[left])\n      water += leftMax - heights[left]\n      left++\n    } else {\n      rightMax = Math.max(rightMax, heights[right])\n      water += rightMax - heights[right]\n      right--\n    }\n  }\n  return water\n}",
+  "solutionExplanation": "**Approach:** two pointers; always process the side with the smaller current maximum because that side limits the water level.\n\n**Complexity:** O(n) time, O(1) space.",
+  "hints": [
+   "Water above a bar = min(tallest bar to its left, tallest bar to its right) - its own height.",
+   "Precomputing left/right maxima gives O(n) with extra space.",
+   "Two pointers moving inwards need only O(1) space."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      0,
+      1,
+      0,
+      2,
+      1,
+      0,
+      1,
+      3,
+      2,
+      1,
+      2,
+      1
+     ]
+    ],
+    "expected": 6
+   },
+   {
+    "input": [
+     [
+      4,
+      2,
+      0,
+      3,
+      2,
+      5
+     ]
+    ],
+    "expected": 9
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      3,
+      0,
+      3
+     ]
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     [
+      2,
+      0,
+      2
+     ]
+    ],
+    "expected": 2
+   },
+   {
+    "input": [
+     [
+      5
+     ]
+    ],
+    "expected": 0
+   }
+  ]
+ }
+]

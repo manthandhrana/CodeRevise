@@ -1,0 +1,610 @@
+{
+  "id": "js-syntax-reference",
+  "title": "Syntax Reference (quick lookup)",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-ref-declarations",
+      "title": "Declarations: var, let, const, function, class",
+      "level": "beginner",
+      "summary": "Every way to declare a name in JavaScript, with scope, hoisting and redeclaration rules side by side.",
+      "description": "Use this page when you need to recall **exactly** how a declaration behaves. JavaScript has six declaration forms and they differ in scope, hoisting, and whether you may reassign or redeclare them.\n\n### Forms at a glance\n\n| Form | Scope | Hoisted as | Redeclare? | Reassign? |\n|---|---|---|---|---|\n| `var x = 1` | function (or global) | `undefined` | yes | yes |\n| `let x = 1` | block | TDZ (error before line) | no | yes |\n| `const x = 1` | block | TDZ | no | **no** (binding only) |\n| `function f(){}` | function / block | fully hoisted | yes | yes |\n| `class C {}` | block | TDZ | no | yes (binding is like `let`) |\n| `import x from 'm'` | module | hoisted, live binding | no | **no** |\n\n### Syntax variations\n- Multiple declarators: `let a = 1, b = 2, c;`\n- Destructuring declarators: `const { a, b: renamed = 5 } = obj;` and `const [x, , z] = arr;`\n- `const` requires an initializer; `let x;` gives `undefined`.\n- Loop heads: `for (let i = 0; ...)` creates a **fresh binding per iteration**; `for (const k of list)` and `for (const k in obj)` are allowed.\n- Global `var`/function declarations become properties of `globalThis` in scripts; `let`/`const`/`class` do not.\n\n### Rules worth memorising\n1. `const` freezes the **binding**, not the value: `const a = []; a.push(1)` works.\n2. Using a `let`/`const`/`class` name before its line throws `ReferenceError` (the temporal dead zone).\n3. Assigning to an undeclared name creates a global in sloppy mode and throws in strict mode.\n4. Prefer `const` by default, `let` when you must reassign, and avoid `var` in new code.",
+      "keyPoints": [
+        "var is function-scoped and hoisted as undefined; let/const/class are block-scoped with a TDZ.",
+        "const prevents reassignment of the binding, not mutation of the object.",
+        "Function declarations are hoisted completely; function expressions are not.",
+        "let in a for-loop head creates a new binding per iteration.",
+        "Top-level let/const/class do not become properties of globalThis."
+      ],
+      "pitfalls": [
+        "Redeclaring with let in the same scope is a SyntaxError even if the first one was var.",
+        "typeof on a TDZ variable throws, unlike typeof on an undeclared name.",
+        "Function declarations inside blocks behave differently in sloppy vs strict mode."
+      ],
+      "examples": [
+        {
+          "title": "Scope, TDZ and const behaviour",
+          "language": "javascript",
+          "code": "console.log(typeof hoistedVar, hoistedVar); // undefined undefined\nvar hoistedVar = 1;\n\ntry { console.log(blockLet); } catch (e) { console.log(e.name); } // ReferenceError\nlet blockLet = 2;\n\nconst list = [1];\nlist.push(2);           // allowed: the array is mutated\nconsole.log(list);      // [ 1, 2 ]\ntry { list = []; } catch (e) { console.log(e.name); } // TypeError\n\nconsole.log(sayHi());   // function declarations are fully hoisted\nfunction sayHi() { return 'hi'; }\n\nfor (var i = 0, fnsVar = []; i < 3; i++) fnsVar.push(() => i);\nfor (let j = 0, fnsLet = []; j < 3; j++) { fnsLet.push(() => j); if (j === 2) console.log(fnsLet.map(f => f())); }\nconsole.log(fnsVar.map(f => f())); // [ 3, 3, 3 ]",
+          "explanation": "Shows hoisting differences and const mutation."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does const really guarantee?",
+          "a": "That the binding cannot be reassigned. The object or array it points to can still be mutated unless frozen."
+        },
+        {
+          "q": "Are let and const hoisted?",
+          "a": "Yes, but they stay in the temporal dead zone until the declaration line runs, so early access throws a ReferenceError."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-literals",
+      "title": "Literal Forms: numbers, strings, templates, regex, arrays, objects",
+      "level": "beginner",
+      "summary": "A reference of every literal syntax: number bases, separators, BigInt, string escapes, templates, regex, array holes and object shorthand.",
+      "description": "A **literal** writes a value directly in source code. Knowing every form saves you from reaching for constructors.\n\n### Numbers and BigInt\n| Literal | Meaning |\n|---|---|\n| `255`, `0.5`, `.5`, `5.` | decimal |\n| `1e3`, `2.5E-3` | exponent notation |\n| `0xFF`, `0o17`, `0b1010` | hex, octal, binary |\n| `1_000_000` | numeric separator (readability only) |\n| `123n`, `0xFFn` | BigInt (arbitrary precision integer) |\n| `Infinity`, `NaN` | global numeric values |\n\n### Strings\n- Quotes: `'a'`, `\"a\"` (identical) and backticks for templates.\n- Escapes: `\\n \\t \\\\ \\' \\\" \\0 \\xA9 \\u00A9 \\u{1F600}`.\n- Template literals: `` `Hi ${name}` `` can span lines and nest expressions.\n- `String.raw` keeps backslashes untouched.\n\n### Regular expressions\n`/pattern/flags` with flags `d g i m s u v y`. The literal is compiled once per evaluation of the surrounding code.\n\n### Arrays\n`[1, 2, 3]`, holes `[1, , 3]` (sparse), trailing commas allowed, spread `[...a, ...b]`.\n\n### Objects\n- Shorthand: `{ x, y }`, methods: `{ greet() {} }`.\n- Computed keys: `{ [key + 'Id']: 1 }`.\n- Getters/setters: `{ get n() {}, set n(v) {} }`.\n- Spread: `{ ...base, extra: 1 }`.\n- Numeric keys become strings; `__proto__: obj` in a literal sets the prototype.\n\n### Other\n`true`, `false`, `null`, `undefined` (a global read-only property, not a keyword), and function/class expressions.",
+      "keyPoints": [
+        "Use 0x, 0o, 0b prefixes and _ separators for readable numbers.",
+        "BigInt literals end with n and cannot be mixed with Number in arithmetic.",
+        "Template literals support multi-line text and ${} expressions.",
+        "Array holes create sparse arrays that skip some iteration methods.",
+        "Object literals support shorthand, computed keys, accessors and spread."
+      ],
+      "pitfalls": [
+        "0.1 + 0.2 is not 0.3 because numbers are IEEE 754 doubles.",
+        "A legacy octal like 010 is 8 in sloppy mode and a SyntaxError in strict mode.",
+        "Calling a method directly on an integer literal needs care: 5..toString() or (5).toString()."
+      ],
+      "examples": [
+        {
+          "title": "Literal tour",
+          "language": "javascript",
+          "code": "console.log(0xff, 0o17, 0b1010, 1_000_000, 2e3);\nconsole.log(typeof 10n, 2n ** 64n);\nconsole.log('tab:\\there', '\\u{1F600}'.length);\nconst name = 'Ada';\nconsole.log(`Hi ${name},\n  2 + 2 = ${2 + 2}`);\nconsole.log(String.raw`C:\\new\\table`);\nconst a = [1, , 3];\nconsole.log(a.length, 1 in a, a);\nconst key = 'user';\nconst obj = { name, [key + 'Id']: 7, greet() { return 'yo'; }, get upper() { return this.name.toUpperCase(); } };\nconsole.log(obj, obj.upper, 5..toString(2));",
+          "explanation": "Prints each literal kind."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between '', \"\" and backticks?",
+          "a": "Single and double quotes are the same; backticks create template literals with interpolation and multi-line support."
+        },
+        {
+          "q": "Why use numeric separators?",
+          "a": "1_000_000 is only a readability aid; the value is identical to 1000000."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-operators-precedence",
+      "title": "Operators: Full Table with Precedence and Associativity",
+      "level": "intermediate",
+      "summary": "Every operator group ordered from highest to lowest precedence, with associativity and surprising cases.",
+      "description": "Precedence decides which operator binds first; **associativity** decides the order among equals. When in doubt, add parentheses.\n\n### Table (high to low)\n| Level | Operators | Assoc. |\n|---|---|---|\n| 17 | `( )` grouping, member `a.b`, `a[b]`, call `f()`, `new X()`, `?.` | left |\n| 15 | postfix `x++ x--` | n/a |\n| 14 | prefix `! ~ + - ++ -- typeof void delete await` | right |\n| 13 | `**` exponent | **right** |\n| 12 | `* / %` | left |\n| 11 | `+ -` | left |\n| 10 | `<< >> >>>` | left |\n| 9 | `< <= > >= in instanceof` | left |\n| 8 | `== != === !==` | left |\n| 7-5 | `&` then `^` then `\\|` | left |\n| 4 | `&&` | left |\n| 3 | `\\|\\|` and `??` | left |\n| 2 | `? :` ternary, `=` and all compound assignment, `=>`, `yield` | right |\n| 1 | `,` comma | left |\n\n### Important notes\n- `**` is right-associative: `2 ** 3 ** 2` is `2 ** 9 = 512`.\n- You cannot write `-2 ** 2`; use `(-2) ** 2` or `-(2 ** 2)`.\n- `??` cannot be mixed with `&&` or `||` without parentheses.\n- `typeof x + 1` is `(typeof x) + 1`.\n- Comparison chains do not work: `1 < 2 < 3` is `(true) < 3`.\n- Assignment returns the assigned value, so `a = b = 0` works.\n- `new Foo` without parentheses has lower precedence than `new Foo()` member calls.\n- Logical assignment: `&&=`, `||=`, `??=` short-circuit and only assign when needed.",
+      "keyPoints": [
+        "Exponent ** and assignment/ternary are right-associative; most others are left.",
+        "Mixing ?? with && or || requires parentheses.",
+        "Unary operators bind tighter than binary ones, except that -a ** b is a SyntaxError.",
+        "Comma operator evaluates all operands and returns the last.",
+        "Use parentheses instead of memorising low levels."
+      ],
+      "pitfalls": [
+        "1 < 2 < 3 is true but 3 > 2 > 1 is false (true > 1 is false).",
+        "a + b * c is not (a + b) * c; mixing string + number concatenates left to right."
+      ],
+      "examples": [
+        {
+          "title": "Precedence puzzles",
+          "language": "javascript",
+          "code": "console.log(2 ** 3 ** 2);        // 512 (right associative)\nconsole.log((-2) ** 2);          // 4\nconsole.log(1 + 2 + '3');        // '33'\nconsole.log('1' + 2 + 3);        // '123'\nconsole.log(3 > 2 > 1);          // false\nconsole.log(1 < 2 < 3);          // true\nconsole.log(typeof 1 + 1);       // 'number1'\nconsole.log(null ?? (0 || 'x')); // 'x'\nlet a, b; a = b = 5;\nconsole.log(a, b);\nlet x = (1, 2, 3);\nconsole.log(x);\nlet n = null;\nn ??= 10; n ||= 20; n &&= n + 1;\nconsole.log(n); // 11",
+          "explanation": "Predict each output before running."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Which common operator is right-associative?",
+          "a": "The exponent operator, the ternary and all assignment operators."
+        },
+        {
+          "q": "Why does 3 > 2 > 1 return false?",
+          "a": "It parses as (3 > 2) > 1, i.e. true > 1, which is 1 > 1 and false."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-destructuring-forms",
+      "title": "Destructuring Cheat Sheet",
+      "level": "intermediate",
+      "summary": "All destructuring patterns for arrays, objects, parameters, loops and swaps in one place.",
+      "description": "Destructuring unpacks values into variables using a pattern that mirrors the shape of the data. It works in declarations, assignments, function parameters, `for...of` heads and `catch` clauses.\n\n### Pattern forms\n| Goal | Syntax |\n|---|---|\n| Array positions | `const [a, b] = arr` |\n| Skip items | `const [a, , c] = arr` |\n| Default | `const [a = 1] = []` |\n| Rest | `const [first, ...rest] = arr` |\n| Object keys | `const { x, y } = obj` |\n| Rename | `const { x: px } = obj` |\n| Default | `const { x = 0 } = obj` |\n| Rename + default | `const { x: px = 0 } = obj` |\n| Computed key | `const { [k]: v } = obj` |\n| Nested | `const { a: { b: [c] } } = obj` |\n| Object rest | `const { x, ...others } = obj` |\n| Assign to existing | `({ x, y } = obj);` (parentheses needed) |\n| Swap | `[a, b] = [b, a]` |\n| Parameters | `function f({ id, tags = [] } = {}) {}` |\n| Loops | `for (const [k, v] of Object.entries(o))` |\n| Catch | `catch ({ message })` |\n\n### Behaviour details\n- Defaults apply only when the value is `undefined`, not `null`.\n- Array patterns work on **any iterable** (strings, Sets, Maps, generators).\n- Object patterns on `null` or `undefined` throw a TypeError.\n- Primitive values are boxed: `const { length } = 'hello'` is 5.\n- Defaults are evaluated lazily and may refer to earlier variables.\n- A parameter default `= {}` prevents the crash when the argument is missing.",
+      "keyPoints": [
+        "Array patterns use position; object patterns use property names.",
+        "Defaults trigger only for undefined.",
+        "Rest element must be last and collects the remainder.",
+        "Wrap object destructuring assignment in parentheses.",
+        "Works for any iterable on the array side."
+      ],
+      "pitfalls": [
+        "Destructuring null or undefined throws a TypeError.",
+        "Forgetting the = {} default makes f() crash when f destructures its parameter.",
+        "A statement starting with { is parsed as a block, hence the leading parentheses."
+      ],
+      "examples": [
+        {
+          "title": "Every pattern once",
+          "language": "javascript",
+          "code": "const [a, , c = 9, ...rest] = [1, 2, undefined, 4, 5];\nconsole.log(a, c, rest);\nconst { x, y: why = 2, ...others } = { x: 1, p: 3, q: 4 };\nconsole.log(x, why, others);\nconst { data: { user: [firstUser] } } = { data: { user: ['ann', 'bob'] } };\nconsole.log(firstUser);\nlet m = 1, n = 2;\n[m, n] = [n, m];\nconsole.log(m, n);\nconst cfg = ({ port = 80, host = 'localhost' } = {}) => `${host}:${port}`;\nconsole.log(cfg(), cfg({ port: 3000 }));\nfor (const [k, v] of new Map([['a', 1], ['b', 2]])) console.log(k, v);\nconst { length } = 'hello';\nconsole.log(length);\nconst [ch1, ch2] = 'hi';\nconsole.log(ch1, ch2);",
+          "explanation": "Compact tour of destructuring forms."
+        }
+      ],
+      "interview": [
+        {
+          "q": "When does a default value apply in destructuring?",
+          "a": "Only when the extracted value is strictly undefined; null and other falsy values are kept."
+        },
+        {
+          "q": "How do you swap two variables without a temp?",
+          "a": "Use array destructuring assignment: [a, b] = [b, a]."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-spread-rest",
+      "title": "Spread and Rest in Every Position",
+      "level": "intermediate",
+      "summary": "The same three dots do opposite jobs: spread expands, rest collects. See each place they can appear.",
+      "description": "`...` means **spread** when it expands a value and **rest** when it collects values. The position tells you which.\n\n### Spread (expanding)\n| Where | Example | Notes |\n|---|---|---|\n| Array literal | `[...a, ...b]` | any iterable |\n| Function call | `Math.max(...nums)` | very large arrays may overflow the stack |\n| `new` call | `new Date(...parts)` | |\n| Object literal | `{ ...a, ...b }` | own enumerable props, later wins |\n| String | `[...'héllo']` | splits by code point |\n| Set/Map | `[...new Set(a)]` | dedupe, convert |\n\n### Rest (collecting)\n| Where | Example |\n|---|---|\n| Function params | `function f(first, ...others)` |\n| Array destructuring | `const [h, ...t] = arr` |\n| Object destructuring | `const { id, ...data } = obj` |\n\n### Rules\n1. A rest element must be **last**, and only one is allowed.\n2. Rest parameters are real arrays (unlike `arguments`).\n3. Object spread is a **shallow** copy and skips non-enumerable and prototype properties.\n4. Spreading `null` or `undefined` into an object is fine (nothing added); spreading them into an array throws.\n5. Spreading a plain object into an array throws because it is not iterable.\n6. Getters on spread objects are read once; the copy holds plain values.\n7. `Object.assign` and object spread are similar, but spread defines properties while `assign` calls setters.",
+      "keyPoints": [
+        "Spread expands iterables or objects; rest gathers remaining items.",
+        "Rest must be the last parameter or element.",
+        "Object spread copies own enumerable properties shallowly.",
+        "Later spread entries override earlier keys.",
+        "Rest parameters replace the old arguments object."
+      ],
+      "pitfalls": [
+        "Shallow copying: nested objects stay shared after { ...obj } or [...arr].",
+        "Math.max(...hugeArray) can hit the maximum call stack or argument limit.",
+        "Spreading an object with [...obj] throws because plain objects are not iterable."
+      ],
+      "examples": [
+        {
+          "title": "Spread and rest together",
+          "language": "javascript",
+          "code": "const base = { a: 1, b: 2 };\nconst merged = { ...base, b: 20, c: 3 };\nconsole.log(merged);\nconst { a, ...restObj } = merged;\nconsole.log(a, restObj);\nconst nums = [3, 9, 4];\nconsole.log(Math.max(...nums), [...nums, ...[1, 2]]);\nfunction sum(first, ...others) { return others.reduce((s, n) => s + n, first); }\nconsole.log(sum(1, 2, 3, 4));\nconsole.log([...'héy'], [...new Set([1, 1, 2])]);\nconst nested = { inner: { v: 1 } };\nconst copy = { ...nested };\ncopy.inner.v = 99;\nconsole.log(nested.inner.v); // 99, shallow copy!\nconsole.log({ ...null, ...undefined, ...'ab' });",
+          "explanation": "Merge, copy, and collect."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between spread and rest?",
+          "a": "Spread expands an iterable or object into individual elements; rest collects remaining elements into an array or object."
+        },
+        {
+          "q": "Is spread a deep copy?",
+          "a": "No, it only copies one level; nested references are shared."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-function-forms",
+      "title": "Function Forms Reference",
+      "level": "intermediate",
+      "summary": "Declaration, expression, arrow, method, accessor, generator, async, async generator, IIFE and new Function side by side.",
+      "description": "JavaScript has many ways to create a function. They differ in hoisting, `this`, `arguments`, `new` ability and special behaviour.\n\n| Form | Syntax | Notes |\n|---|---|---|\n| Declaration | `function f(a) {}` | hoisted, has own `this` |\n| Expression | `const f = function (a) {}` | not hoisted, may be named |\n| Arrow | `const f = (a) => a * 2` | lexical `this`, no `arguments`, not constructable |\n| Object method | `{ f(a) {} }` | has `super`, not constructable |\n| Getter/setter | `{ get x() {}, set x(v) {} }` | accessor properties |\n| Generator | `function* g() { yield 1 }` | returns an iterator |\n| Async | `async function f() {}` | always returns a Promise |\n| Async arrow | `async (a) => await a` | |\n| Async generator | `async function* g() { yield 1 }` | use `for await` |\n| IIFE | `(function () {})()` or `(() => {})()` | runs immediately |\n| Constructor | `new Function('a', 'b', 'return a+b')` | global scope only, avoid |\n| Class | `class A { constructor() {} }` | must use `new` |\n\n### Parameter syntax\n- Defaults: `(a, b = a + 1)`; rest: `(...args)`; destructured: `({ x }, [y])`.\n- Trailing commas are allowed in parameter lists and calls.\n- `fn.length` counts parameters **before** the first default or rest.\n\n### Return and arrow shortcuts\n- Arrow with expression body returns implicitly; to return an object literal wrap it: `() => ({ ok: true })`.\n- A function without `return` returns `undefined`.\n- Methods can be named with computed keys: `{ [`on${name}`]() {} }`.\n\n### Dynamic behaviour\n`fn.call(this, ...)`, `fn.apply(this, [..])`, `fn.bind(this)`; `new.target` tells a function whether it was called with `new`.",
+      "keyPoints": [
+        "Only declarations are fully hoisted; expressions and arrows are not.",
+        "Arrows capture this and cannot be used with new.",
+        "Async functions always return promises; generators return iterators.",
+        "Wrap an object literal in parentheses when returning it from an arrow.",
+        "new Function ignores local scope and is rarely a good idea."
+      ],
+      "pitfalls": [
+        "Using an arrow function as an object method loses the object as this.",
+        "fn.length stops counting at the first default or rest parameter.",
+        "Forgetting the parentheses around an IIFE makes the engine see a declaration."
+      ],
+      "examples": [
+        {
+          "title": "Many forms in one file",
+          "language": "javascript",
+          "code": "function decl(a, b = 2) { return a + b; }\nconst expr = function named() { return typeof named; };\nconst arrow = (x) => ({ doubled: x * 2 });\nconst obj = { v: 1, method() { return this.v; }, arrow: () => this === obj, get g() { return 'got'; } };\nfunction* gen() { yield 1; yield 2; }\nasync function asyncFn() { return 'async'; }\nasync function* agen() { yield 'a'; yield 'b'; }\nconst dyn = new Function('a', 'b', 'return a * b');\nconsole.log(decl(1), expr(), arrow(4), obj.method(), obj.arrow(), obj.g);\nconsole.log([...gen()], dyn(3, 4), decl.length, ((a, b = 1, c) => 0).length);\n(async () => {\n  console.log(await asyncFn());\n  for await (const v of agen()) console.log(v);\n})();\n(function () { console.log('iife', new.target === undefined); })();",
+          "explanation": "Each function form returns something observable."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Which function forms can be used with new?",
+          "a": "Function declarations/expressions and classes; arrows, methods, generators and async functions cannot."
+        },
+        {
+          "q": "What does new Function do differently?",
+          "a": "It compiles a string as a function body in the global scope, so it cannot see local variables, and is similar in risk to eval."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-class-syntax",
+      "title": "Class Syntax Full Reference",
+      "level": "intermediate",
+      "summary": "Every part of class syntax: constructor, fields, private members, static members, static blocks, accessors and extends.",
+      "description": "A class is syntax over prototypes. This reference lists all members you can write.\n\n```js\nclass Child extends Parent {\n  publicField = 1;              // instance field\n  #secret = 2;                  // private field\n  static count = 0;             // static field\n  static #registry = new Map(); // private static\n  static { Child.ready = true; }// static initialization block\n\n  constructor(x) { super(x); }\n  method() {}\n  #privateMethod() {}\n  static create() { return new this(); }\n  get value() { return this.#secret; }\n  set value(v) { this.#secret = v; }\n  [Symbol.iterator]() { /* computed name */ }\n  async load() {}\n  *gen() {}\n  static async *stream() {}\n}\n```\n\n### Rules\n| Topic | Rule |\n|---|---|\n| Hoisting | class declarations are in the TDZ before their line |\n| Strictness | class bodies are always strict mode |\n| Calling | a class cannot be called without `new` |\n| `extends` | accepts any expression returning a constructor or `null` |\n| `super()` | required in a derived constructor **before** touching `this` |\n| `super.method()` | calls the parent version, also works in object methods |\n| `#x in obj` | brand check for private fields |\n| `static` | members live on the class itself, inherited by subclasses |\n| Class expressions | `const A = class Named {}` |\n| Fields | initialised in order, after `super()` returns in derived classes |\n| Methods | non-enumerable, live on the prototype |\n| Fields | own, enumerable properties of each instance |\n\nArrow function fields (`handler = () => {}`) bind `this` per instance, at the cost of one function per object.",
+      "keyPoints": [
+        "Fields are per instance; methods are shared on the prototype.",
+        "Private members start with # and are truly inaccessible outside the class body.",
+        "Static blocks run once at class definition time.",
+        "Derived constructors must call super() before using this.",
+        "Class bodies are always in strict mode."
+      ],
+      "pitfalls": [
+        "Passing an unbound method as a callback loses this.",
+        "Referencing this before super() throws a ReferenceError.",
+        "Private names cannot be created dynamically or accessed with bracket notation."
+      ],
+      "examples": [
+        {
+          "title": "A class using most features",
+          "language": "javascript",
+          "code": "class Counter {\n  static instances = 0;\n  static #max = 3;\n  static { Counter.label = 'counter'; }\n  #n = 0;\n  step = 1;\n  constructor() {\n    if (Counter.instances >= Counter.#max) throw new Error('limit');\n    Counter.instances++;\n  }\n  inc() { this.#n += this.step; return this; }\n  get value() { return this.#n; }\n  set value(v) { if (v < 0) throw new RangeError('neg'); this.#n = v; }\n  static isCounter(o) { return #n in o; }\n}\nclass Double extends Counter {\n  inc() { super.inc(); return super.inc(); }\n}\nconst d = new Double();\nconsole.log(d.inc().value, Counter.instances, Counter.label);\nconsole.log(Counter.isCounter(d), Counter.isCounter({}));\nconsole.log(Object.keys(d), typeof Counter);\ntry { Counter(); } catch (e) { console.log(e.constructor.name); }",
+          "explanation": "Fields, private, static, accessor, static block."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Are class methods enumerable?",
+          "a": "No, class methods are non-enumerable on the prototype, but class fields are own enumerable properties."
+        },
+        {
+          "q": "What is a static initialization block for?",
+          "a": "Running complex setup code once when the class is defined, with access to private static members."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-loops-labels",
+      "title": "Loops, break, continue and Labels",
+      "level": "beginner",
+      "summary": "All loop statements plus break, continue and labeled statements, including which one to use for what.",
+      "description": "### Loop forms\n| Loop | Use for |\n|---|---|\n| `for (init; test; update) {}` | counted loops |\n| `while (cond) {}` | unknown number of iterations |\n| `do {} while (cond)` | run at least once |\n| `for (const k in obj) {}` | enumerable **keys** (including inherited) of an object |\n| `for (const v of iterable) {}` | **values** of any iterable |\n| `for await (const v of asyncIterable) {}` | async iteration |\n| `arr.forEach(fn)` | side effects, cannot `break` |\n\n### Flow control\n- `break` leaves the nearest loop or `switch`.\n- `continue` skips to the next iteration (runs the update clause in a `for`).\n- A **label** names a statement so `break`/`continue` can target an outer loop:\n\n```js\nouter: for (const row of grid) {\n  for (const cell of row) {\n    if (cell === target) break outer;\n  }\n}\n```\n\n- Labels also work on plain blocks: `block: { if (x) break block; ... }`.\n- `return` inside a loop in a function exits the whole function.\n- `for` heads can be empty: `for (;;) {}` is an infinite loop.\n- Each `let` in a `for` head gets a new binding per iteration, so closures capture the right value.\n\n### Choosing\n- Arrays: prefer `for...of` or array methods.\n- Objects: `Object.entries(obj)` with `for...of`; avoid `for...in` on arrays.\n- Need an index with `for...of`: `for (const [i, v] of arr.entries())`.\n- `forEach`, `map`, `filter` do not await; use `for...of` with `await` for sequential async work.",
+      "keyPoints": [
+        "for...of iterates values of iterables; for...in iterates enumerable keys of objects.",
+        "Labels let break and continue target outer loops.",
+        "do...while always runs its body once.",
+        "Use for...of with await for sequential async loops.",
+        "let in the loop head is re-created each iteration."
+      ],
+      "pitfalls": [
+        "for...in on an array yields string indices and inherited enumerable props.",
+        "Array.forEach ignores await and cannot be stopped with break.",
+        "Modifying a collection while iterating it can skip or repeat items."
+      ],
+      "examples": [
+        {
+          "title": "Labels and loop styles",
+          "language": "javascript",
+          "code": "const grid = [[1, 2], [3, 4], [5, 6]];\nlet found = null;\nouter: for (let r = 0; r < grid.length; r++) {\n  for (let c = 0; c < grid[r].length; c++) {\n    if (grid[r][c] === 4) { found = [r, c]; break outer; }\n  }\n}\nconsole.log(found);\nfor (let i = 0; i < 5; i++) { if (i % 2) continue; console.log('even', i); }\nlet n = 0;\ndo { n++; } while (n < 0);\nconsole.log('do-while ran', n);\nconst arr = ['a', 'b'];\nfor (const k in arr) console.log('in', k, typeof k);\nfor (const v of arr) console.log('of', v);\nfor (const [i, v] of arr.entries()) console.log(i, v);",
+          "explanation": "Find a value in a grid and compare for-in with for-of."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between for...in and for...of?",
+          "a": "for...in loops over enumerable property names (strings), including inherited ones; for...of loops over values produced by an iterable's iterator."
+        },
+        {
+          "q": "How do you break out of nested loops?",
+          "a": "Use a labeled break (break outer) or move the loops into a function and return."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-switch-try-forms",
+      "title": "switch, try/catch/finally and Error Forms",
+      "level": "intermediate",
+      "summary": "Syntax and edge cases of switch (fall-through, scope, strict compare) and try/catch/finally including optional catch binding.",
+      "description": "### switch\n```js\nswitch (expr) {\n  case 1:\n  case 2:            // grouped cases (intentional fall-through)\n    doSomething();\n    break;\n  case 3: {          // braces give the case its own block scope\n    const local = 1;\n    break;\n  }\n  default:           // may appear anywhere, runs if nothing matches\n    fallback();\n}\n```\n- Comparison uses **strict equality** (`===`).\n- Without `break`, execution **falls through** into the next case.\n- All cases share one block scope unless you add braces, so two `let x` in different cases clash.\n- `switch (true) { case x > 5: ... }` is a pattern for range checks.\n\n### try / catch / finally\n| Form | Meaning |\n|---|---|\n| `try {} catch (e) {}` | handle error |\n| `try {} catch {}` | optional catch binding, no variable |\n| `try {} finally {}` | cleanup, error still propagates |\n| `try {} catch (e) {} finally {}` | both |\n| `catch ({ name, message })` | destructured error |\n\n### Rules\n1. `finally` always runs, even after `return`, `break` or a thrown error.\n2. A `return` in `finally` **overrides** returns and swallows exceptions.\n3. `throw` accepts any value, but throw `Error` objects to keep stack traces.\n4. `catch` only catches **synchronous** errors and rejected promises awaited inside it.\n5. Rethrow what you cannot handle: `throw e`.\n6. Errors can carry a cause: `throw new Error('msg', { cause: err })`.\n7. Built-in types: `Error`, `TypeError`, `RangeError`, `SyntaxError`, `ReferenceError`, `EvalError`, `URIError`, `AggregateError`.",
+      "keyPoints": [
+        "switch uses strict equality and falls through without break.",
+        "Wrap case bodies in braces when declaring variables.",
+        "finally always runs and can override return values.",
+        "catch without a binding is allowed.",
+        "try/catch does not catch errors thrown later in async callbacks."
+      ],
+      "pitfalls": [
+        "Forgetting break creates accidental fall-through bugs.",
+        "return inside finally silently discards earlier returns and errors.",
+        "throw 'string' loses the stack trace and breaks instanceof checks."
+      ],
+      "examples": [
+        {
+          "title": "Switch fall-through and finally",
+          "language": "javascript",
+          "code": "function kind(n) {\n  switch (typeof n) {\n    case 'number':\n    case 'bigint': return 'numeric';\n    case 'string': { const len = n.length; return 'text' + len; }\n    default: return 'other';\n  }\n}\nconsole.log(kind(1), kind(1n), kind('ab'), kind(null));\nfunction grade(score) {\n  switch (true) {\n    case score >= 90: return 'A';\n    case score >= 70: return 'B';\n    default: return 'C';\n  }\n}\nconsole.log(grade(95), grade(72), grade(10));\nfunction f() { try { return 'try'; } finally { console.log('cleanup'); } }\nconsole.log(f());\nfunction g() { try { throw new Error('x'); } catch { return 'caught'; } finally { return 'finally wins'; } }\nconsole.log(g());\ntry { try { null.x; } catch (e) { throw new Error('wrapped', { cause: e }); } }\ncatch ({ message, cause }) { console.log(message, cause.constructor.name); }",
+          "explanation": "Shows grouping, braces and the finally override."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does finally do when try has a return?",
+          "a": "finally still runs before the function returns; if finally itself returns, that value replaces the earlier one."
+        },
+        {
+          "q": "Does switch use == or ===?",
+          "a": "Strict equality ===."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-modules-forms",
+      "title": "Modules: import and export in All Forms",
+      "level": "intermediate",
+      "summary": "Complete list of ES module import and export syntaxes, plus dynamic import, import.meta and live bindings.",
+      "description": "ES modules (`.mjs`, `type: module`, or `<script type=\"module\">`) are strict, have their own scope, and execute once.\n\n### Export forms\n| Syntax | Meaning |\n|---|---|\n| `export const a = 1; export function f(){}; export class C {}` | named, inline |\n| `export { a, f as g }` | named list with rename |\n| `export default expr` | one default per module |\n| `export { x as default }` | default via list |\n| `export * from './m.js'` | re-export all named (not default) |\n| `export * as ns from './m.js'` | re-export as namespace |\n| `export { a, b as c } from './m.js'` | re-export selected |\n| `export { default } from './m.js'` | re-export a default |\n\n### Import forms\n| Syntax | Meaning |\n|---|---|\n| `import x from './m.js'` | default |\n| `import { a, b as c } from './m.js'` | named |\n| `import x, { a } from './m.js'` | default + named |\n| `import * as ns from './m.js'` | namespace object |\n| `import './side-effect.js'` | run only |\n| `import data from './d.json' with { type: 'json' }` | import attributes |\n| `const m = await import('./m.js')` | dynamic, returns a promise |\n| `import.meta.url` | URL of the current module |\n\n### Key behaviour\n- Imports are **live read-only bindings**, not copies.\n- Import declarations are hoisted and must be at the top level.\n- Circular imports work but may see uninitialised (TDZ) bindings.\n- Module code runs once; later imports reuse the same instance.\n- Browsers require file extensions and relative paths (`./`); bundlers can relax this.\n- Top-level `await` is allowed in modules.",
+      "keyPoints": [
+        "Named exports use the exact binding name; default exports can be imported under any name.",
+        "Imports are live, read-only views of the exporting module's variables.",
+        "Use dynamic import() for lazy loading and conditional loading.",
+        "export * does not re-export the default export.",
+        "Modules are always strict and execute once."
+      ],
+      "pitfalls": [
+        "Mixing require() and import in the same file causes errors in Node unless configured.",
+        "Assigning to an imported binding throws a TypeError.",
+        "Circular dependencies can expose bindings in the TDZ."
+      ],
+      "examples": [
+        {
+          "title": "Module syntax reference",
+          "language": "text",
+          "lang": "javascript",
+          "code": "// math.js\nexport const PI = 3.14159;\nexport function add(a, b) { return a + b; }\nexport default class Calculator {}\nexport { add as sum };\nexport * from './constants.js';\nexport * as helpers from './helpers.js';\n\n// app.js\nimport Calculator, { PI, add as plus } from './math.js';\nimport * as math from './math.js';\nimport './polyfills.js';\nimport config from './config.json' with { type: 'json' };\n\nconsole.log(PI, plus(1, 2), math.sum(3, 4));\n\n// lazy loading\nbutton.addEventListener('click', async () => {\n  const { default: Chart } = await import('./chart.js');\n  new Chart();\n});\nconsole.log(import.meta.url);",
+          "explanation": "Multi-file code shown for viewing since modules need separate files."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Are ES module imports copies of the exported values?",
+          "a": "No, they are live bindings; if the exporter changes its variable, importers see the new value."
+        },
+        {
+          "q": "How do you load a module lazily?",
+          "a": "Use dynamic import(), which returns a promise resolving to the module namespace object."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-optional-nullish-logical",
+      "title": "Optional Chaining, Nullish and Logical Assignment Forms",
+      "level": "intermediate",
+      "summary": "All forms of ?., ??, ||, && and the three logical assignment operators with exact falsy vs nullish behaviour.",
+      "description": "These operators make \"safe access\" and \"default value\" code short, but each reacts to different values.\n\n### Optional chaining `?.`\n| Form | Meaning |\n|---|---|\n| `a?.b` | `undefined` if `a` is `null`/`undefined`, else `a.b` |\n| `a?.[expr]` | safe bracket access |\n| `a?.()` | call only if `a` is a function value (not null/undefined) |\n| `a.b?.()` | call method only if it exists |\n| `delete a?.b` | safe delete |\n\nThe whole rest of the chain is **short-circuited**: `a?.b.c.d` stops at the first `?.` that hits nullish.\n\n### Defaults: `||` vs `??`\n| Value | `v \\|\\| 'x'` | `v ?? 'x'` |\n|---|---|---|\n| `0`, `''`, `false`, `NaN` | `'x'` | keeps the value |\n| `null`, `undefined` | `'x'` | `'x'` |\n\nUse `??` when `0`, `''` or `false` are valid values.\n\n### Logical assignment\n| Operator | Equivalent | Assigns when |\n|---|---|---|\n| `a \\|\\|= b` | `a \\|\\| (a = b)` | `a` is falsy |\n| `a &&= b` | `a && (a = b)` | `a` is truthy |\n| `a ??= b` | `a ?? (a = b)` | `a` is null/undefined |\n\nThey **short-circuit**, so setters and side effects only occur when an assignment is needed.\n\n### Rules\n- `??` cannot be combined with `||`/`&&` without parentheses.\n- `a?.b = 1` is a SyntaxError; optional chaining cannot be an assignment target.\n- `a?.b` on a non-nullish primitive just reads normally.\n- `?.` does not guard against thrown errors or against `a` being declared at all (undeclared names still throw).",
+      "keyPoints": [
+        "?. returns undefined instead of throwing for null/undefined links.",
+        "?? only replaces null and undefined; || replaces every falsy value.",
+        "??= is ideal for lazily initialising defaults and caches.",
+        "Optional chaining short-circuits the whole remaining chain.",
+        "Logical assignments only write when the condition requires it."
+      ],
+      "pitfalls": [
+        "Using || for numeric or boolean defaults turns valid 0 or false into the fallback.",
+        "Overusing ?. hides genuine data bugs by silently returning undefined.",
+        "Optional call a?.() still throws if a is a non-function truthy value."
+      ],
+      "examples": [
+        {
+          "title": "Falsy vs nullish",
+          "language": "javascript",
+          "code": "const user = { profile: null, settings: { retries: 0 }, greet() { return 'hi'; } };\nconsole.log(user.profile?.name, user.settings?.retries, user.nope?.deep.er);\nconsole.log(user.greet?.(), user.missing?.(), user.list?.[0]);\nconsole.log(user.settings.retries || 3, user.settings.retries ?? 3);\nlet cache; cache ??= new Map();\nlet title = ''; title ||= 'Untitled';\nlet flag = true; flag &&= 'on';\nconsole.log(cache instanceof Map, title, flag);\nconst calls = [];\nconst obj = { get x() { calls.push('get'); return 1; }, set x(v) { calls.push('set'); } };\nobj.x ||= 5; // x is truthy, setter never called\nconsole.log(calls);\nconsole.log((null || undefined) ?? 'fallback');",
+          "explanation": "Compare operators on edge values."
+        }
+      ],
+      "interview": [
+        {
+          "q": "When should you use ?? over ||?",
+          "a": "When 0, empty string or false are legitimate values that must not be replaced by a default."
+        },
+        {
+          "q": "What does a?.b.c do when a is null?",
+          "a": "The entire chain short-circuits and evaluates to undefined without throwing."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-tagged-templates",
+      "title": "Tagged Templates and String.raw",
+      "level": "advanced",
+      "summary": "How a tag function receives strings and values, the raw array, caching rules, and real uses such as escaping and DSLs.",
+      "description": "A **tagged template** puts a function name before a template literal: ``tag`a ${x} b` ``. The function is called with the literal parts and the interpolated values rather than a finished string.\n\n### Signature\n```js\nfunction tag(strings, ...values) {}\n```\n- `strings` is an array of cooked string pieces, always **one longer** than `values`.\n- `strings.raw` is the array of the same pieces with backslashes unprocessed.\n- The tag can return **anything**, not just a string.\n- The `strings` array is frozen and the **same object** is reused for each call site, which libraries use for caching.\n\n### Syntax forms\n| Form | Meaning |\n|---|---|\n| ``tag`text` `` | tag with no values |\n| ``obj.method`x ${1}` `` | member function as tag |\n| ``tag`a``b` `` | chained tags: second tag receives the result of the first |\n| ``String.raw`C:\\new` `` | built-in tag giving the raw text |\n| ``new (getTag())`x` `` | tags can be any call expression |\n\n### Typical uses\n- Safe HTML or SQL escaping: wrap values, never concatenate raw input.\n- Internationalisation and formatting helpers.\n- Styled-component CSS-in-JS and GraphQL (`gql`) queries.\n- Highlight or transform interpolated values.\n\n### Notes\n- In ES2018+ tagged templates may contain invalid escape sequences; cooked pieces become `undefined` while `raw` keeps the text.\n- A tag function is called at runtime on every evaluation, but the strings array stays identical.",
+      "keyPoints": [
+        "Tag receives (strings, ...values); strings.length is values.length + 1.",
+        "strings.raw gives unprocessed backslashes.",
+        "The tag can return any value type.",
+        "Great for escaping, DSLs, and CSS/SQL helpers.",
+        "The strings array is frozen and identity-stable per call site."
+      ],
+      "pitfalls": [
+        "Building SQL by plain template literal is injection-prone; use a tag that parameterises.",
+        "Forgetting that strings has one more entry than values causes off-by-one bugs."
+      ],
+      "examples": [
+        {
+          "title": "A highlighting and an escaping tag",
+          "language": "javascript",
+          "code": "function highlight(strings, ...values) {\n  return strings.reduce((out, str, i) => out + str + (i < values.length ? `[${values[i]}]` : ''), '');\n}\nconst item = 'pen', qty = 3;\nconsole.log(highlight`Buy ${qty} of ${item} now`);\n\nconst esc = (s) => String(s).replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[c]));\nconst html = (strings, ...vals) => strings.reduce((o, s, i) => o + s + (i < vals.length ? esc(vals[i]) : ''), '');\nconsole.log(html`<p>${'<script>alert(1)</script>'}</p>`);\n\nfunction show(strings) { return [strings.length, strings.raw[0], strings[0]]; }\nconsole.log(show`line1\\nline2`);\nconsole.log(String.raw`C:\\temp\\new ${1 + 1}`);\nconst seen = new Set();\nconst same = () => ((s) => (seen.add(s), seen.size))`x`;\nsame(); same();\nconsole.log(seen.size); // 1: same strings object reused",
+          "explanation": "Interleave strings and values."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What are the arguments of a tag function?",
+          "a": "An array of string pieces (with a raw property) followed by each interpolated value as separate arguments."
+        },
+        {
+          "q": "What does String.raw do?",
+          "a": "It is a built-in tag that returns the template with escape sequences left unprocessed."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-getters-setters",
+      "title": "Getters, Setters and Property Accessors",
+      "level": "intermediate",
+      "summary": "All ways to define accessor properties: object literals, classes, defineProperty, static and private accessors.",
+      "description": "An **accessor property** has a getter and/or setter function instead of a stored value. Reading runs the getter; assigning runs the setter, so you can compute, validate or log.\n\n### Where to define them\n| Place | Syntax |\n|---|---|\n| Object literal | `{ get full() {...}, set full(v) {...} }` |\n| Class | `class A { get x() {} set x(v) {} }` |\n| Static | `static get instance() {}` |\n| Private | `get #secret() {}` |\n| Computed | `get [key]() {}` |\n| Existing object | `Object.defineProperty(o, 'x', { get(){}, set(v){}, enumerable: true, configurable: true })` |\n| Several at once | `Object.defineProperties(o, {...})` |\n| Read descriptor | `Object.getOwnPropertyDescriptor(o, 'x')` |\n\n### Rules\n1. A getter has **no parameters**; a setter takes **exactly one**.\n2. A getter alone makes a read-only property (assignments are ignored silently in sloppy mode, throw in strict mode).\n3. Accessors defined in classes live on the prototype and are non-enumerable; in literals they are own enumerable properties.\n4. Accessors are inherited and can be overridden in subclasses (override both if you override one!).\n5. `JSON.stringify` and spread **call getters** and store the returned value; setters are never copied.\n6. Use accessors for derived values, validation and lazy computation (replace the getter with a value on first access).\n7. Do not make getters slow or side-effectful; people expect property reads to be cheap.\n\n### Lazy getter pattern\nInside the getter use `Object.defineProperty(this, 'x', { value: computed })` so subsequent reads skip the function.",
+      "keyPoints": [
+        "Getters take no params; setters take exactly one.",
+        "A property with only a getter is read-only.",
+        "Class accessors are on the prototype; literal accessors are own properties.",
+        "Spread and JSON.stringify invoke getters and copy results.",
+        "Overriding a getter in a subclass without the setter removes the setter."
+      ],
+      "pitfalls": [
+        "A setter that assigns to the same property name causes infinite recursion; use a different backing field such as #value or _value.",
+        "Overriding only the getter in a subclass makes the inherited setter unreachable (assignments silently do nothing)."
+      ],
+      "examples": [
+        {
+          "title": "Validation and lazy getter",
+          "language": "javascript",
+          "code": "class Temp {\n  #c = 0;\n  get celsius() { return this.#c; }\n  set celsius(v) {\n    if (typeof v !== 'number') throw new TypeError('number required');\n    this.#c = v;\n  }\n  get fahrenheit() { return this.#c * 9 / 5 + 32; }\n  set fahrenheit(f) { this.celsius = (f - 32) * 5 / 9; }\n}\nconst t = new Temp();\nt.fahrenheit = 212;\nconsole.log(t.celsius, t.fahrenheit, Object.keys(t));\n\nconst o = {\n  get big() {\n    console.log('computing once');\n    const v = 42;\n    Object.defineProperty(this, 'big', { value: v });\n    return v;\n  },\n};\nconsole.log(o.big, o.big);\nconsole.log(Object.getOwnPropertyDescriptor(Temp.prototype, 'celsius').get.name);\nconst copy = { ...{ get z() { return 'z!'; } } };\nconsole.log(Object.getOwnPropertyDescriptor(copy, 'z'));",
+          "explanation": "Setter with a private field and a self-replacing getter."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Does object spread copy getters?",
+          "a": "It reads the getter and copies the resulting value as a normal data property."
+        },
+        {
+          "q": "What happens if a getter exists without a setter and you assign?",
+          "a": "Nothing in sloppy mode, a TypeError in strict mode."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-symbols-well-known",
+      "title": "Symbols and Well-Known Symbols",
+      "level": "advanced",
+      "summary": "Symbol creation, registry, and the well-known symbols (iterator, toPrimitive, hasInstance and more) that customise built-in behaviour.",
+      "description": "A **symbol** is a unique, immutable primitive often used as a collision-free property key.\n\n### Creating symbols\n| Syntax | Notes |\n|---|---|\n| `Symbol('desc')` | always unique; description is only a label |\n| `Symbol.for('key')` | global registry, same key returns same symbol |\n| `Symbol.keyFor(sym)` | key of a registry symbol, else `undefined` |\n| `sym.description` | read the label |\n\nSymbol keys are skipped by `for...in`, `Object.keys`, and `JSON.stringify`; use `Object.getOwnPropertySymbols` or `Reflect.ownKeys` to see them. `new Symbol()` throws.\n\n### Well-known symbols\n| Symbol | Customises |\n|---|---|\n| `Symbol.iterator` | `for...of`, spread, destructuring |\n| `Symbol.asyncIterator` | `for await...of` |\n| `Symbol.toPrimitive` | conversion to primitive (`hint`: `'number'`, `'string'`, `'default'`) |\n| `Symbol.toStringTag` | the tag in `Object.prototype.toString` |\n| `Symbol.hasInstance` | `instanceof` |\n| `Symbol.species` | constructor used by derived array/promise methods |\n| `Symbol.isConcatSpreadable` | `Array.prototype.concat` |\n| `Symbol.match` / `replace` / `search` / `split` | string methods with custom objects |\n| `Symbol.unscopables` | names excluded from `with` |\n| `Symbol.dispose` / `asyncDispose` | `using` declarations |\n\n### Uses\n- Hidden-ish metadata on objects you do not own.\n- Constants that must never clash (enum-like).\n- Protocol hooks (iteration, conversion) in your own classes.\n\nSymbols are **not truly private**; they can be discovered by reflection. Use `#private` fields for real privacy.",
+      "keyPoints": [
+        "Every Symbol() call returns a unique value; Symbol.for shares through a global registry.",
+        "Symbol-keyed properties are ignored by Object.keys, for...in and JSON.",
+        "Well-known symbols are hooks that let your objects customise built-in operations.",
+        "Symbol.toPrimitive controls how an object converts in arithmetic and templates.",
+        "Symbols are not private; reflection can list them."
+      ],
+      "pitfalls": [
+        "Implicit conversion of a symbol to a string throws a TypeError; use String(sym) or sym.toString().",
+        "JSON.stringify silently drops symbol values and symbol keys."
+      ],
+      "examples": [
+        {
+          "title": "Custom conversion, iteration and instanceof",
+          "language": "javascript",
+          "code": "const id = Symbol('id');\nconst user = { name: 'Ann', [id]: 123 };\nconsole.log(Object.keys(user), JSON.stringify(user), user[id], Reflect.ownKeys(user));\nconsole.log(Symbol('a') === Symbol('a'), Symbol.for('a') === Symbol.for('a'), Symbol.keyFor(Symbol.for('a')));\n\nclass Money {\n  constructor(v) { this.v = v; }\n  [Symbol.toPrimitive](hint) { return hint === 'string' ? `$${this.v}` : this.v; }\n  get [Symbol.toStringTag]() { return 'Money'; }\n  static [Symbol.hasInstance](x) { return typeof x === 'object' && x !== null && 'v' in x; }\n  *[Symbol.iterator]() { yield* String(this.v); }\n}\nconst m = new Money(42);\nconsole.log(`${m}`, m + 1, m * 2, Object.prototype.toString.call(m));\nconsole.log({ v: 1 } instanceof Money, [...m]);\ntry { `${Symbol('x')}`; } catch (e) { console.log(e.constructor.name); }",
+          "explanation": "Three well-known symbols in one class."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Are symbol properties private?",
+          "a": "No. They are hidden from normal enumeration but can be found with Object.getOwnPropertySymbols or Reflect.ownKeys; use #fields for privacy."
+        },
+        {
+          "q": "What is Symbol.toPrimitive?",
+          "a": "A method that defines how an object converts to a primitive, receiving the hint 'number', 'string' or 'default'."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-iteration-protocols",
+      "title": "Iteration Protocols: Iterable, Iterator, Generators",
+      "level": "advanced",
+      "summary": "The exact contract of iterable and iterator objects, how for...of uses it, and generator and async iteration forms.",
+      "description": "Two protocols power `for...of`, spread, destructuring, `Array.from`, `Map`, `Set` and `Promise.all`.\n\n### The contracts\n| Protocol | Requirement |\n|---|---|\n| **Iterable** | has a `[Symbol.iterator]()` method returning an iterator |\n| **Iterator** | has `next()` returning `{ value, done }` |\n| Optional | `return()` (called on early exit like `break`) and `throw()` |\n| **Async iterable** | `[Symbol.asyncIterator]()` whose `next()` returns a promise of `{ value, done }` |\n\n### Iterables in the language\nArrays, strings, `Map`, `Set`, `TypedArray`, `arguments`, NodeList, generators and the results of `entries()`, `keys()`, `values()`.\nPlain objects are **not** iterable; use `Object.entries(obj)`.\n\n### Generators (the easy way)\n```js\nfunction* gen() {\n  const x = yield 1;     // value sent in via next(x)\n  yield* otherIterable;  // delegate\n  return 'end';          // reported as done: true (ignored by for...of)\n}\n```\n- A generator object is both an iterator **and** iterable (it returns itself).\n- `gen.return(v)` finishes it early; `gen.throw(err)` throws inside at the paused `yield`.\n- `async function*` plus `for await (const x of ...)` handles streams of promises.\n\n### Consumers\n`for...of`, `[...it]`, `Array.from(it)`, `new Set(it)`, `Promise.all(it)`, `Object.fromEntries(it)`, and destructuring `[a, b] = it` all call `Symbol.iterator`.\n\n### Iterator helpers\nModern engines add `map`, `filter`, `take`, `drop`, `flatMap`, `reduce`, `toArray`, `some`, `every`, `find`, `forEach` on iterators.",
+      "keyPoints": [
+        "Iterable = has Symbol.iterator; iterator = has next() returning {value, done}.",
+        "Generators implement both protocols automatically.",
+        "Breaking out of for...of calls the iterator's return() method.",
+        "Plain objects are not iterable; use entries/keys/values.",
+        "Async generators with for await handle async streams."
+      ],
+      "pitfalls": [
+        "A one-shot iterator (generator) is exhausted after one pass; make a fresh one to loop again.",
+        "The return value of a generator is not visible to for...of or spread."
+      ],
+      "examples": [
+        {
+          "title": "Custom iterable and generator control",
+          "language": "javascript",
+          "code": "class Range {\n  constructor(a, b) { this.a = a; this.b = b; }\n  [Symbol.iterator]() {\n    let i = this.a; const end = this.b;\n    return {\n      next: () => (i <= end ? { value: i++, done: false } : { value: undefined, done: true }),\n      return: () => { console.log('cleanup'); return { done: true }; },\n    };\n  }\n}\nconsole.log([...new Range(1, 4)]);\nfor (const n of new Range(1, 10)) { if (n === 2) break; }\n\nfunction* conversation() {\n  const name = yield 'name?';\n  const age = yield `hi ${name}, age?`;\n  return `${name} is ${age}`;\n}\nconst it = conversation();\nconsole.log(it.next().value, it.next('Ann').value, it.next(30));\nconsole.log(it[Symbol.iterator]() === it);\nfunction* take(n, iter) { let i = 0; for (const x of iter) { if (i++ >= n) return; yield x; } }\nfunction* naturals() { let n = 1; while (true) yield n++; }\nconsole.log([...take(3, naturals())]);",
+          "explanation": "Range class, send values, early exit."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between an iterable and an iterator?",
+          "a": "An iterable can produce an iterator through Symbol.iterator; an iterator is the object with next() that yields {value, done} results."
+        },
+        {
+          "q": "What happens on break inside for...of?",
+          "a": "The engine calls the iterator's return() method if present, allowing cleanup."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-ref-asi-strict-mode",
+      "title": "ASI Rules and Strict Mode",
+      "level": "intermediate",
+      "summary": "When JavaScript inserts semicolons for you, the dangerous lines that break, and everything that changes in strict mode.",
+      "description": "### Automatic Semicolon Insertion (ASI)\nThe parser inserts a semicolon when it hits a token that cannot continue the statement **and** there is a newline before it (or `}` / end of input), or after `do...while`.\n\n**Restricted productions** - no newline is allowed between the keyword and its operand, so a semicolon is inserted:\n- `return`, `throw`, `break`, `continue`, `yield`, and postfix `++`/`--`.\n\n```js\nreturn\n{ ok: true }   // returns undefined!\n```\n\n**Lines that start with a dangerous character** continue the previous line - ASI does NOT help:\n`(`, `[`, `` ` ``, `+`, `-`, `/`. If you skip semicolons, start such lines with `;`.\n\n### Strict mode\nEnable with `'use strict'` at the top of a script or function. Modules and class bodies are strict automatically.\n\n| Sloppy mode | Strict mode |\n|---|---|\n| Undeclared assignment creates a global | `ReferenceError` |\n| Assigning to read-only property fails silently | `TypeError` |\n| `this` in a plain function call is `globalThis` | `undefined` |\n| Duplicate parameter names allowed | SyntaxError |\n| Octal literal `010` allowed | SyntaxError |\n| `with` statement allowed | SyntaxError |\n| `delete variable` ignored | SyntaxError |\n| `arguments` mirrors parameters | independent copy |\n| `eval` leaks variables into scope | own scope |\n| Reserved words (`let`, `static`, `implements`) usable as names | not allowed |\n| Function declarations in blocks hoist weirdly | block-scoped |\n\nUse strict mode always - modules and classes already give it to you.",
+      "keyPoints": [
+        "ASI inserts semicolons at line breaks only when the parse would otherwise fail.",
+        "return, throw, break, continue and ++/-- cannot be followed by a newline.",
+        "Lines beginning with ( [ ` + - / are never auto-terminated from above.",
+        "Strict mode turns silent mistakes into errors and makes this undefined in plain calls.",
+        "ES modules and class bodies are strict by default."
+      ],
+      "pitfalls": [
+        "return followed by a newline then an object literal returns undefined.",
+        "Omitting semicolons before a line that starts with ( or [ merges the two lines into one expression."
+      ],
+      "examples": [
+        {
+          "title": "ASI traps",
+          "language": "javascript",
+          "code": "function bad() {\n  return\n  { ok: true };\n}\nconsole.log(bad()); // undefined\n\nfunction good() {\n  return {\n    ok: true,\n  };\n}\nconsole.log(good());\n\nconst a = 1\nconst b = 2\n;[a, b].forEach(n => console.log(n))\n\nconst sloppy = new Function('return typeof this');\nconst strict = new Function(\"'use strict'; return typeof this\");\nconsole.log(sloppy(), strict());\n(function () {\n  'use strict';\n  try { undeclared = 5; } catch (e) { console.log(e.name); }\n  try { Object.freeze({ x: 1 }).x = 2; } catch (e) { console.log(e.name); }\n})();",
+          "explanation": "Demonstrates return newline and the this difference."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does return followed by a newline break?",
+          "a": "ASI inserts a semicolon right after return, so the object on the next line is never returned."
+        },
+        {
+          "q": "Name three changes strict mode makes.",
+          "a": "Undeclared assignments throw, this is undefined in plain function calls, and silent failures like writing to read-only properties throw TypeErrors."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

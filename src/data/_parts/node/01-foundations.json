@@ -1,0 +1,563 @@
+{
+ "id": "node-foundations",
+ "title": "Foundations",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "node-what-is-node",
+   "title": "What is Node.js?",
+   "level": "beginner",
+   "summary": "Node.js is a JavaScript runtime built on Chrome's V8 engine and libuv that lets you run JavaScript outside the browser.",
+   "description": "**Node.js** is not a language and not a framework. It is a **runtime**: a program that can execute JavaScript on your computer or server, outside the browser.\n\n### The main parts\n| Part | Role |\n|---|---|\n| **V8** | Google's JavaScript engine (same as Chrome). Compiles JS to machine code and runs it. |\n| **libuv** | A C library that gives Node the **event loop**, a thread pool and cross-platform async I/O (files, DNS, sockets, timers). |\n| **Node core (C++ and JS)** | Built-in modules such as `fs`, `http`, `path`, `crypto`, `stream`. |\n| **npm** | The package manager that ships with Node and hosts millions of packages. |\n\n### Why Node is fast for I/O work\nYour JavaScript runs on **one main thread**. When you ask for something slow (read a file, query a database, call an API), Node hands the job to the operating system or to libuv's thread pool and keeps going. When the result is ready, a **callback** is queued and the event loop runs it. This is called **non-blocking I/O** and it lets one process serve thousands of connections.\n\n### What Node is good at\n* REST and GraphQL APIs, real-time apps (chat, notifications), streaming\n* Command line tools, build tools, scripts and automation\n* Microservices and backends-for-frontends\n\n### What Node is not ideal for\nLong CPU-heavy work on the main thread (video encoding, huge JSON crunching) blocks every other request. Use `worker_threads` or another service for that.\n\n### Browser JS vs Node JS\nNode has no `window` or `document`, but it has `process`, `fs`, `http`, `Buffer` and more. The language (ES2023+) is the same.",
+   "keyPoints": [
+    "Node = V8 engine + libuv event loop + core modules",
+    "Single-threaded JavaScript with non-blocking I/O",
+    "Great for I/O-bound apps, weak for CPU-bound work on the main thread",
+    "Same JavaScript language as the browser, different APIs"
+   ],
+   "pitfalls": [
+    "Calling Node \"a framework\" or \"a language\" in interviews",
+    "Saying Node is \"single threaded\" without mentioning the libuv thread pool"
+   ],
+   "examples": [
+    {
+     "title": "Your first Node program",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// hello.js\nconsole.log('Hello from Node', process.version);\nconsole.log('Platform:', process.platform);\nconsole.log('Is browser?', typeof window !== 'undefined');",
+     "explanation": "There is no window object in Node, so the last line prints false.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Run it",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node hello.js\nHello from Node v24.0.0\nPlatform: win32\nIs browser? false",
+     "explanation": "The version and platform depend on your machine.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is Node.js?",
+     "a": "An open-source, cross-platform JavaScript runtime built on the V8 engine. It uses an event-driven, non-blocking I/O model (libuv) so a single process can handle many concurrent connections."
+    },
+    {
+     "q": "Is Node.js single-threaded?",
+     "a": "Your JavaScript code runs on one thread (the event loop), but Node itself uses libuv's thread pool (default 4 threads) for things like file system, DNS lookup, zlib and crypto, and you can add threads with worker_threads."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-install-nvm",
+   "title": "Installing Node and nvm",
+   "level": "beginner",
+   "summary": "Install Node from nodejs.org or manage many versions with nvm, fnm or Volta and understand LTS releases.",
+   "description": "You can install Node in three common ways.\n\n### 1. Official installer\nDownload from nodejs.org. Choose the **LTS** (Long Term Support) version for projects. The **Current** line has newest features but is short-lived.\n\n### 2. A version manager (recommended)\nReal projects need different Node versions. A version manager lets you switch per project:\n* **nvm** (macOS/Linux) and **nvm-windows**\n* **fnm** (fast, cross-platform, written in Rust)\n* **Volta** (pins the version inside `package.json`)\n\n### Release model\nNode ships a new major every six months. Even-numbered majors (20, 22, 24) become **LTS** and receive security fixes for about 30 months. Odd-numbered majors are never LTS. Always use an active LTS line in production.\n\n### Check your setup\n`node -v` prints the Node version, `npm -v` prints the npm version, `which node` (or `where node` on Windows) shows which binary runs.\n\n### Pinning a version for a project\nCreate a `.nvmrc` file containing `22` and run `nvm use`. You can also add `\"engines\": { \"node\": \">=20\" }` in `package.json` to warn people (and CI) about unsupported versions.\n\n### Tips\n* Do not install global packages with `sudo`. A version manager keeps everything in your home folder.\n* Keep Node updated: old versions stop receiving security patches.",
+   "keyPoints": [
+    "Use an even-numbered LTS version for production",
+    "nvm / fnm / Volta let you switch Node versions per project",
+    ".nvmrc and the engines field document the required version",
+    "node -v and npm -v verify the installation"
+   ],
+   "pitfalls": [
+    "Running production on an end-of-life Node version",
+    "Installing with sudo and then fighting permission errors"
+   ],
+   "examples": [
+    {
+     "title": "nvm workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "nvm install --lts        # install latest LTS\nnvm ls                   # list installed versions\nnvm use 22               # switch for this shell\necho \"22\" > .nvmrc       # pin for the project\nnvm use                  # reads .nvmrc\nnode -v",
+     "explanation": "On Windows use nvm-windows or fnm; the commands are almost identical.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is LTS in Node.js?",
+     "a": "Long Term Support. Even-numbered releases get about 30 months of bug and security fixes and are recommended for production, while odd releases are short-lived and meant for trying new features."
+    },
+    {
+     "q": "Why use a version manager?",
+     "a": "Different projects need different Node versions. A manager installs several versions side by side and switches between them without admin rights or conflicts."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-repl-running-scripts",
+   "title": "REPL and Running Scripts",
+   "level": "beginner",
+   "summary": "Use the REPL to experiment and the node command (with flags like --watch and --env-file) to run files.",
+   "description": "### The REPL\nType `node` with no arguments to start the **REPL** (Read-Eval-Print Loop). It evaluates each line and prints the result. It is perfect for quick experiments.\n\nUseful REPL features:\n* `_` holds the last result\n* `.help` lists commands, `.editor` lets you paste multi-line code, `.save file.js` and `.load file.js`\n* Tab completion works on objects and built-in modules (which are already available, so `fs` works without `require`)\n* `.exit` or Ctrl+D quits\n\n### Running a file\n`node app.js` runs a script. The `.js` extension may be left out (`node app`) and `node .` runs the file named in `main` of `package.json`.\n\n### Handy flags\n| Flag | Purpose |\n|---|---|\n| `--watch` | Restart when imported files change |\n| `--env-file=.env` | Load environment variables from a file |\n| `-e \"code\"` / `-p \"expr\"` | Run or print an inline expression |\n| `--inspect` | Open the debugger |\n| `--check` (`-c`) | Syntax check only |\n| `--max-old-space-size=4096` | Raise heap limit (MB) |\n| `-r module` / `--import module` | Preload a module |\n\n### Passing arguments\nAnything after the file name goes to `process.argv`: `node app.js --port 4000`.\n\n### Running TypeScript\nRecent Node versions (22.18+ and 24) can run `.ts` files that use only erasable type syntax with plain `node file.ts` (type stripping, no type checking).\n\n### Exit codes\n`0` means success; any other number means failure. Shells and CI use this to detect errors.",
+   "keyPoints": [
+    "node with no args opens the REPL, node file.js runs a script",
+    "--watch and --env-file replace nodemon and dotenv for simple cases",
+    "Arguments after the file name are available in process.argv",
+    "Exit code 0 means success, non-zero means failure"
+   ],
+   "pitfalls": [
+    "Pasting multi-line code into the REPL without .editor mode",
+    "Forgetting that ES module files need .mjs or \"type\": \"module\""
+   ],
+   "examples": [
+    {
+     "title": "REPL session",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node\n> 2 + 3\n5\n> _ * 10\n50\n> os.hostname()\n'my-laptop'\n> .exit",
+     "explanation": "Built-in modules such as os are auto-loaded in the REPL.",
+     "lang": "bash"
+    },
+    {
+     "title": "Useful one-liners",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "node -p \"process.versions.v8\"\nnode -e \"console.log(new Date().toISOString())\"\nnode --watch server.js\nnode --env-file=.env server.js\nnode --check broken.js",
+     "explanation": "-p prints the result of the expression, -e only evaluates it.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you pass command line arguments to a Node script?",
+     "a": "Run node app.js a b --flag. They appear in process.argv; index 0 is the node binary, index 1 is the script path and the rest are your arguments. For flags use util.parseArgs."
+    },
+    {
+     "q": "What is the REPL?",
+     "a": "The Read-Eval-Print Loop, an interactive shell started by running node with no file. It evaluates JavaScript line by line and is useful for quick experiments."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-npm-basics",
+   "title": "npm Basics",
+   "level": "beginner",
+   "summary": "npm installs, updates and publishes packages; know install, uninstall, update, ci and the lock file.",
+   "description": "**npm** (Node Package Manager) is installed with Node. It downloads packages from the npm registry into `node_modules` and records them in `package.json`.\n\n### Everyday commands\n| Command | What it does |\n|---|---|\n| `npm init -y` | Create a `package.json` with defaults |\n| `npm install express` (`npm i`) | Add a dependency |\n| `npm i -D vitest` | Add a **dev** dependency |\n| `npm i -g pkg` | Install globally (CLI tools) |\n| `npm uninstall pkg` | Remove a package |\n| `npm update` | Update within allowed semver ranges |\n| `npm outdated` | Show newer versions |\n| `npm ls` | Show the dependency tree |\n| `npm ci` | Clean, exact install from the lock file (CI and Docker) |\n| `npm audit` | Check for known vulnerabilities |\n\n### dependencies vs devDependencies\n* `dependencies`: needed at runtime (express, mongoose)\n* `devDependencies`: only for development (eslint, vitest, nodemon)\n* `npm i --omit=dev` installs only production dependencies\n\n### The lock file\n`package-lock.json` records the **exact** version of every package in the tree. Commit it so every teammate and server installs identical code. Use `npm ci` in automation because it fails if the lock file and `package.json` disagree.\n\n### Alternatives\n**pnpm** (fast, disk efficient) and **Yarn** do the same job; **Bun** and **Deno** bring their own tools. The concepts are identical.",
+   "keyPoints": [
+    "npm install adds to package.json and node_modules",
+    "Use -D for tooling, regular install for runtime packages",
+    "Commit package-lock.json; use npm ci in CI and Docker",
+    "npm audit checks for known vulnerabilities"
+   ],
+   "pitfalls": [
+    "Committing node_modules to git",
+    "Using npm install instead of npm ci in pipelines, which may change the lock file",
+    "Installing a package globally when a local dev dependency would do"
+   ],
+   "examples": [
+    {
+     "title": "Starting a project",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir hello-node && cd hello-node\nnpm init -y\nnpm install express\nnpm install -D nodemon\nnpm ls --depth=0",
+     "explanation": "After this, package.json lists express under dependencies and nodemon under devDependencies.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between npm install and npm ci?",
+     "a": "npm install resolves versions and may update the lock file. npm ci deletes node_modules and installs exactly what the lock file says, failing if it does not match package.json, which makes it fast and reproducible for CI."
+    },
+    {
+     "q": "Why commit package-lock.json?",
+     "a": "It pins every transitive dependency to an exact version and checksum so builds are reproducible and protected from surprise upgrades."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-package-json",
+   "title": "package.json Explained",
+   "level": "beginner",
+   "summary": "package.json is the manifest of a Node project: name, version, entry point, scripts, dependencies and module type.",
+   "description": "Every Node project has a `package.json`. It describes the project and tells npm what to install.\n\n### Important fields\n| Field | Meaning |\n|---|---|\n| `name`, `version` | Identity (needed to publish) |\n| `description`, `license`, `author` | Metadata |\n| `main` | Entry file for `require('pkg')` |\n| `type` | `\"module\"` makes `.js` files ES modules; `\"commonjs\"` (default) keeps CommonJS |\n| `exports` | Modern, strict map of what a package exposes |\n| `scripts` | Named commands run by `npm run` |\n| `dependencies` | Runtime packages |\n| `devDependencies` | Development only |\n| `peerDependencies` | Packages the host app must provide (plugins) |\n| `engines` | Required Node/npm versions |\n| `bin` | Command names for CLI packages |\n| `files` | What gets published |\n| `private: true` | Prevents accidental publishing |\n\n### Version ranges\n`\"express\": \"^4.19.2\"` means \"any compatible 4.x.x at or above 4.19.2\". See the semver topic for details.\n\n### Typical app manifest\nMost applications set `\"private\": true`, `\"type\": \"module\"`, a `start` and a `dev` script and an `engines` field.\n\n### Tip\nEdit `package.json` by hand freely, but use `npm install` to change dependencies so the lock file stays in sync.",
+   "keyPoints": [
+    "package.json is the project manifest read by npm and Node",
+    "type decides whether .js files are ESM or CommonJS",
+    "scripts define reusable commands, dependencies define installs",
+    "private: true avoids accidental publishing",
+    "engines documents the required Node version"
+   ],
+   "pitfalls": [
+    "Trailing commas or comments: package.json must be strict JSON",
+    "Putting build tools in dependencies and bloating production installs"
+   ],
+   "examples": [
+    {
+     "title": "A realistic package.json",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "{\n  \"name\": \"shop-api\",\n  \"version\": \"1.0.0\",\n  \"private\": true,\n  \"type\": \"module\",\n  \"main\": \"src/index.js\",\n  \"engines\": { \"node\": \">=20\" },\n  \"scripts\": {\n    \"start\": \"node src/index.js\",\n    \"dev\": \"node --watch --env-file=.env src/index.js\",\n    \"test\": \"node --test\"\n  },\n  \"dependencies\": {\n    \"express\": \"^4.19.2\"\n  },\n  \"devDependencies\": {\n    \"eslint\": \"^9.0.0\"\n  }\n}",
+     "explanation": "start, dev and test cover the daily workflow.",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does the type field do?",
+     "a": "\"type\": \"module\" tells Node to treat .js files in that package as ES modules (import/export). Without it (or with \"commonjs\") .js files use require/module.exports. .mjs and .cjs always force a mode."
+    },
+    {
+     "q": "dependencies vs devDependencies vs peerDependencies?",
+     "a": "dependencies are needed at runtime; devDependencies only while developing/building/testing; peerDependencies declare that the consuming app must supply a compatible version, typical for plugins and libraries."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-npm-scripts",
+   "title": "npm Scripts",
+   "level": "beginner",
+   "summary": "The scripts field turns long commands into short names and supports pre/post hooks and local binaries.",
+   "description": "The `scripts` section maps names to shell commands. Run one with `npm run <name>`. Four names are special and need no `run`: `npm start`, `npm test`, `npm stop` and `npm restart`.\n\n### Why use scripts\n* Short, memorable commands for the whole team\n* They add `node_modules/.bin` to the PATH, so locally installed tools (eslint, vitest) work without a global install\n* Same commands in your terminal and in CI\n\n### Hooks\nFor any script `x`, `prex` runs before it and `postx` after it. `npm run build` first runs `prebuild`. Special lifecycle hooks: `prepare` (after install, used by Husky) and `prepublishOnly`.\n\n### Passing arguments\nUse `--` to forward arguments: `npm run dev -- --port 4000` ends up as `--port 4000` for the script.\n\n### Chaining\n* `a && b` runs b only if a succeeds\n* `a ; b` runs both (not on Windows cmd)\n* Packages such as `npm-run-all2` or `concurrently` run scripts in parallel\n* `npm run build --workspaces` runs across a monorepo\n\n### Environment variables\nSet variables with `cross-env NODE_ENV=production node app.js` for Windows compatibility, or use `node --env-file`.\n\n### Useful extras\n`npm run` lists all scripts. Inside scripts, `npm_package_name` and `npm_package_version` are available as env vars.",
+   "keyPoints": [
+    "Scripts are named shell commands run with npm run name",
+    "start and test can be run as npm start / npm test",
+    "node_modules/.bin is on the PATH inside scripts",
+    "pre and post prefixes create hooks, -- forwards arguments"
+   ],
+   "pitfalls": [
+    "Writing shell syntax that breaks on Windows (use cross-platform tools)",
+    "Forgetting the -- when forwarding flags to the underlying command"
+   ],
+   "examples": [
+    {
+     "title": "Scripts with hooks",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "{\n  \"scripts\": {\n    \"prebuild\": \"rm -rf dist\",\n    \"build\": \"tsc -p .\",\n    \"postbuild\": \"echo build finished\",\n    \"start\": \"node dist/index.js\",\n    \"lint\": \"eslint .\",\n    \"check\": \"npm run lint && npm test\",\n    \"test\": \"node --test\"\n  }\n}",
+     "explanation": "npm run build runs prebuild, build, postbuild in order.",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you pass flags to an npm script?",
+     "a": "Put -- before them: npm run dev -- --port 4000. Everything after -- is appended to the script's command."
+    },
+    {
+     "q": "Why can scripts run tools that are not installed globally?",
+     "a": "npm prepends node_modules/.bin to PATH while running scripts, so locally installed executables are found automatically."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-semver",
+   "title": "Semantic Versioning",
+   "level": "beginner",
+   "summary": "Versions look like MAJOR.MINOR.PATCH; the ^ and ~ symbols control which updates npm accepts.",
+   "description": "npm packages follow **semver**: `MAJOR.MINOR.PATCH`, for example `4.18.2`.\n\n* **PATCH** (4.18.**3**): bug fixes, nothing breaks\n* **MINOR** (4.**19**.0): new backwards-compatible features\n* **MAJOR** (**5**.0.0): breaking changes\n\n### Range symbols in package.json\n| Range | Accepts | Example result |\n|---|---|---|\n| `4.18.2` | exactly this version | 4.18.2 |\n| `^4.18.2` | same major, at or above | 4.18.2 up to < 5.0.0 |\n| `~4.18.2` | same minor, at or above | 4.18.2 up to < 4.19.0 |\n| `>=4 <6` | explicit range | 4.x or 5.x |\n| `*` or `latest` | anything | dangerous |\n\n### Special case: 0.x versions\nFor `^0.2.3` only patch updates are accepted (`< 0.3.0`) because 0.x is considered unstable.\n\n### Pre-releases\n`2.0.0-beta.1` sorts before `2.0.0`. Tags such as `next` or `beta` are used for early access: `npm i pkg@beta`.\n\n### Why it matters\n`^` gives you automatic bug fixes, but the lock file is what actually stops surprise upgrades. Updating a **major** version requires reading the changelog.\n\n### Checking\n`npm outdated` shows current, wanted (within range) and latest versions. `npm view express versions` lists all.",
+   "keyPoints": [
+    "MAJOR.MINOR.PATCH: breaking.feature.fix",
+    "^ allows minor and patch updates, ~ allows only patch",
+    "Caret on 0.x versions behaves more strictly",
+    "The lock file freezes the exact versions that were installed"
+   ],
+   "pitfalls": [
+    "Assuming minor updates can never break anything (maintainers make mistakes)",
+    "Using * or latest in dependencies"
+   ],
+   "examples": [
+    {
+     "title": "Range behaviour",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// package.json says \"^1.4.2\"\n//   1.4.2  yes\n//   1.9.0  yes\n//   2.0.0  no   (major bump)\n//\n// package.json says \"~1.4.2\"\n//   1.4.9  yes\n//   1.5.0  no   (minor bump)\n//\n// package.json says \"^0.2.3\"\n//   0.2.9  yes\n//   0.3.0  no   (0.x: minor is treated as breaking)",
+     "explanation": "Ranges are resolved by npm at install time, then frozen in package-lock.json.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does ^ mean in package.json?",
+     "a": "Accept any version that does not change the left-most non-zero digit. ^1.2.3 means >=1.2.3 <2.0.0, ^0.2.3 means >=0.2.3 <0.3.0."
+    },
+    {
+     "q": "When does a package bump the major version?",
+     "a": "When it makes a backwards-incompatible change such as removing or renaming an API, so consumers must opt in and review the migration notes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-npx",
+   "title": "npx and Running Package Binaries",
+   "level": "beginner",
+   "summary": "npx runs a package's command without a global install, perfect for scaffolding tools and one-off scripts.",
+   "description": "**npx** ships with npm. It runs a command from a package, using the local `node_modules/.bin` if the package is installed there, or downloading it temporarily if not.\n\n### Common uses\n* **Scaffolding**: `npx create-vite@latest my-app`, `npx create-next-app`\n* **One-off tools**: `npx kill-port 3000`, `npx serve .`\n* **Using a local binary**: `npx eslint .` after `npm i -D eslint`\n* **Trying a specific version**: `npx typescript@5.4 --version`\n\n### How it decides\n1. Look in the local project's `node_modules/.bin`\n2. Look in the PATH\n3. Otherwise download into a cache and run it (npx asks first for unknown packages)\n\n### Flags\n* `-y` or `--yes` skip the install prompt (useful in CI)\n* `-p pkg1 -p pkg2 command` use several packages\n* `--no-install` fail instead of downloading\n\n### Related tools\n* `npm exec` is the underlying command\n* `npm create vite@latest` is shorthand for `npx create-vite@latest`\n* `pnpm dlx` and `yarn dlx` do the same in other managers\n\n### Security note\nRunning `npx some-package` executes code from the internet with your permissions. Check the package name (typos are used by attackers) and prefer well known packages.",
+   "keyPoints": [
+    "npx executes a package binary without a permanent install",
+    "It prefers local binaries over downloads",
+    "Great for scaffolding with create-* packages",
+    "Only run packages you trust: it executes arbitrary code"
+   ],
+   "pitfalls": [
+    "Typo-squatting: npx create-raect-app may be malicious",
+    "Forgetting @latest and scaffolding from a cached old version"
+   ],
+   "examples": [
+    {
+     "title": "npx examples",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "npx create-vite@latest my-app --template react\nnpx serve ./public\nnpx --yes http-server -p 8080\nnpx eslint src",
+     "explanation": "The first two download the tool on demand; the last uses your local install.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between npm install -g and npx?",
+     "a": "A global install keeps a permanent, possibly outdated copy on your machine. npx runs the package on demand (cached, or the local version), so you always control the version and avoid polluting global space."
+    },
+    {
+     "q": "What is npm exec?",
+     "a": "The npm command that npx is built on. It runs a binary from a local or remote package, with npx being its convenient front end."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-node-modules",
+   "title": "node_modules and Dependency Resolution",
+   "level": "beginner",
+   "summary": "node_modules holds installed packages in a nested tree; learn how lookup works, why it gets huge and how to manage it.",
+   "description": "`node_modules` is the folder where npm places every package your project depends on, including the dependencies of your dependencies (**transitive** dependencies).\n\n### How lookup works\nWhen you write `require('lodash')` or `import 'lodash'`, Node looks in:\n1. `./node_modules/lodash`\n2. `../node_modules/lodash`\n3. `../../node_modules/lodash` ... up to the filesystem root\n\nThis is why a package installed in the parent folder is visible to child folders.\n\n### Flat tree and duplicates\nnpm tries to **hoist** (flatten) shared packages to the top level to avoid duplication. If two packages need incompatible versions, one is nested inside the other's own `node_modules`.\n\n### Why it is heavy\nA simple app can pull in hundreds of packages. This is the reason for:\n* `.gitignore` containing `node_modules/`\n* pnpm, which stores one copy globally and links it\n* Docker layers that install dependencies before copying source\n\n### Cleaning up\n* Delete `node_modules` and run `npm ci` to fix strange errors\n* `npm dedupe` merges duplicates, `npm prune` removes extraneous packages\n* `npm ls package-name` shows who depends on a package and which version\n* `npm explain pkg` explains why a package is installed\n\n### Never edit inside\nChanges in `node_modules` are lost on the next install. Use `patch-package` or fork the library if you need a fix.",
+   "keyPoints": [
+    "node_modules contains direct and transitive dependencies",
+    "Node walks up parent folders to find a package",
+    "npm hoists shared versions, nesting only when versions conflict",
+    "Never commit it, never edit it; reinstall with npm ci"
+   ],
+   "pitfalls": [
+    "Committing node_modules to version control",
+    "Hand-editing a library inside node_modules",
+    "Copying node_modules between operating systems (native modules break)"
+   ],
+   "examples": [
+    {
+     "title": "Inspect the tree",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "npm ls express            # who uses express and which version\nnpm explain debug         # why is \"debug\" installed?\nnpm ls --all | wc -l      # size of the whole tree\nrm -rf node_modules package-lock.json && npm install   # nuclear option",
+     "explanation": "Prefer npm ci when you only want to restore the lock file state.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does Node find a package imported by name?",
+     "a": "It looks for node_modules/<name> in the current file's directory, then each parent directory in turn up to the root, and uses the package's main or exports entry."
+    },
+    {
+     "q": "Why is node_modules in .gitignore?",
+     "a": "It is large, reproducible from package.json plus the lock file, and may contain OS-specific binaries, so only the manifest and lock file are committed."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-global-objects",
+   "title": "Global Objects and Variables",
+   "level": "beginner",
+   "summary": "globalThis, process, console, Buffer, timers, URL, fetch and module-scoped variables like __dirname.",
+   "description": "Node exposes a set of **globals** that need no import.\n\n### True globals\n| Name | Purpose |\n|---|---|\n| `globalThis` | The global object (works everywhere, replaces `global` / `window`) |\n| `process` | Info and control of the running process |\n| `console` | Logging |\n| `Buffer` | Binary data |\n| `setTimeout`, `setInterval`, `setImmediate`, `queueMicrotask` | Scheduling |\n| `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder` | Web standard utilities |\n| `fetch`, `Request`, `Response`, `Headers`, `FormData` | HTTP client (undici) |\n| `AbortController`, `structuredClone`, `performance`, `crypto` (Web Crypto) | Modern web APIs |\n\n### Module-scoped variables (CommonJS only)\nEach CommonJS file is wrapped in a function, so `require`, `module`, `exports`, `__filename` and `__dirname` are **local to the file**, not real globals.\n\n### ES module equivalents\nESM has no `__dirname`. Use:\n* `import.meta.url` (file URL of the current module)\n* `import.meta.dirname` and `import.meta.filename` (Node 20.11+)\n* `fileURLToPath(import.meta.url)` for older versions\n\n### Variables declared at the top level\n`var x = 1` in a Node file does **not** create `globalThis.x`, because the file is a module with its own scope. This differs from browser scripts.\n\n### Avoid polluting globals\nAssigning `globalThis.config = ...` makes hidden dependencies and bugs. Export from a module instead.",
+   "keyPoints": [
+    "globalThis is the universal global object in Node and browsers",
+    "process, Buffer, console, timers, fetch and URL are available without imports",
+    "__dirname and __filename exist only in CommonJS; ESM uses import.meta.dirname",
+    "Top-level var does not create a global in Node"
+   ],
+   "pitfalls": [
+    "Using __dirname inside an ES module (ReferenceError)",
+    "Storing shared state on globalThis"
+   ],
+   "examples": [
+    {
+     "title": "Globals at work",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "console.log(typeof globalThis.process);   // object\nconsole.log(typeof window);               // undefined\nconsole.log(typeof fetch);                // function\nconsole.log(typeof structuredClone);      // function\n\n// CommonJS only:\nconsole.log(__filename);\nconsole.log(__dirname);",
+     "explanation": "Save as a .cjs file to try the last two lines.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Path of the current file in ESM",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// index.mjs\nimport path from 'node:path';\n\nconsole.log(import.meta.dirname);   // Node 20.11+\nconsole.log(import.meta.filename);\nconsole.log(path.join(import.meta.dirname, 'data', 'users.json'));",
+     "explanation": "Always build file paths from the current file, not from process.cwd().",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Are __dirname and require globals?",
+     "a": "No. In CommonJS every file is wrapped in a function that receives exports, require, module, __filename and __dirname as parameters, so they are module-scoped. ES modules do not have them."
+    },
+    {
+     "q": "What is globalThis?",
+     "a": "A standard reference to the global object that works in every JS environment (window in browsers, global in Node, self in workers)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-commonjs-vs-esm",
+   "title": "CommonJS vs ES Modules",
+   "level": "beginner",
+   "summary": "require/module.exports versus import/export: syntax, loading behaviour, interop and how to choose.",
+   "description": "Node supports two module systems.\n\n| | CommonJS (CJS) | ES Modules (ESM) |\n|---|---|---|\n| Syntax | `require()`, `module.exports` | `import`, `export` |\n| Loading | Synchronous | Asynchronous, statically analysed |\n| File types | `.js` (default), `.cjs` | `.mjs`, or `.js` with `\"type\": \"module\"` |\n| Top-level `await` | No | Yes |\n| `__dirname` | Yes | No (use `import.meta.dirname`) |\n| Strict mode | Optional | Always |\n| Live bindings | Copies of values | Live read-only views |\n\n### Enabling ESM\nPut `\"type\": \"module\"` in `package.json`, or name files `.mjs`.\n\n### Interop rules\n* ESM can `import` CommonJS (module.exports becomes the default export)\n* CommonJS `require()` of an ES module is supported in current Node versions (22.12+ and 24) when the module has no top-level `await`; before that you needed `await import()`\n* Dynamic `import('./x.js')` works in both systems and returns a promise\n\n### Which should you pick?\nNew projects: **ESM**. It is the language standard, supports top-level await and tree shaking, and is what browsers use. CommonJS remains everywhere in older code and docs, so you must read both.\n\n### Named vs default\nCJS: `module.exports = { add }`. ESM: `export function add() {}` or `export default`. Mixing `module.exports` and `export` in one file is an error.\n\n### Import specifiers\nESM requires the **file extension** for relative imports (`./utils.js`), unlike many bundlers. Built-ins use the `node:` prefix: `import fs from 'node:fs'`.",
+   "keyPoints": [
+    "CJS: require and module.exports, synchronous; ESM: import and export, async and static",
+    "Enable ESM with \"type\": \"module\" or the .mjs extension",
+    "ESM needs file extensions in relative imports and has no __dirname",
+    "Use dynamic import() to load ESM from CJS (or require(esm) on new Node)",
+    "Prefer ESM for new code"
+   ],
+   "pitfalls": [
+    "Forgetting the .js extension in a relative ESM import",
+    "Using require in a \"type\": \"module\" package (ReferenceError)",
+    "Mixing module.exports and export in one file"
+   ],
+   "examples": [
+    {
+     "title": "Same module in both styles",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- math.cjs (CommonJS) ----\nfunction add(a, b) { return a + b; }\nmodule.exports = { add };\n\n// ---- app.cjs ----\nconst { add } = require('./math.cjs');\nconsole.log(add(2, 3));\n\n// ---- math.mjs (ES module) ----\nexport function add(a, b) { return a + b; }\nexport default function sub(a, b) { return a - b; }\n\n// ---- app.mjs ----\nimport sub, { add } from './math.mjs';\nimport { readFile } from 'node:fs/promises';\nconsole.log(add(2, 3), sub(5, 1));\nconst text = await readFile(new URL('./math.mjs', import.meta.url), 'utf8'); // top-level await\nconsole.log(text.length > 0);",
+     "explanation": "The two files at the top are CommonJS, the two at the bottom use ES modules.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "require vs import: key differences?",
+     "a": "require is a synchronous function evaluated at runtime and returns a copy of module.exports. import is static syntax, resolved before execution, asynchronous, gives live bindings and enables tree shaking and top-level await."
+    },
+    {
+     "q": "How do you use __dirname in ESM?",
+     "a": "Use import.meta.dirname (Node 20.11+), or path.dirname(fileURLToPath(import.meta.url)) on older versions."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-module-resolution",
+   "title": "Module Resolution and Caching",
+   "level": "intermediate",
+   "summary": "How Node resolves relative paths, node_modules names, index files and exports maps, and why modules are cached.",
+   "description": "### Resolution order for `require(x)`\n1. **Core module** (`fs`, `node:path`) always wins\n2. **Relative or absolute path** (`./a`, `../a`, `/a`): try the exact file, then add `.js`, `.json`, `.node`; then treat it as a directory (`package.json` `main`, then `index.js`)\n3. **Bare name** (`lodash`): walk up through every `node_modules` folder\n\n`require.resolve('x')` prints the file that would be loaded without running it.\n\n### The exports map\nModern packages use `\"exports\"` in `package.json` to declare their public entry points. Anything not listed cannot be imported (deep imports like `pkg/lib/internal.js` throw `ERR_PACKAGE_PATH_NOT_EXPORTED`). It also allows conditions:\n\n`{ \"exports\": { \"import\": \"./esm/index.js\", \"require\": \"./cjs/index.cjs\" } }`\n\n### Caching\nA module runs **once**. The result is stored in `require.cache` (CJS) or the module map (ESM); later imports get the same object. This makes modules natural **singletons** (a db connection, a config object).\n\n### Circular dependencies\nIf `a` requires `b` and `b` requires `a`, `b` receives the **partially filled** `exports` of `a`. Symptoms: `undefined` imports. Fix by restructuring, moving shared code to a third module or requiring lazily inside functions.\n\n### ESM differences\nESM does not search extensions or `index.js` for relative imports; you must write full paths. Use `import.meta.resolve()` to resolve a specifier.\n\n### Aliases\nNode supports `\"imports\": { \"#utils/*\": \"./src/utils/*.js\" }` for private aliases starting with `#`.",
+   "keyPoints": [
+    "Core modules first, then relative files, then node_modules walking up",
+    "package.json exports restricts and conditions the public entry points",
+    "Modules are cached, so they behave like singletons",
+    "Circular requires give partially-initialised exports",
+    "The imports field with #aliases avoids long ../../ paths"
+   ],
+   "pitfalls": [
+    "Relying on module-level state when running multiple Node processes (each has its own cache)",
+    "Circular imports producing undefined values"
+   ],
+   "examples": [
+    {
+     "title": "Caching is real",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// counter.js\nlet count = 0;\nmodule.exports = { inc: () => ++count };\n\n// main.js\nconst a = require('./counter');\nconst b = require('./counter');\nconsole.log(a === b);        // true  -> same cached object\na.inc();\nconsole.log(b.inc());        // 2     -> shared state\nconsole.log(require.resolve('./counter'));",
+     "explanation": "Because the file ran only once, both variables reference the same exports object.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does requiring the same module twice not re-run it?",
+     "a": "Node caches the module by resolved filename in require.cache after the first load, so later require calls return the cached exports. This makes modules behave like singletons."
+    },
+    {
+     "q": "What is the package.json exports field for?",
+     "a": "It defines a package's public API: the only paths consumers may import, optionally per condition (import, require, node, default), which prevents deep imports into internals."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-builtin-modules-overview",
+   "title": "Built-in Modules Overview",
+   "level": "beginner",
+   "summary": "A map of the core modules shipped with Node and the node: import prefix.",
+   "description": "Node ships a standard library. You never install these; just import them with the **`node:` prefix** (clear, and avoids clashing with npm packages of the same name).\n\n### Map of the important ones\n| Area | Modules |\n|---|---|\n| Files and paths | `fs`, `fs/promises`, `path`, `os`, `url` |\n| Network | `http`, `https`, `http2`, `net`, `dgram`, `dns`, `tls` |\n| Async tools | `events`, `stream`, `stream/promises`, `timers/promises`, `async_hooks` |\n| Data | `buffer`, `zlib`, `string_decoder`, `querystring` |\n| Security | `crypto` |\n| Processes and threads | `child_process`, `cluster`, `worker_threads`, `process` |\n| Utilities | `util`, `assert`, `readline`, `perf_hooks`, `diagnostics_channel` |\n| Testing and storage | `test` (`node:test`), `sqlite` (`node:sqlite`) |\n| Diagnostics | `inspector`, `v8`, `repl`, `trace_events` |\n\n### How to import\nCommonJS: `const fs = require('node:fs');`\nESM: `import fs from 'node:fs';` or named: `import { readFile } from 'node:fs/promises';`\n\n### Promise versions\nMany callback APIs have promise twins: `node:fs/promises`, `node:timers/promises`, `node:dns/promises`, `node:readline/promises`, `node:stream/promises`. Prefer them with `async/await`.\n\n### Discover more\nIn the REPL, `require('node:module').builtinModules` lists all of them. The official docs at nodejs.org/api document each module with stability markers (Stable, Experimental, Deprecated).\n\n### Stability index\nCheck the stability badge: *Experimental* APIs can change in any release. Avoid them in critical production code unless you pin the Node version.",
+   "keyPoints": [
+    "Core modules need no installation, only an import",
+    "Use the node: prefix for clarity and safety",
+    "Prefer the promise-based variants with async/await",
+    "Check each API's stability index in the docs"
+   ],
+   "pitfalls": [
+    "Installing an npm package with the same name as a core module",
+    "Depending on Experimental APIs without pinning the Node version"
+   ],
+   "examples": [
+    {
+     "title": "List all built-ins",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { builtinModules } from 'node:module';\n\nconst pub = builtinModules.filter((m) => !m.startsWith('_'));\nconsole.log(pub.length, 'public built-in modules');\nconsole.log(pub.slice(0, 8));",
+     "explanation": "The exact count depends on the Node version.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why import with the node: prefix?",
+     "a": "It makes it explicit that the module is built in, prevents a malicious or accidental npm package from shadowing it, and some newer modules (like node:test and node:sqlite) are only available with the prefix."
+    },
+    {
+     "q": "Name five core modules and what they do.",
+     "a": "fs reads and writes files, path handles file paths, http creates servers and clients, events provides EventEmitter, crypto offers hashing and encryption; also stream, os, util, child_process."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

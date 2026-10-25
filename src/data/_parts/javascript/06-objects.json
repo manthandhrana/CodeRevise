@@ -1,0 +1,301 @@
+{
+  "id": "js-objects",
+  "title": "Objects and Collections",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-object-basics",
+      "title": "Objects: Creating, Accessing and Methods",
+      "level": "beginner",
+      "summary": "Objects store related data as key-value pairs and can hold functions as methods.",
+      "description": "An **object** is a collection of key-value pairs (properties). Keys are strings or symbols; values can be anything, including functions (**methods**) and other objects.\n\n### Creating\n```js\nconst person = {\n  name: \"Vinod\",\n  age: 30,\n  \"is-student\": false,       // quotes needed for odd names\n  greet() { return `Hi ${this.name}`; },  // method shorthand\n};\n```\nOther ways: `new Object()`, `Object.create(proto)`, constructor functions and classes.\n\n### Accessing\n- Dot notation: `person.name`.\n- Bracket notation: `person[\"is-student\"]` or `person[key]` when the key is dynamic.\n\n### Add, update, delete, check\n```js\nperson.job = \"dev\";       // add\nperson.age = 31;          // update\ndelete person.job;        // delete\n\"age\" in person;          // true (also inherited keys)\nObject.hasOwn(person, \"age\"); // true (own keys only)\n```\n\n### Shorthand and computed keys (ES2015)\n```js\nconst name = \"Asha\", age = 25;\nconst user = { name, age };          // shorthand properties\nconst field = \"email\";\nconst form = { [field]: \"a@b.com\" }; // computed key\n```\n\n### Methods and this\nInside a method `this` points to the object that called it (see the `this` topic). Do not use arrow functions for methods that need `this`.\n\n### Data modelling\nObjects model real things - a car, user or product - with properties for data and methods for behaviour. Arrays of objects are the most common data shape from APIs.",
+      "keyPoints": [
+        "Key-value pairs; keys are strings or symbols",
+        "Dot vs bracket notation (bracket for dynamic or odd keys)",
+        "Shorthand properties and computed keys from ES2015",
+        "delete removes a property; in/hasOwn check existence",
+        "Methods use this to reach the object"
+      ],
+      "pitfalls": [
+        "Using an arrow function as a method breaks this",
+        "Property order: integer-like keys are sorted first",
+        "Accessing a missing property gives undefined, not an error"
+      ],
+      "examples": [
+        {
+          "title": "Create, read and update",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const idType = \"studentId\";\nconst student = {\n  [idType]: \"A123456\",\n  sName: \"Vinod\",\n  sAge: 29,\n  greet() {\n    console.log(`Hey, my ${idType} is ${this[idType]} and my name is ${this.sName}.`);\n  },\n};\nstudent.greet();\nstudent.job = \"web dev\";\nstudent[\"sAge\"] = 30;\ndelete student.greet;\nconsole.log(student);\nconsole.log(\"job\" in student, Object.hasOwn(student, \"toString\"), \"toString\" in student);\nconsole.log(student.missing, student.missing?.deep);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How can you add a dynamic key to an object?",
+          "a": "Use computed property names in the literal ({ [key]: value }) or bracket notation (obj[key] = value)."
+        },
+        {
+          "q": "Dot notation vs bracket notation?",
+          "a": "Dot notation needs a valid identifier name. Bracket notation accepts any string, including variables, spaces and special characters."
+        },
+        {
+          "q": "How do you check if a property exists?",
+          "a": "Use \"key\" in obj (includes inherited), Object.hasOwn(obj, key) for own properties, or obj.key !== undefined when undefined is not a valid value."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-object-methods",
+      "title": "Object.keys, values, entries, assign and friends",
+      "level": "intermediate",
+      "summary": "The Object static methods let you iterate, merge, transform and inspect objects.",
+      "description": "### Inspecting\n- `Object.keys(obj)` - array of own enumerable **keys**.\n- `Object.values(obj)` - array of **values**.\n- `Object.entries(obj)` - array of `[key, value]` pairs.\n- `Object.hasOwn(obj, key)` (ES2022) - modern replacement for `obj.hasOwnProperty(key)`.\n\n### Transforming\n`Object.fromEntries(entries)` (ES2019) is the reverse of `entries`. Together they let you \"map\" an object:\n\n```js\nconst prices = { a: 10, b: 20 };\nObject.fromEntries(Object.entries(prices).map(([k, v]) => [k, v * 2]));\n// { a: 20, b: 40 }\n```\n\n### Merging and copying\n- `Object.assign(target, ...sources)` - copies own enumerable props **into target** (mutates target).\n- Spread `{ ...a, ...b }` - creates a new object; later keys win.\n\n### Grouping (ES2024)\n`Object.groupBy(items, (x) => x.category)` returns an object of arrays.\n\n### Creating with prototype\n- `Object.create(proto)` and `Object.create(null)` (no prototype - a clean dictionary).\n- `Object.getPrototypeOf`, `Object.setPrototypeOf`.\n\n### Iteration order\nInteger-like keys ascending first, then string keys in insertion order, then symbols.\n\n### Why hasOwn\n`Object.create(null)` objects have no `hasOwnProperty` method, so `Object.hasOwn(obj, key)` is safer.",
+      "keyPoints": [
+        "keys/values/entries return arrays for easy looping",
+        "fromEntries turns entries back into an object",
+        "assign mutates the target, spread creates a new object",
+        "Object.hasOwn is the safe own-property check",
+        "Object.groupBy groups an array by a key (ES2024)"
+      ],
+      "pitfalls": [
+        "Object.assign and spread are shallow copies",
+        "Object.keys ignores symbols and non-enumerable properties",
+        "Using the same target object in assign changes it permanently"
+      ],
+      "examples": [
+        {
+          "title": "Iterate, transform and merge",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const product = { id: 1, name: \"Laptop\", price: 999.99, stock: 50 };\nconsole.log(Object.keys(product));\nconsole.log(Object.values(product));\nconsole.log(Object.entries(product));\n\nfor (const [key, value] of Object.entries(product)) console.log(`${key} -> ${value}`);\n\nconst discounted = Object.fromEntries(\n  Object.entries(product).map(([k, v]) => [k, typeof v === \"number\" ? v * 0.9 : v])\n);\nconsole.log(discounted);\n\nconst target = { a: 1, b: 2 }, source = { b: 3, c: 4 };\nconsole.log(Object.assign({}, target, source), { ...target, ...source });\n\nconst dict = Object.create(null);\ndict.name = \"vinod\";\nconsole.log(Object.hasOwn(dict, \"name\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does Object.entries return?",
+          "a": "An array of [key, value] pairs for the object's own enumerable string-keyed properties."
+        },
+        {
+          "q": "Output of Object.assign({}, {a:1,b:2}, {b:3,c:4})?",
+          "a": "{ a: 1, b: 3, c: 4 }. Later sources overwrite earlier keys with the same name."
+        },
+        {
+          "q": "Why use Object.hasOwn instead of hasOwnProperty?",
+          "a": "It works on objects without a prototype (Object.create(null)) and cannot be shadowed by an own property called hasOwnProperty."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js, JS-one-shot/ecmascripts/es2019.js, JS-one-shot/ecmascripts/es2022.js"
+    },
+    {
+      "id": "js-reference-copy",
+      "title": "Value vs Reference, Shallow and Deep Copy",
+      "level": "intermediate",
+      "summary": "Primitives are copied by value, objects by reference; know how to make shallow and deep copies.",
+      "description": "### Primitives: copied by value\n```js\nlet a = 10;\nlet b = a;   // independent copy\nb = 20;      // a is still 10\n```\n\n### Objects and arrays: copied by reference\nA variable stores a **reference** (address) to the object in the heap. Assigning copies the reference, so both names point to the same object:\n```js\nconst obj = { name: \"kody\" };\nconst obj1 = obj;\nobj1.name = \"thapa\";\nobj.name; // \"thapa\"\n```\n\n### Passing to functions\nJavaScript is always pass-by-value, but for objects the value is the reference. A function can **mutate** the caller's object, but re-assigning the parameter does not affect the caller.\n\n### Comparison\n`{} === {}` is `false`. Two objects are equal only if they are the same reference.\n\n### Shallow copy\nCopies the top level only; nested objects are still shared.\n- `{ ...obj }`, `Object.assign({}, obj)`\n- `[...arr]`, `arr.slice()`\n\n### Deep copy\n- `structuredClone(obj)` - built-in (handles Date, Map, Set, cycles; not functions).\n- `JSON.parse(JSON.stringify(obj))` - quick but loses `undefined`, functions, Dates (become strings), Map/Set.\n- Libraries like lodash `cloneDeep`.\n\n### Deep equality\nNo built-in operator. Compare recursively, or `JSON.stringify` for simple cases (key order matters).",
+      "keyPoints": [
+        "Primitives copy by value, objects by reference",
+        "Spread and Object.assign make shallow copies",
+        "structuredClone makes a deep copy",
+        "=== on objects checks identity, not content",
+        "Functions can mutate objects passed in"
+      ],
+      "pitfalls": [
+        "Spread on nested data still shares inner objects",
+        "JSON clone drops functions, undefined and turns Dates into strings",
+        "const does not stop an object from being mutated"
+      ],
+      "examples": [
+        {
+          "title": "Reference, shallow and deep copy",
+          "language": "javascript",
+          "explanation": "",
+          "code": "let a = 10, b = a; b = 20;\nconsole.log(a, b);\n\nconst original = { id: 5, name: \"kody\", tags: [\"js\"], meta: { views: 1 } };\nconst ref = original;\nconst shallow = { ...original };\nconst deep = structuredClone(original);\n\nref.name = \"changed\";\nshallow.meta.views = 99;\ndeep.tags.push(\"deep-only\");\n\nconsole.log(original.name, original.meta.views, original.tags);\nconsole.log(deep.tags, shallow === original, ref === original);\n\nfunction change(o) { o.x = 1; o = { replaced: true }; }\nconst target = {};\nchange(target);\nconsole.log(target);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Is JavaScript pass by value or pass by reference?",
+          "a": "Always pass by value. For objects, the value passed is a copy of the reference, so mutations are visible to the caller but reassigning the parameter is not."
+        },
+        {
+          "q": "Difference between shallow and deep copy?",
+          "a": "A shallow copy duplicates only the top level and nested objects remain shared. A deep copy duplicates every nested level."
+        },
+        {
+          "q": "How do you deep clone an object?",
+          "a": "structuredClone(obj) in modern environments, or JSON.parse(JSON.stringify(obj)) for simple JSON-safe data, or a library function."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-property-descriptors-freeze",
+      "title": "Property Descriptors, freeze and seal",
+      "level": "advanced",
+      "summary": "Control whether properties can be changed, listed or deleted using descriptors, freeze and seal.",
+      "description": "Each property has hidden **attributes** described by a *property descriptor*:\n\n| Attribute | Meaning | Default (literal) |\n|---|---|---|\n| `value` | the stored value | - |\n| `writable` | can be changed | `true` |\n| `enumerable` | appears in loops and `Object.keys` | `true` |\n| `configurable` | can be deleted / redefined | `true` |\n\nAccessor properties use `get` and `set` instead of `value`/`writable`.\n\n### Reading and defining\n```js\nObject.getOwnPropertyDescriptor(obj, \"id\");\nObject.defineProperty(obj, \"id\", { value: 1, writable: false, enumerable: false });\n```\nProperties added with `defineProperty` default to `false` for all three flags.\n\n### Locking objects\n| Method | Add | Delete | Change values |\n|---|---|---|---|\n| `Object.preventExtensions(o)` | no | yes | yes |\n| `Object.seal(o)` | no | no | yes |\n| `Object.freeze(o)` | no | no | no |\n\nCheck with `Object.isFrozen`, `Object.isSealed`, `Object.isExtensible`.\n\n### Important details\n- `freeze` is **shallow**; nested objects stay mutable. Write a recursive `deepFreeze` if needed.\n- In sloppy mode writes to frozen objects fail **silently**; in strict mode (modules, classes) they throw a `TypeError`.\n- Getters and setters via `get`/`set` in literals or classes allow computed or validated properties.\n\n### Use cases\nConstants, configuration objects, enums (`Object.freeze({ UP: \"UP\" })`), hiding internals, library APIs and immutable state in Redux-style code.",
+      "keyPoints": [
+        "Descriptor flags: writable, enumerable, configurable",
+        "defineProperty defaults all flags to false",
+        "freeze = no add, delete or change; seal allows changes",
+        "freeze is shallow",
+        "Strict mode throws errors where sloppy mode silently ignores"
+      ],
+      "pitfalls": [
+        "Assuming Object.freeze makes nested data immutable",
+        "Silent failure in non-strict code hides bugs",
+        "Frozen objects cannot be unfrozen"
+      ],
+      "examples": [
+        {
+          "title": "freeze, seal and defineProperty",
+          "language": "javascript",
+          "explanation": "",
+          "code": "(function () {\n\"use strict\";\nconst config = Object.freeze({ api: \"/v1\", nested: { retries: 3 } });\ntry { config.api = \"/v2\"; } catch (e) { console.log(\"freeze:\", e.constructor.name); }\nconfig.nested.retries = 5;           // shallow - still allowed\nconsole.log(config.nested.retries, Object.isFrozen(config));\n\nconst sealed = Object.seal({ a: 1 });\nsealed.a = 2;\ntry { delete sealed.a; } catch (e) { console.log(\"seal:\", e.constructor.name); }\nconsole.log(sealed);\n\nconst user = {};\nObject.defineProperty(user, \"id\", { value: 7, enumerable: false });\nObject.defineProperty(user, \"name\", { value: \"Asha\", enumerable: true });\nconsole.log(Object.keys(user), user.id);\nconsole.log(Object.getOwnPropertyDescriptor(user, \"id\"));\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between Object.freeze and Object.seal?",
+          "a": "freeze makes properties read-only and prevents adding or deleting. seal prevents adding and deleting but still allows changing existing values."
+        },
+        {
+          "q": "Is Object.freeze deep?",
+          "a": "No. It only freezes the top level; nested objects can still be modified unless frozen recursively."
+        },
+        {
+          "q": "What do writable, enumerable and configurable mean?",
+          "a": "writable allows value changes, enumerable shows the property in loops and Object.keys, configurable allows deleting or redefining the property."
+        }
+      ],
+      "source": "JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-json",
+      "title": "JSON: stringify and parse",
+      "level": "beginner",
+      "summary": "JSON is a text format for data exchange; convert with JSON.stringify and JSON.parse.",
+      "description": "**JSON** (JavaScript Object Notation) is a lightweight text format used to exchange data between server and client and to store it as text (localStorage, files).\n\n### Rules of JSON\n- Keys must be in **double quotes**.\n- Strings use double quotes only.\n- Allowed values: object, array, string, number, `true`, `false`, `null`.\n- No comments, no trailing commas, no `undefined`, no functions.\n\n### JSON.stringify(value, replacer, space)\nConverts a JavaScript value to a JSON string.\n```js\nJSON.stringify({ name: \"Vinod\", age: 30 });          // '{\"name\":\"Vinod\",\"age\":30}'\nJSON.stringify(data, null, 2);                        // pretty printed\nJSON.stringify(user, [\"name\"]);                       // only chosen keys\n```\n- `undefined`, functions and symbols are **skipped** in objects (become `null` in arrays).\n- `Date` becomes an ISO string. `NaN` and `Infinity` become `null`.\n- Objects can define `toJSON()` to customise output.\n- Circular references throw a `TypeError`.\n\n### JSON.parse(text, reviver)\nConverts JSON text back to a value. Invalid JSON throws a `SyntaxError`, so wrap in `try...catch`. A **reviver** function can transform values (for example turn date strings back into `Date`).\n\n### Typical uses\n- `fetch().then(r => r.json())` calls `JSON.parse` for you.\n- Storing objects in `localStorage`.\n- Quick deep copy for simple data.\n- Sending a request body: `body: JSON.stringify(payload)`.",
+      "keyPoints": [
+        "stringify: value to JSON text; parse: text to value",
+        "JSON has no undefined, functions, comments or single quotes",
+        "Always wrap JSON.parse of external data in try/catch",
+        "localStorage only stores strings, so stringify objects",
+        "toJSON and replacer customise the output"
+      ],
+      "pitfalls": [
+        "Dates are stringified and not restored automatically",
+        "Circular objects cannot be stringified",
+        "Single-quoted or unquoted keys make JSON.parse throw"
+      ],
+      "examples": [
+        {
+          "title": "Round trip and edge cases",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const data = { name: \"Vinod\", age: 30, city: \"pune\", skip: undefined, fn() {}, joined: new Date(0) };\nconst json = JSON.stringify(data);\nconsole.log(json);\nconsole.log(JSON.stringify([undefined, function () {}, NaN]));\nconsole.log(JSON.stringify({ a: 1, b: [1, 2] }, null, 2));\n\nconst parsed = JSON.parse('{\"name\":\"Vinod\",\"age\":30,\"city\":\"pune\"}');\nconsole.log(parsed.name, typeof parsed);\n\ntry {\n  JSON.parse(\"{'bad': 'json'}\");\n} catch (e) {\n  console.log(e.name);\n}\nconsole.log(JSON.parse('{\"d\":\"2024-01-01\"}', (k, v) => (k === \"d\" ? new Date(v).getUTCFullYear() : v)));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between JSON and a JavaScript object?",
+          "a": "JSON is a text format with strict syntax (double-quoted keys and strings, no functions or undefined). A JavaScript object is a live in-memory value."
+        },
+        {
+          "q": "What happens to undefined and functions in JSON.stringify?",
+          "a": "They are omitted from objects and replaced by null inside arrays."
+        },
+        {
+          "q": "How do you store an object in localStorage?",
+          "a": "localStorage.setItem(key, JSON.stringify(obj)) and read it back with JSON.parse(localStorage.getItem(key))."
+        }
+      ],
+      "source": "JS-one-shot/10_localstorage.js, JS-one-shot/objects/index.js"
+    },
+    {
+      "id": "js-map-set",
+      "title": "Map and Set",
+      "level": "intermediate",
+      "summary": "Map stores key-value pairs with any key type; Set stores unique values.",
+      "description": "### Map\nA **Map** holds key-value pairs where keys can be **any type** (objects, functions, numbers) and insertion order is preserved.\n\n```js\nconst m = new Map();\nm.set(\"a\", 1).set({ id: 1 }, \"obj\");\nm.get(\"a\");     // 1\nm.has(\"a\");     // true\nm.delete(\"a\");\nm.size;         // number of entries\nfor (const [k, v] of m) {}\n```\n\nWhy Map instead of a plain object?\n| | Object | Map |\n|---|---|---|\n| Key types | string / symbol | anything |\n| Order | mostly insertion | insertion |\n| Size | `Object.keys(o).length` | `map.size` |\n| Prototype keys | yes (`toString`) | none |\n| Performance for frequent add/delete | ok | better |\n\n### Set\nA **Set** stores **unique values** of any type.\n```js\nconst s = new Set([1, 2, 2, 3]); // {1, 2, 3}\ns.add(4); s.has(2); s.delete(1); s.size;\n```\nUse it to remove duplicates (`[...new Set(arr)]`) and for fast membership checks.\n\n### Converting\n`new Map(Object.entries(obj))`, `Object.fromEntries(map)`, `[...map.keys()]`, `Array.from(set)`.\n\n### Equality\nSet and Map use **SameValueZero**: `NaN` equals `NaN`, but two different objects are different even if their content matches.\n\n### Set operations (new in 2024-2025)\n`union`, `intersection`, `difference`, `symmetricDifference`, `isSubsetOf` exist in the latest engines. Otherwise use filter.",
+      "keyPoints": [
+        "Map: any key type, ordered, has size",
+        "Set: unique values, fast has()",
+        "Iterate with for...of or forEach",
+        "Convert between arrays/objects and Map/Set easily",
+        "Objects as keys are compared by reference"
+      ],
+      "pitfalls": [
+        "map[key] = value on a Map does not store an entry",
+        "Two equal-looking objects are two different Set members",
+        "JSON.stringify(map) gives {}"
+      ],
+      "examples": [
+        {
+          "title": "Count words with a Map and dedupe with a Set",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const words = \"to be or not to be\".split(\" \");\nconst counts = new Map();\nfor (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);\nconsole.log(counts, counts.size);\nconsole.log([...counts].sort((a, b) => b[1] - a[1])[0]);\n\nconst unique = new Set([1, 2, 2, 3, NaN, NaN]);\nconsole.log(unique, unique.has(NaN), unique.size);\n\nconst objKey = { id: 1 };\nconst registry = new Map([[objKey, \"first\"]]);\nconsole.log(registry.get(objKey), registry.get({ id: 1 }));\nconsole.log(Object.fromEntries(counts));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between Map and Object?",
+          "a": "Map accepts any type as key, keeps insertion order, has a size property and no inherited keys. Object keys are strings or symbols and inherit from Object.prototype."
+        },
+        {
+          "q": "How do you remove duplicates from an array?",
+          "a": "[...new Set(array)]."
+        },
+        {
+          "q": "How does Set compare values?",
+          "a": "With SameValueZero: primitives by value (NaN equals NaN) and objects by reference."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-weak-symbol-bigint",
+      "title": "WeakMap, WeakSet, Symbol and BigInt",
+      "level": "advanced",
+      "summary": "Weak collections allow garbage collection, symbols create unique keys and BigInt handles huge integers.",
+      "description": "### WeakMap and WeakSet\n- Keys (WeakMap) / values (WeakSet) must be **objects**.\n- References are **weak**: if nothing else references the object, it can be garbage collected and its entry disappears.\n- Not iterable and have no `size` - you cannot list entries.\n\n```js\nconst privateData = new WeakMap();\nclass User { constructor(n) { privateData.set(this, { n }); } }\n```\nUse cases: private data for objects, caching computed results per object, tracking DOM nodes without memory leaks.\n\n### Symbol\nA **Symbol** is a unique, immutable primitive often used as a hidden property key.\n```js\nconst id = Symbol(\"id\");\nconst user = { name: \"A\", [id]: 123 };\n```\n- `Symbol(\"x\") !== Symbol(\"x\")`.\n- Symbol keys are skipped by `for...in`, `Object.keys` and `JSON.stringify`.\n- `Symbol.for(\"key\")` creates/reads a global registry symbol.\n- `symbol.description` (ES2019) returns the text.\n- **Well-known symbols** customise behaviour: `Symbol.iterator`, `Symbol.toPrimitive`, `Symbol.asyncIterator`, `Symbol.hasInstance`.\n\n### BigInt\nIntegers of arbitrary size, written with `n`: `123456789012345678901234567890n`.\n```js\nBigInt(Number.MAX_SAFE_INTEGER) + 10n;\n```\nYou cannot mix BigInt and Number in arithmetic (`1n + 1` throws), and `Math` functions do not accept BigInt. Use it for big IDs, factorials and cryptography.",
+      "keyPoints": [
+        "WeakMap/WeakSet hold objects weakly and are not iterable",
+        "Symbols are unique primitive keys, hidden from normal enumeration",
+        "Symbol.iterator makes an object iterable",
+        "BigInt: whole numbers of any size, written with n",
+        "BigInt and Number cannot be mixed directly"
+      ],
+      "pitfalls": [
+        "You cannot loop or get the size of a WeakMap",
+        "JSON.stringify throws on BigInt values",
+        "Two Symbol(\"same\") values are not equal"
+      ],
+      "examples": [
+        {
+          "title": "Symbol, WeakMap and BigInt",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const id = Symbol(\"id\");\nconst user = { name: \"Asha\", [id]: 42 };\nconsole.log(Object.keys(user), user[id], id.description);\nconsole.log(Symbol(\"a\") === Symbol(\"a\"), Symbol.for(\"a\") === Symbol.for(\"a\"));\n\nconst secrets = new WeakMap();\nlet obj = { label: \"temp\" };\nsecrets.set(obj, \"hidden value\");\nconsole.log(secrets.get(obj), secrets.has({}));\n\nconst big = BigInt(Number.MAX_SAFE_INTEGER) + 10n;\nconsole.log(big, typeof big);\ntry { console.log(1n + 1); } catch (e) { console.log(e.name); }\nconsole.log(2n ** 100n);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between Map and WeakMap?",
+          "a": "WeakMap keys must be objects and are held weakly, so entries are garbage collected when the key is unreachable. WeakMap is not iterable and has no size."
+        },
+        {
+          "q": "Why use Symbols as property keys?",
+          "a": "They are unique, so they avoid name collisions and are not exposed by normal enumeration, which makes them suitable for metadata and protocols like Symbol.iterator."
+        },
+        {
+          "q": "When do you need BigInt?",
+          "a": "When integers exceed Number.MAX_SAFE_INTEGER (2^53 - 1), such as large IDs, timestamps in nanoseconds or cryptographic calculations."
+        }
+      ],
+      "source": "JS-one-shot/1_datatypes.js, JS-one-shot/ecmascripts/es2019.js, JS-one-shot/ecmascripts/es2020.js"
+    }
+  ]
+}

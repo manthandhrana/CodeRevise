@@ -1,0 +1,382 @@
+{
+ "id": "express-production",
+ "title": "Architecture, Testing and Production",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "express-mvc-config",
+   "title": "MVC, Folder Structure, Config and Environments",
+   "level": "intermediate",
+   "summary": "Organise code into routes, controllers, services and models, centralise config, and keep one codebase for dev, test and production.",
+   "description": "A single `index.js` works for demos; real APIs need structure so teams can find and change code safely.\n\n### Layers (separation of concerns)\n| Layer | Responsibility |\n|---|---|\n| **Routes** | map URL + method to a controller; attach middleware (auth, validation) |\n| **Controllers** | read `req`, call a service, shape the `res` - no business rules |\n| **Services** | business logic, orchestration, transactions - no `req`/`res` |\n| **Models / repositories** | database access and schemas |\n| **Middleware** | cross-cutting concerns (auth, errors, logging) |\n| **Utils / config** | helpers, env loading, constants |\n\nThis is **MVC** adapted for APIs: the \"view\" is simply the JSON response.\n\n### Recommended folder layout\nTwo common styles: **by type** (`controllers/`, `models/`, `routes/`) for small apps, and **by feature** (`modules/users/{user.routes.js, user.controller.js, user.service.js, user.model.js}`) for larger ones - everything about a feature lives together.\n\n### Config module\nRead `process.env` in **one** file, validate it, export a frozen object, and import `config` everywhere else. Do not scatter `process.env.X` through the code.\n\n### Environments\nUse `NODE_ENV` (`development`, `test`, `production`) and separate env files or platform variables per stage: different database URIs, secrets, log levels and CORS origins. Always set `NODE_ENV=production` in production: Express then caches views and error handling is leaner.\n\n### Dependency direction\nRoutes -> controllers -> services -> models. Lower layers never import upper layers.",
+   "keyPoints": [
+    "Routes -> controllers -> services -> models; no skipping or reverse imports",
+    "Controllers handle HTTP only; services hold business rules",
+    "Organise by feature as the app grows",
+    "One validated config module; no scattered `process.env`",
+    "`NODE_ENV` + per-stage variables for dev/test/prod"
+   ],
+   "pitfalls": [
+    "Fat controllers with database queries and business logic",
+    "Services that depend on `req`/`res` (cannot be reused or tested)",
+    "Same `.env` used for every stage or secrets committed per stage"
+   ],
+   "examples": [
+    {
+     "title": "Folder structure",
+     "language": "text",
+     "lang": "bash",
+     "code": "my-api/\n├── src/\n│   ├── app.js                 # express app (no listen)\n│   ├── server.js              # connects DB, calls listen, handles shutdown\n│   ├── config/\n│   │   ├── index.js           # validated env -> config object\n│   │   └── db.js\n│   ├── modules/\n│   │   ├── users/\n│   │   │   ├── user.model.js\n│   │   │   ├── user.service.js\n│   │   │   ├── user.controller.js\n│   │   │   ├── user.routes.js\n│   │   │   └── user.schema.js # zod schemas\n│   │   └── orders/ ...\n│   ├── middleware/\n│   │   ├── auth.js\n│   │   ├── errorHandler.js\n│   │   └── validate.js\n│   └── utils/\n│       ├── AppError.js\n│       └── logger.js\n├── tests/\n├── .env.example\n├── Dockerfile\n└── package.json",
+     "explanation": ""
+    },
+    {
+     "title": "Layers in code",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/modules/users/user.routes.js\nimport { Router } from 'express'\nimport { protect } from '../../middleware/auth.js'\nimport { validate } from '../../middleware/validate.js'\nimport { createUserSchema } from './user.schema.js'\nimport * as controller from './user.controller.js'\n\nconst router = Router()\nrouter.post('/', validate({ body: createUserSchema }), controller.create)\nrouter.get('/me', protect, controller.me)\nexport default router\n\n// ## src/modules/users/user.controller.js\nimport * as userService from './user.service.js'\n\nexport const create = async (req, res) => {\n  const user = await userService.register(req.validated.body)\n  res.status(201).json({ data: user })\n}\nexport const me = async (req, res) => {\n  res.json({ data: await userService.getById(req.user.id) })\n}\n\n// ## src/modules/users/user.service.js\nimport User from './user.model.js'\nimport { AppError } from '../../utils/AppError.js'\n\nexport async function register({ name, email, password }) {\n  if (await User.exists({ email })) throw new AppError('Email already registered', 409)\n  const user = await User.create({ name, email, password })\n  return { id: user.id, name: user.name, email: user.email }\n}\n\nexport async function getById(id) {\n  const user = await User.findById(id).lean()\n  if (!user) throw new AppError('User not found', 404)\n  return user\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why separate controllers and services?",
+     "a": "Controllers translate HTTP; services hold reusable business logic without req/res, which makes it easy to test and reuse from jobs, scripts or other transports."
+    },
+    {
+     "q": "Why centralise process.env access in a config module?",
+     "a": "It validates required variables once at startup, gives typed defaults, and avoids hidden dependencies on environment variables across the code base."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-logging-monitoring",
+   "title": "Logging with morgan and pino, Health and Monitoring",
+   "level": "intermediate",
+   "summary": "Log HTTP requests and application events as structured JSON, correlate them with request ids and expose health checks.",
+   "description": "You cannot fix what you cannot see. Production needs useful, safe logs and basic monitoring.\n\n### HTTP request logs: morgan\n`morgan('dev')` prints a coloured line per request in development; `morgan('combined')` writes Apache-style access logs. It is a middleware that logs method, URL, status and response time.\n\n### Structured application logs: pino\n`console.log` is unstructured and slow. **pino** is a very fast JSON logger with levels (`trace`, `debug`, `info`, `warn`, `error`, `fatal`). JSON lines can be searched and aggregated by Datadog, Loki, CloudWatch or ELK. **pino-http** logs every request as JSON and attaches `req.log`, a child logger that includes the request id. In development use `pino-pretty` for readable output.\n\n### What to log\n- Requests (method, path, status, duration), errors with stack traces, auth events (login failures), slow queries, job runs.\n- **Never log**: passwords, tokens, full card data, whole request bodies. Use pino's `redact` option for paths such as `req.headers.authorization`.\n\n### Request id\nGenerate or accept `X-Request-Id`, attach it to every log line and return it in the response, so a user report can be traced across services.\n\n### Health checks\n`GET /health` (liveness: process is up) and `GET /ready` (readiness: DB reachable). Load balancers and Kubernetes use them to route traffic and restart pods.\n\n### Monitoring\nTrack error rate, latency percentiles, memory and CPU. Tools: Sentry (exceptions), Prometheus + Grafana (`prom-client` metrics), Datadog/New Relic (APM), uptime monitors (UptimeRobot, Better Stack).",
+   "keyPoints": [
+    "morgan = HTTP access log; pino = fast structured JSON app logger",
+    "Redact secrets; never log passwords or tokens",
+    "Request ids tie together all log lines of one request",
+    "Provide `/health` (liveness) and `/ready` (readiness) endpoints",
+    "Use Sentry or APM for errors and performance"
+   ],
+   "pitfalls": [
+    "`console.log` everywhere in production (no levels, no structure)",
+    "Logging request bodies with credentials",
+    "Health check that always returns OK even if the database is down"
+   ],
+   "examples": [
+    {
+     "title": "pino-http, request id and health checks",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/utils/logger.js\nimport pino from 'pino'\n\nexport const logger = pino({\n  level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),\n  redact: ['req.headers.authorization', 'req.headers.cookie', 'password', '*.password'],\n  transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },\n})\n\n// ## src/app.js\nimport express from 'express'\nimport crypto from 'node:crypto'\nimport pinoHttp from 'pino-http'\nimport mongoose from 'mongoose'\nimport { logger } from './utils/logger.js'\n\nconst app = express()\n\napp.use(pinoHttp({\n  logger,\n  genReqId: (req, res) => {\n    const id = req.get('x-request-id') ?? crypto.randomUUID()\n    res.setHeader('X-Request-Id', id)\n    return id\n  },\n  customLogLevel: (req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),\n}))\n\napp.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }))\n\napp.get('/ready', (req, res) => {\n  const dbUp = mongoose.connection.readyState === 1\n  res.status(dbUp ? 200 : 503).json({ db: dbUp ? 'up' : 'down' })\n})\n\napp.get('/orders', (req, res) => {\n  req.log.info({ userId: 42 }, 'listing orders')       // includes the request id automatically\n  res.json([])\n})\n\nexport default app",
+     "explanation": ""
+    },
+    {
+     "title": "morgan for development",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import morgan from 'morgan'\n\nif (process.env.NODE_ENV !== 'production') {\n  app.use(morgan('dev'))\n}\n// GET /api/products 200 12.431 ms - 1523",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use structured (JSON) logging?",
+     "a": "JSON logs are machine-searchable and aggregatable (by level, request id, user), unlike free-text console output."
+    },
+    {
+     "q": "Liveness vs readiness probes?",
+     "a": "Liveness tells the orchestrator the process is alive (restart if not); readiness says it can serve traffic (dependencies like the DB are reachable), so load balancers route only to ready instances."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-swagger",
+   "title": "API Docs with Swagger / OpenAPI",
+   "level": "intermediate",
+   "summary": "Describe endpoints with OpenAPI and serve an interactive Swagger UI so frontend developers can explore and test the API.",
+   "description": "**OpenAPI** (formerly Swagger) is a standard, language-neutral format (YAML/JSON) describing an API: paths, parameters, request/response schemas, auth. **Swagger UI** renders it as an interactive page where you can click \"Try it out\".\n\n### Why\n- Frontend and mobile developers get an always-current contract.\n- Clients and tests can be generated from the spec.\n- It doubles as living documentation and design review material.\n\n### Two ways to produce the spec\n1. **Code-first**: write JSDoc comments (`@openapi` blocks) above routes and let **swagger-jsdoc** collect them.\n2. **Spec-first**: maintain `openapi.yaml` manually (or generate from Zod schemas with libraries such as `zod-to-openapi`) and load it.\n\n### Serving it\n`swagger-ui-express` mounts the UI: `app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(spec))`. Often exposed only in development/staging, or behind authentication in production.\n\n### Describe\n- `servers` (base URL), `components.securitySchemes` (Bearer JWT), `components.schemas` (reusable models like `User`, `Error`), each operation's `summary`, `tags`, `parameters`, `requestBody`, `responses` (200, 400, 401, 404).\n- Add `security: [{ bearerAuth: [] }]` to protected routes so the \"Authorize\" button works.\n\n### Tip\nKeep docs close to the route code (or generated from the same schemas) so they do not drift.",
+   "keyPoints": [
+    "OpenAPI = standard contract; Swagger UI = interactive docs",
+    "swagger-jsdoc (code-first) or a hand-written spec (spec-first)",
+    "Mount UI with `swagger-ui-express` on `/api-docs`",
+    "Define reusable `components.schemas` and `securitySchemes`",
+    "Protect or disable docs in production if the API is private"
+   ],
+   "pitfalls": [
+    "Docs drifting from the code because they are written by hand and forgotten",
+    "Exposing internal-only endpoints in public docs",
+    "Missing `security` on protected operations, so \"Try it out\" always gets 401"
+   ],
+   "examples": [
+    {
+     "title": "swagger-jsdoc + swagger-ui-express",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/docs/swagger.js\nimport swaggerJsdoc from 'swagger-jsdoc'\n\nexport const spec = swaggerJsdoc({\n  definition: {\n    openapi: '3.0.3',\n    info: { title: 'Tasks API', version: '1.0.0', description: 'Simple task manager' },\n    servers: [{ url: 'http://localhost:3000/api/v1' }],\n    components: {\n      securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },\n      schemas: {\n        Task: {\n          type: 'object',\n          properties: { id: { type: 'string' }, title: { type: 'string' }, done: { type: 'boolean' } },\n        },\n      },\n    },\n  },\n  apis: ['./src/routes/*.js'],              // files containing @openapi comments\n})\n\n// ## src/routes/tasks.js\nimport { Router } from 'express'\nconst router = Router()\n\n/**\n * @openapi\n * /tasks:\n *   get:\n *     tags: [Tasks]\n *     summary: List tasks\n *     security:\n *       - bearerAuth: []\n *     parameters:\n *       - in: query\n *         name: done\n *         schema: { type: boolean }\n *     responses:\n *       200:\n *         description: Array of tasks\n *         content:\n *           application/json:\n *             schema:\n *               type: array\n *               items: { $ref: '#/components/schemas/Task' }\n *       401:\n *         description: Not authenticated\n */\nrouter.get('/tasks', (req, res) => res.json([]))\n\nexport default router\n\n// ## src/app.js\nimport express from 'express'\nimport swaggerUi from 'swagger-ui-express'\nimport { spec } from './docs/swagger.js'\nimport tasks from './routes/tasks.js'\n\nconst app = express()\napp.use('/api/v1', tasks)\n\nif (process.env.NODE_ENV !== 'production') {\n  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(spec))\n  app.get('/api-docs.json', (req, res) => res.json(spec))\n}\nexport default app",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between Swagger and OpenAPI?",
+     "a": "OpenAPI is the specification for describing REST APIs; Swagger is the tool family (Swagger UI, Editor, Codegen) that originally defined and now implements it."
+    },
+    {
+     "q": "Code-first vs spec-first documentation?",
+     "a": "Code-first generates the spec from annotations or schemas in code (less drift); spec-first designs the OpenAPI document before coding and treats it as the contract."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-envelope-pagination",
+   "title": "Response Envelope, Pagination and Versioning Standards",
+   "level": "intermediate",
+   "summary": "Agree on one JSON shape for success and errors, one pagination format and a versioning policy so clients stay simple.",
+   "description": "Consistency is what makes an API pleasant. Decide the rules once and apply them everywhere.\n\n### Response envelope\nWrap responses in a predictable shape:\n```json\n{ \"status\": \"success\", \"data\": { ... }, \"meta\": { \"page\": 1 } }\n{ \"status\": \"error\",   \"message\": \"Validation failed\", \"errors\": [ ... ] }\n```\nPros: clients can add metadata (pagination, request id) without breaking changes, and handle errors uniformly. Some teams prefer returning the bare resource and using HTTP status codes plus a standard error body (RFC 9457 `application/problem+json`). Pick one and be consistent.\n\n### Helpers\nSmall functions `ok(res, data, meta)`, `created(res, data)` and the central error handler keep controllers tidy and the shape identical.\n\n### Pagination standard\n- Request: `?page=2&limit=20` (offset) or `?cursor=abc&limit=20` (cursor).\n- Response `meta`: `page`, `limit`, `total`, `totalPages`, plus `hasNext`. Or `Link` headers (`rel=\"next\"`) and `X-Total-Count`.\n- Enforce a **maximum limit** and a sensible default.\n\n### Naming and formats\nPlural nouns, `camelCase` JSON keys, ISO-8601 dates in UTC, ids as strings, money in the smallest unit (cents/paise), `null` for missing values.\n\n### Versioning policy\nPrefix with `/api/v1`. Additive changes (new fields, new endpoints) are non-breaking; removing or renaming fields, or changing semantics, requires `/api/v2`. Announce deprecations with a `Deprecation`/`Sunset` header and keep the old version running for a defined period.",
+   "keyPoints": [
+    "One success shape and one error shape across the API",
+    "Pagination metadata in `meta` (page, limit, total, totalPages)",
+    "Cap `limit`; support cursor pagination for large feeds",
+    "camelCase keys, ISO dates (UTC), money in smallest unit",
+    "Breaking change -> new version (`/api/v2`), deprecate with notice"
+   ],
+   "pitfalls": [
+    "Different shapes per endpoint (arrays here, wrapped objects there)",
+    "Returning HTTP 200 with `status: \"error\"` in the body",
+    "Changing field meaning in-place without a version bump"
+   ],
+   "examples": [
+    {
+     "title": "Response helpers",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/utils/respond.js\nexport const ok = (res, data, meta) =>\n  res.status(200).json({ status: 'success', data, ...(meta && { meta }) })\n\nexport const created = (res, data) =>\n  res.status(201).json({ status: 'success', data })\n\nexport const paginated = (res, items, { page, limit, total }) =>\n  res.json({\n    status: 'success',\n    data: items,\n    meta: {\n      page, limit, total,\n      totalPages: Math.ceil(total / limit),\n      hasNext: page * limit < total,\n    },\n  })\n\n// ## src/controllers/taskController.js\nimport { paginated, created } from '../utils/respond.js'\nimport * as taskService from '../services/taskService.js'\n\nexport const list = async (req, res) => {\n  const page = Math.max(Number(req.query.page) || 1, 1)\n  const limit = Math.min(Number(req.query.limit) || 10, 100)\n  const { items, total } = await taskService.list({ page, limit })\n  paginated(res, items, { page, limit, total })\n}\n\nexport const create = async (req, res) => {\n  created(res, await taskService.create(req.body))\n}",
+     "explanation": ""
+    },
+    {
+     "title": "Responses",
+     "language": "text",
+     "lang": "json",
+     "code": "{\n  \"status\": \"success\",\n  \"data\": [{ \"id\": \"t1\", \"title\": \"Write docs\", \"done\": false }],\n  \"meta\": { \"page\": 1, \"limit\": 10, \"total\": 1, \"totalPages\": 1, \"hasNext\": false }\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a response envelope and why use it?",
+     "a": "A fixed wrapper (status, data, meta) around every response; it lets you add metadata like pagination without breaking clients and keeps error handling uniform."
+    },
+    {
+     "q": "When should an API get a new version?",
+     "a": "When a change would break existing clients, such as removing or renaming fields or altering behaviour; additive changes can ship in the same version."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-testing",
+   "title": "Testing with Vitest/Jest and supertest",
+   "level": "intermediate",
+   "summary": "Test routes without opening a port using supertest, cover happy and error paths, and isolate the database.",
+   "description": "Automated tests protect an API from regressions. For Express the usual stack is a test runner (**Vitest** or **Jest**) plus **supertest**, which sends HTTP requests directly to your `app` object - no `listen()` needed. This is why you export `app` separately from `server.js`.\n\n### Kinds of tests\n| Level | What | Tools |\n|---|---|---|\n| Unit | one function (service, util) with mocks | Vitest/Jest |\n| Integration | route + middleware + DB together | supertest + test DB |\n| End-to-end | deployed app, real client | Playwright/Cypress/Postman |\n\n### Writing an integration test\n1. Import `app`.\n2. `await request(app).post('/api/tasks').send({...})`.\n3. Assert on status, headers and body.\n\nTest the unhappy paths as much as the happy ones: validation errors (400), missing auth (401), forbidden (403), not found (404), duplicates (409).\n\n### Database in tests\nNever touch the development database. Options: **mongodb-memory-server** (in-memory MongoDB), a dedicated test database that is cleaned before each test, or Testcontainers/Docker. Use `NODE_ENV=test` to load test configuration, and reset data in `beforeEach`.\n\n### Mocking\nMock external services (email, Stripe, S3) with `vi.mock` / `jest.mock` so tests are fast and deterministic.\n\n### Auth in tests\nCreate a user and sign a token in a helper, then call `.set('Authorization', 'Bearer ' + token)`.\n\n### CI\nRun `npm test` on every pull request; track coverage but do not chase 100 percent.",
+   "keyPoints": [
+    "supertest sends requests to `app` without a port",
+    "Export `app` separately from `listen`",
+    "Test error paths (400/401/403/404/409), not only success",
+    "Use an isolated test DB (memory server) and reset between tests",
+    "Mock external services; run tests in CI on every PR"
+   ],
+   "pitfalls": [
+    "Tests that depend on each other or on leftover data",
+    "Hitting the real development/production database",
+    "Leaving the server listening and hanging the test process"
+   ],
+   "examples": [
+    {
+     "title": "Vitest + supertest",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/app.js\nimport express from 'express'\n\nconst app = express()\napp.use(express.json())\n\nconst tasks = []\napp.post('/api/tasks', (req, res) => {\n  const { title } = req.body ?? {}\n  if (!title) return res.status(400).json({ error: 'title is required' })\n  const task = { id: tasks.length + 1, title, done: false }\n  tasks.push(task)\n  res.status(201).json(task)\n})\napp.get('/api/tasks', (req, res) => res.json(tasks))\napp.use((req, res) => res.status(404).json({ error: 'Not found' }))\n\nexport default app\n\n// ## tests/tasks.test.js\nimport { describe, it, expect } from 'vitest'\nimport request from 'supertest'\nimport app from '../src/app.js'\n\ndescribe('Tasks API', () => {\n  it('creates a task', async () => {\n    const res = await request(app).post('/api/tasks').send({ title: 'Learn testing' })\n    expect(res.status).toBe(201)\n    expect(res.body).toMatchObject({ title: 'Learn testing', done: false })\n  })\n\n  it('rejects a missing title', async () => {\n    const res = await request(app).post('/api/tasks').send({})\n    expect(res.status).toBe(400)\n    expect(res.body.error).toMatch(/title/)\n  })\n\n  it('lists tasks', async () => {\n    const res = await request(app).get('/api/tasks')\n    expect(res.status).toBe(200)\n    expect(Array.isArray(res.body)).toBe(true)\n  })\n\n  it('returns 404 for unknown routes', async () => {\n    const res = await request(app).get('/nope')\n    expect(res.status).toBe(404)\n  })\n})",
+     "explanation": ""
+    },
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "lang": "bash",
+     "code": "npm i -D vitest supertest\n# package.json -> \"scripts\": { \"test\": \"vitest run\" }\nnpm test\n\n#  ✓ tests/tasks.test.js (4 tests)\n#  Test Files  1 passed (1)\n#       Tests  4 passed (4)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does supertest not need the server to listen on a port?",
+     "a": "It binds your app to an ephemeral port internally for each request, so you only need to export the Express app, not start a server."
+    },
+    {
+     "q": "How do you keep tests from affecting each other?",
+     "a": "Use a separate test database, clean or reset data in beforeEach, and avoid shared mutable state between tests."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-docker",
+   "title": "Dockerizing an Express App",
+   "level": "intermediate",
+   "summary": "Package the API into a small, secure image and run it with MongoDB using docker compose.",
+   "description": "**Docker** packages your app with its exact Node version and dependencies into an **image** that runs the same on your laptop, CI and the cloud.\n\n### A good Dockerfile\n1. Start from a slim base: `node:24-alpine` (or `-slim`).\n2. Copy `package*.json` first and run `npm ci --omit=dev` - Docker caches this layer, so rebuilds are fast unless dependencies change.\n3. Copy the source after installing.\n4. Set `NODE_ENV=production`, `EXPOSE` the port, and run as the non-root `node` user.\n5. Start with `CMD [\"node\", \"src/server.js\"]` (exec form) so signals like SIGTERM reach Node and graceful shutdown works. Avoid `npm start` as PID 1.\n\n### `.dockerignore`\nExclude `node_modules`, `.git`, `.env`, logs and tests so the build context is small and secrets are never copied into the image.\n\n### Multi-stage builds\nUse one stage to build (TypeScript, dev dependencies) and a final lean stage that copies only the output and production dependencies.\n\n### docker compose\nDefine the API and its dependencies (MongoDB, Redis) in `compose.yaml`. Services reach each other by service name (`mongodb://mongo:27017/app`). Use a named volume so database data survives container recreation. Pass configuration via `environment:` or `env_file`, never bake secrets into the image.\n\n### Health check\nAdd a `HEALTHCHECK` (or compose `healthcheck`) hitting `/health`.\n\n### Bind to all interfaces\nInside a container, listen on `0.0.0.0` (the default for `app.listen(port)`), and map the port with `-p 3000:3000`.",
+   "keyPoints": [
+    "Slim base image, `npm ci --omit=dev`, copy `package.json` before source",
+    "Run as non-root `node` user with `CMD [\"node\", ...]`",
+    "`.dockerignore` keeps secrets and junk out of the image",
+    "Compose wires API + Mongo/Redis; use named volumes for data",
+    "Pass secrets at runtime, not at build time"
+   ],
+   "pitfalls": [
+    "Copying `.env` or `node_modules` into the image",
+    "Using `localhost` for the database inside a container (use the service name)",
+    "`npm start` as PID 1 swallowing SIGTERM, causing slow or forced shutdowns"
+   ],
+   "examples": [
+    {
+     "title": "Dockerfile and compose.yaml",
+     "language": "text",
+     "lang": "docker",
+     "code": "# ---- Dockerfile ----\nFROM node:24-alpine\nWORKDIR /app\nENV NODE_ENV=production\n\nCOPY package*.json ./\nRUN npm ci --omit=dev\n\nCOPY src ./src\n\nUSER node\nEXPOSE 3000\nHEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:3000/health || exit 1\nCMD [\"node\", \"src/server.js\"]",
+     "explanation": ""
+    },
+    {
+     "title": "compose.yaml",
+     "language": "text",
+     "lang": "yaml",
+     "code": "services:\n  api:\n    build: .\n    ports:\n      - \"3000:3000\"\n    environment:\n      NODE_ENV: production\n      PORT: 3000\n      MONGO_URI: mongodb://mongo:27017/app\n      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}\n    depends_on:\n      mongo:\n        condition: service_healthy\n    restart: unless-stopped\n\n  mongo:\n    image: mongo:7\n    volumes:\n      - mongo-data:/data/db\n    healthcheck:\n      test: [\"CMD\", \"mongosh\", \"--quiet\", \"--eval\", \"db.adminCommand('ping')\"]\n      interval: 10s\n      retries: 5\n\nvolumes:\n  mongo-data:",
+     "explanation": ""
+    },
+    {
+     "title": ".dockerignore and commands",
+     "language": "text",
+     "lang": "bash",
+     "code": "# .dockerignore\nnode_modules\n.git\n.env\nnpm-debug.log\ntests\n\n# build and run\ndocker compose up --build -d\ndocker compose logs -f api\ndocker compose down          # add -v to also delete the database volume",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why copy package.json before the source code in a Dockerfile?",
+     "a": "Docker caches layers; installing dependencies in an earlier layer means they are only reinstalled when package files change, making rebuilds much faster."
+    },
+    {
+     "q": "Why use CMD [\"node\", ...] instead of npm start?",
+     "a": "The exec form runs Node as PID 1 so SIGTERM reaches your app for graceful shutdown; npm start adds a wrapper process that may not forward signals."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-pm2-nginx-cicd",
+   "title": "PM2, nginx Reverse Proxy and CI/CD",
+   "level": "advanced",
+   "summary": "Run Node under PM2 (cluster mode), put nginx in front for HTTPS and static files, and automate deploys with GitHub Actions.",
+   "description": "### PM2: process manager\nNode runs on one CPU core and dies on crashes. **PM2** keeps it alive and uses all cores:\n- `pm2 start src/server.js -i max` starts one worker per core (cluster mode) sharing the same port.\n- Auto-restart on crash, restart on memory limit (`--max-memory-restart 300M`), log management, `pm2 reload` for zero-downtime restarts, `pm2 startup` + `pm2 save` to survive reboots.\n- Configure via `ecosystem.config.cjs`.\n\nCluster mode means in-memory state (sessions, rate-limit counters, caches) is **per worker**, so use Redis or the database for shared state. Containers/Kubernetes often replace PM2: run one process per container and scale containers.\n\n### nginx: reverse proxy\nPublic traffic hits **nginx** on ports 80/443, which forwards to Node on `localhost:3000`:\n- **TLS termination** with Let's Encrypt certificates (certbot).\n- Serves the React build and static assets quickly, with gzip/brotli and caching.\n- Passes `X-Forwarded-For` / `X-Forwarded-Proto` headers: set `app.set('trust proxy', 1)` in Express.\n- Request size limits, rate limiting, WebSocket upgrade headers for Socket.IO.\n\n### CI/CD\n**CI** (continuous integration) runs lint and tests on each push; **CD** (continuous delivery) deploys when `main` passes. A GitHub Actions workflow typically: checkout, set up Node with cache, `npm ci`, `npm test`, build/push a Docker image, then SSH to the server (or call the platform's deploy hook) and `pm2 reload`.\n\nStore credentials in GitHub **Secrets**, never in the repository.",
+   "keyPoints": [
+    "PM2 `-i max` = cluster mode across CPU cores, auto-restart, zero-downtime reload",
+    "Cluster/multi-instance means shared state must live in Redis/DB",
+    "nginx terminates TLS, serves static files and proxies to Node",
+    "Set `trust proxy` behind nginx for correct IP and protocol",
+    "CI runs tests on every push; CD deploys from main using secrets"
+   ],
+   "pitfalls": [
+    "Forgetting WebSocket upgrade headers in nginx (Socket.IO falls back or fails)",
+    "Running in cluster mode with in-memory sessions",
+    "Deploying without running tests, or storing server keys in the repo"
+   ],
+   "examples": [
+    {
+     "title": "ecosystem.config.cjs and nginx",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## ecosystem.config.cjs\nmodule.exports = {\n  apps: [{\n    name: 'my-api',\n    script: 'src/server.js',\n    instances: 'max',\n    exec_mode: 'cluster',\n    max_memory_restart: '300M',\n    env_production: { NODE_ENV: 'production', PORT: 3000 },\n  }],\n}",
+     "explanation": ""
+    },
+    {
+     "title": "nginx site config",
+     "language": "text",
+     "lang": "text",
+     "code": "server {\n    listen 80;\n    server_name api.example.com;\n    return 301 https://$host$request_uri;\n}\n\nserver {\n    listen 443 ssl http2;\n    server_name api.example.com;\n\n    ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;\n\n    client_max_body_size 5m;\n\n    location / {\n        proxy_pass http://127.0.0.1:3000;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        # websockets / SSE\n        proxy_set_header Upgrade $http_upgrade;\n        proxy_set_header Connection \"upgrade\";\n        proxy_buffering off;\n    }\n}",
+     "explanation": ""
+    },
+    {
+     "title": "GitHub Actions workflow",
+     "language": "text",
+     "lang": "yaml",
+     "code": "name: CI-CD\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 24\n          cache: npm\n      - run: npm ci\n      - run: npm test\n\n  deploy:\n    needs: test\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    steps:\n      - name: Deploy over SSH\n        uses: appleboy/ssh-action@v1.0.3\n        with:\n          host: ${{ secrets.SERVER_HOST }}\n          username: ${{ secrets.SERVER_USER }}\n          key: ${{ secrets.SERVER_SSH_KEY }}\n          script: |\n            cd /var/www/my-api\n            git pull origin main\n            npm ci --omit=dev\n            pm2 reload ecosystem.config.cjs --env production",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use PM2 cluster mode?",
+     "a": "Node is single-threaded; cluster mode starts one worker per CPU core to use all cores, restarts crashed workers and allows zero-downtime reloads."
+    },
+    {
+     "q": "What does nginx do in front of Express?",
+     "a": "It terminates HTTPS, serves static content efficiently, compresses and buffers traffic, applies limits and forwards requests to the Node process."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-redis-caching-perf",
+   "title": "Redis Caching and Performance Tuning",
+   "level": "advanced",
+   "summary": "Cache expensive reads in Redis (cache-aside), and apply the main Express performance rules.",
+   "description": "### Redis cache-aside\n**Redis** is an in-memory key-value store. The most common pattern is **cache-aside**:\n1. Build a key (`products:list:page=1`).\n2. Try `redis.get(key)`. On a hit, return it immediately.\n3. On a miss, query the database, `redis.set(key, JSON.stringify(data), 'EX', 60)`, return.\n4. When data changes, **invalidate** (`del`) the affected keys.\n\nAlways set a TTL, so stale data eventually disappears. Cache what is read often and changes rarely (product lists, config, expensive aggregations). Do not cache per-user private data under shared keys. Redis is also used for sessions, rate limiting, queues (BullMQ), pub/sub and distributed locks. If Redis is down, the app should fall back to the database, not crash.\n\n### Express performance checklist\n- `NODE_ENV=production`.\n- Use `compression` (or let nginx do it).\n- Never block the event loop: avoid sync functions (`fs.readFileSync`, `bcrypt.hashSync`, big JSON loops) on request paths; move CPU work to worker threads or queues.\n- Index database fields used in filters/sorts; paginate; use `.lean()` and field selection; avoid N+1 queries (use `populate`/`$lookup`/`include`).\n- Reuse connections (one pool/client).\n- HTTP caching: ETag, `Cache-Control`, CDN for static files and public GETs.\n- Run multiple processes (PM2 cluster / containers) and scale horizontally.\n- Keep payloads small; stream large responses.\n- Measure first: `clinic.js`, `autocannon`, APM traces and slow-query logs.",
+   "keyPoints": [
+    "Cache-aside: get -> miss -> DB -> set with TTL -> invalidate on writes",
+    "Always use TTLs; handle Redis failures gracefully",
+    "Never block the event loop with sync or CPU-heavy code",
+    "Index, paginate and avoid N+1 queries",
+    "Measure with autocannon/clinic before optimising"
+   ],
+   "pitfalls": [
+    "Caching without invalidation (users see stale data forever)",
+    "Shared cache keys for user-specific responses",
+    "Premature optimisation without profiling"
+   ],
+   "examples": [
+    {
+     "title": "Cache middleware with ioredis",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/config/redis.js\nimport Redis from 'ioredis'\nexport const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {\n  maxRetriesPerRequest: 2,\n})\nredis.on('error', (e) => console.error('Redis error:', e.message))\n\n// ## src/middleware/cache.js\nimport { redis } from '../config/redis.js'\n\nexport const cache = (ttlSeconds = 60) => async (req, res, next) => {\n  if (req.method !== 'GET') return next()\n  const key = `cache:${req.originalUrl}`\n\n  try {\n    const hit = await redis.get(key)\n    if (hit) {\n      res.set('X-Cache', 'HIT')\n      return res.type('json').send(hit)\n    }\n  } catch { /* Redis down: continue without cache */ }\n\n  const originalJson = res.json.bind(res)\n  res.json = (body) => {\n    if (res.statusCode === 200) {\n      redis.set(key, JSON.stringify(body), 'EX', ttlSeconds).catch(() => {})\n    }\n    res.set('X-Cache', 'MISS')\n    return originalJson(body)\n  }\n  next()\n}\n\n// ## src/routes/products.js\nimport { Router } from 'express'\nimport { cache } from '../middleware/cache.js'\nimport { redis } from '../config/redis.js'\nimport Product from '../models/Product.js'\n\nconst router = Router()\n\nrouter.get('/', cache(60), async (req, res) => {\n  res.json(await Product.find().lean())\n})\n\nrouter.post('/', async (req, res) => {\n  const product = await Product.create(req.body)\n  const keys = await redis.keys('cache:/api/products*')      // use SCAN in big systems\n  if (keys.length) await redis.del(keys)\n  res.status(201).json(product)\n})\n\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "Load testing",
+     "language": "text",
+     "lang": "bash",
+     "code": "npx autocannon -c 50 -d 10 http://localhost:3000/api/products\n# compare \"Req/Sec\" with and without the cache middleware",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is cache-aside?",
+     "a": "The application checks the cache first; on a miss it loads from the database, stores the result in the cache with a TTL, and returns it; writes invalidate or update the cached entries."
+    },
+    {
+     "q": "Name common causes of slow Express APIs.",
+     "a": "Blocking the event loop with sync/CPU work, missing database indexes, N+1 queries, large uncompressed payloads, and creating connections per request."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

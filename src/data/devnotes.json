@@ -1,0 +1,931 @@
+{
+ "id": "devnotes",
+ "title": "Dev Notes",
+ "tagline": "Practical Git, backend, scaling and tooling notes for real projects",
+ "description": "A collection of working developer notes: everyday Git recipes, backend fundamentals (REST, auth, caching, indexing, SQL vs NoSQL), a step by step roadmap for scaling a backend, and tooling basics such as Docker, CI/CD and fixing a stuck Android emulator.",
+ "color": "#10b981",
+ "sections": [
+  {
+   "id": "devnotes-git",
+   "title": "Git & Version Control",
+   "level": "beginner",
+   "topics": [
+    {
+     "id": "dev-git-workflow",
+     "title": "Daily Git Workflow & Core Commands",
+     "level": "beginner",
+     "summary": "The handful of commands and the three areas (working tree, staging, repository) that cover 90% of daily Git use.",
+     "description": "Git tracks snapshots of your project. Every change travels through **three areas**:\n\n### The three areas\n* **Working tree** - the files you edit.\n* **Staging area (index)** - the changes you selected for the next commit.\n* **Repository** - the permanent history of commits (local), which you can share with a **remote** such as GitHub.\n\n### The daily loop\n1. `git status` - see what changed.\n2. `git add <file>` (or `git add -p` to pick hunks) - stage.\n3. `git commit -m \"message\"` - record a snapshot.\n4. `git pull` - get teammates' work.\n5. `git push` - publish yours.\n\n### Inspecting history\n* `git log --oneline --graph --decorate` - compact visual history.\n* `git diff` (unstaged), `git diff --staged` (staged), `git show <commit>`.\n* `git blame <file>` - who changed each line.\n\n### Good commit messages\nWrite in the imperative mood, short subject (about 50 characters), blank line, then the **why** if needed: `feat: add login form validation`. Small, focused commits make review, revert and bisect easy.",
+     "keyPoints": [
+      "Working tree -> staging (`git add`) -> repository (`git commit`) -> remote (`git push`)",
+      "`git status` is the command to run most often",
+      "Commit small and often with clear imperative messages",
+      "`git diff --staged` shows what the next commit will contain",
+      "`git pull` = `git fetch` + merge (or rebase)"
+     ],
+     "pitfalls": [
+      "Using `git add .` blindly and committing secrets or build output - use `.gitignore`",
+      "Committing directly to `main` on a shared project",
+      "Vague messages like \"fix\" or \"changes\""
+     ],
+     "examples": [
+      {
+       "title": "Everyday command cycle",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "git status\ngit add src/app.js            # stage one file\ngit add -p                    # or choose hunks interactively\ngit commit -m \"feat: add search bar\"\ngit pull --rebase             # get others' work first\ngit push                      # publish",
+       "explanation": "The core loop: inspect, stage, commit, sync."
+      },
+      {
+       "title": "Working tree vs staging vs repository",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "  edit            git add          git commit        git push\n -------> Working  -------->  Staging  --------->  Local   --------->  Remote\n          tree                (index)              repo               (GitHub)",
+       "explanation": "Each arrow is one command; changes only move forward when you tell Git to."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What is the staging area for?",
+       "a": "It lets you build a commit deliberately: stage only the changes that belong together, even if the working tree contains more edits."
+      },
+      {
+       "q": "Difference between git fetch and git pull?",
+       "a": "`fetch` downloads remote commits without touching your branch. `pull` is `fetch` followed by a merge (or rebase) into the current branch."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-git-branching",
+     "title": "Branching & Feature-Branch Flow",
+     "level": "beginner",
+     "summary": "Branches are cheap pointers to commits; use one per feature or fix and merge back through a pull request.",
+     "description": "A **branch** is just a movable pointer to a commit - creating one is instant and costs almost nothing. That is why Git workflows are built around many short-lived branches.\n\n### Commands\n* `git branch` - list branches; `git branch -d name` - delete a merged one.\n* `git switch -c feature/login` - create and move to a new branch (modern replacement for `git checkout -b`).\n* `git switch main` - go back.\n* `git push -u origin feature/login` - publish and set upstream.\n\n### Feature-branch flow\n1. Update `main`: `git switch main && git pull`.\n2. Create a branch from it: `git switch -c feature/short-name`.\n3. Commit work, push the branch.\n4. Open a **pull request**; teammates review; CI runs.\n5. Merge (merge commit, squash or rebase) and delete the branch.\n\n### Naming\nUse prefixes: `feature/`, `fix/`, `hotfix/`, `chore/`, `docs/` followed by a short kebab-case description, optionally with a ticket id (`fix/ABC-123-null-cart`).\n\n### Keep branches small\nLong-living branches diverge and cause painful conflicts. Merge or rebase from `main` frequently.",
+     "keyPoints": [
+      "A branch is only a pointer to a commit",
+      "`git switch -c` creates and switches",
+      "One branch per feature/fix; merge through pull requests",
+      "Name branches with a type prefix",
+      "Delete branches after merging"
+     ],
+     "pitfalls": [
+      "Working on `main` directly",
+      "Never syncing a long feature branch with `main`",
+      "Switching branches with uncommitted changes and getting confused - commit or `git stash` first"
+     ],
+     "examples": [
+      {
+       "title": "Start and finish a feature",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "git switch main\ngit pull\ngit switch -c feature/dark-mode\n# ...work and commit...\ngit push -u origin feature/dark-mode\n# open Pull Request on GitHub, review, merge\ngit switch main && git pull\ngit branch -d feature/dark-mode",
+       "explanation": "A complete life cycle of a feature branch."
+      },
+      {
+       "title": "Branch picture",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "          A---B---C   feature/dark-mode\n         /\n --o---o---D---E   main",
+       "explanation": "The feature branch started at commit D... and diverged while main moved on."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What is HEAD?",
+       "a": "A pointer to the commit (usually via a branch) you currently have checked out."
+      },
+      {
+       "q": "Why prefer short-lived branches?",
+       "a": "They stay close to main, reviews stay small and merge conflicts stay rare."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-git-merge-vs-rebase",
+     "title": "Merge vs Rebase",
+     "level": "intermediate",
+     "summary": "Merge keeps true history with a merge commit; rebase replays your commits for a linear history - never rebase shared commits.",
+     "description": "Both commands integrate changes from one branch into another; they differ in the **history** they produce.\n\n### Merge\n`git merge main` (while on your feature branch) creates a **merge commit** with two parents. History is preserved exactly as it happened, but graphs can get busy.\n\n### Rebase\n`git rebase main` takes your commits, temporarily sets them aside, moves the branch to the tip of `main` and **replays** your commits on top. History becomes linear and clean, but the commits get **new hashes** (they are rewritten).\n\n### The golden rule\n**Never rebase commits that other people already have** (public/shared branches). Rewriting shared history forces everybody else to repair their clones. Rebase your own local/feature branch before opening a pull request; use merge for shared branches.\n\n### Related tools\n* `git merge --squash` - turn all branch commits into one.\n* `git rebase -i HEAD~3` - interactive: reorder, squash, edit, drop recent commits.\n* `git pull --rebase` - rebase your local commits on top of the remote ones instead of creating a merge commit.\n* Conflicts: fix the files, `git add` them, then `git merge --continue` / `git rebase --continue` (or `--abort`).",
+     "keyPoints": [
+      "Merge preserves history and adds a merge commit",
+      "Rebase rewrites commits to get a linear history",
+      "Never rebase shared/public commits",
+      "`git rebase -i` cleans up local history before a PR",
+      "`--abort` safely cancels a messy merge or rebase"
+     ],
+     "pitfalls": [
+      "Force-pushing a rebased shared branch",
+      "Resolving the same conflict repeatedly in a long rebase - consider merge",
+      "Assuming rebase \"loses\" work - the old commits still live in the reflog"
+     ],
+     "examples": [
+      {
+       "title": "Rebase a feature branch",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "git switch feature/search\ngit fetch origin\ngit rebase origin/main\n# fix conflicts -> git add . -> git rebase --continue\ngit push --force-with-lease   # only because it is YOUR branch",
+       "explanation": "`--force-with-lease` is a safer force push: it fails if someone else pushed in the meantime."
+      },
+      {
+       "title": "History shape",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "MERGE                          REBASE\n      A---B---C  feature             A'--B'--C'  feature\n     /         \\                    /\n D--E---F---G---M  main         D--E---F---G  main\n (M = merge commit)             (linear, A' B' C' are new commits)",
+       "explanation": "Same changes, different history."
+      }
+     ],
+     "interview": [
+      {
+       "q": "When would you use merge instead of rebase?",
+       "a": "For shared branches or when you want to keep the exact history of how work was integrated."
+      },
+      {
+       "q": "What does rebase actually do?",
+       "a": "It finds the common ancestor, saves your commits as patches, moves your branch to the new base and re-applies the patches, creating new commits."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-git-undo-recipes",
+     "title": "Undoing Things: Restore, Reset, Revert, Reflog",
+     "level": "intermediate",
+     "summary": "A cheat sheet of safe ways to undo changes at every stage - from unsaved edits to a pushed commit.",
+     "description": "Almost everything in Git can be undone - you only need the right tool for the stage you are at.\n\n| Situation | Command |\n|---|---|\n| Discard edits in a file | `git restore <file>` |\n| Unstage a file (keep edits) | `git restore --staged <file>` |\n| Fix the last commit message / add a forgotten file | `git commit --amend` |\n| Undo last commit, keep changes staged | `git reset --soft HEAD~1` |\n| Undo last commit, keep changes unstaged | `git reset HEAD~1` (mixed) |\n| Undo last commit **and** delete changes | `git reset --hard HEAD~1` |\n| Undo a **pushed** commit safely | `git revert <hash>` |\n| Lost a commit after a hard reset | `git reflog` then `git reset --hard <hash>` |\n\n### reset vs revert\n* **reset** moves the branch pointer backwards - it rewrites history. Use it only on local commits.\n* **revert** adds a *new* commit that cancels an older one - safe for shared history.\n\n### Reflog - the safety net\n`git reflog` lists every place HEAD has pointed to in the last weeks. Even \"deleted\" commits can be found and restored from it.\n\n### Stash\n`git stash` parks uncommitted work, `git stash pop` brings it back.",
+     "keyPoints": [
+      "`restore` for files, `reset` for moving branches, `revert` for pushed commits",
+      "`--soft` keeps staged, mixed keeps unstaged, `--hard` deletes changes",
+      "`git reflog` rescues \"lost\" commits",
+      "`git stash` parks work in progress"
+     ],
+     "pitfalls": [
+      "`git reset --hard` on uncommitted work - that data is gone",
+      "Resetting and force-pushing a shared branch",
+      "Using `git checkout .` habitually - it silently discards edits"
+     ],
+     "examples": [
+      {
+       "title": "Common undo recipes",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "git restore app.js                 # throw away edits in app.js\ngit restore --staged app.js         # unstage\ngit reset --soft HEAD~1             # undo commit, keep changes staged\ngit revert 3f2a9c1                  # new commit that undoes 3f2a9c1\ngit reflog                          # find a lost commit\ngit reset --hard HEAD@{2}           # go back to where HEAD was",
+       "explanation": "Pick the least destructive command that solves the problem."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Difference between git reset and git revert?",
+       "a": "`reset` rewrites history by moving the branch pointer; `revert` creates a new commit that undoes a previous one and is safe on pushed branches."
+      },
+      {
+       "q": "How do you recover a commit after a hard reset?",
+       "a": "Find its hash with `git reflog` and run `git reset --hard <hash>` or create a branch at it."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-git-checkout-commit",
+     "title": "Jump to a Specific Commit & Reset a Branch to It",
+     "level": "intermediate",
+     "summary": "How `git switch -C main <hash>` moves a branch to an exact commit and how to verify with `git log -1 --oneline`.",
+     "description": "Sometimes you must make your working copy match an **exact commit** - for example when a teammate says \"use the code from commit 8148a37\" or a deployment needs a known good version.\n\n### The command\n```\ngit switch -C main 8148a37d5c177b19a5d005b8ff6622e9e8cb925a\n```\n\nMeaning: *check out commit 8148a37 and (re)create the local branch **main** pointing to it.* The capital **-C** means \"create the branch, or **reset** it if it already exists\".\n\n### Verify\n```\ngit log -1 --oneline\n```\n\nThis prints only the commit you are on, e.g. `8148a37 feat : 120 design screen add`. If the hash and message match, you have the correct code.\n\n### Related options\n* `git switch --detach <hash>` - look at an old commit without moving any branch (detached HEAD, safe for exploring).\n* `git switch -c fix/old-state <hash>` - start a **new** branch from an old commit (does not touch main).\n* Make sure you have the commit first: `git fetch --all`.\n\n### Careful\n`switch -C main <hash>` moves your local `main` - local commits that were only on `main` become unreachable (still in `git reflog`). Commit or stash your work first.",
+     "keyPoints": [
+      "`git switch -C <branch> <hash>` = create/reset branch at that commit",
+      "`git log -1 --oneline` confirms the current commit",
+      "`--detach` is for read-only exploration",
+      "Old commits stay recoverable via reflog"
+     ],
+     "pitfalls": [
+      "Running it with uncommitted changes you care about",
+      "Forgetting `git fetch` so the hash is not known locally",
+      "Confusing lowercase `-c` (create, fails if exists) with `-C` (force reset)"
+     ],
+     "examples": [
+      {
+       "title": "Reset local main to a known commit",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "git fetch --all\ngit switch -C main 8148a37d5c177b19a5d005b8ff6622e9e8cb925a\ngit log -1 --oneline\n# 8148a37 feat : 120 design screen add   <- expected output",
+       "explanation": "After this your code is exactly the code of that commit."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What is a detached HEAD?",
+       "a": "HEAD points directly at a commit instead of a branch. New commits made there are not on any branch and can be lost unless you create a branch."
+      },
+      {
+       "q": "Difference between -c and -C in git switch?",
+       "a": "`-c` creates a new branch and fails if it exists; `-C` creates it or resets an existing branch to the given start point."
+      }
+     ],
+     "source": "Git Docs.txt"
+    }
+   ]
+  },
+  {
+   "id": "devnotes-backend",
+   "title": "Backend Essentials",
+   "level": "intermediate",
+   "topics": [
+    {
+     "id": "dev-rest-api-design",
+     "title": "REST API Design",
+     "level": "beginner",
+     "summary": "Model resources as nouns, use HTTP methods for actions, and keep responses and errors consistent.",
+     "description": "**REST** is a set of conventions for building HTTP APIs around **resources** (things such as users, orders, products).\n\n### URLs are nouns, methods are verbs\n| Method | URL | Meaning |\n|---|---|---|\n| GET | `/api/v1/users` | list users |\n| GET | `/api/v1/users/42` | read one user |\n| POST | `/api/v1/users` | create a user |\n| PUT | `/api/v1/users/42` | replace a user |\n| PATCH | `/api/v1/users/42` | partially update |\n| DELETE | `/api/v1/users/42` | delete |\n\n### Design rules\n* Use plural nouns and nesting only for ownership: `/users/42/orders`.\n* **Version** the API (`/api/v1`) so you can evolve it.\n* **Filter, sort, paginate** with query strings: `?status=paid&sort=-createdAt&page=2&limit=20`.\n* Return JSON with a consistent envelope and **proper status codes** (see the HTTP status codes topic).\n* **Idempotency**: GET, PUT, DELETE can be repeated safely; POST usually cannot.\n* Validate input on the server and return field-level error messages.\n* Protect with authentication, rate limiting and CORS rules.\n\n### Error format\nPick one shape and use it everywhere: `{ \"error\": { \"code\": \"VALIDATION_ERROR\", \"message\": \"Email is invalid\", \"fields\": { \"email\": \"invalid\" } } }`.",
+     "keyPoints": [
+      "Resources are nouns, HTTP methods are the verbs",
+      "Version your API from day one",
+      "Use query params for filter/sort/pagination",
+      "Return correct status codes and a consistent error shape",
+      "GET/PUT/DELETE are idempotent"
+     ],
+     "pitfalls": [
+      "Verbs in URLs like `/getUser` or `/deleteOrder`",
+      "Always returning 200 with an error message in the body",
+      "Returning unbounded lists without pagination"
+     ],
+     "examples": [
+      {
+       "title": "Express route skeleton",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "app.get('/api/v1/users', listUsers);        // GET collection\napp.get('/api/v1/users/:id', getUser);       // GET one\napp.post('/api/v1/users', createUser);       // POST -> 201 Created\napp.patch('/api/v1/users/:id', updateUser);  // PATCH -> 200\napp.delete('/api/v1/users/:id', deleteUser); // DELETE -> 204 No Content",
+       "explanation": "One resource, five routes, conventional methods."
+      }
+     ],
+     "interview": [
+      {
+       "q": "PUT vs PATCH?",
+       "a": "`PUT` replaces the whole resource; `PATCH` changes only the supplied fields."
+      },
+      {
+       "q": "What does idempotent mean?",
+       "a": "Making the same request several times has the same effect as making it once (e.g. DELETE /users/42)."
+      },
+      {
+       "q": "How do you paginate?",
+       "a": "Offset (`page`/`limit`) is simple; cursor-based pagination scales better for large or changing data sets."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-http-status-codes",
+     "title": "HTTP Status Codes",
+     "level": "beginner",
+     "summary": "The code families (2xx, 3xx, 4xx, 5xx) and the specific codes an API should return.",
+     "description": "A status code tells the client **what happened** before it even reads the body.\n\n### Families\n| Range | Meaning |\n|---|---|\n| 1xx | informational |\n| 2xx | success |\n| 3xx | redirection |\n| 4xx | **client** error - the request is wrong |\n| 5xx | **server** error - we failed |\n\n### Codes you must know\n* **200 OK** - request succeeded.\n* **201 Created** - a resource was created (POST).\n* **204 No Content** - success, nothing to return (DELETE).\n* **301 / 302** - permanent / temporary redirect; **304 Not Modified** - use your cache.\n* **400 Bad Request** - malformed or invalid input.\n* **401 Unauthorized** - not authenticated (no or bad credentials).\n* **403 Forbidden** - authenticated but not allowed.\n* **404 Not Found** - resource does not exist.\n* **409 Conflict** - state conflict (duplicate email, edit conflict).\n* **422 Unprocessable Entity** - validation errors on well-formed input.\n* **429 Too Many Requests** - rate limit hit (send `Retry-After`).\n* **500 Internal Server Error** - unexpected bug; **502/503/504** - bad gateway, unavailable, gateway timeout.\n\n### 401 vs 403\n**401** = \"who are you?\" (log in). **403** = \"I know who you are, but you may not do this.\"",
+     "keyPoints": [
+      "2xx success, 3xx redirect, 4xx client error, 5xx server error",
+      "201 for create, 204 for empty success",
+      "401 = not logged in, 403 = not allowed",
+      "429 signals rate limiting",
+      "Never leak stack traces in 500 responses"
+     ],
+     "pitfalls": [
+      "Returning 200 for errors",
+      "Using 500 for validation problems",
+      "Mixing up 401 and 403"
+     ],
+     "examples": [
+      {
+       "title": "Express handlers",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "res.status(201).json(newUser);                       // created\nres.status(204).end();                              // deleted\nres.status(400).json({ error: 'Email required' });  // bad input\nres.status(401).json({ error: 'Login required' });  // no/invalid token\nres.status(403).json({ error: 'Admins only' });     // forbidden\nres.status(404).json({ error: 'User not found' });  // missing\nres.status(429).json({ error: 'Slow down' });       // rate limit",
+       "explanation": "Choose the code that describes the outcome precisely."
+      }
+     ],
+     "interview": [
+      {
+       "q": "401 vs 403?",
+       "a": "401: unauthenticated. 403: authenticated but lacking permission."
+      },
+      {
+       "q": "400 vs 422?",
+       "a": "400 for syntactically bad requests, 422 for well-formed requests that fail semantic validation (many teams use 400 for both)."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-auth-jwt-session-oauth",
+     "title": "Authentication: Sessions, JWT & OAuth",
+     "level": "intermediate",
+     "summary": "How sessions, JSON Web Tokens and OAuth 2.0 differ, and when to use each.",
+     "description": "**Authentication** answers \"who are you?\"; **authorization** answers \"what may you do?\".\n\n### Session (stateful)\nThe server stores the session (in memory, DB or Redis) and sends the browser a **session id cookie**. Every request looks the session up. Easy to revoke, but needs shared storage when you run many servers (Redis!).\n\n### JWT (stateless)\nA signed token `header.payload.signature` holding claims (user id, role, expiry). The server only verifies the signature - no lookup needed, so it scales across servers easily. Downsides: hard to revoke before expiry, payload is only encoded (not encrypted).\n\n* Keep **access tokens short-lived** (about 15 minutes) and use a **refresh token** (stored in an httpOnly cookie, rotated) to get new ones.\n* Never put secrets in the payload.\n\n### OAuth 2.0 / OpenID Connect\nA protocol to **delegate** login to a provider (\"Sign in with Google\"). Your app never sees the user's password; it receives an authorization code, exchanges it for tokens. OAuth is about authorization; **OIDC** adds identity on top.\n\n### Storage in the browser\nPrefer **httpOnly + Secure + SameSite cookies** (not readable by JavaScript, safer against XSS). Hash passwords with **bcrypt/argon2**, always use HTTPS.",
+     "keyPoints": [
+      "Session = server remembers you, JWT = token proves you",
+      "JWT is signed, not encrypted",
+      "Short access token + refresh token",
+      "OAuth delegates login to a provider",
+      "Hash passwords with bcrypt/argon2; use HTTPS and httpOnly cookies"
+     ],
+     "pitfalls": [
+      "Storing JWTs in localStorage (XSS exposure)",
+      "Long-lived JWTs that cannot be revoked",
+      "Putting sensitive data in a JWT payload"
+     ],
+     "examples": [
+      {
+       "title": "JWT with Express (sketch)",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "// login\nconst token = jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '15m' });\nres.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'lax' });\n\n// middleware\nfunction auth(req, res, next) {\n  try {\n    req.user = jwt.verify(req.cookies.token, process.env.JWT_SECRET);\n    next();\n  } catch {\n    res.status(401).json({ error: 'Invalid or expired token' });\n  }\n}",
+       "explanation": "Sign on login, verify on every protected request."
+      },
+      {
+       "title": "JWT structure",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "xxxxx.yyyyy.zzzzz\n  |     |     |\nheader payload signature\n(alg)  (claims) HMAC(header+payload, secret)",
+       "explanation": "Anyone can read the payload (base64); only the server can create a valid signature."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Session vs JWT?",
+       "a": "Sessions keep state on the server and are easy to revoke; JWTs are self-contained, stateless and scale well but are harder to revoke."
+      },
+      {
+       "q": "Authentication vs authorization?",
+       "a": "Authentication verifies identity; authorization decides what that identity may do."
+      },
+      {
+       "q": "Why a refresh token?",
+       "a": "So access tokens can be short-lived (limiting damage if stolen) without forcing users to log in again."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-caching-basics",
+     "title": "Caching Basics",
+     "level": "intermediate",
+     "summary": "Store expensive results closer to the user so requests skip slow work: browser, CDN, application and database caches.",
+     "description": "A **cache** keeps a copy of data that is expensive to compute or fetch so the next request is fast. It reduces latency **and** protects your database.\n\n### Layers\n1. **Browser cache** - controlled with `Cache-Control`, `ETag`.\n2. **CDN** - static assets and even API responses served from edge locations near users.\n3. **Application cache** - in-memory or **Redis**: query results, rendered fragments, sessions.\n4. **Database cache** - buffer pool, query cache.\n\n### Strategies\n* **Cache-aside (lazy loading)**: read cache; on miss read DB and store in cache. Most common.\n* **Write-through**: write to cache and DB together.\n* **Write-back**: write to cache, flush to DB later (fast, risk of loss).\n\n### Expiry & invalidation\nUse a **TTL** (time to live) and **invalidate** keys when the data changes. \"There are only two hard things in computer science: cache invalidation and naming things.\"\n\n### Problems to know\n* **Stale data** - users see old values until TTL expires.\n* **Cache stampede** - many requests rebuild an expired hot key simultaneously; use locks or jittered TTLs.\n* **Eviction** - when memory is full (LRU is the usual policy).",
+     "keyPoints": [
+      "Cache-aside: check cache, fall back to DB, then fill cache",
+      "Always set a TTL",
+      "Invalidate on write",
+      "Hot keys can cause a stampede",
+      "Measure the hit ratio"
+     ],
+     "pitfalls": [
+      "Caching user-specific data under a shared key",
+      "No TTL leading to permanently stale data",
+      "Caching before optimising slow queries or missing indexes"
+     ],
+     "examples": [
+      {
+       "title": "Cache-aside with Redis",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "async function getProduct(id) {\n  const key = 'product:' + id;\n  const cached = await redis.get(key);\n  if (cached) return JSON.parse(cached);          // hit\n\n  const product = await db.products.findById(id); // miss -> DB\n  await redis.set(key, JSON.stringify(product), 'EX', 300); // TTL 5 min\n  return product;\n}",
+       "explanation": "The classic read path; remember to delete the key when the product is updated."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What is cache-aside?",
+       "a": "The application checks the cache first, loads from the database on a miss and writes the value into the cache."
+      },
+      {
+       "q": "What is a cache stampede?",
+       "a": "Many simultaneous requests miss an expired popular key and all hit the database at once; mitigate with locking, request coalescing or staggered TTLs."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-db-indexing",
+     "title": "Database Indexing",
+     "level": "intermediate",
+     "summary": "An index is a sorted lookup structure that turns full-table scans into fast seeks - at the cost of slower writes.",
+     "description": "Without an index the database must read **every row** (a *full table scan*) to find matches. An **index** is an extra data structure (usually a **B-tree**) that keeps column values sorted with pointers to rows, like the index at the back of a book.\n\n### When indexes help\n* Columns in `WHERE`, `JOIN` and `ORDER BY`.\n* Foreign keys.\n* Columns with high **selectivity** (many distinct values, e.g. email) - not a boolean flag.\n\n### Types\n* **Primary / unique** index - enforces uniqueness.\n* **Composite** index `(user_id, created_at)` - follows the **leftmost prefix** rule: it helps queries filtering by `user_id` or `user_id + created_at`, but not by `created_at` alone.\n* **Partial**, **full-text**, **hash**, **covering** indexes for special cases.\n\n### Costs\nEvery index uses disk/memory and slows `INSERT`/`UPDATE`/`DELETE` because it must be updated. Index what you query, not everything.\n\n### Verify with EXPLAIN\nRun `EXPLAIN` (or `EXPLAIN ANALYZE`) to see whether the planner uses an index (Index Scan) or reads everything (Seq Scan).\n\nIn scaling terms indexing is the **first** thing to do before caching or sharding.",
+     "keyPoints": [
+      "Index = sorted structure (B-tree) for fast lookup",
+      "Index columns used in WHERE/JOIN/ORDER BY",
+      "Composite indexes obey the leftmost-prefix rule",
+      "Indexes slow writes and use space",
+      "Check plans with EXPLAIN"
+     ],
+     "pitfalls": [
+      "Indexing every column",
+      "Functions on the column (`WHERE LOWER(email)=...`) bypassing the index",
+      "Wrong column order in a composite index"
+     ],
+     "examples": [
+      {
+       "title": "Create and verify an index",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "-- slow: sequential scan on millions of rows\nSELECT * FROM orders WHERE user_id = 42 ORDER BY created_at DESC LIMIT 20;\n\nCREATE INDEX idx_orders_user_created ON orders (user_id, created_at DESC);\n\nEXPLAIN ANALYZE\nSELECT * FROM orders WHERE user_id = 42 ORDER BY created_at DESC LIMIT 20;\n-- Index Scan using idx_orders_user_created",
+       "explanation": "One composite index serves both the filter and the sort."
+      },
+      {
+       "title": "MongoDB equivalent",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "db.orders.createIndex({ userId: 1, createdAt: -1 });\ndb.orders.find({ userId: 42 }).sort({ createdAt: -1 }).explain('executionStats');",
+       "explanation": "Same idea in a document database."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Why not index every column?",
+       "a": "Indexes consume space and make every write slower because each index has to be maintained."
+      },
+      {
+       "q": "What is the leftmost prefix rule?",
+       "a": "A composite index can be used only for queries that filter on its first column(s) in order."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-sql-vs-nosql",
+     "title": "SQL vs NoSQL",
+     "level": "intermediate",
+     "summary": "Relational databases favour structure and transactions; NoSQL stores trade some of that for flexibility and horizontal scale.",
+     "description": "### SQL (relational) - PostgreSQL, MySQL\n* Data in **tables** with a fixed schema; relations via foreign keys and **JOINs**.\n* Strong **ACID** transactions (atomic, consistent, isolated, durable).\n* Powerful queries (aggregations, joins).\n* Scales vertically first; horizontal scaling (replicas, sharding) takes more effort.\n\n### NoSQL\n| Type | Example | Good for |\n|---|---|---|\n| Document | MongoDB | flexible JSON-like records, content, catalogs |\n| Key-value | Redis, DynamoDB | cache, sessions, counters |\n| Wide-column | Cassandra | huge write-heavy time series |\n| Graph | Neo4j | relationships, recommendations |\n| Search | Elasticsearch | full-text search |\n\n* Flexible/evolving schema, designed for horizontal scaling.\n* Often **eventual consistency** (BASE) and weaker joins - you model data around your queries and may duplicate data.\n\n### How to choose\n* Money, orders, inventory, anything relational -> **SQL**.\n* Rapidly changing shape, hierarchical documents, massive scale -> **NoSQL**.\n* Real systems are **polyglot**: PostgreSQL as the source of truth, Redis for cache, Elasticsearch for search.",
+     "keyPoints": [
+      "SQL: schema, joins, ACID transactions",
+      "NoSQL: flexible schema, horizontal scale, eventual consistency",
+      "Pick by access patterns, not by trend",
+      "Polyglot persistence is normal in big systems"
+     ],
+     "pitfalls": [
+      "Choosing NoSQL just to \"avoid schemas\" and ending up with an implicit one",
+      "Forcing highly relational data into a document store",
+      "Assuming SQL cannot scale"
+     ],
+     "examples": [
+      {
+       "title": "Same data, two models",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "-- SQL: normalised\nusers(id, name)      orders(id, user_id, total)\nSELECT u.name, o.total FROM orders o JOIN users u ON u.id = o.user_id;\n\n// MongoDB: embedded document\n{ _id: 1, name: \"Asha\", orders: [ { total: 499 }, { total: 129 } ] }",
+       "explanation": "SQL joins at read time; documents pre-join by embedding."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What does ACID stand for?",
+       "a": "Atomicity, Consistency, Isolation, Durability - the guarantees of a database transaction."
+      },
+      {
+       "q": "When would you pick MongoDB?",
+       "a": "For flexible, document-shaped data that is read as a whole and when the schema changes often or needs easy horizontal scaling."
+      }
+     ],
+     "source": ""
+    }
+   ]
+  },
+  {
+   "id": "devnotes-scaling",
+   "title": "Scaling a Backend",
+   "level": "advanced",
+   "topics": [
+    {
+     "id": "dev-scaling-roadmap",
+     "title": "The Scaling Roadmap: Final Flow",
+     "level": "intermediate",
+     "summary": "Scale in order of cost and complexity: indexes, query tuning, cache, replicas, partitioning - and only then sharding.",
+     "description": "When a database gets slow the temptation is to jump to the most \"advanced\" tool (sharding, microservices). The correct approach is to move through the cheap, high-impact steps first.\n\n### The final flow\n```\nSingle DB\n   |\n   v\nIndexes\n   |\n   v\nQuery optimization\n   |\n   v\nRedis (cache)\n   |\n   v\nRead replicas\n   |\n   v\nPartitioning\n   |\n   v\nOnly then -> Sharding\n```\n\n### Why this order\n1. **Single DB** - start simple; one well-tuned database goes a long way.\n2. **Indexes** - turn full scans into seeks; often a 100x win for one line of SQL.\n3. **Query optimization** - fix N+1 queries, select only needed columns, paginate, use `EXPLAIN`.\n4. **Redis / cache** - serve repeated reads from memory and lighten the DB.\n5. **Read replicas** - copies of the database that handle read traffic; the primary handles writes.\n6. **Partitioning** - split one huge table into smaller parts inside one database (by date, region...).\n7. **Sharding** - split data across multiple database servers. Powerful but complex: cross-shard queries, rebalancing, operational pain.\n\n### Rule of thumb\nEvery step adds operational cost. Measure first (slow query log, APM, EXPLAIN), fix the real bottleneck, and move to the next step only when the previous one is exhausted.",
+     "keyPoints": [
+      "Order: indexes, query tuning, cache, replicas, partitioning, sharding",
+      "Measure before you scale",
+      "Each step adds complexity - take the cheapest one that works",
+      "Sharding is the last resort"
+     ],
+     "pitfalls": [
+      "Sharding too early",
+      "Adding cache on top of un-indexed slow queries",
+      "Scaling without monitoring or load tests"
+     ],
+     "examples": [
+      {
+       "title": "The ladder with typical tools",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "Step                 Tool / action                       Cost\n-------------------  ----------------------------------  ------\n1 Indexes            CREATE INDEX, EXPLAIN               low\n2 Query tuning       fix N+1, LIMIT, projections         low\n3 Cache              Redis, CDN                          medium\n4 Read replicas      primary + N replicas                medium\n5 Partitioning       table partitions by date/range      medium\n6 Sharding           split data across DB servers        high",
+       "explanation": "Climb one rung at a time."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What would you do first if the database is slow?",
+       "a": "Find the slow queries, check indexes and execution plans, fix inefficient queries; then consider caching."
+      },
+      {
+       "q": "Why is sharding the last step?",
+       "a": "It makes queries, transactions and operations much more complex, so it is only worthwhile when a single primary (even with replicas) cannot handle the write volume or data size."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    },
+    {
+     "id": "dev-load-balancer-pools",
+     "title": "Load Balancer & Connection Pools",
+     "level": "intermediate",
+     "summary": "Spread traffic over many API servers and protect the database by reusing a limited number of connections.",
+     "description": "Imagine **1M users** hitting your service. One server cannot handle them, so you run many copies of the API behind a **load balancer**.\n\n### Flow\n```\n1M users\n   |\n   v\nLoad Balancer\n   |\n   v\n100 API servers\n   |\n   v\nConnection pools\n   |\n   v\nDatabase\n```\n\n### Load balancer\nReceives every request and forwards it to a healthy server (Nginx, HAProxy, AWS ALB, Cloudflare).\n* **Algorithms**: round robin, least connections, IP hash.\n* **Health checks** remove dead servers automatically.\n* Enables **zero-downtime deploys** and horizontal scaling: add servers, no code change.\n* Requires **stateless** servers - sessions and files must live in Redis / object storage, not on one machine.\n\n### Connection pooling\nOpening a database connection is expensive and a database can only hold a limited number (e.g. 100-500). 100 API servers each opening 20 connections would crush it. A **pool** keeps a small set of open connections that requests borrow and return. Tools: pool settings in your driver/ORM, **PgBouncer** for PostgreSQL, ProxySQL for MySQL.\n\n### Sizing\nTotal connections = servers x pool size per server. Keep it below the database limit.",
+     "keyPoints": [
+      "Load balancer distributes requests and health-checks servers",
+      "Servers must be stateless to scale horizontally",
+      "Connection pools reuse a small set of DB connections",
+      "servers x pool size must stay under the DB limit"
+     ],
+     "pitfalls": [
+      "Storing sessions or uploads on the local disk of one server",
+      "Opening a new DB connection per request",
+      "Huge pool sizes on every server"
+     ],
+     "examples": [
+      {
+       "title": "Nginx upstream (sketch)",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "upstream api_servers {\n    least_conn;\n    server 10.0.0.11:3000;\n    server 10.0.0.12:3000;\n    server 10.0.0.13:3000;\n}\nserver {\n    listen 80;\n    location / { proxy_pass http://api_servers; }\n}",
+       "explanation": "Nginx sends each request to the server with the fewest active connections."
+      },
+      {
+       "title": "Pool in Node (pg)",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "const { Pool } = require('pg');\nconst pool = new Pool({ max: 10, idleTimeoutMillis: 30000 });\n\nasync function getUser(id) {\n  const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);\n  return rows[0];\n}",
+       "explanation": "The pool lends one of 10 connections per query and takes it back."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Why must app servers be stateless?",
+       "a": "So any server can handle any request; otherwise the load balancer would need sticky sessions and you could not add or remove servers freely."
+      },
+      {
+       "q": "Why use a connection pool?",
+       "a": "Creating connections is slow and databases limit them; pooling reuses connections and caps the load."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    },
+    {
+     "id": "dev-redis-uses",
+     "title": "Redis: Cache, Sessions, Rate Limits & More",
+     "level": "intermediate",
+     "summary": "Redis is a very fast in-memory data store used for caching, sessions, rate limiting, counters, locks, temporary data and light queues.",
+     "description": "**Redis** keeps data in RAM, so reads and writes take microseconds. It is rarely the primary database; it sits **next to** it and takes pressure off.\n\n### What it is used for\n| Use | How |\n|---|---|\n| **Cache** | store query results / pages with a TTL |\n| **Sessions** | shared session store for many servers |\n| **Rate limiting** | counter per IP/user with expiry (`INCR` + `EXPIRE`) |\n| **Counters** | likes, views, stock counters (atomic `INCR`) |\n| **Locks** | distributed locks (`SET key value NX PX 30000`) |\n| **Temporary data** | OTPs, password-reset tokens, short-lived state |\n| **Queue support** | lists, streams and BullMQ job queues |\n| **Leaderboards** | sorted sets |\n\n### Data types\nStrings, hashes, lists, sets, **sorted sets**, streams, bitmaps, HyperLogLog.\n\n### Important traits\n* Single-threaded command execution -> operations are atomic.\n* **TTL** on keys for automatic expiry.\n* Persistence is optional (RDB snapshots, AOF log); memory is the limit, so choose an **eviction policy** (e.g. `allkeys-lru`).\n* Scales with replication, Sentinel (failover) and Cluster (sharding).",
+     "keyPoints": [
+      "In-memory, microsecond latency",
+      "Used for cache, sessions, rate limits, counters, locks, temp data, queues",
+      "Keys can expire with a TTL",
+      "Atomic operations like INCR make counters and limits safe",
+      "Set an eviction policy because RAM is limited"
+     ],
+     "pitfalls": [
+      "Treating Redis as the only copy of important data",
+      "Keys without TTL growing forever",
+      "Using `KEYS *` in production (blocks the server) - use `SCAN`"
+     ],
+     "examples": [
+      {
+       "title": "Fixed-window rate limiter",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "async function allow(userId) {\n  const key = 'rate:' + userId + ':' + Math.floor(Date.now() / 60000);\n  const count = await redis.incr(key);        // atomic\n  if (count === 1) await redis.expire(key, 60);\n  return count <= 100;                        // 100 requests per minute\n}",
+       "explanation": "One counter per user per minute that expires on its own."
+      },
+      {
+       "title": "Redis commands",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "SET session:abc '{\"userId\":42}' EX 3600\nGET session:abc\nINCR page:views\nZADD leaderboard 1500 \"asha\"\nZREVRANGE leaderboard 0 9 WITHSCORES",
+       "explanation": "Session with an hour TTL, a counter and a leaderboard."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Why is Redis fast?",
+       "a": "Data lives in memory and it uses efficient single-threaded event-loop processing with simple data structures."
+      },
+      {
+       "q": "How would you implement rate limiting with Redis?",
+       "a": "Use a key per client and time window, increment it atomically, set an expiry on the first hit and reject when the count exceeds the limit."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    },
+    {
+     "id": "dev-message-queues",
+     "title": "Message Queues & Background Workers",
+     "level": "advanced",
+     "summary": "Move slow or non-critical work (email, search indexing, analytics) off the request path with a queue and workers.",
+     "description": "Some tasks should **not** run inside the HTTP request: sending e-mails, resizing images, processing a resume, updating a search index. A **queue** lets the API respond immediately while **workers** process jobs in the background.\n\n### Architecture\n```\nAPI\n |\n v\nKafka / RabbitMQ / SQS / BullMQ\n |\n |-- Email worker\n |-- Notification worker\n |-- Search indexing worker\n |-- Recommendation worker\n |-- Analytics pipeline\n +-- Resume processing worker\n```\n\n### Why queues\n* **Faster responses** - the API only enqueues a job.\n* **Resilience** - if a worker is down the jobs wait; failed jobs are **retried**.\n* **Smoothing spikes** - the queue absorbs bursts, workers consume at their pace.\n* **Decoupling** - producers do not know consumers; add new workers without touching the API.\n\n### Choosing a tool\n* **BullMQ** (Redis based) - easy job queue for Node.js with retries, delays, priorities.\n* **RabbitMQ** - classic message broker with routing.\n* **SQS** - managed AWS queue.\n* **Kafka** - distributed log for very high throughput event streaming; many consumers can replay events.\n\n### Design rules\nMake jobs **idempotent** (running twice is harmless), add retries with back-off and a **dead-letter queue** for jobs that keep failing.",
+     "keyPoints": [
+      "The API enqueues, workers process asynchronously",
+      "Queues add retries, buffering and decoupling",
+      "BullMQ/RabbitMQ/SQS for jobs, Kafka for event streams",
+      "Jobs must be idempotent",
+      "Use a dead-letter queue for poison messages"
+     ],
+     "pitfalls": [
+      "Doing slow work inside the request handler",
+      "Non-idempotent jobs that double-charge or double-email on retry",
+      "No monitoring of queue length"
+     ],
+     "examples": [
+      {
+       "title": "BullMQ producer and worker",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "// producer (API)\nconst emailQueue = new Queue('email', { connection });\nawait emailQueue.add('welcome', { userId: 42 }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });\nres.status(202).json({ queued: true });\n\n// worker (separate process)\nnew Worker('email', async (job) => {\n  await sendWelcomeEmail(job.data.userId);\n}, { connection });",
+       "explanation": "202 Accepted tells the client the work was queued but not finished."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Why use a message queue?",
+       "a": "To make slow work asynchronous, absorb traffic spikes, retry failures and decouple services."
+      },
+      {
+       "q": "Kafka vs RabbitMQ?",
+       "a": "RabbitMQ is a broker that delivers messages to consumers and removes them; Kafka is a persistent distributed log that supports very high throughput and replaying events."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    },
+    {
+     "id": "dev-replication-sharding",
+     "title": "Replication & Sharding",
+     "level": "advanced",
+     "summary": "Replication copies the same data to several servers; sharding splits the data so each server holds a part.",
+     "description": "These two ideas are often confused. They solve **different** problems.\n\n### Replication - same data, many copies\nA **primary** (leader) accepts writes and streams changes to **replicas** (followers).\n* Scales **reads** (send SELECTs to replicas).\n* Gives **high availability**: if the primary dies, a replica is promoted (failover).\n* Backups can run on a replica.\n* Caveat: **replication lag** - a replica may be a few milliseconds behind, so a user may not immediately see their own write (read-your-writes problem).\n\n### Sharding - split the data\nSharding = breaking one very large database into **multiple smaller databases** so that load and data are distributed over several machines.\n* Scales **writes** and **total storage**.\n* A **shard key** decides where a row lives, e.g. `user_id % 4`, a hash range, or region.\n* Good keys give an even spread; bad keys create **hot shards**.\n\n```\nReplication:  Primary --> Replica 1\n                      \\-> Replica 2        (all hold ALL data)\n\nSharding:     Shard A: users 1..1M\n              Shard B: users 1M..2M         (each holds PART of data)\n              Shard C: users 2M..3M\n```\n\n### Cost of sharding\nCross-shard JOINs and transactions are hard, re-sharding is painful, and every query needs routing. That is why it comes last in the scaling roadmap. In practice you combine both: each shard has its own replicas.",
+     "keyPoints": [
+      "Replication = copies for read scale and availability",
+      "Sharding = splitting data for write scale and size",
+      "Replication lag causes stale reads",
+      "The shard key must spread load evenly",
+      "Large systems use both: shards with replicas"
+     ],
+     "pitfalls": [
+      "Believing replicas increase write capacity",
+      "Choosing a monotonic shard key (like timestamp) that creates a hot shard",
+      "Sharding before indexes, caching and replicas"
+     ],
+     "examples": [
+      {
+       "title": "Routing by shard key",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "function shardFor(userId) {\n  const SHARDS = ['db-a', 'db-b', 'db-c', 'db-d'];\n  return SHARDS[userId % SHARDS.length];\n}\nconst db = connect(shardFor(order.userId));",
+       "explanation": "Simple modulo routing. Production systems prefer consistent hashing so adding a shard moves few keys."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Replication vs sharding?",
+       "a": "Replication duplicates all data across servers (reads, availability); sharding partitions data across servers (writes, capacity)."
+      },
+      {
+       "q": "What is a hot shard?",
+       "a": "A shard that receives a disproportionate share of traffic because of an uneven shard key distribution."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    },
+    {
+     "id": "dev-search-engines",
+     "title": "Search Engines: Elasticsearch, OpenSearch, Solr",
+     "level": "advanced",
+     "summary": "Dedicated search engines build inverted indexes for fast full-text search, ranking and filtering at scale.",
+     "description": "A relational database is poor at searches like \"find products matching *wireless headphones* with typos, sorted by relevance\". A **search engine** is built for exactly this.\n\n### Tools\n* **Elasticsearch** - most popular, built on Lucene, REST/JSON API.\n* **OpenSearch** - AWS-led fork of Elasticsearch.\n* **Solr** - mature Lucene-based server from Apache.\n* **Lucene** - the Java library underneath all of them.\n\n### How it works: inverted index\nInstead of \"document -> words\", it stores \"word -> documents\".\n\n```\ndoc1: \"red running shoes\"\ndoc2: \"blue running jacket\"\n\nrunning -> [doc1, doc2]\nshoes   -> [doc1]\njacket  -> [doc2]\n```\n\nLookups are fast and results are **scored** by relevance (TF-IDF / BM25).\n\n### Features\nFull-text search, typo tolerance (fuzzy), autocomplete, synonyms, facets/filters, aggregations, geo search.\n\n### How it fits into the system\nThe search engine is **not** the source of truth. Your primary DB stays authoritative; a **search indexing worker** consumes change events from a queue and updates the index. Search results return ids which you can hydrate from the database if needed.",
+     "keyPoints": [
+      "Built on inverted indexes (word -> documents)",
+      "Relevance scoring and fuzzy matching out of the box",
+      "Elasticsearch, OpenSearch, Solr all build on Lucene",
+      "Keep the primary DB as the source of truth",
+      "Update the index asynchronously via queue workers"
+     ],
+     "pitfalls": [
+      "Using SQL `LIKE '%term%'` for real search at scale",
+      "Using the search engine as the only data store",
+      "Forgetting to re-index after schema/mapping changes"
+     ],
+     "examples": [
+      {
+       "title": "Elasticsearch query",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "GET /products/_search\n{\n  \"query\": {\n    \"bool\": {\n      \"must\":   { \"match\": { \"name\": { \"query\": \"wirless headphones\", \"fuzziness\": \"AUTO\" } } },\n      \"filter\": { \"range\": { \"price\": { \"lte\": 5000 } } }\n    }\n  },\n  \"sort\": [ \"_score\" ]\n}",
+       "explanation": "A typo tolerant text search combined with a price filter."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Why not use SQL LIKE for search?",
+       "a": "A leading wildcard cannot use a normal index, so it scans the table, and it has no relevance ranking, stemming or typo tolerance."
+      },
+      {
+       "q": "What is an inverted index?",
+       "a": "A map from each term to the list of documents that contain it, enabling fast full-text lookups."
+      }
+     ],
+     "source": "Adv Dev.txt"
+    }
+   ]
+  },
+  {
+   "id": "devnotes-tooling",
+   "title": "DevOps & Tooling",
+   "level": "intermediate",
+   "topics": [
+    {
+     "id": "dev-docker-basics",
+     "title": "Docker Basics",
+     "level": "beginner",
+     "summary": "Package an app and its dependencies into an image and run it as an isolated container anywhere.",
+     "description": "**Docker** packages your application together with its runtime, libraries and configuration into an **image**. A running instance of an image is a **container**. This removes the \"works on my machine\" problem.\n\n### Key concepts\n* **Image** - read-only template built from a `Dockerfile`, made of layers.\n* **Container** - a running (isolated) process from an image.\n* **Registry** - stores images (Docker Hub, GHCR, ECR).\n* **Volume** - persistent storage outside the container's lifecycle.\n* **Compose** - define several containers (app, DB, Redis) in one YAML file.\n\n### Essential commands\n* `docker build -t myapp .` - build an image.\n* `docker run -p 3000:3000 myapp` - run and publish a port.\n* `docker ps` / `docker logs <id>` / `docker exec -it <id> sh`.\n* `docker stop <id>`, `docker rm <id>`, `docker images`.\n* `docker compose up -d` - start the whole stack.\n\n### Tips\n* Use a small base image (`node:20-alpine`).\n* Copy `package*.json` first and install, **then** copy the source - layer caching makes rebuilds fast.\n* Add a `.dockerignore` (`node_modules`, `.git`).\n* Never bake secrets into images; pass them as environment variables.",
+     "keyPoints": [
+      "Image = template, container = running instance",
+      "Dockerfile describes how to build an image",
+      "Publish ports with -p host:container",
+      "Use volumes for persistent data",
+      "Compose runs multi-container apps"
+     ],
+     "pitfalls": [
+      "Storing data inside a container without a volume",
+      "Running as root and shipping secrets in the image",
+      "Copying the whole project before installing dependencies (breaks caching)"
+     ],
+     "examples": [
+      {
+       "title": "Node.js Dockerfile",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\nCOPY . .\nEXPOSE 3000\nCMD [\"node\", \"server.js\"]",
+       "explanation": "Dependency layer is cached until package.json changes."
+      },
+      {
+       "title": "docker-compose.yml",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "services:\n  api:\n    build: .\n    ports: [\"3000:3000\"]\n    environment:\n      - REDIS_URL=redis://redis:6379\n    depends_on: [redis]\n  redis:\n    image: redis:7-alpine",
+       "explanation": "The API reaches Redis by its service name."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Image vs container?",
+       "a": "An image is an immutable template; a container is a running instance created from it."
+      },
+      {
+       "q": "Container vs virtual machine?",
+       "a": "Containers share the host kernel and are lightweight and fast to start; VMs include a full guest OS."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-ci-cd-basics",
+     "title": "CI/CD Basics",
+     "level": "intermediate",
+     "summary": "Automatically build, test and deploy every change so releases become small, frequent and safe.",
+     "description": "**CI (Continuous Integration)** - every push is automatically built and tested. **CD** means either *Continuous Delivery* (always releasable, deploy with one click) or *Continuous Deployment* (every passing change goes to production automatically).\n\n### A typical pipeline\n```\npush / pull request\n      |\n      v\n  install deps -> lint -> unit tests -> build\n      |\n      v\n  build Docker image -> push to registry\n      |\n      v\n  deploy to staging -> smoke tests\n      |\n      v\n  deploy to production (manual approval or automatic)\n```\n\n### Benefits\n* Bugs are caught minutes after they are written.\n* Same repeatable process for every deploy.\n* Small changes are easy to roll back.\n\n### Good practices\n* Keep the pipeline **fast** (cache dependencies, run jobs in parallel).\n* Store secrets in the CI secret store, never in the repository.\n* Protect `main`: require passing checks and review before merge.\n* Deploy strategies: **rolling**, **blue-green**, **canary**; always have a **rollback** plan.\n* Tools: GitHub Actions, GitLab CI, Jenkins, CircleCI.",
+     "keyPoints": [
+      "CI = build and test on every change",
+      "CD = automated delivery/deployment",
+      "Fast, repeatable pipelines",
+      "Secrets live in the CI secret store",
+      "Plan rollbacks and use staged rollouts"
+     ],
+     "pitfalls": [
+      "Flaky tests that everybody ignores",
+      "Deploying straight from a developer laptop",
+      "Slow pipelines nobody waits for"
+     ],
+     "examples": [
+      {
+       "title": "GitHub Actions workflow",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 20, cache: npm }\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test\n      - run: npm run build",
+       "explanation": "Runs on every push and pull request."
+      }
+     ],
+     "interview": [
+      {
+       "q": "Continuous delivery vs continuous deployment?",
+       "a": "Delivery keeps every build releasable but requires a manual approval to deploy; deployment ships every passing change automatically."
+      },
+      {
+       "q": "What is a canary release?",
+       "a": "Releasing a new version to a small share of users first and watching metrics before rolling out fully."
+      }
+     ],
+     "source": ""
+    },
+    {
+     "id": "dev-android-emulator-fix",
+     "title": "Android Emulator Stuck: Reset & Connect to Localhost",
+     "level": "beginner",
+     "summary": "Commands to restart ADB, kill hung emulator processes on Windows, and how an emulator reaches your local API via 10.0.2.2.",
+     "description": "When the Android emulator freezes, will not boot or `adb devices` shows nothing, the cure is to restart **ADB** (Android Debug Bridge) and kill leftover emulator processes.\n\n### 1. Restart ADB\n```\nadb kill-server\nadb start-server\nadb devices\n```\n\n### 2. Kill a specific emulator\n```\nadb -s emulator-5554 emu kill\n```\n\n### 3. Kill hung processes on Windows\nFind them first, then kill by PID:\n```\ntasklist | findstr emulator\ntasklist | findstr qemu\ntaskkill /PID 17560 /F\n```\n\n**The shortcut that solves most cases** - kill by image name:\n```\ntaskkill /IM emulator.exe /F\ntaskkill /IM qemu-system-x86_64.exe /F\n```\n\n### 4. Reaching your computer from the emulator\nInside the emulator `localhost` is the emulator itself. Your development machine is available at the special address **10.0.2.2**, so an API running on port 3000 is:\n```\nAPI_URL=http://10.0.2.2:3000/api/v1\n```\nThen start the app with `npm run android` (React Native).\n\nFor a **physical device** use your PC's LAN IP, or `adb reverse tcp:3000 tcp:3000` to forward the port.",
+     "keyPoints": [
+      "`adb kill-server` then `adb start-server` restarts ADB",
+      "`taskkill /IM emulator.exe /F` and `qemu-system-x86_64.exe` kill hung emulators",
+      "Emulator reaches the host machine at 10.0.2.2",
+      "`adb devices` lists connected emulators/devices"
+     ],
+     "pitfalls": [
+      "Using `localhost` in the API URL inside the emulator",
+      "Killing only emulator.exe and leaving qemu running",
+      "Forgetting to restart the Metro/app after changing `API_URL`"
+     ],
+     "examples": [
+      {
+       "title": "Full recovery sequence (Windows)",
+       "language": "text",
+       "html": "",
+       "css": "",
+       "js": "",
+       "code": "taskkill /IM emulator.exe /F\ntaskkill /IM qemu-system-x86_64.exe /F\nadb kill-server\nadb start-server\nadb devices\nnpm run android",
+       "explanation": "Kill processes, restart ADB, confirm device, run the app."
+      }
+     ],
+     "interview": [
+      {
+       "q": "What is 10.0.2.2 in the Android emulator?",
+       "a": "A special alias that points to the host computer's loopback interface (127.0.0.1 of your development machine)."
+      },
+      {
+       "q": "How do you restart ADB?",
+       "a": "Run `adb kill-server` followed by `adb start-server`."
+      }
+     ],
+     "source": "Android emulator stuck.txt"
+    }
+   ]
+  }
+ ]
+}

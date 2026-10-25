@@ -1,0 +1,1905 @@
+[
+ {
+  "id": "q-py-reverse-words",
+  "title": "Reverse the Words",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "string",
+   "list"
+  ],
+  "statement": "Return the words of the sentence in reverse order, separated by a single space. Ignore leading, trailing and repeated spaces.\n\n**Example**\n\n```\nreverse_words(\"the sky is blue\")   # \"blue is sky the\"\nreverse_words(\"  hello   world \") # \"world hello\"\n```",
+  "language": "python",
+  "functionName": "reverse_words",
+  "starter": "def reverse_words(s):\n    # write your code here\n    pass\n",
+  "solution": "def reverse_words(s):\n    return \" \".join(s.split()[::-1])\n",
+  "solutionExplanation": "**Approach:** split, reverse with a slice, join with a space.\n\n**Complexity:** O(n).",
+  "hints": [
+   "`str.split()` without arguments splits on any run of whitespace.",
+   "A slice `[::-1]` reverses a list."
+  ],
+  "tests": [
+   {
+    "input": [
+     "the sky is blue"
+    ],
+    "expected": "blue is sky the"
+   },
+   {
+    "input": [
+     "  hello   world "
+    ],
+    "expected": "world hello"
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     "one"
+    ],
+    "expected": "one"
+   },
+   {
+    "input": [
+     "a b c d"
+    ],
+    "expected": "d c b a"
+   }
+  ]
+ },
+ {
+  "id": "q-py-is-palindrome",
+  "title": "Palindrome Check",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "string"
+  ],
+  "statement": "Return `True` if the text is a palindrome when you ignore case and every character that is not a letter or digit.\n\n**Example**\n\n```\nis_palindrome(\"A man, a plan, a canal: Panama\")  # True\nis_palindrome(\"hello\")                          # False\n```",
+  "language": "python",
+  "functionName": "is_palindrome",
+  "starter": "def is_palindrome(s):\n    # write your code here\n    pass\n",
+  "solution": "def is_palindrome(s):\n    cleaned = \"\".join(ch.lower() for ch in s if ch.isalnum())\n    return cleaned == cleaned[::-1]\n",
+  "solutionExplanation": "**Approach:** filter characters with `isalnum`, lowercase, compare with the reversed string.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Build a cleaned string with a comprehension and `str.isalnum()`.",
+   "Compare it with its reverse `cleaned[::-1]`."
+  ],
+  "tests": [
+   {
+    "input": [
+     "A man, a plan, a canal: Panama"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "hello"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "No lemon, no melon"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "ab"
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-py-char-frequency",
+  "title": "Character Frequency",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "string",
+   "dict"
+  ],
+  "statement": "Return a dictionary mapping each character of the string to how many times it occurs.\n\n**Example**\n\n```\nchar_frequency(\"hello\")  # {\"h\": 1, \"e\": 1, \"l\": 2, \"o\": 1}\n```",
+  "language": "python",
+  "functionName": "char_frequency",
+  "starter": "def char_frequency(s):\n    # write your code here\n    pass\n",
+  "solution": "def char_frequency(s):\n    counts = {}\n    for ch in s:\n        counts[ch] = counts.get(ch, 0) + 1\n    return counts\n",
+  "solutionExplanation": "**Approach:** one pass with `counts[ch] = counts.get(ch, 0) + 1`.\n\n**Complexity:** O(n).",
+  "hints": [
+   "`dict.get(key, 0)` returns 0 for missing keys.",
+   "Loop over the string and update the counter."
+  ],
+  "tests": [
+   {
+    "input": [
+     "hello"
+    ],
+    "expected": {
+     "h": 1,
+     "e": 1,
+     "l": 2,
+     "o": 1
+    }
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     "aab"
+    ],
+    "expected": {
+     "a": 2,
+     "b": 1
+    }
+   },
+   {
+    "input": [
+     "a a"
+    ],
+    "expected": {
+     "a": 2,
+     " ": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-py-fizzbuzz",
+  "title": "FizzBuzz",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "loops",
+   "math"
+  ],
+  "statement": "Return a list of strings for 1..n: `\"Fizz\"` for multiples of 3, `\"Buzz\"` for multiples of 5, `\"FizzBuzz\"` for both, otherwise the number as a string.\n\n**Example**\n\n```\nfizzbuzz(5)  # [\"1\", \"2\", \"Fizz\", \"4\", \"Buzz\"]\n```",
+  "language": "python",
+  "functionName": "fizzbuzz",
+  "starter": "def fizzbuzz(n):\n    # write your code here\n    pass\n",
+  "solution": "def fizzbuzz(n):\n    result = []\n    for i in range(1, n + 1):\n        if i % 15 == 0:\n            result.append(\"FizzBuzz\")\n        elif i % 3 == 0:\n            result.append(\"Fizz\")\n        elif i % 5 == 0:\n            result.append(\"Buzz\")\n        else:\n            result.append(str(i))\n    return result\n",
+  "solutionExplanation": "**Approach:** loop and test divisibility.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Check 15 (or both conditions) first.",
+   "Use `range(1, n + 1)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     5
+    ],
+    "expected": [
+     "1",
+     "2",
+     "Fizz",
+     "4",
+     "Buzz"
+    ]
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": [
+     "1"
+    ]
+   },
+   {
+    "input": [
+     15
+    ],
+    "expected": [
+     "1",
+     "2",
+     "Fizz",
+     "4",
+     "Buzz",
+     "Fizz",
+     "7",
+     "8",
+     "Fizz",
+     "Buzz",
+     "11",
+     "Fizz",
+     "13",
+     "14",
+     "FizzBuzz"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-is-prime",
+  "title": "Prime Check",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "math"
+  ],
+  "statement": "Return `True` if `n` is prime.\n\n**Example**\n\n```\nis_prime(7)   # True\nis_prime(1)   # False\n```",
+  "language": "python",
+  "functionName": "is_prime",
+  "starter": "def is_prime(n):\n    # write your code here\n    pass\n",
+  "solution": "def is_prime(n):\n    if n < 2:\n        return False\n    i = 2\n    while i * i <= n:\n        if n % i == 0:\n            return False\n        i += 1\n    return True\n",
+  "solutionExplanation": "**Approach:** trial division up to the square root.\n\n**Complexity:** O(sqrt n).",
+  "hints": [
+   "Numbers below 2 are not prime.",
+   "Test divisors up to `int(n ** 0.5)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     2
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     -5
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     97
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     100
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     7919
+    ],
+    "expected": true
+   }
+  ]
+ },
+ {
+  "id": "q-py-fibonacci-list",
+  "title": "Fibonacci Generator to List",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "generator",
+   "math"
+  ],
+  "statement": "Write a **generator** that yields Fibonacci numbers and use it inside `fibonacci_list(n)` to return the first `n` Fibonacci numbers as a list (starting at 0).\n\n**Example**\n\n```\nfibonacci_list(7)  # [0, 1, 1, 2, 3, 5, 8]\n```",
+  "language": "python",
+  "functionName": "fibonacci_list",
+  "starter": "def fibonacci_list(n):\n    # write your code here\n    pass\n",
+  "solution": "def fibonacci_list(n):\n    def fib_gen():\n        a, b = 0, 1\n        while True:\n            yield a\n            a, b = b, a + b\n\n    gen = fib_gen()\n    return [next(gen) for _ in range(n)]\n",
+  "solutionExplanation": "**Approach:** an infinite generator, consumed n times.\n\n**Complexity:** O(n).",
+  "hints": [
+   "A generator function uses `yield`.",
+   "Keep two variables `a, b = 0, 1` and update them with tuple assignment.",
+   "Stop after n values - e.g. with a counter or `range(n)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     0
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": [
+     0
+    ]
+   },
+   {
+    "input": [
+     7
+    ],
+    "expected": [
+     0,
+     1,
+     1,
+     2,
+     3,
+     5,
+     8
+    ]
+   },
+   {
+    "input": [
+     10
+    ],
+    "expected": [
+     0,
+     1,
+     1,
+     2,
+     3,
+     5,
+     8,
+     13,
+     21,
+     34
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-squares-of-evens",
+  "title": "Squares of Even Numbers",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "list-comprehension"
+  ],
+  "statement": "Return a list with the square of every even number of `nums`, keeping the order. Solve it with **one list comprehension**.\n\n**Example**\n\n```\nsquares_of_evens([1, 2, 3, 4, 5, 6])  # [4, 16, 36]\n```",
+  "language": "python",
+  "functionName": "squares_of_evens",
+  "starter": "def squares_of_evens(nums):\n    # write your code here\n    pass\n",
+  "solution": "def squares_of_evens(nums):\n    return [x * x for x in nums if x % 2 == 0]\n",
+  "solutionExplanation": "**Approach:** list comprehension with a filter.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Pattern: `[expression for x in items if condition]`.",
+   "A number is even when `x % 2 == 0`."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+     ]
+    ],
+    "expected": [
+     4,
+     16,
+     36
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      1,
+      3
+     ]
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      -2,
+      0,
+      2
+     ]
+    ],
+    "expected": [
+     4,
+     0,
+     4
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-merge-dicts-sum",
+  "title": "Merge Dictionaries by Summing",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "dict"
+  ],
+  "statement": "Merge two dictionaries with numeric values. If a key is in both, add the values. Do not modify the inputs.\n\n**Example**\n\n```\nmerge_dicts_sum({\"a\": 1, \"b\": 2}, {\"b\": 3, \"c\": 4})\n# {\"a\": 1, \"b\": 5, \"c\": 4}\n```",
+  "language": "python",
+  "functionName": "merge_dicts_sum",
+  "starter": "def merge_dicts_sum(a, b):\n    # write your code here\n    pass\n",
+  "solution": "def merge_dicts_sum(a, b):\n    result = dict(a)\n    for key, value in b.items():\n        result[key] = result.get(key, 0) + value\n    return result\n",
+  "solutionExplanation": "**Approach:** copy the first dict, then add every value of the second.\n\n**Complexity:** O(n + m).",
+  "hints": [
+   "Start from a copy: `result = dict(a)`.",
+   "Loop over `b.items()` and use `result.get(k, 0)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": 1,
+      "b": 2
+     },
+     {
+      "b": 3,
+      "c": 4
+     }
+    ],
+    "expected": {
+     "a": 1,
+     "b": 5,
+     "c": 4
+    }
+   },
+   {
+    "input": [
+     {},
+     {}
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "x": 1
+     },
+     {}
+    ],
+    "expected": {
+     "x": 1
+    }
+   },
+   {
+    "input": [
+     {},
+     {
+      "y": 2
+     }
+    ],
+    "expected": {
+     "y": 2
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-py-sort-by-length",
+  "title": "Sort by Length then Alphabet",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "sorting",
+   "key-function"
+  ],
+  "statement": "Return the words sorted by length (shortest first). Words with the same length are sorted alphabetically.\n\n**Example**\n\n```\nsort_by_length([\"pear\", \"fig\", \"apple\", \"kiwi\", \"date\"])\n# [\"fig\", \"date\", \"kiwi\", \"pear\", \"apple\"]\n```",
+  "language": "python",
+  "functionName": "sort_by_length",
+  "starter": "def sort_by_length(words):\n    # write your code here\n    pass\n",
+  "solution": "def sort_by_length(words):\n    return sorted(words, key=lambda w: (len(w), w))\n",
+  "solutionExplanation": "**Approach:** sort with the tuple key `(len(word), word)` - tuples compare element by element.\n\n**Complexity:** O(n log n).",
+  "hints": [
+   "`sorted(items, key=...)` accepts a key function.",
+   "A key can return a tuple: `(len(w), w)`."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      "pear",
+      "fig",
+      "apple",
+      "kiwi",
+      "date"
+     ]
+    ],
+    "expected": [
+     "fig",
+     "date",
+     "kiwi",
+     "pear",
+     "apple"
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      "b",
+      "a"
+     ]
+    ],
+    "expected": [
+     "a",
+     "b"
+    ]
+   },
+   {
+    "input": [
+     [
+      "ccc",
+      "bb",
+      "a",
+      "aa"
+     ]
+    ],
+    "expected": [
+     "a",
+     "aa",
+     "bb",
+     "ccc"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-format-price",
+  "title": "Format a Price",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "string-formatting",
+   "f-string"
+  ],
+  "statement": "Return the amount as a dollar string with thousands separators and exactly two decimals.\n\n**Example**\n\n```\nformat_price(1234.5)     # \"$1,234.50\"\nformat_price(0)          # \"$0.00\"\nformat_price(1234567.891) # \"$1,234,567.89\"\n```",
+  "language": "python",
+  "functionName": "format_price",
+  "starter": "def format_price(amount):\n    # write your code here\n    pass\n",
+  "solution": "def format_price(amount):\n    return \"$\" + f\"{amount:,.2f}\"\n",
+  "solutionExplanation": "**Approach:** one f-string with the format spec `,.2f`.\n\n**Complexity:** O(1).",
+  "hints": [
+   "f-strings support format specs: `f\"{x:.2f}\"`.",
+   "The `,` option adds thousands separators: `f\"{x:,.2f}\"`."
+  ],
+  "tests": [
+   {
+    "input": [
+     1234.5
+    ],
+    "expected": "$1,234.50"
+   },
+   {
+    "input": [
+     0
+    ],
+    "expected": "$0.00"
+   },
+   {
+    "input": [
+     5
+    ],
+    "expected": "$5.00"
+   },
+   {
+    "input": [
+     1234567.891
+    ],
+    "expected": "$1,234,567.89"
+   },
+   {
+    "input": [
+     0.5
+    ],
+    "expected": "$0.50"
+   }
+  ]
+ },
+ {
+  "id": "q-py-transpose",
+  "title": "Transpose a Matrix",
+  "difficulty": "easy",
+  "track": "python",
+  "tags": [
+   "matrix",
+   "zip"
+  ],
+  "statement": "Transpose a matrix (list of rows): rows become columns. Return a list of lists. An empty matrix gives an empty list.\n\n**Example**\n\n```\ntranspose([[1, 2, 3], [4, 5, 6]])  # [[1, 4], [2, 5], [3, 6]]\n```",
+  "language": "python",
+  "functionName": "transpose",
+  "starter": "def transpose(matrix):\n    # write your code here\n    pass\n",
+  "solution": "def transpose(matrix):\n    return [list(row) for row in zip(*matrix)]\n",
+  "solutionExplanation": "**Approach:** unpack the rows into `zip`.\n\n**Complexity:** O(r * c).",
+  "hints": [
+   "`zip(*matrix)` pairs up the i-th elements of all rows.",
+   "zip returns tuples - convert each to a list."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1,
+       2,
+       3
+      ],
+      [
+       4,
+       5,
+       6
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      3,
+      6
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      3
+     ],
+     [
+      2,
+      4
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-flatten",
+  "title": "Flatten a Nested List",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "recursion",
+   "list"
+  ],
+  "statement": "Flatten a list that can contain lists nested to any depth into one flat list, keeping order.\n\n**Example**\n\n```\nflatten([1, [2, [3, [4]]]])  # [1, 2, 3, 4]\n```",
+  "language": "python",
+  "functionName": "flatten",
+  "starter": "def flatten(items):\n    # write your code here\n    pass\n",
+  "solution": "def flatten(items):\n    result = []\n    for item in items:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        else:\n            result.append(item)\n    return result\n",
+  "solutionExplanation": "**Approach:** recursion.\n\n**Complexity:** O(n) in total elements.",
+  "hints": [
+   "Use `isinstance(item, list)`.",
+   "Recurse for sub-lists and `extend` the result."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      1,
+      [
+       2,
+       [
+        3,
+        [
+         4
+        ]
+       ]
+      ]
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3,
+     4
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      1,
+      2,
+      3
+     ]
+    ],
+    "expected": [
+     1,
+     2,
+     3
+    ]
+   },
+   {
+    "input": [
+     [
+      [],
+      [
+       []
+      ]
+     ]
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      [
+       "a",
+       [
+        "b"
+       ]
+      ],
+      "c"
+     ]
+    ],
+    "expected": [
+     "a",
+     "b",
+     "c"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-two-sum",
+  "title": "Two Sum",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "array",
+   "dict"
+  ],
+  "statement": "Return the indices `[i, j]` (`i < j`) of the two numbers in `nums` that add up to `target`. Exactly one solution exists.\n\n**Example**\n\n```\ntwo_sum([2, 7, 11, 15], 9)  # [0, 1]\n```",
+  "language": "python",
+  "functionName": "two_sum",
+  "starter": "def two_sum(nums, target):\n    # write your code here\n    pass\n",
+  "solution": "def two_sum(nums, target):\n    seen = {}\n    for j, n in enumerate(nums):\n        need = target - n\n        if need in seen:\n            return [seen[need], j]\n        seen[n] = j\n    return []\n",
+  "solutionExplanation": "**Approach:** one pass with a dictionary.\n\n**Complexity:** O(n) time, O(n) space.",
+  "hints": [
+   "Use a dict from value to index.",
+   "For each number look for `target - number` in the dict."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      2,
+      7,
+      11,
+      15
+     ],
+     9
+    ],
+    "expected": [
+     0,
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      3,
+      2,
+      4
+     ],
+     6
+    ],
+    "expected": [
+     1,
+     2
+    ]
+   },
+   {
+    "input": [
+     [
+      3,
+      3
+     ],
+     6
+    ],
+    "expected": [
+     0,
+     1
+    ]
+   },
+   {
+    "input": [
+     [
+      -1,
+      -2,
+      -3,
+      -4,
+      -5
+     ],
+     -8
+    ],
+    "expected": [
+     2,
+     4
+    ]
+   },
+   {
+    "input": [
+     [
+      0,
+      4,
+      3,
+      0
+     ],
+     0
+    ],
+    "expected": [
+     0,
+     3
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-group-anagrams",
+  "title": "Group Anagrams",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "dict",
+   "sorting",
+   "string"
+  ],
+  "statement": "Group words that are anagrams of each other. Sort the words **inside** every group alphabetically and sort the groups by their first word.\n\n**Example**\n\n```\ngroup_anagrams([\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"])\n# [[\"ate\", \"eat\", \"tea\"], [\"bat\"], [\"nat\", \"tan\"]]\n```",
+  "language": "python",
+  "functionName": "group_anagrams",
+  "starter": "def group_anagrams(words):\n    # write your code here\n    pass\n",
+  "solution": "def group_anagrams(words):\n    groups = {}\n    for word in words:\n        key = \"\".join(sorted(word))\n        groups.setdefault(key, []).append(word)\n    result = [sorted(group) for group in groups.values()]\n    result.sort(key=lambda g: g[0])\n    return result\n",
+  "solutionExplanation": "**Approach:** bucket words by their sorted-letter signature, then sort for a deterministic output.\n\n**Complexity:** O(n * k log k) for n words of length k.",
+  "hints": [
+   "Anagrams share the same sorted letters: `\"\".join(sorted(word))`.",
+   "Use that string as a dictionary key.",
+   "Sort each group, then sort the list of groups."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      "eat",
+      "tea",
+      "tan",
+      "ate",
+      "nat",
+      "bat"
+     ]
+    ],
+    "expected": [
+     [
+      "ate",
+      "eat",
+      "tea"
+     ],
+     [
+      "bat"
+     ],
+     [
+      "nat",
+      "tan"
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      "a"
+     ]
+    ],
+    "expected": [
+     [
+      "a"
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      "ab",
+      "ba",
+      "abc"
+     ]
+    ],
+    "expected": [
+     [
+      "ab",
+      "ba"
+     ],
+     [
+      "abc"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-word-count",
+  "title": "Word Count",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "dict",
+   "string",
+   "regex"
+  ],
+  "statement": "Count how often every word appears in the text. Words are made of letters and digits, case-insensitive; punctuation is ignored. Return a dict of lowercase word -> count.\n\n**Example**\n\n```\nword_count(\"The cat and the hat.\")  # {\"the\": 2, \"cat\": 1, \"and\": 1, \"hat\": 1}\n```",
+  "language": "python",
+  "functionName": "word_count",
+  "starter": "def word_count(text):\n    # write your code here\n    pass\n",
+  "solution": "import re\n\ndef word_count(text):\n    counts = {}\n    for word in re.findall(r\"[a-z0-9]+\", text.lower()):\n        counts[word] = counts.get(word, 0) + 1\n    return counts\n",
+  "solutionExplanation": "**Approach:** regex tokenisation + counting dictionary.\n\n**Complexity:** O(n).",
+  "hints": [
+   "Lowercase first.",
+   "`re.findall(r\"[a-z0-9]+\", text)` extracts the words.",
+   "Count with a dict."
+  ],
+  "tests": [
+   {
+    "input": [
+     "The cat and the hat."
+    ],
+    "expected": {
+     "the": 2,
+     "cat": 1,
+     "and": 1,
+     "hat": 1
+    }
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     "Hello, hello! HELLO?"
+    ],
+    "expected": {
+     "hello": 3
+    }
+   },
+   {
+    "input": [
+     "a1 b2 a1"
+    ],
+    "expected": {
+     "a1": 2,
+     "b2": 1
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-py-second-largest",
+  "title": "Second Largest Number",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "list",
+   "set"
+  ],
+  "statement": "Return the second largest **distinct** number of the list, or `None` if there is no such value.\n\n**Example**\n\n```\nsecond_largest([5, 3, 9, 1])  # 5\nsecond_largest([4, 4, 4])     # None\n```",
+  "language": "python",
+  "functionName": "second_largest",
+  "starter": "def second_largest(nums):\n    # write your code here\n    pass\n",
+  "solution": "def second_largest(nums):\n    unique = sorted(set(nums))\n    if len(unique) < 2:\n        return None\n    return unique[-2]\n",
+  "solutionExplanation": "**Approach:** unique values, sort, pick index -2 when at least two exist.\n\n**Complexity:** O(n log n).",
+  "hints": [
+   "Duplicates must not count - use `set`.",
+   "Sort the unique values and take the second last."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      5,
+      3,
+      9,
+      1
+     ]
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    "expected": null
+   },
+   {
+    "input": [
+     [
+      1
+     ]
+    ],
+    "expected": null
+   },
+   {
+    "input": [
+     [
+      2,
+      2,
+      3
+     ]
+    ],
+    "expected": 2
+   },
+   {
+    "input": [
+     [
+      -1,
+      -5,
+      -3
+     ]
+    ],
+    "expected": -3
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": null
+   }
+  ]
+ },
+ {
+  "id": "q-py-valid-parentheses",
+  "title": "Valid Brackets",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "stack",
+   "string"
+  ],
+  "statement": "The string contains only `()[]{}`. Return `True` if all brackets are closed in the right order.\n\n**Example**\n\n```\nis_valid_brackets(\"{[]}\")  # True\nis_valid_brackets(\"([)]\")  # False\n```",
+  "language": "python",
+  "functionName": "is_valid_brackets",
+  "starter": "def is_valid_brackets(s):\n    # write your code here\n    pass\n",
+  "solution": "def is_valid_brackets(s):\n    pairs = {\")\": \"(\", \"]\": \"[\", \"}\": \"{\"}\n    stack = []\n    for ch in s:\n        if ch in pairs:\n            if not stack or stack.pop() != pairs[ch]:\n                return False\n        else:\n            stack.append(ch)\n    return not stack\n",
+  "solutionExplanation": "**Approach:** stack; every closing bracket must match the top.\n\n**Complexity:** O(n).",
+  "hints": [
+   "A list works as a stack (`append` / `pop`).",
+   "Map each closing bracket to its opening partner."
+  ],
+  "tests": [
+   {
+    "input": [
+     "()[]{}"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "(]"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "([)]"
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "{[]}"
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "(("
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "]"
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-py-first-n-primes",
+  "title": "First N Primes (generator)",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "generator",
+   "math"
+  ],
+  "statement": "Write a generator that yields primes forever and use it to return the first `n` primes as a list.\n\n**Example**\n\n```\nfirst_n_primes(5)  # [2, 3, 5, 7, 11]\n```",
+  "language": "python",
+  "functionName": "first_n_primes",
+  "starter": "def first_n_primes(n):\n    # write your code here\n    pass\n",
+  "solution": "def first_n_primes(n):\n    def primes():\n        found = []\n        candidate = 2\n        while True:\n            if all(candidate % p != 0 for p in found if p * p <= candidate):\n                found.append(candidate)\n                yield candidate\n            candidate += 1\n\n    gen = primes()\n    return [next(gen) for _ in range(n)]\n",
+  "solutionExplanation": "**Approach:** generator keeps a list of primes found so far and tests each new candidate against them.\n\n**Complexity:** roughly O(n * sqrt(p)) where p is the n-th prime.",
+  "hints": [
+   "A candidate is prime if no previously found prime (up to its square root) divides it.",
+   "Use `yield` for every prime found."
+  ],
+  "tests": [
+   {
+    "input": [
+     0
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     1
+    ],
+    "expected": [
+     2
+    ]
+   },
+   {
+    "input": [
+     5
+    ],
+    "expected": [
+     2,
+     3,
+     5,
+     7,
+     11
+    ]
+   },
+   {
+    "input": [
+     10
+    ],
+    "expected": [
+     2,
+     3,
+     5,
+     7,
+     11,
+     13,
+     17,
+     19,
+     23,
+     29
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-rotate-matrix",
+  "title": "Rotate Matrix 90 Degrees",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "matrix",
+   "zip"
+  ],
+  "statement": "Rotate a square matrix 90 degrees **clockwise** and return the new matrix (a list of lists).\n\n**Example**\n\n```\nrotate_matrix([[1, 2, 3], [4, 5, 6], [7, 8, 9]])\n# [[7, 4, 1], [8, 5, 2], [9, 6, 3]]\n```",
+  "language": "python",
+  "functionName": "rotate_matrix",
+  "starter": "def rotate_matrix(matrix):\n    # write your code here\n    pass\n",
+  "solution": "def rotate_matrix(matrix):\n    return [list(row) for row in zip(*matrix[::-1])]\n",
+  "solutionExplanation": "**Approach:** `zip(*matrix[::-1])`.\n\n**Complexity:** O(n^2).",
+  "hints": [
+   "Clockwise rotation = reverse the rows, then transpose.",
+   "`zip(*rows)` transposes."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1,
+       2,
+       3
+      ],
+      [
+       4,
+       5,
+       6
+      ],
+      [
+       7,
+       8,
+       9
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      7,
+      4,
+      1
+     ],
+     [
+      8,
+      5,
+      2
+     ],
+     [
+      9,
+      6,
+      3
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       2
+      ],
+      [
+       3,
+       4
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      3,
+      1
+     ],
+     [
+      4,
+      2
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   }
+  ]
+ },
+ {
+  "id": "q-py-longest-common-prefix",
+  "title": "Longest Common Prefix",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "string"
+  ],
+  "statement": "Return the longest prefix shared by all strings, or an empty string if there is none (or the list is empty).\n\n**Example**\n\n```\nlongest_common_prefix([\"flower\", \"flow\", \"flight\"])  # \"fl\"\nlongest_common_prefix([\"dog\", \"racecar\"])          # \"\"\n```",
+  "language": "python",
+  "functionName": "longest_common_prefix",
+  "starter": "def longest_common_prefix(strs):\n    # write your code here\n    pass\n",
+  "solution": "def longest_common_prefix(strs):\n    if not strs:\n        return \"\"\n    prefix = strs[0]\n    for word in strs[1:]:\n        while not word.startswith(prefix):\n            prefix = prefix[:-1]\n    return prefix\n",
+  "solutionExplanation": "**Approach:** shrink a candidate prefix until all words start with it.\n\n**Complexity:** O(total characters).",
+  "hints": [
+   "Start with the first word as the candidate prefix.",
+   "Shorten it until every word `startswith` it."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      "flower",
+      "flow",
+      "flight"
+     ]
+    ],
+    "expected": "fl"
+   },
+   {
+    "input": [
+     [
+      "dog",
+      "racecar",
+      "car"
+     ]
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     [
+      "a"
+     ]
+    ],
+    "expected": "a"
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     [
+      "same",
+      "same"
+     ]
+    ],
+    "expected": "same"
+   }
+  ]
+ },
+ {
+  "id": "q-py-invert-dict",
+  "title": "Invert a Dictionary with Duplicates",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "dict"
+  ],
+  "statement": "Values of the dictionary may repeat. Return a new dictionary that maps each value to the **sorted list of keys** that had that value.\n\n**Example**\n\n```\ninvert_dict({\"a\": \"x\", \"b\": \"y\", \"c\": \"x\"})\n# {\"x\": [\"a\", \"c\"], \"y\": [\"b\"]}\n```",
+  "language": "python",
+  "functionName": "invert_dict",
+  "starter": "def invert_dict(d):\n    # write your code here\n    pass\n",
+  "solution": "def invert_dict(d):\n    result = {}\n    for key, value in d.items():\n        result.setdefault(value, []).append(key)\n    for keys in result.values():\n        keys.sort()\n    return result\n",
+  "solutionExplanation": "**Approach:** bucket keys by value, then sort every bucket.\n\n**Complexity:** O(n log n).",
+  "hints": [
+   "`dict.setdefault(k, [])` gives you a list to append to.",
+   "Sort each list of keys at the end."
+  ],
+  "tests": [
+   {
+    "input": [
+     {
+      "a": "x",
+      "b": "y",
+      "c": "x"
+     }
+    ],
+    "expected": {
+     "x": [
+      "a",
+      "c"
+     ],
+     "y": [
+      "b"
+     ]
+    }
+   },
+   {
+    "input": [
+     {}
+    ],
+    "expected": {}
+   },
+   {
+    "input": [
+     {
+      "k": "v"
+     }
+    ],
+    "expected": {
+     "v": [
+      "k"
+     ]
+    }
+   },
+   {
+    "input": [
+     {
+      "b": "z",
+      "a": "z"
+     }
+    ],
+    "expected": {
+     "z": [
+      "a",
+      "b"
+     ]
+    }
+   }
+  ]
+ },
+ {
+  "id": "q-py-merge-intervals",
+  "title": "Merge Intervals",
+  "difficulty": "medium",
+  "track": "python",
+  "tags": [
+   "sorting",
+   "intervals"
+  ],
+  "statement": "Merge all overlapping `[start, end]` intervals (touching intervals such as `[1,4]` and `[4,5]` also merge) and return them sorted by start.\n\n**Example**\n\n```\nmerge_intervals([[1, 3], [2, 6], [8, 10], [15, 18]])\n# [[1, 6], [8, 10], [15, 18]]\n```",
+  "language": "python",
+  "functionName": "merge_intervals",
+  "starter": "def merge_intervals(intervals):\n    # write your code here\n    pass\n",
+  "solution": "def merge_intervals(intervals):\n    merged = []\n    for start, end in sorted(intervals, key=lambda i: i[0]):\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n",
+  "solutionExplanation": "**Approach:** sort, then sweep and merge.\n\n**Complexity:** O(n log n).",
+  "hints": [
+   "Sort by the start value.",
+   "Compare each interval to the last merged one."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1,
+       3
+      ],
+      [
+       2,
+       6
+      ],
+      [
+       8,
+       10
+      ],
+      [
+       15,
+       18
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      6
+     ],
+     [
+      8,
+      10
+     ],
+     [
+      15,
+      18
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       4
+      ],
+      [
+       4,
+       5
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      5
+     ]
+    ]
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": []
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       4
+      ],
+      [
+       0,
+       4
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      0,
+      4
+     ]
+    ]
+   },
+   {
+    "input": [
+     [
+      [
+       5,
+       6
+      ],
+      [
+       1,
+       2
+      ],
+      [
+       2,
+       3
+      ]
+     ]
+    ],
+    "expected": [
+     [
+      1,
+      3
+     ],
+     [
+      5,
+      6
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "q-py-longest-palindromic-substring",
+  "title": "Longest Palindromic Substring",
+  "difficulty": "hard",
+  "track": "python",
+  "tags": [
+   "string",
+   "two-pointers"
+  ],
+  "statement": "Return the longest palindromic substring of `s`. If several have the same length return the one that starts **first**. The empty string returns `\"\"`.\n\n**Example**\n\n```\nlongest_palindrome(\"babad\")  # \"bab\"\nlongest_palindrome(\"cbbd\")   # \"bb\"\n```",
+  "language": "python",
+  "functionName": "longest_palindrome",
+  "starter": "def longest_palindrome(s):\n    # write your code here\n    pass\n",
+  "solution": "def longest_palindrome(s):\n    best = \"\"\n    for center in range(len(s)):\n        for left, right in ((center, center), (center, center + 1)):\n            while left >= 0 and right < len(s) and s[left] == s[right]:\n                left -= 1\n                right += 1\n            candidate = s[left + 1:right]\n            if len(candidate) > len(best):\n                best = candidate\n    return best\n",
+  "solutionExplanation": "**Approach:** expand around each of the 2n-1 centres.\n\n**Complexity:** O(n^2) time, O(1) space.",
+  "hints": [
+   "Every palindrome has a centre (a character or the gap between two characters).",
+   "Expand outwards from each centre while both sides match.",
+   "Only update the best when the new one is strictly longer."
+  ],
+  "tests": [
+   {
+    "input": [
+     "babad"
+    ],
+    "expected": "bab"
+   },
+   {
+    "input": [
+     "cbbd"
+    ],
+    "expected": "bb"
+   },
+   {
+    "input": [
+     "a"
+    ],
+    "expected": "a"
+   },
+   {
+    "input": [
+     "racecar"
+    ],
+    "expected": "racecar"
+   },
+   {
+    "input": [
+     "abc"
+    ],
+    "expected": "a"
+   },
+   {
+    "input": [
+     ""
+    ],
+    "expected": ""
+   },
+   {
+    "input": [
+     "forgeeksskeegfor"
+    ],
+    "expected": "geeksskeeg"
+   }
+  ]
+ },
+ {
+  "id": "q-py-word-break",
+  "title": "Word Break",
+  "difficulty": "hard",
+  "track": "python",
+  "tags": [
+   "dp",
+   "string"
+  ],
+  "statement": "Return `True` if the string `s` can be split into a sequence of words from the list `words` (words may be reused).\n\n**Example**\n\n```\nword_break(\"leetcode\", [\"leet\", \"code\"])        # True\nword_break(\"catsandog\", [\"cats\",\"dog\",\"sand\",\"and\",\"cat\"])  # False\n```",
+  "language": "python",
+  "functionName": "word_break",
+  "starter": "def word_break(s, words):\n    # write your code here\n    pass\n",
+  "solution": "def word_break(s, words):\n    word_set = set(words)\n    dp = [False] * (len(s) + 1)\n    dp[0] = True\n    for i in range(1, len(s) + 1):\n        for j in range(i):\n            if dp[j] and s[j:i] in word_set:\n                dp[i] = True\n                break\n    return dp[len(s)]\n",
+  "solutionExplanation": "**Approach:** bottom-up DP over prefixes with a set for O(1) word lookup.\n\n**Complexity:** O(n^2) substring checks (times word length).",
+  "hints": [
+   "Let `dp[i]` mean \"the first i characters can be segmented\".",
+   "`dp[0]` is True.",
+   "dp[i] is True if some j < i has dp[j] True and `s[j:i]` is a word."
+  ],
+  "tests": [
+   {
+    "input": [
+     "leetcode",
+     [
+      "leet",
+      "code"
+     ]
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "applepenapple",
+     [
+      "apple",
+      "pen"
+     ]
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "catsandog",
+     [
+      "cats",
+      "dog",
+      "sand",
+      "and",
+      "cat"
+     ]
+    ],
+    "expected": false
+   },
+   {
+    "input": [
+     "",
+     [
+      "a"
+     ]
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "aaaaaaa",
+     [
+      "aaaa",
+      "aaa"
+     ]
+    ],
+    "expected": true
+   },
+   {
+    "input": [
+     "a",
+     []
+    ],
+    "expected": false
+   }
+  ]
+ },
+ {
+  "id": "q-py-count-islands",
+  "title": "Number of Islands",
+  "difficulty": "hard",
+  "track": "python",
+  "tags": [
+   "grid",
+   "dfs",
+   "graph"
+  ],
+  "statement": "The grid contains `1` (land) and `0` (water). An island is a group of land cells connected **horizontally or vertically**. Return the number of islands.\n\n**Example**\n\n```\ncount_islands([\n  [1, 1, 0, 0, 0],\n  [1, 1, 0, 0, 0],\n  [0, 0, 1, 0, 0],\n  [0, 0, 0, 1, 1],\n])  # 3\n```",
+  "language": "python",
+  "functionName": "count_islands",
+  "starter": "def count_islands(grid):\n    # write your code here\n    pass\n",
+  "solution": "def count_islands(grid):\n    if not grid:\n        return 0\n    rows, cols = len(grid), len(grid[0])\n    seen = set()\n    count = 0\n    for r in range(rows):\n        for c in range(cols):\n            if grid[r][c] == 1 and (r, c) not in seen:\n                count += 1\n                stack = [(r, c)]\n                seen.add((r, c))\n                while stack:\n                    cr, cc = stack.pop()\n                    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):\n                        nr, nc = cr + dr, cc + dc\n                        if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1 and (nr, nc) not in seen:\n                            seen.add((nr, nc))\n                            stack.append((nr, nc))\n    return count\n",
+  "solutionExplanation": "**Approach:** iterate over cells and flood-fill with an explicit stack for every new land cell.\n\n**Complexity:** O(rows * cols).",
+  "hints": [
+   "Scan every cell; when you find unvisited land, count an island.",
+   "Flood-fill (DFS/BFS) the island so it is not counted again.",
+   "Work on a copy or keep a visited set so the input is not changed."
+  ],
+  "tests": [
+   {
+    "input": [
+     [
+      [
+       1,
+       1,
+       0,
+       0,
+       0
+      ],
+      [
+       1,
+       1,
+       0,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       1,
+       0,
+       0
+      ],
+      [
+       0,
+       0,
+       0,
+       1,
+       1
+      ]
+     ]
+    ],
+    "expected": 3
+   },
+   {
+    "input": [
+     []
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      [
+       0,
+       0
+      ]
+     ]
+    ],
+    "expected": 0
+   },
+   {
+    "input": [
+     [
+      [
+       1
+      ]
+     ]
+    ],
+    "expected": 1
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       0,
+       1
+      ],
+      [
+       0,
+       1,
+       0
+      ],
+      [
+       1,
+       0,
+       1
+      ]
+     ]
+    ],
+    "expected": 5
+   },
+   {
+    "input": [
+     [
+      [
+       1,
+       1,
+       1
+      ],
+      [
+       0,
+       1,
+       0
+      ],
+      [
+       1,
+       1,
+       1
+      ]
+     ]
+    ],
+    "expected": 1
+   }
+  ]
+ }
+]

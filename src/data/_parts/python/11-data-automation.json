@@ -1,0 +1,241 @@
+{
+ "id": "py-data-automation",
+ "title": "Data and Automation",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-numpy",
+   "title": "NumPy Essentials",
+   "level": "intermediate",
+   "summary": "Fast n-dimensional arrays with vectorised operations, broadcasting and indexing.",
+   "description": "**NumPy** provides the `ndarray`, a typed, fixed-size, contiguous array that is far faster and lighter than Python lists for numeric work. It is the foundation of pandas, scikit-learn, SciPy and most of the data stack.\n\n```bash\npip install numpy\n```\n\n### Creating arrays\n`np.array([1, 2, 3])`, `np.zeros((2, 3))`, `np.ones`, `np.arange(0, 10, 2)`, `np.linspace(0, 1, 5)`, `np.random.default_rng(0).random((3, 3))`, `np.eye(3)`.\n\n### Attributes\n`a.shape`, `a.ndim`, `a.dtype`, `a.size`. Change shape with `a.reshape(2, 3)` and `a.T`.\n\n### Vectorisation\nOperations apply element-wise without Python loops: `a * 2`, `a + b`, `np.sqrt(a)`, `a > 3` (boolean array). Aggregations: `a.sum()`, `a.mean()`, `a.std()`, `a.max()`, `a.argmax()`, with `axis=0` (columns) or `axis=1` (rows).\n\n### Indexing\nSlicing `a[1:3, :2]`, **boolean masks** `a[a > 5]`, fancy indexing `a[[0, 2]]`.\n\n### Broadcasting\nArrays of different shapes combine if dimensions are compatible: a `(3, 1)` column plus a `(1, 4)` row gives `(3, 4)`; a scalar applies to every element.\n\n### Why it is fast\nData is stored in contiguous memory with one dtype, and the loops run in compiled C. Prefer array operations to Python `for` loops.\n\n### Related\n`np.where`, `np.concatenate`, `np.dot` / `@` for matrices, `np.linalg`, `np.save`/`np.load`.",
+   "keyPoints": [
+    "ndarray is a typed, contiguous, fixed-size array",
+    "Vectorised operations replace Python loops",
+    "axis=0 works down columns, axis=1 across rows",
+    "Boolean masks filter data: a[a > 5]",
+    "Broadcasting aligns shapes automatically"
+   ],
+   "pitfalls": [
+    "Writing Python loops over arrays",
+    "Confusing views and copies when slicing",
+    "Mixing dtypes causing silent up-casting"
+   ],
+   "examples": [
+    {
+     "title": "Vectorised maths",
+     "language": "text",
+     "code": "import numpy as np\n\nprices = np.array([[120, 150, 90],\n                   [200, 180, 210]], dtype=float)\n\nprint(prices.shape, prices.mean(), prices.mean(axis=0), prices.max(axis=1))\ndiscounted = prices * 0.9                       # element-wise\nprint(discounted.round(1))\n\nmask = prices > 150\nprint(prices[mask], mask.sum())\n\ncol = np.array([[1], [2]])\nrow = np.array([10, 20, 30])\nprint(col + row)                                # broadcasting -> shape (2, 3)\n\nprint(np.where(prices > 150, \"high\", \"low\"))\nprint(np.linspace(0, 1, 5), np.arange(10)[::3])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is NumPy faster than lists?",
+     "a": "It stores homogeneous data contiguously in memory and executes operations in optimised C loops, avoiding Python object overhead."
+    },
+    {
+     "q": "What is broadcasting?",
+     "a": "The rules that let arrays of different shapes be combined element-wise by virtually stretching size-1 dimensions."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-pandas",
+   "title": "pandas Basics",
+   "level": "intermediate",
+   "summary": "Analyse tabular data with Series and DataFrame: read, select, filter, group and clean.",
+   "description": "**pandas** is the workhorse for tabular data. Its two structures: **Series** (1-D labelled) and **DataFrame** (2-D table of columns).\n\n```bash\npip install pandas openpyxl\n```\n\n### Loading and inspecting\n`pd.read_csv(\"data.csv\")`, `read_excel`, `read_json`, `read_sql`. Inspect with `df.head()`, `df.info()`, `df.describe()`, `df.shape`, `df.dtypes`.\n\n### Selecting\n- Column: `df[\"price\"]`; several: `df[[\"name\", \"price\"]]`.\n- By label: `df.loc[row_label, \"col\"]`; by position: `df.iloc[0, 2]`.\n- Filter rows: `df[df[\"price\"] > 100]`, combine with `&`, `|` and parentheses; `.query(\"price > 100 and city == 'Pune'\")`.\n\n### Transforming\nNew columns `df[\"total\"] = df[\"qty\"] * df[\"price\"]`, `df.sort_values(\"total\", ascending=False)`, `df.rename`, `df.drop`, `.apply`, `.astype`, `pd.to_datetime`.\n\n### Missing data and duplicates\n`isna()`, `fillna(0)`, `dropna()`, `drop_duplicates()`.\n\n### GroupBy\n`df.groupby(\"city\")[\"total\"].sum()`, `.agg({\"total\": [\"sum\", \"mean\"]})`, `pivot_table`, `value_counts()`.\n\n### Combine\n`pd.concat([a, b])`, `df.merge(other, on=\"id\", how=\"left\")`.\n\n### Output\n`df.to_csv(\"out.csv\", index=False)`, `to_excel`, `to_json`, `to_sql`.\n\n### Tip\nAvoid row-by-row loops; use vectorised column operations. Beware of chained assignment warnings; use `.loc` to assign.",
+   "keyPoints": [
+    "DataFrame = table; Series = single column",
+    "loc is label-based, iloc is position-based",
+    "Boolean filtering: df[df.col > x]",
+    "groupby + agg summarises data",
+    "merge joins tables; concat stacks them"
+   ],
+   "pitfalls": [
+    "Looping over rows with iterrows for big data",
+    "Chained assignment like df[df.a > 1][\"b\"] = 0",
+    "Forgetting index=False when saving CSV"
+   ],
+   "examples": [
+    {
+     "title": "Analyse sales data",
+     "language": "text",
+     "code": "import pandas as pd\n\ndf = pd.read_csv(\"sales.csv\", parse_dates=[\"date\"])\nprint(df.head())\nprint(df.info())\n\ndf[\"total\"] = df[\"qty\"] * df[\"price\"]\ndf = df.dropna(subset=[\"city\"]).drop_duplicates()\n\nbig = df[(df[\"total\"] > 1000) & (df[\"city\"] == \"Pune\")]\n\nsummary = (\n    df.groupby(\"city\")\n      .agg(orders=(\"total\", \"count\"), revenue=(\"total\", \"sum\"), avg=(\"total\", \"mean\"))\n      .sort_values(\"revenue\", ascending=False)\n      .round(2)\n)\nprint(summary)\n\nmonthly = df.set_index(\"date\").resample(\"MS\")[\"total\"].sum()\nprint(monthly)\n\nsummary.to_csv(\"summary.csv\")\nsummary.to_excel(\"summary.xlsx\", sheet_name=\"By city\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "loc vs iloc?",
+     "a": "loc selects by label (index values and column names); iloc selects by integer position."
+    },
+    {
+     "q": "How do you handle missing values?",
+     "a": "Detect with isna(), then fillna() with a default or statistic, or dropna() rows/columns, depending on what the data means."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-matplotlib",
+   "title": "Matplotlib Basics",
+   "level": "intermediate",
+   "summary": "Create line, bar, scatter and histogram charts and save them as images.",
+   "description": "**Matplotlib** is the standard plotting library for Python. Seaborn and pandas plotting build on it.\n\n```bash\npip install matplotlib\n```\n\n### Two interfaces\n- **pyplot** (state-based, quick): `plt.plot(x, y)`.\n- **Object-oriented** (recommended): `fig, ax = plt.subplots()` then call methods on `ax`. It is explicit and scales to multiple charts.\n\n### Common charts\n| Chart | Call |\n|---|---|\n| Line | `ax.plot(x, y)` |\n| Bar | `ax.bar(labels, values)` |\n| Horizontal bar | `ax.barh` |\n| Scatter | `ax.scatter(x, y)` |\n| Histogram | `ax.hist(data, bins=20)` |\n| Pie | `ax.pie(values, labels=labels)` |\n| Box plot | `ax.boxplot(data)` |\n\n### Making it readable\n`ax.set_title()`, `set_xlabel()`, `set_ylabel()`, `ax.legend()`, `ax.grid(True)`, `fig.tight_layout()`, colors and markers (`\"o-\"`), sensible figure size `figsize=(8, 4)`.\n\n### Several charts\n`fig, axes = plt.subplots(1, 2, figsize=(10, 4))`.\n\n### Saving and showing\n`fig.savefig(\"chart.png\", dpi=150)`; `plt.show()` opens a window (not on servers). On servers use the `Agg` backend.\n\n### With pandas\n`df.plot(kind=\"bar\", x=\"city\", y=\"revenue\")` is a quick wrapper.\n\n### Chart advice\nLabel axes and units, avoid 3-D and pie charts when a bar chart is clearer, and keep colours consistent.",
+   "keyPoints": [
+    "Prefer fig, ax = plt.subplots() (object-oriented API)",
+    "Use plot, bar, scatter, hist for the main chart types",
+    "Always label title, axes and legend",
+    "savefig writes to PNG/SVG/PDF",
+    "pandas .plot() wraps Matplotlib"
+   ],
+   "pitfalls": [
+    "Mixing pyplot state and object API confusingly",
+    "Calling plt.show() on a headless server",
+    "Overlapping labels without tight_layout"
+   ],
+   "examples": [
+    {
+     "title": "Line and bar chart",
+     "language": "text",
+     "code": "import matplotlib.pyplot as plt\n\nmonths = [\"Jan\", \"Feb\", \"Mar\", \"Apr\", \"May\"]\nsales = [120, 150, 135, 180, 210]\ncosts = [80, 95, 90, 110, 130]\n\nfig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))\n\nax1.plot(months, sales, \"o-\", label=\"Sales\")\nax1.plot(months, costs, \"s--\", label=\"Costs\")\nax1.set_title(\"Monthly trend\")\nax1.set_ylabel(\"Thousands\")\nax1.legend()\nax1.grid(True, alpha=0.3)\n\nprofit = [s - c for s, c in zip(sales, costs)]\nax2.bar(months, profit, color=\"#3776ab\")\nax2.set_title(\"Profit\")\n\nfig.tight_layout()\nfig.savefig(\"report.png\", dpi=150)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between pyplot and the object-oriented API?",
+     "a": "pyplot is a quick, implicit-state interface; the OO API uses explicit Figure and Axes objects, which is clearer and better for multiple plots."
+    },
+    {
+     "q": "How do you save a figure?",
+     "a": "fig.savefig(\"name.png\", dpi=150) (or plt.savefig); it supports PNG, SVG, PDF and more."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-excel-file-automation",
+   "title": "Automating Excel, CSV and Files",
+   "level": "intermediate",
+   "summary": "Automate spreadsheets and folders with openpyxl, pandas, shutil and pathlib.",
+   "description": "Python excels at removing repetitive office work: merging spreadsheets, renaming files, producing reports.\n\n### Excel with openpyxl\n```python\nfrom openpyxl import Workbook, load_workbook\n\nwb = load_workbook(\"report.xlsx\")\nws = wb.active\nfor row in ws.iter_rows(min_row=2, values_only=True):\n    print(row)\nws[\"E1\"] = \"Total\"\nwb.save(\"report_out.xlsx\")\n```\nSupports formulas, formatting, charts and multiple sheets. For simply reading or writing a table, **pandas** is quicker: `pd.read_excel(\"a.xlsx\", sheet_name=None)` returns all sheets, and `df.to_excel(writer, sheet_name=...)` with `pd.ExcelWriter` writes many.\n\n### Merge many files\nCombine every CSV in a folder:\n```python\nframes = [pd.read_csv(p) for p in Path(\"data\").glob(\"*.csv\")]\npd.concat(frames).to_csv(\"all.csv\", index=False)\n```\n\n### Files and folders\n- `pathlib.Path` for discovery (`glob`, `rglob`), `mkdir`, `rename`.\n- `shutil.copy`, `shutil.move`, `shutil.make_archive` to zip.\n- `os.walk` for deep traversals.\n- `zipfile`, `tarfile` for archives.\n\n### Other automation targets\nPDFs (`pypdf`), Word (`python-docx`), images (`Pillow`), clipboard, desktop apps (`pyautogui`).\n\n### Scheduling\nRun scripts automatically with cron (Linux/macOS), Windows Task Scheduler, or `schedule`/`APScheduler` inside Python.\n\n### Safety\nDry-run first (print what would change), never overwrite originals, and log every action.",
+   "keyPoints": [
+    "openpyxl edits xlsx cells, styles and formulas",
+    "pandas is best for bulk table reading and writing",
+    "pathlib + shutil handle file organisation",
+    "Dry-run and keep backups before bulk changes",
+    "Schedule scripts with cron, Task Scheduler or APScheduler"
+   ],
+   "pitfalls": [
+    "Overwriting original files",
+    "Loading huge Excel files fully into memory",
+    "Hard-coded absolute paths that fail on another machine"
+   ],
+   "examples": [
+    {
+     "title": "Organise a downloads folder",
+     "language": "text",
+     "code": "from pathlib import Path\nimport shutil\n\nSOURCE = Path.home() / \"Downloads\"\nRULES = {\n    \".pdf\": \"Documents\", \".docx\": \"Documents\", \".xlsx\": \"Spreadsheets\",\n    \".csv\": \"Spreadsheets\", \".jpg\": \"Images\", \".png\": \"Images\", \".zip\": \"Archives\",\n}\nDRY_RUN = True\n\nfor item in SOURCE.iterdir():\n    if not item.is_file():\n        continue\n    folder = SOURCE / RULES.get(item.suffix.lower(), \"Other\")\n    target = folder / item.name\n    if target.exists():\n        target = folder / f\"{item.stem}_copy{item.suffix}\"\n    print(f\"{item.name} -> {folder.name}/\")\n    if not DRY_RUN:\n        folder.mkdir(exist_ok=True)\n        shutil.move(str(item), str(target))",
+     "explanation": ""
+    },
+    {
+     "title": "Merge sheets into one report",
+     "language": "text",
+     "code": "import pandas as pd\nfrom pathlib import Path\n\nframes = []\nfor path in Path(\"monthly\").glob(\"sales_*.xlsx\"):\n    df = pd.read_excel(path)\n    df[\"source\"] = path.stem\n    frames.append(df)\n\nreport = pd.concat(frames, ignore_index=True)\nwith pd.ExcelWriter(\"year_report.xlsx\") as writer:\n    report.to_excel(writer, sheet_name=\"All data\", index=False)\n    report.groupby(\"source\")[\"amount\"].sum().to_excel(writer, sheet_name=\"Totals\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How would you combine 100 CSV files into one?",
+     "a": "Use Path.glob to find them, read each with pandas.read_csv into a list and pd.concat the list, then write with to_csv."
+    },
+    {
+     "q": "How do you schedule a Python script?",
+     "a": "With the OS scheduler (cron or Task Scheduler) or a library such as APScheduler or schedule for in-process jobs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-email-automation-apis",
+   "title": "Email, Notifications and Working with APIs",
+   "level": "intermediate",
+   "summary": "Send emails from Python, call REST APIs safely and wire up simple automation scripts.",
+   "description": "### Sending email\nThe standard library handles SMTP. Use `EmailMessage` and `smtplib` over TLS. Providers such as Gmail need an **app password** (never your real password) or OAuth; transactional services (SendGrid, SES, Mailgun) are better for production.\n\n```python\nmsg = EmailMessage()\nmsg[\"From\"], msg[\"To\"], msg[\"Subject\"] = sender, receiver, \"Report\"\nmsg.set_content(\"See attachment\")\nmsg.add_attachment(pdf_bytes, maintype=\"application\", subtype=\"pdf\", filename=\"report.pdf\")\nwith smtplib.SMTP_SSL(\"smtp.gmail.com\", 465) as smtp:\n    smtp.login(sender, app_password)\n    smtp.send_message(msg)\n```\n\n### Secrets\nRead credentials from environment variables or a `.env` file (`python-dotenv`), never from source code.\n\n### Working with REST APIs\n- Use `requests` (or `httpx`) with `timeout=`.\n- Authenticate with API keys or `Authorization: Bearer <token>` headers.\n- Handle **pagination**, **rate limits** (429) and errors; retry with backoff.\n- Parse with `r.json()` and validate the fields you rely on.\n- Cache results while developing.\n\n### Webhooks and notifications\nSend alerts to Slack/Discord/Telegram with a simple `requests.post(webhook_url, json={...})`.\n\n### Typical automation script\n1. Fetch data from an API or website.\n2. Process with pandas.\n3. Write a report (Excel/PDF).\n4. Email or post it.\n5. Run on a schedule and log the result.\n\nWrap the job in `try/except` and send yourself a notification on failure, so silent breakage does not go unnoticed.",
+   "keyPoints": [
+    "EmailMessage + smtplib over TLS sends mail",
+    "Use app passwords and environment variables for secrets",
+    "APIs need timeouts, auth headers, pagination and retry handling",
+    "Webhooks send notifications with a simple POST",
+    "Log and alert on failures in scheduled jobs"
+   ],
+   "pitfalls": [
+    "Hard-coding passwords or API keys",
+    "Ignoring rate limits and pagination",
+    "Not handling failure (silent cron jobs)"
+   ],
+   "examples": [
+    {
+     "title": "Daily report script",
+     "language": "text",
+     "code": "import os\nimport smtplib\nfrom email.message import EmailMessage\n\nimport pandas as pd\nimport requests\n\ndef fetch_orders():\n    r = requests.get(\n        \"https://api.example.com/v1/orders\",\n        headers={\"Authorization\": f\"Bearer {os.environ['API_TOKEN']}\"},\n        params={\"status\": \"paid\", \"limit\": 100},\n        timeout=15,\n    )\n    r.raise_for_status()\n    return pd.DataFrame(r.json()[\"results\"])\n\ndef send_report(df):\n    total = df[\"amount\"].sum()\n    msg = EmailMessage()\n    msg[\"From\"] = os.environ[\"MAIL_USER\"]\n    msg[\"To\"] = \"boss@example.com\"\n    msg[\"Subject\"] = f\"Daily report: {len(df)} orders, Rs {total:,.0f}\"\n    msg.set_content(df.groupby(\"city\")[\"amount\"].sum().to_string())\n    with smtplib.SMTP_SSL(\"smtp.gmail.com\", 465) as smtp:\n        smtp.login(os.environ[\"MAIL_USER\"], os.environ[\"MAIL_APP_PASSWORD\"])\n        smtp.send_message(msg)\n\nif __name__ == \"__main__\":\n    try:\n        send_report(fetch_orders())\n    except Exception as exc:\n        requests.post(os.environ[\"SLACK_WEBHOOK\"], json={\"text\": f\"Report failed: {exc}\"}, timeout=10)\n        raise",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you send email securely from Python?",
+     "a": "Use smtplib with SMTP_SSL or starttls, authenticate with an app password or OAuth token read from environment variables, and build messages with EmailMessage."
+    },
+    {
+     "q": "How should API credentials be stored?",
+     "a": "In environment variables or a secrets manager, never committed to source control."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-cli-argparse",
+   "title": "Command-Line Tools with argparse",
+   "level": "intermediate",
+   "summary": "Turn scripts into reusable command-line programs with arguments and help text.",
+   "description": "Scripts become far more useful when behaviour is controlled by **arguments** instead of editing code. The standard library's `argparse` handles parsing, validation and `--help`.\n\n### Basic usage\n```python\nparser = argparse.ArgumentParser(description=\"Convert CSV to JSON\")\nparser.add_argument(\"source\", help=\"input file\")\nparser.add_argument(\"-o\", \"--output\", default=\"out.json\")\nparser.add_argument(\"--limit\", type=int, default=100)\nparser.add_argument(\"-v\", \"--verbose\", action=\"store_true\")\nargs = parser.parse_args()\n```\n\n### Argument kinds\n- **Positional**: required by position (`source`).\n- **Optional**: start with `-` or `--`.\n- `type=int/float/Path`, `choices=[...]`, `nargs=\"+\"` for lists, `required=True`, `default=...`.\n- `action=\"store_true\"` for flags, `action=\"count\"` for `-vvv`.\n\n### Subcommands\n`subparsers = parser.add_subparsers(dest=\"command\")` provide `tool add`, `tool list` (like `git commit`).\n\n### Best practices\n- Put the logic in `main(argv=None)` so it can be tested: `main([\"input.csv\", \"--limit\", \"5\"])`.\n- Return proper **exit codes**: `0` success, non-zero on error (`sys.exit(1)`).\n- Print results to stdout and logs/errors to stderr.\n- For richer tools consider `click` or `typer` (type-hint based).\n\n### Packaging\nExpose the function as an entry point so users can run `mytool` directly (see Packaging).",
+   "keyPoints": [
+    "argparse builds the parser, help and validation",
+    "Positional vs optional (-o/--output) arguments",
+    "store_true for flags, type= for conversion, choices= for limits",
+    "Keep logic in main(argv) so it is testable",
+    "Return non-zero exit codes on errors"
+   ],
+   "pitfalls": [
+    "Parsing sys.argv by hand",
+    "Putting all logic at module level so it cannot be imported or tested",
+    "Printing errors to stdout"
+   ],
+   "examples": [
+    {
+     "title": "Parse a list of arguments (runs here)",
+     "language": "python",
+     "code": "import argparse\n\ndef build_parser():\n    p = argparse.ArgumentParser(prog=\"wordstat\", description=\"Count words in text\")\n    p.add_argument(\"words\", nargs=\"+\", help=\"words to count\")\n    p.add_argument(\"--min-length\", type=int, default=1)\n    p.add_argument(\"--upper\", action=\"store_true\", help=\"print in upper case\")\n    p.add_argument(\"--sort\", choices=[\"alpha\", \"count\"], default=\"alpha\")\n    return p\n\ndef main(argv=None):\n    args = build_parser().parse_args(argv)\n    counts = {}\n    for w in args.words:\n        if len(w) >= args.min_length:\n            w = w.upper() if args.upper else w\n            counts[w] = counts.get(w, 0) + 1\n    key = (lambda kv: kv[0]) if args.sort == \"alpha\" else (lambda kv: -kv[1])\n    for word, n in sorted(counts.items(), key=key):\n        print(word, n)\n    return 0\n\nmain([\"to\", \"be\", \"or\", \"not\", \"to\", \"be\", \"--upper\", \"--sort\", \"count\"])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why put logic in main(argv=None)?",
+     "a": "It lets tests call main with a list of arguments and makes the module importable without running."
+    },
+    {
+     "q": "What is the difference between positional and optional arguments?",
+     "a": "Positional arguments are required and identified by position; optional ones start with - or -- and can have defaults."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,199 @@
+{
+ "id": "react-styling",
+ "title": "Styling React Apps",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-css-modules",
+   "title": "CSS, Inline Styles and CSS Modules",
+   "level": "beginner",
+   "summary": "Style React with plain CSS files, inline style objects or locally scoped CSS Modules.",
+   "description": "React does not force a styling method. The common options are:\n\n### 1. Plain CSS files\n\nImport a stylesheet (`import \"./App.css\"`) and use `className`. Simple, but CSS is **global**: a `.button` class in one file can clash with another.\n\n### 2. Inline styles\n\n`style={{ color: \"red\", fontSize: 18 }}` takes an object with camelCase properties; numbers get `px`. Good for **dynamic values** (progress width, computed colors). Limitations: no pseudo-classes (`:hover`), no media queries, no keyframes, and they have high specificity.\n\n### 3. CSS Modules\n\nName the file `Button.module.css`. The bundler turns each class into a unique name, so styles are **scoped to the component**.\n\n```jsx\nimport styles from \"./Button.module.css\";\n<button className={styles.primary}>Save</button>\n```\n\nYou write ordinary CSS, get no collisions, and need no runtime library. Compose with `composes:`, and use `:global(...)` for exceptions. Vite supports CSS Modules out of the box.\n\n### Combining class names\n\nUse the tiny **`clsx`** (or `classnames`) helper:\n\n```jsx\nclassName={clsx(styles.btn, isActive && styles.active, disabled && styles.disabled)}\n```\n\n### Choosing\n\nCSS Modules are a safe, fast default. Plain CSS plus a naming convention (BEM) works for small apps. Reach for utility CSS (Tailwind) or CSS-in-JS if your team prefers them.\n\n### Tips\n\nUse CSS variables for design tokens, keep responsive rules in the stylesheet, and avoid mixing several approaches in one project without a reason.",
+   "keyPoints": [
+    "className (not class) applies CSS classes",
+    "Inline style uses an object with camelCase keys",
+    "CSS Modules scope classes automatically per file",
+    "clsx composes conditional classes",
+    "CSS variables make theming easy"
+   ],
+   "pitfalls": [
+    "Expecting :hover or media queries in inline styles.",
+    "Global CSS class collisions in large projects."
+   ],
+   "examples": [
+    {
+     "title": "Conditional classes and dynamic inline style",
+     "language": "react",
+     "css": ".btn { padding: 8px 14px; border: 2px solid #0ea5e9; background: #fff; border-radius: 6px; cursor: pointer; }\n.btn-active { background: #0ea5e9; color: #fff; }\n.bar { height: 12px; background: #e5e7eb; border-radius: 6px; margin: 12px 0; overflow: hidden; }\n.fill { height: 100%; background: #22c55e; transition: width .2s; }",
+     "code": "function clsx(...args) {\n  return args.filter(Boolean).join(\" \");\n}\n\nfunction Progress({ value }) {\n  return (\n    <div className=\"bar\">\n      <div className=\"fill\" style={{ width: value + \"%\" }} />\n    </div>\n  );\n}\n\nfunction App() {\n  const [active, setActive] = useState(false);\n  const [value, setValue] = useState(30);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button className={clsx(\"btn\", active && \"btn-active\")} onClick={() => setActive(!active)}>\n        {active ? \"Active\" : \"Inactive\"}\n      </button>\n      <Progress value={value} />\n      <input type=\"range\" min=\"0\" max=\"100\" value={value} onChange={(e) => setValue(Number(e.target.value))} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the benefit of CSS Modules?",
+     "a": "Class names are automatically made unique per file, so styles are locally scoped without collisions and without a runtime cost."
+    },
+    {
+     "q": "When are inline styles a good choice?",
+     "a": "For dynamic values computed in JS, like a progress bar width or a color from data. They cannot do pseudo-classes or media queries."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-styled-components",
+   "title": "styled-components and Emotion",
+   "level": "intermediate",
+   "summary": "CSS-in-JS libraries let you write real CSS inside components using tagged template literals.",
+   "description": "**CSS-in-JS** colocates styles with components. **styled-components** and **Emotion** let you create components that carry their own CSS.\n\n```jsx\nimport styled from \"styled-components\";\n\nconst Button = styled.button`\n  padding: 8px 16px;\n  border-radius: 6px;\n  background: ${(p) => (p.$primary ? \"#0ea5e9\" : \"white\")};\n  color: ${(p) => (p.$primary ? \"white\" : \"#0ea5e9\")};\n\n  &:hover { opacity: 0.85; }\n  @media (max-width: 600px) { width: 100%; }\n`;\n\n<Button $primary>Save</Button>\n```\n\n### Features\n\n- **Props-based styling** - use `$transient` props (prefixed `$`) so they are not forwarded to the DOM.\n- **Real CSS**: nesting, pseudo-classes, media queries, keyframes (`keyframes`), global styles (`createGlobalStyle`).\n- **Extending**: `styled(Button)` creates a variant.\n- **Theming**: `ThemeProvider` provides a theme object read as `props.theme`.\n- **Auto-generated unique class names** - no collisions, dead-code elimination by design.\n- `css` helper for reusable snippets and `as` prop to change the rendered tag.\n\n### Trade-offs (see the tradeoffs topic)\n\nRuntime style injection costs performance and doesn't fit React Server Components well. styled-components is in **maintenance mode**, and many teams moved to zero-runtime options (CSS Modules, Tailwind, vanilla-extract, Panda CSS, StyleX, Linaria).\n\n### When to use\n\nExisting projects already using it, design-system libraries with heavy prop-driven variants, and teams who like colocated styles.",
+   "keyPoints": [
+    "styled.tag`css` creates a styled component",
+    "Interpolate props for dynamic styles; prefix with $ to avoid DOM leakage",
+    "ThemeProvider shares a theme object",
+    "Runtime cost and RSC limitations exist",
+    "Emotion offers a similar API with css prop"
+   ],
+   "pitfalls": [
+    "Defining styled components inside render functions (recreated each time).",
+    "Passing non-DOM props that leak to the DOM element."
+   ],
+   "examples": [
+    {
+     "title": "Themed styled-components",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import styled, { ThemeProvider, keyframes, createGlobalStyle } from \"styled-components\";\n\nconst GlobalStyle = createGlobalStyle`\n  body { margin: 0; font-family: system-ui, sans-serif; }\n`;\n\nconst spin = keyframes`from { transform: rotate(0) } to { transform: rotate(360deg) }`;\n\nconst Card = styled.div`\n  background: ${({ theme }) => theme.card};\n  color: ${({ theme }) => theme.text};\n  padding: 16px;\n  border-radius: 12px;\n`;\n\nconst Button = styled.button`\n  padding: 8px 14px;\n  border: 0;\n  border-radius: 6px;\n  background: ${({ $variant, theme }) => ($variant === \"danger\" ? theme.danger : theme.primary)};\n  color: #fff;\n  &:hover { filter: brightness(1.1); }\n`;\nconst DangerButton = styled(Button)`font-weight: bold;`;\n\nconst Loader = styled.span`\n  display: inline-block;\n  animation: ${spin} 1s linear infinite;\n`;\n\nconst theme = { card: \"#fff\", text: \"#111\", primary: \"#0ea5e9\", danger: \"#ef4444\" };\n\nexport default function App() {\n  return (\n    <ThemeProvider theme={theme}>\n      <GlobalStyle />\n      <Card>\n        <Button $variant=\"primary\">Save</Button> <DangerButton $variant=\"danger\">Delete</DangerButton>\n        <Loader>*</Loader>\n      </Card>\n    </ThemeProvider>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are transient props in styled-components?",
+     "a": "Props prefixed with $ that are used for styling but not forwarded to the underlying DOM element, avoiding unknown attribute warnings."
+    },
+    {
+     "q": "Why are teams moving away from runtime CSS-in-JS?",
+     "a": "Runtime style generation adds JS cost and complicates server components and streaming, so zero-runtime solutions are preferred."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-tailwind",
+   "title": "Tailwind CSS with React",
+   "level": "intermediate",
+   "summary": "Tailwind provides small utility classes you compose in JSX instead of writing custom CSS.",
+   "description": "**Tailwind CSS** is a utility-first framework. Instead of naming classes and writing CSS, you apply tiny single-purpose classes directly in `className`.\n\n```jsx\n<button className=\"rounded-lg bg-sky-500 px-4 py-2 font-semibold text-white hover:bg-sky-600 focus:outline-none focus:ring-2 md:px-6\">\n  Save\n</button>\n```\n\n### How it works\n\nTailwind scans your source files, finds the class names you used, and generates only that CSS. The production CSS file is usually only a few kilobytes. In v4 setup is just `@import \"tailwindcss\";` plus the Vite plugin `@tailwindcss/vite`; earlier versions use `tailwind.config.js` and PostCSS.\n\n### Why developers like it\n\n- No context switching between files; no naming problems.\n- **Design constraints** (spacing, colors, font sizes) keep UI consistent.\n- **Responsive and state variants** are built-in: `md:`, `lg:`, `hover:`, `focus:`, `disabled:`, `dark:`, `group-hover:`.\n- Zero runtime and works with Server Components.\n\n### Handling long class lists\n\n- Extract **React components** (`<Button variant=\"primary\" />`), not CSS classes, to reuse styles.\n- Use `clsx`/`tailwind-merge` (`cn()` helper) to merge conditional and overriding classes.\n- Use **cva** (class-variance-authority) for variants. shadcn/ui follows this approach.\n\n### Dark mode\n\nAdd `dark:` variants; enable by class (`.dark` on `<html>`) or system preference.\n\n### Pitfalls\n\nNever build class names dynamically (`bg-${color}-500`): the scanner can't see them. Use complete strings in a lookup object.",
+   "keyPoints": [
+    "Utility classes in className generate minimal CSS",
+    "Variants: md:, hover:, dark:, focus:",
+    "Extract components, not classes, for reuse",
+    "Use cn() = clsx + tailwind-merge for conditional classes",
+    "Never compose class names from string fragments"
+   ],
+   "pitfalls": [
+    "className={`text-${color}-500`} - the class is not generated.",
+    "Huge unreadable class lists instead of extracting components."
+   ],
+   "examples": [
+    {
+     "title": "Variant button with cn and a lookup object",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import clsx from \"clsx\";\nimport { twMerge } from \"tailwind-merge\";\n\nconst cn = (...a) => twMerge(clsx(a));\n\nconst variants = {\n  primary: \"bg-sky-500 text-white hover:bg-sky-600\",\n  outline: \"border border-sky-500 text-sky-600 hover:bg-sky-50\",\n  danger: \"bg-red-500 text-white hover:bg-red-600\",\n};\nconst sizes = { sm: \"px-3 py-1 text-sm\", md: \"px-4 py-2\", lg: \"px-6 py-3 text-lg\" };\n\nexport function Button({ variant = \"primary\", size = \"md\", className, ...props }) {\n  return (\n    <button\n      className={cn(\n        \"rounded-lg font-semibold transition focus:outline-none focus:ring-2 disabled:opacity-50\",\n        variants[variant],\n        sizes[size],\n        className\n      )}\n      {...props}\n    />\n  );\n}\n\n// <Button variant=\"danger\" size=\"lg\" className=\"w-full\">Delete</Button>"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does \"utility-first\" mean?",
+     "a": "You style elements by combining small single-purpose classes in markup rather than writing custom CSS for each component."
+    },
+    {
+     "q": "Why can't you build Tailwind classes dynamically?",
+     "a": "Tailwind finds classes by scanning source text at build time; partial strings like text-${color}-500 never appear fully, so no CSS is generated."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-css-in-js-tradeoffs",
+   "title": "CSS-in-JS Trade-offs and Choosing a Styling Strategy",
+   "level": "advanced",
+   "summary": "Compare runtime CSS-in-JS, CSS Modules, utility CSS and zero-runtime solutions.",
+   "description": "Every approach trades something. Here is a practical comparison.\n\n| Approach | Pros | Cons |\n| --- | --- | --- |\n| **Plain CSS / BEM** | simple, fast, standard | global scope, naming discipline |\n| **CSS Modules** | scoped, no runtime, real CSS | dynamic styles need CSS variables/inline |\n| **Tailwind** | fast to build, consistent, zero runtime | verbose markup, learning the classes |\n| **Runtime CSS-in-JS** (styled-components, Emotion) | colocated, dynamic props, theming | runtime cost, bundle size, SSR/RSC complexity |\n| **Zero-runtime CSS-in-JS** (vanilla-extract, Panda, StyleX, Linaria) | typed, scoped, no runtime | build tooling, less dynamic |\n| **Component libraries** (MUI, Chakra, shadcn/ui, Mantine) | ready components, accessibility | opinionated look, bundle size, customization limits |\n\n### Why runtime CSS-in-JS lost ground\n\n- It serializes styles and injects `<style>` tags while rendering, adding **CPU work on every render** and slowing hydration.\n- React 18 concurrent rendering and **Server Components** do not mix well with context-based style injection.\n- Larger JS bundles.\n\n### Dynamic styles without runtime CSS-in-JS\n\nUse **CSS custom properties**: set `style={{ \"--progress\": value + \"%\" }}` and in CSS `width: var(--progress)`. You get dynamic values with static CSS.\n\n### How to choose\n\n- New project, performance sensitive, or Next.js App Router: **CSS Modules or Tailwind** (optionally shadcn/ui).\n- Large design system with strict typing: **vanilla-extract / Panda / StyleX**.\n- Existing styled-components code: keep it; migrate gradually if needed.\n- Prototype fast: **a component library**.\n\nWhatever you pick, define **design tokens** (colors, spacing, radii) once and respect accessibility (contrast, focus styles, reduced motion).",
+   "keyPoints": [
+    "Runtime CSS-in-JS costs CPU and bundle size",
+    "Zero-runtime options give scoping without runtime",
+    "CSS variables handle dynamic values in static CSS",
+    "Tailwind and CSS Modules are safe defaults",
+    "Define design tokens and a11y rules regardless of tool"
+   ],
+   "pitfalls": [
+    "Mixing three styling systems in one codebase without a policy.",
+    "Using inline style objects for everything, losing hover/media support."
+   ],
+   "examples": [
+    {
+     "title": "Dynamic values through CSS variables",
+     "language": "react",
+     "css": ".meter {\n  width: 220px; height: 28px; border-radius: 14px; margin-bottom: 10px;\n  background: linear-gradient(to right, hsl(var(--hue) 70% 50%) var(--value), #e5e7eb var(--value));\n  color: #111; display: grid; place-items: center; font-size: 13px; font-weight: bold;\n  transition: background .2s;\n}",
+     "code": "function Meter({ value }) {\n  return (\n    <div className=\"meter\" style={{ \"--value\": value + \"%\", \"--hue\": Math.round(value * 1.2) }}>\n      <span>{value}%</span>\n    </div>\n  );\n}\n\nfunction App() {\n  const [value, setValue] = useState(60);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Meter value={value} />\n      <input type=\"range\" value={value} min=\"0\" max=\"100\" onChange={(e) => setValue(Number(e.target.value))} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is runtime CSS-in-JS considered a performance concern?",
+     "a": "It generates and injects styles while rendering, adding CPU cost, bundle size and SSR/Server Component friction compared with static CSS."
+    },
+    {
+     "q": "How can you get dynamic styling without runtime CSS-in-JS?",
+     "a": "Set CSS custom properties through the style attribute and consume them in static CSS with var(), or toggle class names."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-theming-dark-mode",
+   "title": "Theming and Dark Mode",
+   "level": "intermediate",
+   "summary": "Implement light/dark themes with CSS variables, a data attribute and a small context, respecting user preference.",
+   "description": "A solid theming setup has three parts.\n\n### 1. Design tokens as CSS variables\n\n```css\n:root { --bg: #ffffff; --text: #111827; --primary: #0ea5e9; }\n[data-theme=\"dark\"] { --bg: #0f172a; --text: #e5e7eb; --primary: #38bdf8; }\nbody { background: var(--bg); color: var(--text); }\n```\n\nComponents use `var(--primary)`. Switching the theme only changes the attribute, with no re-render of the tree.\n\n### 2. State and persistence\n\nKeep the theme in a React context (`ThemeProvider` + `useTheme`). Initialize from `localStorage`, otherwise from `window.matchMedia(\"(prefers-color-scheme: dark)\")`. Support three values: `light`, `dark`, `system`.\n\n### 3. Apply to the document\n\nIn an effect set `document.documentElement.dataset.theme = theme` and save to storage.\n\n### Avoiding the flash (FOUC)\n\nIf the theme is applied only after React hydrates, users see a flash of the wrong theme. Add a tiny **inline script in `index.html`** `<head>` that reads storage and sets the attribute **before** first paint.\n\n### With Tailwind / UI libraries\n\nTailwind: `darkMode: \"class\"` and `dark:` variants. MUI and Chakra: provide their theme providers.\n\n### Accessibility\n\nKeep contrast ratios in both themes, use `color-scheme: light dark` so native controls match, and respect `prefers-reduced-motion`.",
+   "keyPoints": [
+    "Define colors as CSS variables per theme",
+    "Context holds light | dark | system",
+    "Persist in localStorage; default to prefers-color-scheme",
+    "Set data-theme on the root element",
+    "Inline head script prevents the theme flash"
+   ],
+   "pitfalls": [
+    "Applying the theme in an effect only, causing a white flash on load.",
+    "Hard-coding colors in components so they ignore the theme."
+   ],
+   "examples": [
+    {
+     "title": "Theme switcher with CSS variables and context",
+     "language": "react",
+     "css": ".app { --bg: #ffffff; --text: #111827; --card: #f1f5f9; --primary: #0ea5e9;\n  background: var(--bg); color: var(--text); padding: 14px; font-family: sans-serif; border-radius: 8px; transition: background .2s, color .2s; }\n.app[data-theme=\"dark\"] { --bg: #0f172a; --text: #e5e7eb; --card: #1e293b; --primary: #38bdf8; }\nheader { display: flex; justify-content: space-between; align-items: center; }\nbutton { background: var(--primary); color: #fff; border: 0; padding: 6px 12px; border-radius: 6px; cursor: pointer; }\n.card { background: var(--card); padding: 12px; border-radius: 8px; }",
+     "code": "const ThemeContext = createContext(null);\n\nfunction ThemeProvider({ children }) {\n  const [theme, setTheme] = useState(\"light\");\n  const toggle = () => setTheme((t) => (t === \"light\" ? \"dark\" : \"light\"));\n  return (\n    <ThemeContext.Provider value={{ theme, toggle }}>\n      <div className=\"app\" data-theme={theme}>{children}</div>\n    </ThemeContext.Provider>\n  );\n}\nconst useTheme = () => useContext(ThemeContext);\n\nfunction Header() {\n  const { theme, toggle } = useTheme();\n  return (\n    <header>\n      <h3>My App</h3>\n      <button onClick={toggle}>Switch to {theme === \"light\" ? \"dark\" : \"light\"}</button>\n    </header>\n  );\n}\n\nfunction App() {\n  return (\n    <ThemeProvider>\n      <Header />\n      <p className=\"card\">Colors come from CSS variables, so every component follows the theme.</p>\n    </ThemeProvider>\n  );\n}",
+     "explanation": "Uses an element scope instead of the document, so the preview stays isolated."
+    },
+    {
+     "title": "Anti-flash script in index.html",
+     "language": "text",
+     "lang": "markup",
+     "code": "<head>\n  <script>\n    (function () {\n      try {\n        var saved = localStorage.getItem(\"theme\");\n        var dark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n        var theme = saved || (dark ? \"dark\" : \"light\");\n        document.documentElement.setAttribute(\"data-theme\", theme);\n      } catch (e) {}\n    })();\n  </script>\n</head>"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you implement dark mode in React?",
+     "a": "Define colors as CSS variables for each theme, hold the theme in context/state, persist it, and set a data-theme attribute on the root so CSS switches the variables."
+    },
+    {
+     "q": "How do you prevent a flash of the wrong theme?",
+     "a": "Run a small inline script in the HTML head that sets the theme attribute from storage or system preference before React loads."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,259 @@
+{
+ "id": "html-accessibility-attributes",
+ "title": "Accessibility & Attributes",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "html-accessibility-fundamentals",
+   "title": "Accessibility (a11y) Fundamentals",
+   "level": "intermediate",
+   "summary": "Build pages everyone can use: semantic HTML, labels, alt text, contrast and headings first.",
+   "description": "**Accessibility** (written *a11y*: a + 11 letters + y) means people with disabilities - blind, low vision, deaf, motor-impaired, cognitive - can perceive, operate and understand your site. It also helps everyone: mobile users in sunlight, people with a broken arm, keyboard power users.\n\n### The first rule of ARIA\n\"If you can use a native HTML element, use it.\" Native elements come with roles, keyboard handling and states for free.\n\n### The practical checklist\n| Area | What to do |\n|---|---|\n| Structure | Use landmarks (header, nav, main, footer) and a heading hierarchy |\n| Images | Meaningful `alt`; `alt=\"\"` for decoration |\n| Forms | Every control has a `<label>`; group with fieldset/legend; helpful error text |\n| Links & buttons | Descriptive text; links navigate, buttons act |\n| Language | `lang` attribute |\n| Media | Captions, transcripts; no autoplay with sound |\n| Colour | Contrast ratio ≥ 4.5:1 for text; do not rely on colour alone |\n| Keyboard | Everything usable with Tab/Enter/Space; visible focus |\n| Motion | Respect `prefers-reduced-motion` |\n| Zoom | Do not block pinch zoom; content reflows at 200% |\n\n### WCAG\nThe Web Content Accessibility Guidelines (A, AA, AAA) are the standard. Most laws require **AA**. Principles: **POUR** - Perceivable, Operable, Understandable, Robust.\n\n### Test it\n- Tab through the page with only a keyboard.\n- Use a screen reader (NVDA, VoiceOver).\n- Browser DevTools Accessibility pane, Lighthouse, axe.",
+   "keyPoints": [
+    "Native semantic HTML solves most accessibility needs.",
+    "All functionality must work with a keyboard.",
+    "Provide text alternatives: alt, labels, captions.",
+    "Contrast 4.5:1 for normal text (WCAG AA).",
+    "WCAG principles: Perceivable, Operable, Understandable, Robust."
+   ],
+   "pitfalls": [
+    "Using a div with onclick instead of a button.",
+    "Conveying meaning with colour only (red error with no text).",
+    "Removing the focus outline with outline:none and no replacement."
+   ],
+   "examples": [
+    {
+     "title": "Inaccessible vs accessible",
+     "language": "web",
+     "html": "<h3>Bad</h3>\n<div class=\"fake-btn\" onclick=\"alert('hi')\">Click</div>\n<input placeholder=\"Name\">\n<img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='gray'/></svg>\">\n\n<h3>Good</h3>\n<button type=\"button\" id=\"b\">Click</button>\n<label for=\"n\">Name</label> <input id=\"n\" placeholder=\"e.g. Asha\">\n<img alt=\"Grey square used as a placeholder\" width=\"40\" height=\"40\"\n  src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='40' height='40' fill='gray'/></svg>\">",
+     "css": "body{font-family:sans-serif}\n.fake-btn{display:inline-block;background:#ddd;padding:6px 12px;border-radius:6px}\nbutton{padding:6px 12px}",
+     "js": "",
+     "explanation": "Try Tab: the button gets focus, the div does not; the second input has a real label."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is web accessibility?",
+     "a": "Designing sites so people with disabilities can perceive, understand, navigate and interact with them, e.g. via screen readers or keyboards."
+    },
+    {
+     "q": "Name four accessibility practices in HTML.",
+     "a": "Semantic elements, alt text, label for form controls, keyboard operability with visible focus, lang attribute, sufficient colour contrast."
+    },
+    {
+     "q": "What does POUR stand for?",
+     "a": "Perceivable, Operable, Understandable, Robust - the WCAG principles."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-aria",
+   "title": "ARIA: roles, states & properties",
+   "level": "advanced",
+   "summary": "WAI-ARIA adds accessibility information that native HTML cannot express, for custom widgets.",
+   "description": "**ARIA** (Accessible Rich Internet Applications) is a set of attributes that tell assistive technology what a custom UI element is and what state it is in. ARIA changes **only the accessibility tree**, not behaviour or appearance.\n\n### The five rules in short\n1. Prefer native HTML (`<button>` over `<div role=\"button\">`).\n2. Do not change native semantics unnecessarily.\n3. All interactive ARIA controls must be keyboard operable.\n4. Never use `role=\"presentation\"` or `aria-hidden=\"true\"` on focusable elements.\n5. All interactive elements need an accessible name.\n\n### Three attribute groups\n| Group | Examples |\n|---|---|\n| **Roles** (what it is) | `role=\"tablist\"`, `dialog`, `alert`, `navigation`, `button` |\n| **Properties** (relationships/labels) | `aria-label`, `aria-labelledby`, `aria-describedby`, `aria-controls` |\n| **States** (changing) | `aria-expanded`, `aria-selected`, `aria-checked`, `aria-hidden`, `aria-disabled`, `aria-live` |\n\n### Frequently used\n- `aria-label=\"Close\"` - name for an icon-only button.\n- `aria-labelledby=\"id\"` - name from another element.\n- `aria-describedby=\"id\"` - extra description (e.g. an error hint).\n- `aria-expanded=\"true|false\"` - disclosure/menu state.\n- `aria-live=\"polite\"` - announce updates (status messages).\n- `role=\"alert\"` - important, immediate announcement.\n- `aria-current=\"page\"` - current link in navigation.\n\n### Landmarks\nUse `<nav aria-label=\"Main\">` when there are several navs so users can tell them apart.\n\nWrong ARIA is worse than no ARIA - always test with a screen reader.",
+   "keyPoints": [
+    "First rule: use native HTML before ARIA.",
+    "ARIA only changes semantics, not behaviour - you must add the keyboard support.",
+    "aria-label / labelledby provide accessible names.",
+    "aria-expanded and aria-live communicate changing state.",
+    "Never hide focusable elements with aria-hidden."
+   ],
+   "pitfalls": [
+    "Adding role=\"button\" to a div but no keyboard handling.",
+    "Redundant roles like <nav role=\"navigation\">.",
+    "aria-label on non-interactive elements that ignore it (div/span without role)."
+   ],
+   "examples": [
+    {
+     "title": "Toggle button with aria-expanded and live region",
+     "language": "web",
+     "html": "<button id=\"t\" aria-expanded=\"false\" aria-controls=\"panel\">Show details</button>\n<div id=\"panel\" hidden>🔎 Extra information revealed.</div>\n<p id=\"status\" role=\"status\" aria-live=\"polite\"></p>\n<button aria-label=\"Close dialog\" id=\"x\">✖</button>",
+     "css": "body{font-family:sans-serif} button{padding:6px 12px;margin-right:6px} #panel{background:#eef;padding:8px;margin:8px 0;border-radius:6px}",
+     "js": "var t = document.getElementById('t'), p = document.getElementById('panel'), s = document.getElementById('status');\nt.addEventListener('click', function () {\n  var open = t.getAttribute('aria-expanded') === 'true';\n  t.setAttribute('aria-expanded', String(!open));\n  p.hidden = open;\n  t.textContent = open ? 'Show details' : 'Hide details';\n  s.textContent = open ? 'Details hidden' : 'Details shown';\n});",
+     "explanation": "A screen reader announces \"expanded/collapsed\" and the live status message."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the first rule of ARIA?",
+     "a": "Do not use ARIA if a native HTML element or attribute with the needed semantics already exists."
+    },
+    {
+     "q": "Difference between aria-label and aria-labelledby?",
+     "a": "aria-label provides the name as a string; aria-labelledby points to the id of another element whose text is the name."
+    },
+    {
+     "q": "What does aria-live do?",
+     "a": "Marks a region whose content updates should be announced by screen readers (polite or assertive)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-keyboard-focus",
+   "title": "Keyboard Navigation, tabindex & Skip Links",
+   "level": "intermediate",
+   "summary": "Make sure every interactive element can be reached and used with the keyboard.",
+   "description": "Many users never touch a mouse. Keyboard accessibility is both a WCAG requirement and a good test of your HTML quality.\n\n### What is focusable by default\nLinks with `href`, `<button>`, form controls (`input`, `select`, `textarea`), `<summary>`, elements with `contenteditable` or a `tabindex`.\nNon-interactive elements (div, span, p) are **not** focusable.\n\n### tabindex\n| Value | Effect |\n|---|---|\n| `tabindex=\"0\"` | Add to the natural tab order |\n| `tabindex=\"-1\"` | Focusable by script (`el.focus()`) but skipped by Tab |\n| `tabindex=\"1+\"` | Forces priority order - **avoid**, it breaks the natural flow |\n\n### Focus visibility\nNever write `outline:none` without a replacement. Use `:focus-visible` to show focus rings only for keyboard users.\n\n### Skip link\nA first link in the body lets keyboard users jump past a long header/nav straight to content.\n\n```html\n<a class=\"skip\" href=\"#main\">Skip to main content</a>\n...\n<main id=\"main\" tabindex=\"-1\">...</main>\n```\n\n### accesskey\n`accesskey=\"s\"` defines a shortcut but conflicts with assistive tech - generally avoid.\n\n### Focus management\nAfter opening a dialog move focus inside; when it closes, return focus to the opener. Native `<dialog>` does this for you.\n\n### Test\nPress Tab, Shift+Tab, Enter, Space, Esc and arrow keys. Can you do everything? Is the order logical? Can you always see where you are?",
+   "keyPoints": [
+    "Use native interactive elements - they are focusable and keyboard operable.",
+    "tabindex=\"0\" adds an element to the tab order; -1 only allows script focus.",
+    "Avoid positive tabindex values.",
+    "Always keep a visible focus indicator.",
+    "Provide a skip link before long navigation."
+   ],
+   "pitfalls": [
+    "Positive tabindex values creating a confusing order.",
+    "outline:none with no replacement style.",
+    "Click-only widgets made of divs."
+   ],
+   "examples": [
+    {
+     "title": "Skip link and visible focus",
+     "language": "web",
+     "html": "<a class=\"skip\" href=\"#main\">Skip to main content</a>\n<header>\n  <nav><a href=\"#\">Home</a> <a href=\"#\">Courses</a> <a href=\"#\">Blog</a> <a href=\"#\">About</a> <a href=\"#\">Contact</a></nav>\n</header>\n<main id=\"main\" tabindex=\"-1\">\n  <h1>Main content</h1>\n  <p>Press Tab once: the skip link appears. Press Enter to jump here.</p>\n  <button>Action</button>\n  <div tabindex=\"0\" class=\"card\">I am a focusable div (tabindex=0)</div>\n</main>",
+     "css": "body{font-family:sans-serif}\n.skip{position:absolute;left:-999px;background:#ffb703;padding:6px 10px}\n.skip:focus{left:8px;top:8px}\nnav a{margin-right:10px}\na:focus-visible,button:focus-visible,.card:focus-visible{outline:3px solid #e34c26;outline-offset:2px}\n.card{background:#f1f1f1;padding:10px;margin-top:10px;border-radius:6px}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does tabindex=\"-1\" do?",
+     "a": "It makes an element focusable by JavaScript or links but removes it from the Tab order."
+    },
+    {
+     "q": "What is a skip link?",
+     "a": "A link at the top of the page that lets keyboard and screen reader users jump past repeated navigation directly to main content."
+    },
+    {
+     "q": "Why avoid positive tabindex values?",
+     "a": "They override the natural DOM order and create an unpredictable and hard-to-maintain tab sequence."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/anchor.html"
+  },
+  {
+   "id": "html-global-attributes",
+   "title": "Global Attributes",
+   "level": "intermediate",
+   "summary": "id, class, style, title, hidden, lang, dir, contenteditable, draggable, tabindex and more work on any element.",
+   "description": "**Global attributes** can be put on **any** HTML element.\n\n| Attribute | Purpose |\n|---|---|\n| `id` | Unique identifier (fragment links, JS, labels) |\n| `class` | One or more CSS/JS hooks |\n| `style` | Inline CSS |\n| `title` | Advisory tooltip text |\n| `lang` / `dir` | Language and text direction |\n| `hidden` | Hide the element (like display:none) |\n| `tabindex` | Keyboard focus order |\n| `accesskey` | Keyboard shortcut |\n| `contenteditable` | Make content editable by the user |\n| `spellcheck` | Enable/disable spell checking |\n| `draggable` | Allow drag and drop |\n| `translate` | Whether content should be translated |\n| `data-*` | Custom data (next topic) |\n| `role`, `aria-*` | Accessibility |\n| `inert` | Make a subtree non-interactive |\n| `popover` | Popover behaviour |\n| `autofocus`, `enterkeyhint`, `inputmode` | Input-related hints |\n| `is`, `slot`, `part` | Web components |\n\n### Notes\n- `id` must be unique and should not contain spaces. Start with a letter for CSS convenience.\n- `hidden` is easily overridden by CSS `display` rules.\n- `contenteditable=\"true\"` turns a div into a rich text area - great for prototypes, but real apps need validation and sanitization.\n- `inert` is excellent for disabling background content behind a custom modal.\n- Inline `style` has high specificity; keep styles in CSS files.",
+   "keyPoints": [
+    "Global attributes apply to every HTML element.",
+    "id is unique; class is reusable.",
+    "hidden, inert and contenteditable change behaviour without JS.",
+    "lang and dir set language/direction for any subtree.",
+    "data-* stores custom values."
+   ],
+   "pitfalls": [
+    "Duplicate ids.",
+    "Relying on title for essential information (not available on touch/keyboard).",
+    "Using style attributes everywhere and fighting specificity later."
+   ],
+   "examples": [
+    {
+     "title": "contenteditable, hidden, draggable and title",
+     "language": "web",
+     "html": "<p id=\"intro\" class=\"note\" title=\"I am a tooltip\">Hover me to see the title attribute.</p>\n<div contenteditable=\"true\" class=\"edit\">✏️ Click here and edit this text directly!</div>\n<p hidden>You cannot see me (hidden attribute).</p>\n<p lang=\"fr\">Bonjour le monde (lang=fr)</p>\n<div draggable=\"true\" class=\"drag\">Draggable box (try dragging)</div>\n<button id=\"b\">Toggle the hidden paragraph</button>",
+     "css": "body{font-family:sans-serif}\n.edit{border:2px dashed #888;padding:10px;margin:10px 0;border-radius:6px}\n.drag{display:inline-block;background:#ffd166;padding:10px;border-radius:6px;margin:10px 0}",
+     "js": "document.getElementById('b').addEventListener('click', function () {\n  var p = document.querySelector('p[hidden], p[data-was-hidden]');\n  p.hidden = !p.hidden; p.setAttribute('data-was-hidden', '');\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Name five global attributes.",
+     "a": "id, class, style, title, lang, hidden, tabindex, contenteditable, draggable, data-*."
+    },
+    {
+     "q": "What does contenteditable do?",
+     "a": "It makes an element editable by the user directly in the browser."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/attr.html"
+  },
+  {
+   "id": "html-data-attributes",
+   "title": "Custom data-* Attributes",
+   "level": "intermediate",
+   "summary": "Store small custom values on elements and read them with dataset in JavaScript or attr() / attribute selectors in CSS.",
+   "description": "HTML does not let you invent random attributes (`<div price=\"10\">` is invalid). For custom data use **`data-*` attributes**: `data-` followed by your own lowercase name.\n\n```html\n<li data-id=\"42\" data-category=\"fruit\" data-in-stock=\"true\">Mango</li>\n```\n\n### Reading in JavaScript\nThe `dataset` object maps names to **camelCase**:\n\n```js\nconst li = document.querySelector('li');\nli.dataset.id;        // \"42\"\nli.dataset.inStock;   // \"true\"  (data-in-stock -> inStock)\nli.dataset.color = 'orange'; // sets data-color=\"orange\"\n```\n\nValues are always **strings** - convert with `Number()` or `JSON.parse()`.\n\n### Using in CSS\n- Attribute selectors: `[data-category=\"fruit\"] { color: green }`\n- Show a value: `li::after { content: attr(data-id) }`\n\n### Good uses\n- Passing IDs to JavaScript (e.g. `data-product-id` on a button).\n- State flags for styling (`data-state=\"open\"`).\n- Configuration for small widgets.\n\n### What not to put there\n- Content that users or search engines must see (put real text in the HTML).\n- Secrets or sensitive data - visible to everyone.\n- Large JSON blobs - use a script tag (`type=\"application/json\"`).",
+   "keyPoints": [
+    "Custom attribute names must start with data- and be lowercase.",
+    "JavaScript reads them via element.dataset (camelCased).",
+    "Values are strings.",
+    "CSS can select by [data-*] and show values with attr().",
+    "Never store secrets in data attributes."
+   ],
+   "pitfalls": [
+    "Expecting numbers or booleans - they are strings (\"false\" is truthy!).",
+    "Putting important content only in data attributes.",
+    "Using uppercase letters in the attribute name."
+   ],
+   "examples": [
+    {
+     "title": "dataset in action",
+     "language": "web",
+     "html": "<button class=\"buy\" data-product-id=\"101\" data-name=\"Laptop\" data-price=\"55000\">Buy Laptop</button>\n<button class=\"buy\" data-product-id=\"202\" data-name=\"Mouse\" data-price=\"799\">Buy Mouse</button>\n<p id=\"out\">Click a button.</p>\n<ul>\n  <li data-status=\"done\">Learn HTML</li>\n  <li data-status=\"doing\">Learn CSS</li>\n  <li data-status=\"todo\">Learn JS</li>\n</ul>",
+     "css": "body{font-family:sans-serif} button{padding:6px 10px;margin-right:6px}\n[data-status=\"done\"]{color:seagreen}\n[data-status=\"doing\"]{color:darkorange}\n[data-status=\"todo\"]{color:gray}\nli::after{content:' (' attr(data-status) ')';font-size:12px}",
+     "js": "document.querySelectorAll('.buy').forEach(function (b) {\n  b.addEventListener('click', function () {\n    var d = b.dataset;\n    document.getElementById('out').textContent = 'Product #' + d.productId + ': ' + d.name + ' costs ' + Number(d.price).toLocaleString();\n  });\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you read data-user-id in JavaScript?",
+     "a": "element.dataset.userId - hyphenated names become camelCase and the value is a string."
+    },
+    {
+     "q": "Why use data attributes instead of custom attributes?",
+     "a": "Arbitrary attributes are invalid HTML; data-* is the standard-approved way to attach custom data."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-structured-data",
+   "title": "Microdata & JSON-LD Structured Data",
+   "level": "advanced",
+   "summary": "Describe your content in a machine-readable way so search engines can show rich results.",
+   "description": "**Structured data** adds explicit meaning to your content using the **schema.org** vocabulary. Search engines read it to build *rich results*: star ratings, recipe cards, event dates, FAQs, product prices, breadcrumbs.\n\n### Three syntaxes\n| Syntax | How |\n|---|---|\n| **JSON-LD** (recommended) | A `<script type=\"application/ld+json\">` block |\n| **Microdata** | Attributes `itemscope`, `itemtype`, `itemprop` inside visible HTML |\n| **RDFa** | `typeof`, `property` attributes |\n\n### JSON-LD\nIt is separate from your visible markup, easy to maintain and Google's preferred format.\n\n```html\n<script type=\"application/ld+json\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"Article\",\n  \"headline\": \"Learn HTML in One Shot\",\n  \"author\": { \"@type\": \"Person\", \"name\": \"Thapa Technical\" },\n  \"datePublished\": \"2026-10-14\"\n}\n</script>\n```\n\n### Microdata\n```html\n<div itemscope itemtype=\"https://schema.org/Product\">\n  <span itemprop=\"name\">Laptop</span>\n  <span itemprop=\"offers\" itemscope itemtype=\"https://schema.org/Offer\">\n    <span itemprop=\"price\">55000</span>\n    <meta itemprop=\"priceCurrency\" content=\"INR\">\n  </span>\n</div>\n```\n\n### Rules\n- The data **must match** what users see on the page.\n- Validate with Google's Rich Results Test or schema.org validator.\n- Common types: `Article`, `Product`, `Recipe`, `Event`, `FAQPage`, `Organization`, `BreadcrumbList`.",
+   "keyPoints": [
+    "Structured data uses the schema.org vocabulary.",
+    "JSON-LD in script type=\"application/ld+json\" is the preferred format.",
+    "Microdata uses itemscope, itemtype and itemprop on visible elements.",
+    "It enables rich results; it does not guarantee them.",
+    "Markup must reflect visible page content."
+   ],
+   "pitfalls": [
+    "Marking up content that is not visible on the page.",
+    "Invalid JSON (trailing commas) in the LD+JSON block.",
+    "Forgetting @context."
+   ],
+   "examples": [
+    {
+     "title": "JSON-LD read by JavaScript (and microdata)",
+     "language": "web",
+     "html": "<script type=\"application/ld+json\" id=\"ld\">\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"Product\",\n  \"name\": \"HTML Handbook\",\n  \"offers\": { \"@type\": \"Offer\", \"price\": \"499\", \"priceCurrency\": \"INR\" }\n}\n</script>\n<div itemscope itemtype=\"https://schema.org/Person\">\n  <h3 itemprop=\"name\">Vinod Thapa</h3>\n  <p itemprop=\"jobTitle\">Web Developer &amp; Teacher</p>\n</div>\n<pre id=\"out\"></pre>",
+     "css": "body{font-family:sans-serif} pre{background:#f4f4f4;padding:8px;border-radius:6px}",
+     "js": "var data = JSON.parse(document.getElementById('ld').textContent);\ndocument.getElementById('out').textContent = 'A crawler would read:\\n' + JSON.stringify(data, null, 2);",
+     "explanation": "Search engines parse the same JSON your script just read."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is JSON-LD and why is it preferred?",
+     "a": "A JSON format for schema.org data placed in a script tag, separated from visible markup and easy to maintain; recommended by Google."
+    },
+    {
+     "q": "What are microdata attributes?",
+     "a": "itemscope, itemtype and itemprop - added to visible elements to describe items and their properties."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

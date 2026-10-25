@@ -1,0 +1,357 @@
+{
+  "id": "js-async",
+  "title": "Errors and Asynchronous JavaScript",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-error-handling",
+      "title": "Error Handling: try, catch, finally and throw",
+      "level": "intermediate",
+      "summary": "Handle runtime errors gracefully with try/catch/finally and throw meaningful Error objects.",
+      "description": "Errors will happen: bad input, missing data, network failure. **Error handling** keeps the app running and gives useful feedback.\n\n### try...catch...finally\n```js\ntry {\n  riskyCode();            // may throw\n} catch (error) {\n  console.error(error.message);   // handle it\n} finally {\n  cleanup();              // always runs\n}\n```\n- `catch` receives the error; the binding is optional since ES2019 (`catch { }`).\n- `finally` runs whether or not an error happened - ideal for hiding loaders or closing resources.\n\n### throw\nYou can throw **anything**, but throw `Error` objects so you get a stack trace:\n```js\nif (!email) throw new Error(\"Email is required\");\n```\n\n### Built-in error types\n`Error`, `TypeError` (wrong type, calling undefined), `ReferenceError` (undeclared variable), `SyntaxError` (invalid code or JSON), `RangeError` (out of range, stack overflow), `URIError`, `AggregateError`.\n\n### Custom errors\n```js\nclass ValidationError extends Error {\n  constructor(msg, field) { super(msg); this.name = \"ValidationError\"; this.field = field; }\n}\n```\nUse `instanceof` or `error.name` in `catch` to react differently. Since ES2022 you can pass a cause: `new Error(\"failed\", { cause: err })`.\n\n### Rethrow\nIf you cannot handle an error, rethrow it: `catch (e) { if (!(e instanceof ValidationError)) throw e; }`.\n\n### Async errors\n- With promises use `.catch()`.\n- With `async/await` use `try/catch` around `await`.\n- A `try/catch` does **not** catch errors thrown inside a callback that runs later (setTimeout).\n- `fetch` only rejects on network failure; check `response.ok` for 404/500.",
+      "keyPoints": [
+        "try/catch handles synchronous errors, finally always runs",
+        "throw new Error(message) gives a stack trace",
+        "Create custom errors by extending Error",
+        "Async errors need .catch() or try/catch with await",
+        "Rethrow errors you cannot handle"
+      ],
+      "pitfalls": [
+        "try/catch cannot catch errors from setTimeout callbacks or unhandled promise rejections",
+        "Swallowing errors with an empty catch hides bugs",
+        "Throwing strings instead of Error objects loses the stack trace"
+      ],
+      "examples": [
+        {
+          "title": "try/catch/finally and custom error",
+          "language": "javascript",
+          "explanation": "",
+          "code": "class ValidationError extends Error {\n  constructor(message, field) {\n    super(message);\n    this.name = \"ValidationError\";\n    this.field = field;\n  }\n}\n\nfunction parseUser(json) {\n  const user = JSON.parse(json);\n  if (!user.name) throw new ValidationError(\"Name is required\", \"name\");\n  return user;\n}\n\nfor (const input of ['{\"name\":\"Asha\"}', '{\"age\":3}', \"{bad json}\"]) {\n  try {\n    console.log(\"OK:\", parseUser(input).name);\n  } catch (e) {\n    if (e instanceof ValidationError) console.log(\"Validation:\", e.field, \"-\", e.message);\n    else console.log(\"Other:\", e.name);\n  } finally {\n    console.log(\"done with\", input.slice(0, 8));\n  }\n}\n\ntry { null.x; } catch (e) { console.log(e.name); }\ntry { undefinedFunction(); } catch (e) { console.log(e.name); }"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does finally do?",
+          "a": "The finally block always executes after try and catch, whether an error occurred or not, even if try returns. It is used for cleanup."
+        },
+        {
+          "q": "Will try/catch catch an error thrown inside setTimeout?",
+          "a": "No. The callback runs later, after the try block has finished. Put try/catch inside the callback or use promises with .catch()."
+        },
+        {
+          "q": "How do you handle a fetch error for HTTP 404?",
+          "a": "fetch only rejects on network errors. Check response.ok (or status) and throw an error yourself before parsing."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/error-handling.html, JS-one-shot/ecmascripts/es2019.js"
+    },
+    {
+      "id": "js-sync-async-timers",
+      "title": "Synchronous vs Asynchronous Code and Timers",
+      "level": "beginner",
+      "summary": "Async code lets the program continue while waiting; setTimeout and setInterval schedule work for later.",
+      "description": "### Synchronous vs asynchronous\n- **Synchronous**: each line waits for the previous one. A slow task blocks everything.\n- **Asynchronous**: start a long task (timer, network, file) and keep running; the result comes back later through a callback, promise or `await`.\n\nJavaScript has one thread, so it relies on the browser/Node to do the waiting and on the **event loop** to run the callback when the stack is free.\n\n### setTimeout\nRuns a function **once** after a delay (milliseconds).\n```js\nconst id = setTimeout(() => console.log(\"later\"), 2000);\nclearTimeout(id);       // cancel\n```\nPass extra arguments after the delay: `setTimeout(fn, 1000, arg1)`.\n\n### setInterval\nRuns repeatedly until cancelled.\n```js\nconst id = setInterval(tick, 1000);\nclearInterval(id);\n```\n\n### Important details\n- The delay is a **minimum**: the callback runs only when the call stack is empty.\n- `setTimeout(fn, 0)` still runs after the current code finishes.\n- Browsers throttle timers in background tabs.\n- Nested `setTimeout` is often better than `setInterval` because the next run is scheduled only after the current one finishes (no overlap).\n- Always clear timers in cleanup (React `useEffect`), otherwise you leak memory and run stale code.\n- `requestAnimationFrame(fn)` is the right tool for animations.",
+      "keyPoints": [
+        "setTimeout runs once, setInterval repeats",
+        "clearTimeout / clearInterval need the returned id",
+        "Delay is a minimum, not a guarantee",
+        "setTimeout 0 still waits for the stack to clear",
+        "Clear timers when no longer needed"
+      ],
+      "pitfalls": [
+        "Passing fn() instead of fn runs it immediately",
+        "Forgetting to clear an interval keeps it running forever",
+        "Relying on timers for exact timing (drift happens)"
+      ],
+      "examples": [
+        {
+          "title": "Order of execution",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(\"1. start\");\nsetTimeout(() => console.log(\"3. timeout 0 - runs after sync code\"), 0);\nsetTimeout(() => console.log(\"5. timeout 100ms\"), 100);\nconsole.log(\"2. end of script\");\n\nlet n = 0;\nconst id = setInterval(() => {\n  n++;\n  console.log(\"4. tick\", n);\n  if (n === 3) {\n    clearInterval(id);\n    console.log(\"interval cleared\");\n  }\n}, 5);"
+        },
+        {
+          "title": "Stopwatch with setInterval",
+          "language": "web",
+          "explanation": "Start, Stop and Reset use one interval id; clearInterval stops the timer.",
+          "html": "<div class=\"watch\">\n  <p id=\"countDown\">0</p>\n  <div class=\"buttons\">\n    <button id=\"start\">Start</button>\n    <button id=\"stop\">Stop</button>\n    <button id=\"reset\">Reset</button>\n  </div>\n  <div id=\"log\"></div>\n</div>",
+          "css": "body { font-family: system-ui, sans-serif; display: flex; justify-content: center; padding: 20px; }\n.watch { text-align: center; }\n#countDown { font-size: 3rem; margin: 0 0 12px; }\nbutton { padding: 8px 14px; margin: 0 4px; cursor: pointer; border-radius: 6px; border: 1px solid #888; }\n#log p { margin: 4px 0; font-size: 14px; color: #555; }",
+          "js": "let seconds = 0;\nlet intervalId = null;\nconst display = document.getElementById(\"countDown\");\nconst log = document.getElementById(\"log\");\n\nfunction start() {\n  if (intervalId) return;               // avoid double intervals\n  intervalId = setInterval(() => {\n    seconds++;\n    display.textContent = seconds;\n  }, 1000);\n}\nfunction stop() {\n  clearInterval(intervalId);\n  intervalId = null;\n  const p = document.createElement(\"p\");\n  p.textContent = \"Stopped at \" + seconds + \"s\";\n  log.append(p);\n}\nfunction reset() {\n  stop();\n  seconds = 0;\n  display.textContent = 0;\n  log.innerHTML = \"\";\n}\ndocument.getElementById(\"start\").addEventListener(\"click\", start);\ndocument.getElementById(\"stop\").addEventListener(\"click\", stop);\ndocument.getElementById(\"reset\").addEventListener(\"click\", reset);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between setTimeout and setInterval?",
+          "a": "setTimeout runs the callback once after the delay; setInterval runs it repeatedly at the given interval until cleared."
+        },
+        {
+          "q": "Why does setTimeout(fn, 0) not run immediately?",
+          "a": "The callback is placed in the task queue and runs only after the current synchronous code and microtasks have completed and the stack is empty."
+        },
+        {
+          "q": "How do you stop a setInterval?",
+          "a": "Store its returned id and call clearInterval(id)."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/sync_vs_async.js, JS-one-shot/timeBasedEvents/index.js, JS-one-shot/timeBasedEvents/project.html"
+    },
+    {
+      "id": "js-callbacks-callback-hell",
+      "title": "Callbacks and Callback Hell",
+      "level": "intermediate",
+      "summary": "Nested callbacks make async code hard to read; Promises and async/await flatten it.",
+      "description": "A **callback** is a function you pass to be called when an asynchronous task completes. Before Promises, callbacks were the only way to sequence async work.\n\n### The problem\nWhen each step depends on the previous one, callbacks nest deeper and deeper - the **pyramid of doom** or **callback hell**:\n\n```js\ngetUser(id, (err, user) => {\n  getPosts(user.id, (err, posts) => {\n    getComments(posts[0].id, (err, comments) => {\n      // ...\n    });\n  });\n});\n```\n\n### Why it is bad\n- Hard to read and reason about.\n- Error handling must be repeated at every level.\n- Hard to run steps in parallel or return a value.\n- **Inversion of control**: you trust a third-party function to call your callback once, and at the right time.\n\n### Error-first callbacks\nNode.js convention: the first parameter is the error: `callback(err, data)`. Always check `err` first.\n\n### Ways out\n1. **Name your functions** and keep them flat.\n2. **Promises** - chain with `.then()`.\n3. **async/await** - write async code that looks synchronous.\n4. Use `Promise.all` for parallel work.\n\n### Promisify\nWrap an old callback API into a promise:\n```js\nconst wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\n```\nNode has `util.promisify` for error-first callbacks.",
+      "keyPoints": [
+        "Callbacks run when async work finishes",
+        "Nesting callbacks creates a pyramid of doom",
+        "Error-first convention: (err, data)",
+        "Promises and async/await flatten the code",
+        "Promisify wraps callback APIs"
+      ],
+      "pitfalls": [
+        "Forgetting to handle err at every level",
+        "Calling a callback twice or never",
+        "Mixing sync and async callback timing"
+      ],
+      "examples": [
+        {
+          "title": "From nested callbacks to a flat chain",
+          "language": "javascript",
+          "explanation": "",
+          "code": "// callback hell\nfunction step(msg, cb) { setTimeout(() => { console.log(msg); cb(); }, 5); }\nstep(\"cb 1: name\", () => {\n  step(\"cb 2: middle name\", () => {\n    step(\"cb 3: last name\", () => {\n      console.log(\"callbacks finished\");\n      flat();\n    });\n  });\n});\n\n// the same with promises and async/await\nconst wait = (ms) => new Promise((r) => setTimeout(r, ms));\nconst stepP = async (msg) => { await wait(5); console.log(msg); };\nasync function flat() {\n  await stepP(\"await 1: name\");\n  await stepP(\"await 2: middle name\");\n  await stepP(\"await 3: last name\");\n  console.log(\"flat code finished\");\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is callback hell?",
+          "a": "Deeply nested callbacks used to sequence asynchronous operations, producing a pyramid-shaped code that is hard to read, debug and maintain."
+        },
+        {
+          "q": "How do you avoid callback hell?",
+          "a": "Use named functions to flatten code, Promises with chaining, and async/await; use Promise.all for parallel tasks."
+        },
+        {
+          "q": "What is an error-first callback?",
+          "a": "A Node.js convention where the callback's first argument is an error (null when successful) and the following arguments are the results."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/callback-hell.js"
+    },
+    {
+      "id": "js-promises",
+      "title": "Promises",
+      "level": "intermediate",
+      "summary": "A Promise represents a future value and is pending, fulfilled or rejected.",
+      "description": "A **Promise** is an object that represents the eventual **completion or failure** of an asynchronous operation and its resulting value. Think of it as a receipt: you get something now that will be exchanged for the real result later.\n\n### States\n- **pending** - initial state.\n- **fulfilled** - finished successfully with a value.\n- **rejected** - failed with a reason (error).\nA promise settles **once** and never changes again.\n\n### Creating\n```js\nconst p = new Promise((resolve, reject) => {\n  setTimeout(() => {\n    Math.random() > 0.5 ? resolve(\"done\") : reject(new Error(\"failed\"));\n  }, 100);\n});\n```\nThe function passed in is the **executor**; it runs immediately.\n\n### Consuming\n```js\np.then((value) => value)     // success\n .catch((err) => {})         // failure\n .finally(() => {});         // always\n```\n- `.then()` returns a **new promise**, so you can chain. Returning a value passes it down; returning a promise waits for it.\n- A throw inside `.then` turns into a rejection handled by the next `.catch`.\n- `.catch(fn)` is `.then(undefined, fn)`.\n\n### Shortcuts\n`Promise.resolve(value)`, `Promise.reject(error)`.\n\n### Microtasks\nPromise callbacks run as **microtasks**, before timers and other macrotasks.\n\n### Always handle rejections\nAn unhandled rejection logs an error in the browser and can crash Node. Put a `.catch()` at the end of every chain.",
+      "keyPoints": [
+        "States: pending, fulfilled, rejected (settled once)",
+        "then/catch/finally return new promises, enabling chaining",
+        "Errors skip to the nearest catch",
+        "Promise callbacks are microtasks",
+        "Always end chains with catch"
+      ],
+      "pitfalls": [
+        "Forgetting to return inside then breaks the chain value",
+        "Creating a new Promise around an existing promise (anti-pattern)",
+        "Unhandled promise rejections"
+      ],
+      "examples": [
+        {
+          "title": "Creating and chaining",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const enrollStudent = (name) =>\n  new Promise((resolve, reject) => {\n    setTimeout(() => {\n      name ? resolve(`Enrollment successful for ${name}`) : reject(new Error(\"Name missing\"));\n    }, 10);\n  });\n\nenrollStudent(\"Vinod\")\n  .then((msg) => { console.log(msg); return msg.length; })\n  .then((len) => console.log(\"length:\", len))\n  .catch((e) => console.log(\"error:\", e.message))\n  .finally(() => console.log(\"1. process completed\"));\n\nenrollStudent(\"\")\n  .then((m) => console.log(m))\n  .catch((e) => console.log(\"error:\", e.message))\n  .finally(() => console.log(\"2. process completed\"));\n\nconsole.log(\"sync code finishes first\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What are the states of a promise?",
+          "a": "Pending, fulfilled and rejected. Once fulfilled or rejected (settled) it cannot change."
+        },
+        {
+          "q": "What does .then() return?",
+          "a": "A new promise that resolves with the return value of the handler (or follows the promise it returns), which is what makes chaining possible."
+        },
+        {
+          "q": "What is the difference between .catch and the second argument of .then?",
+          "a": ".catch also handles errors thrown inside the previous then handler, while the second argument of the same then only handles rejections of the earlier promise."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/promises.js, JS-one-shot/advancedJS/functions/promises.html"
+    },
+    {
+      "id": "js-promise-combinators",
+      "title": "Promise.all, allSettled, race and any",
+      "level": "intermediate",
+      "summary": "Run promises in parallel and choose how to combine their results.",
+      "description": "These static methods take an iterable of promises and return one promise.\n\n| Method | Fulfills when | Rejects when |\n|---|---|---|\n| `Promise.all` | **all** fulfil (array of values, same order) | **any** rejects (first rejection) |\n| `Promise.allSettled` | **all** settle (array of `{status, value/reason}`) | never |\n| `Promise.race` | the **first** promise settles | the first settled one is a rejection |\n| `Promise.any` | the **first fulfilled** | all reject (`AggregateError`) |\n\n### When to use which\n- **all** - you need every result, and one failure means the whole thing fails (load user + settings).\n- **allSettled** - independent tasks; you want to report each success/failure (bulk upload).\n- **race** - timeout pattern: race a request against a `setTimeout` rejection.\n- **any** - try several mirrors/servers, take the first that works.\n\n### Parallel vs sequential\n`await a(); await b();` runs one after another. `await Promise.all([a(), b()])` runs both at the same time, so it is faster for independent tasks.\n\n### Other helpers\n- `Promise.withResolvers()` (ES2024) returns `{ promise, resolve, reject }`.\n- Non-promise values in the array are treated as already resolved.\n\n### Concurrency control\n`Promise.all` with thousands of requests can overload a server. Process in chunks or use a small pool.",
+      "keyPoints": [
+        "all: all succeed or fail fast",
+        "allSettled: wait for everything, never rejects",
+        "race: first to settle wins",
+        "any: first to fulfil wins",
+        "Use all for parallel independent work"
+      ],
+      "pitfalls": [
+        "One rejection in Promise.all discards the other results",
+        "Promise.race with an empty array never settles",
+        "await in a loop runs tasks sequentially"
+      ],
+      "examples": [
+        {
+          "title": "Compare all, allSettled, race and any",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const delay = (ms, value, fail = false) =>\n  new Promise((res, rej) => setTimeout(() => (fail ? rej(value) : res(value)), ms));\n\nconst p1 = () => delay(30, \"First\");\nconst p2 = () => delay(10, \"Failed\", true);\nconst p3 = () => delay(20, \"Third\");\n\n(async () => {\n  console.log(\"all:\", await Promise.all([p1(), p3()]));\n  try { await Promise.all([p1(), p2(), p3()]); }\n  catch (e) { console.log(\"all rejected with:\", e); }\n\n  const settled = await Promise.allSettled([p1(), p2(), p3()]);\n  console.log(\"allSettled:\", settled.map((r) => r.status + \":\" + (r.value ?? r.reason)));\n\n  console.log(\"race:\", await Promise.race([p1(), p3()]));\n  console.log(\"any:\", await Promise.any([p2(), p1(), p3()]));\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between Promise.all and Promise.allSettled?",
+          "a": "all rejects immediately when any promise rejects. allSettled waits for every promise and returns an array describing each outcome; it never rejects."
+        },
+        {
+          "q": "Difference between Promise.race and Promise.any?",
+          "a": "race settles with the first promise to settle, even if it rejects. any waits for the first fulfilled promise and only rejects with AggregateError if all reject."
+        },
+        {
+          "q": "How do you implement a timeout for a promise?",
+          "a": "Use Promise.race([actualPromise, new Promise((_, reject) => setTimeout(() => reject(new Error(\"timeout\")), ms))])."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/promises.js, JS-one-shot/ecmascripts/es2021.js"
+    },
+    {
+      "id": "js-async-await",
+      "title": "async and await",
+      "level": "intermediate",
+      "summary": "async functions return promises and await pauses them until a promise settles, giving readable async code.",
+      "description": "`async`/`await` (ES2017) is syntax built on promises that makes async code read like synchronous code.\n\n### async functions\n```js\nasync function getData() {\n  return 42;          // automatically wrapped: returns Promise<42>\n}\n```\nAn `async` function **always returns a promise**. Thrown errors become rejections.\n\n### await\n`await promise` pauses **only that async function** until the promise settles and gives you its value (or throws the rejection). The rest of the program keeps running. `await` works inside `async` functions and at the top level of ES modules.\n\n```js\nasync function load() {\n  try {\n    const res = await fetch(url);\n    if (!res.ok) throw new Error(\"HTTP \" + res.status);\n    const data = await res.json();\n    return data;\n  } catch (err) {\n    console.error(err);\n  } finally {\n    hideSpinner();\n  }\n}\n```\n\n### Sequential vs parallel\n```js\nconst a = await taskA();      // waits\nconst b = await taskB();      // starts after A\nconst [x, y] = await Promise.all([taskA(), taskB()]); // parallel\n```\n\n### Loops\n- `for...of` with `await` runs steps in order.\n- `array.forEach(async ...)` does **not** wait. Use `for...of` or `await Promise.all(arr.map(async ...))`.\n\n### Under the hood\nCode after `await` is scheduled as a **microtask** once the promise settles.\n\n### Tips\n- Wrap awaits in `try/catch`.\n- Do not use `await` when you do not need the value; return the promise.\n- Avoid `async` for functions that do nothing asynchronous.",
+      "keyPoints": [
+        "async function always returns a promise",
+        "await pauses the async function, not the whole program",
+        "Use try/catch/finally for errors",
+        "Use Promise.all to run independent awaits in parallel",
+        "forEach does not wait for async callbacks"
+      ],
+      "pitfalls": [
+        "Sequential awaits for independent tasks are slow",
+        "Forgetting await returns a pending promise instead of the value",
+        "An error in an un-awaited async call becomes an unhandled rejection"
+      ],
+      "examples": [
+        {
+          "title": "Sequential vs parallel",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const wait = (ms, v) => new Promise((r) => setTimeout(() => r(v), ms));\n\nasync function sequential() {\n  const t = Date.now();\n  const a = await wait(50, \"A\");\n  const b = await wait(50, \"B\");\n  return [a, b, Math.round((Date.now() - t) / 50) * 50 + \"ms\"];\n}\nasync function parallel() {\n  const t = Date.now();\n  const [a, b] = await Promise.all([wait(50, \"A\"), wait(50, \"B\")]);\n  return [a, b, Math.round((Date.now() - t) / 50) * 50 + \"ms\"];\n}\nasync function failing() {\n  try {\n    await Promise.reject(new Error(\"API is down\"));\n  } catch (e) {\n    return \"caught: \" + e.message;\n  }\n}\n(async () => {\n  console.log(\"sequential\", await sequential());\n  console.log(\"parallel\", await parallel());\n  console.log(await failing());\n  console.log(await (async () => 42)(), (async () => 1)() instanceof Promise);\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does an async function return?",
+          "a": "Always a Promise. A returned value is wrapped in a resolved promise and a thrown error becomes a rejected promise."
+        },
+        {
+          "q": "How do you run multiple awaits in parallel?",
+          "a": "Start them together and await Promise.all([...]) instead of awaiting each one separately."
+        },
+        {
+          "q": "How do you handle errors with async/await?",
+          "a": "Wrap awaited calls in try/catch (and finally), or attach .catch() to the returned promise."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/async-await.html, JS-one-shot/advancedJS/functions/error-handling.html"
+    },
+    {
+      "id": "js-event-loop",
+      "title": "Event Loop, Microtasks and Macrotasks",
+      "level": "advanced",
+      "summary": "The event loop moves queued callbacks onto the call stack, running microtasks before macrotasks.",
+      "description": "JavaScript runs on a single thread, yet handles timers, clicks and network requests without freezing. The **event loop** makes this possible.\n\n### The pieces\n- **Call stack** - where synchronous code runs.\n- **Web APIs / Node APIs** - do the waiting (timers, fetch, DOM events) outside the stack.\n- **Macrotask (task) queue** - callbacks from `setTimeout`, `setInterval`, DOM events, I/O.\n- **Microtask queue** - `Promise.then/catch/finally`, `queueMicrotask`, `MutationObserver`, `await` continuations.\n- **Event loop** - checks: if the stack is empty, run **all** microtasks, then take **one** macrotask, (render if needed), repeat.\n\n### Order of execution\n1. All synchronous code.\n2. All queued **microtasks** (even those added while draining).\n3. The next **macrotask**, then microtasks again, and so on.\n\n```js\nconsole.log(\"1\");\nsetTimeout(() => console.log(\"4\"), 0);\nPromise.resolve().then(() => console.log(\"3\"));\nconsole.log(\"2\");\n// 1, 2, 3, 4\n```\n\n### Consequences\n- Promise callbacks always beat `setTimeout(0)`.\n- A long synchronous loop blocks everything, including rendering and clicks.\n- A microtask that keeps scheduling microtasks can starve the macrotask queue.\n- Heavy work should be chunked, moved to a Web Worker, or yielded with `setTimeout`.\n\n### Node.js extras\n`process.nextTick` runs before promise microtasks; `setImmediate` runs in the check phase.",
+      "keyPoints": [
+        "Single thread with one call stack",
+        "Microtasks (promises) run before macrotasks (timers)",
+        "Event loop runs when the stack is empty",
+        "Long tasks block rendering and events",
+        "await continues as a microtask"
+      ],
+      "pitfalls": [
+        "Assuming setTimeout 0 runs before promise callbacks",
+        "Blocking the main thread with big loops",
+        "Infinite microtask loops freeze the page"
+      ],
+      "examples": [
+        {
+          "title": "Predict the order",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(\"script start\");\n\nsetTimeout(() => console.log(\"setTimeout\"), 0);\n\nPromise.resolve()\n  .then(() => console.log(\"promise 1\"))\n  .then(() => console.log(\"promise 2\"));\n\nqueueMicrotask(() => console.log(\"queueMicrotask\"));\n\n(async () => {\n  console.log(\"async start\");\n  await null;\n  console.log(\"after await\");\n})();\n\nconsole.log(\"script end\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the output order of sync code, setTimeout(0) and a resolved promise?",
+          "a": "Synchronous code first, then the promise callback (microtask), then the setTimeout callback (macrotask)."
+        },
+        {
+          "q": "What is the difference between microtasks and macrotasks?",
+          "a": "Microtasks (promise reactions, queueMicrotask) run immediately after the current script/task and before the next macrotask. Macrotasks (timers, events, I/O) run one per event loop turn."
+        },
+        {
+          "q": "Why can a heavy loop freeze the UI?",
+          "a": "The loop occupies the single call stack, so the event loop cannot run event handlers or let the browser render until it finishes."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/call_stack.html, JS-one-shot/how_js_works/sync_vs_async.js"
+    },
+    {
+      "id": "js-fetch-abort",
+      "title": "Fetch API and AbortController",
+      "level": "intermediate",
+      "summary": "fetch makes HTTP requests that return promises; AbortController cancels them.",
+      "description": "`fetch(url, options)` is the modern browser (and Node 18+) API for HTTP requests. It returns a **promise of a Response**.\n\n### Basic GET\n```js\nconst res = await fetch(\"https://api.example.com/users\");\nif (!res.ok) throw new Error(\"HTTP \" + res.status);\nconst data = await res.json();      // also .text(), .blob(), .formData()\n```\n\n### Important behaviour\n- `fetch` **rejects only on network failure**. A 404 or 500 still resolves, so always check `res.ok`.\n- Reading the body (`res.json()`) is another async step and can only be done once.\n- Cross-origin requests need **CORS** headers from the server.\n\n### POST with JSON\n```js\nawait fetch(\"/api/users\", {\n  method: \"POST\",\n  headers: { \"Content-Type\": \"application/json\" },\n  body: JSON.stringify({ name: \"Asha\" }),\n});\n```\nOther options: `credentials: \"include\"` for cookies, `cache`, `mode`, `signal`.\n\n### Cancelling with AbortController\n```js\nconst controller = new AbortController();\nfetch(url, { signal: controller.signal });\ncontroller.abort();                 // rejects with AbortError\n```\nUse it to cancel when a component unmounts, when a new search replaces the old one, or for timeouts: `AbortSignal.timeout(5000)`.\n\n### Weather app pattern\nBuild the URL with a template literal, `await fetch`, destructure the JSON, then update the DOM. Wrap in `try/catch` and show a friendly message on failure. Never put secret API keys in front-end code.",
+      "keyPoints": [
+        "fetch returns a promise of Response",
+        "Check response.ok - HTTP errors do not reject",
+        "res.json() is another promise",
+        "POST needs method, headers and a stringified body",
+        "AbortController cancels in-flight requests"
+      ],
+      "pitfalls": [
+        "Assuming a 404 will go to catch",
+        "Forgetting Content-Type header for JSON bodies",
+        "Exposing API keys in browser code"
+      ],
+      "examples": [
+        {
+          "title": "Fetch pattern (needs a network)",
+          "language": "text",
+          "explanation": "Shown as text because it needs a real API. The same flow is simulated in the next example.",
+          "code": "const getWeather = async (city) => {\n  const url = `https://api.example.com/weather?q=${encodeURIComponent(city)}`;\n  try {\n    const res = await fetch(url);\n    if (!res.ok) throw new Error(`HTTP ${res.status}`);\n    const { main, name, weather, wind, sys } = await res.json();\n    console.log(name, sys.country, main.temp, weather[0].main, wind.speed);\n  } catch (error) {\n    console.error(\"Could not load weather:\", error.message);\n  }\n};\ngetWeather(\"Pune\");"
+        },
+        {
+          "title": "Simulated request with abort",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function fakeFetch(url, { signal } = {}) {\n  return new Promise((resolve, reject) => {\n    const timer = setTimeout(() => resolve({ ok: true, json: async () => ({ url, joke: \"Hello!\" }) }), 50);\n    signal?.addEventListener(\"abort\", () => {\n      clearTimeout(timer);\n      reject(new DOMException(\"The operation was aborted.\", \"AbortError\"));\n    });\n  });\n}\n\n(async () => {\n  const res = await fakeFetch(\"/api/joke\");\n  console.log(\"ok:\", res.ok, await res.json());\n\n  const controller = new AbortController();\n  const pending = fakeFetch(\"/api/slow\", { signal: controller.signal });\n  controller.abort();\n  try { await pending; } catch (e) { console.log(\"cancelled:\", e.name); }\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Does fetch reject on a 404 response?",
+          "a": "No. fetch resolves for any HTTP response; only network errors reject. Check response.ok or response.status."
+        },
+        {
+          "q": "How do you cancel a fetch request?",
+          "a": "Create an AbortController, pass controller.signal in the fetch options and call controller.abort(); the promise rejects with an AbortError."
+        },
+        {
+          "q": "Why does response.json() return a promise?",
+          "a": "The body is a stream that must be read and parsed asynchronously, so you await it after the headers arrive."
+        }
+      ],
+      "source": "JS-one-shot/API/index.js, JS-one-shot/advancedJS/functions/promises.html"
+    }
+  ]
+}

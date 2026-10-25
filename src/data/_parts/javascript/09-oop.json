@@ -1,0 +1,217 @@
+{
+  "id": "js-oop",
+  "title": "Prototypes and Object-Oriented JavaScript",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-prototype-chain",
+      "title": "Prototypes and the Prototype Chain",
+      "level": "intermediate",
+      "summary": "Objects inherit properties from other objects through their prototype link.",
+      "description": "Every JavaScript object has a hidden link, `[[Prototype]]`, to another object (or `null`). When you read a property the engine looks at the object itself first, then follows the link up the **prototype chain** until it finds the property or reaches `null`.\n\n```js\nconst animal = { eats: true, walk() { return \"walking\"; } };\nconst dog = Object.create(animal);   // dog's prototype is animal\ndog.barks = true;\ndog.eats;      // true - found on the prototype\ndog.walk();    // \"walking\"\n```\n\n### Important pieces\n- `Object.getPrototypeOf(obj)` (or the legacy `obj.__proto__`) reads the prototype.\n- `Fn.prototype` is the object that becomes the `[[Prototype]]` of instances created with `new Fn()`.\n- `Object.prototype` sits at the top of nearly every chain; its prototype is `null`.\n- Arrays inherit from `Array.prototype`, which inherits from `Object.prototype`. That is why `[].map` and `[].hasOwnProperty` both work.\n\n### Own vs inherited\n- Writing `dog.eats = false` creates an **own** property that shadows the inherited one.\n- `Object.hasOwn(dog, \"eats\")` tests own properties.\n- `for...in` also lists inherited enumerable properties.\n\n### Why prototypes\nMethods live **once** on the prototype and are shared by all instances, saving memory compared with copying them to every object.\n\n### Classes are sugar\nES2015 `class` syntax is a cleaner way to write the same prototype mechanism; the engine still uses prototypes underneath.\n\n### Dictionaries\n`Object.create(null)` makes an object with **no** prototype - a pure key-value store without inherited keys like `toString`.",
+      "keyPoints": [
+        "Every object links to a prototype; lookup walks the chain",
+        "Fn.prototype becomes the prototype of new instances",
+        "Chain ends at Object.prototype then null",
+        "Methods on the prototype are shared by all instances",
+        "class is syntactic sugar over prototypes"
+      ],
+      "pitfalls": [
+        "Modifying built-in prototypes (Array.prototype) can break other code",
+        "for...in includes inherited enumerable properties",
+        "Replacing Fn.prototype after creating instances does not affect them"
+      ],
+      "examples": [
+        {
+          "title": "Walking the chain",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const animal = { eats: true, walk() { return \"walking\"; } };\nconst dog = Object.create(animal);\ndog.barks = true;\n\nconsole.log(dog.eats, dog.walk());\nconsole.log(Object.getPrototypeOf(dog) === animal);\nconsole.log(Object.hasOwn(dog, \"eats\"), \"eats\" in dog);\n\nconst arr = [];\nconsole.log(Object.getPrototypeOf(arr) === Array.prototype);\nconsole.log(Object.getPrototypeOf(Array.prototype) === Object.prototype);\nconsole.log(Object.getPrototypeOf(Object.prototype));\n\nfor (const key in dog) console.log(\"key:\", key);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the prototype chain?",
+          "a": "The series of linked objects the engine searches when a property is not found on an object, moving from the object to its prototype and so on until null."
+        },
+        {
+          "q": "Difference between __proto__ and prototype?",
+          "a": "__proto__ (use Object.getPrototypeOf) is the actual link of an object to its prototype. prototype is a property of constructor functions that becomes that link for instances created with new."
+        },
+        {
+          "q": "What does Object.create(null) do?",
+          "a": "It creates an object with no prototype, so it has no inherited methods and works as a clean dictionary."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-constructor-functions",
+      "title": "Constructor Functions and the new Keyword",
+      "level": "intermediate",
+      "summary": "Before classes, constructor functions with new built objects and shared prototype methods.",
+      "description": "A **constructor function** is a normal function, named with a capital letter by convention, designed to be called with `new`.\n\n```js\nfunction Person(name, age) {\n  this.name = name;\n  this.age = age;\n}\nPerson.prototype.greet = function () {\n  return `Hi, I am ${this.name}`;\n};\nconst p = new Person(\"Asha\", 25);\n```\n\n### What `new` does\n1. Creates a new empty object.\n2. Links its prototype to `Person.prototype`.\n3. Calls `Person` with `this` set to the new object.\n4. Returns the object (unless the constructor returns another object).\n\n### Instance vs prototype members\n- Properties set on `this` belong to **each instance** (own properties).\n- Methods placed on `Person.prototype` are **shared**, so only one copy exists.\n\n### Checks\n```js\np instanceof Person;        // true\np.constructor === Person;   // true\n```\n\n### Forgetting `new`\nWithout `new`, `this` is `undefined` (strict) or `window`, so properties leak to the global object. Guard with `if (!new.target) throw ...`, or use a class, which throws automatically.\n\n### Factory functions\nA function that returns a new object without `new`; works well with closures for private data:\n```js\nconst createUser = (name) => ({ name, hello: () => `hi ${name}` });\n```\n\n### Built-in constructors\n`Date`, `Map`, `Set`, `Promise`, `Error` are used with `new`. Avoid `new String()`, `new Number()` and `new Boolean()` - they create objects, not primitives.",
+      "keyPoints": [
+        "Constructor function + new creates linked objects",
+        "new creates an object, links the prototype, runs the function, returns it",
+        "Put shared methods on the prototype",
+        "instanceof checks the prototype chain",
+        "Classes make this syntax cleaner"
+      ],
+      "pitfalls": [
+        "Forgetting new makes this the global object",
+        "Arrow functions cannot be constructors",
+        "Defining methods inside the constructor creates a copy per instance"
+      ],
+      "examples": [
+        {
+          "title": "Constructor with prototype methods",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function Person(name, age) {\n  this.name = name;\n  this.age = age;\n}\nPerson.prototype.greet = function () {\n  return `Hi, I am ${this.name} (${this.age})`;\n};\n\nconst p1 = new Person(\"Asha\", 25);\nconst p2 = new Person(\"Ravi\", 30);\nconsole.log(p1.greet(), p2.greet());\nconsole.log(p1.greet === p2.greet);            // shared method\nconsole.log(p1 instanceof Person, p1.constructor === Person);\nconsole.log(Object.keys(p1));\n\nfunction myNew(Ctor, ...args) {\n  const obj = Object.create(Ctor.prototype);\n  const result = Ctor.apply(obj, args);\n  return result instanceof Object ? result : obj;\n}\nconsole.log(myNew(Person, \"Meera\", 22).greet());"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does the new keyword do?",
+          "a": "It creates an empty object, sets its prototype to the constructor's prototype, runs the constructor with this bound to the object and returns that object."
+        },
+        {
+          "q": "Why put methods on the prototype instead of inside the constructor?",
+          "a": "One shared function is used by all instances, saving memory, instead of creating a new function for each object."
+        },
+        {
+          "q": "How can you tell whether a function was called with new?",
+          "a": "Check new.target inside the function; it is undefined for a normal call."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-classes",
+      "title": "Classes",
+      "level": "intermediate",
+      "summary": "class syntax gives a clear way to define constructors, methods, getters and setters.",
+      "description": "**Classes** (ES2015) are a cleaner syntax over prototypes and constructor functions.\n\n```js\nclass User {\n  constructor(name, age) {\n    this.name = name;\n    this.age = age;\n  }\n  greet() {                 // on User.prototype\n    return `Hi, ${this.name}`;\n  }\n  get isAdult() { return this.age >= 18; }       // getter\n  set nickname(v) { this._nick = v.trim(); }     // setter\n  static create(name) { return new User(name, 18); }  // static\n}\nconst u = new User(\"Asha\", 25);\n```\n\n### Key facts\n- `constructor` runs on `new`; a class can have only one.\n- Methods are placed on the prototype and are **non-enumerable**.\n- Class declarations are **not hoisted** like functions (TDZ).\n- Class bodies run in **strict mode**.\n- Calling a class without `new` throws a `TypeError`.\n- `typeof User` is `\"function\"`.\n\n### Class fields (ES2022)\n```js\nclass Counter {\n  count = 0;                // public field\n  inc = () => { this.count++; };   // arrow keeps this\n}\n```\n\n### Class expressions\n`const A = class { }` or a named class expression.\n\n### instanceof\n`u instanceof User` is `true`.\n\n### Method `this`\nMethods lose `this` when detached (`const f = u.greet`). Bind in the constructor or use arrow class fields (useful in React class components).\n\n### Static members\n`static` methods and properties belong to the class, not the instances - utility methods and factories.",
+      "keyPoints": [
+        "constructor initialises instances, methods live on the prototype",
+        "getters and setters define computed properties",
+        "static members belong to the class itself",
+        "Classes are not hoisted and always strict",
+        "Class fields declare instance properties"
+      ],
+      "pitfalls": [
+        "Calling a class without new throws an error",
+        "Detached methods lose this",
+        "Arrow-function fields are created per instance, not shared"
+      ],
+      "examples": [
+        {
+          "title": "A small class",
+          "language": "javascript",
+          "explanation": "",
+          "code": "class Account {\n  balance = 0;\n  static count = 0;\n\n  constructor(owner) {\n    this.owner = owner;\n    Account.count++;\n  }\n  deposit(amount) {\n    if (amount <= 0) throw new RangeError(\"Amount must be positive\");\n    this.balance += amount;\n    return this;                       // chaining\n  }\n  get summary() {\n    return `${this.owner}: ${this.balance}`;\n  }\n  static compare(a, b) {\n    return a.balance - b.balance;\n  }\n}\n\nconst acc = new Account(\"Asha\").deposit(100).deposit(50);\nconsole.log(acc.summary, Account.count);\nconsole.log(typeof Account, acc instanceof Account);\ntry { Account(\"x\"); } catch (e) { console.log(e.name); }\nconsole.log([new Account(\"B\").deposit(10), acc].sort(Account.compare).map((a) => a.owner));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Are JavaScript classes real classes like in Java?",
+          "a": "No. They are syntactic sugar over prototype-based inheritance; a class is a special function and methods live on its prototype."
+        },
+        {
+          "q": "Difference between a static method and an instance method?",
+          "a": "A static method is called on the class itself (Account.compare) and has no instance this; an instance method is called on an object created from the class."
+        },
+        {
+          "q": "What happens if you call a class without new?",
+          "a": "A TypeError is thrown: Class constructor cannot be invoked without 'new'."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-inheritance",
+      "title": "Inheritance with extends and super",
+      "level": "intermediate",
+      "summary": "Child classes reuse and override parent behaviour with extends and super.",
+      "description": "`extends` makes one class inherit from another.\n\n```js\nclass Animal {\n  constructor(name) { this.name = name; }\n  speak() { return `${this.name} makes a sound`; }\n}\nclass Dog extends Animal {\n  constructor(name, breed) {\n    super(name);            // must come before using this\n    this.breed = breed;\n  }\n  speak() {                 // override\n    return `${super.speak()} - woof!`;\n  }\n}\n```\n\n### Rules\n- In a derived constructor you **must call `super()` before using `this`**, otherwise a `ReferenceError` is thrown. If you omit the constructor, one is created for you.\n- `super.method()` calls the parent version of a method.\n- Static methods are inherited too.\n- `instanceof` works along the chain: `dog instanceof Animal` is `true`.\n\n### Under the hood\n`Dog.prototype`'s prototype is `Animal.prototype`, and `Dog`'s own prototype is `Animal` (so statics are inherited).\n\n### Extending built-ins\n`class MyArray extends Array {}` and `class ValidationError extends Error {}` are common and useful.\n\n### Composition over inheritance\nDeep inheritance trees become rigid. Prefer **composition**: build behaviour from small functions or objects (\"has-a\") and mix them in:\n\n```js\nconst canFly = (o) => ({ ...o, fly: () => `${o.name} flies` });\n```\nUse inheritance for clear \"is-a\" relationships with shallow depth.\n\n### Polymorphism\nDifferent subclasses implement the same method differently, and callers use them through the common interface.",
+      "keyPoints": [
+        "extends sets up the prototype chain",
+        "super() must be called before this in a derived constructor",
+        "super.method() reaches the parent method",
+        "Static members are inherited",
+        "Prefer composition for flexible designs"
+      ],
+      "pitfalls": [
+        "Using this before super() throws a ReferenceError",
+        "Deep inheritance hierarchies are hard to change",
+        "Overriding a method and forgetting to call super when needed"
+      ],
+      "examples": [
+        {
+          "title": "Animal and Dog",
+          "language": "javascript",
+          "explanation": "",
+          "code": "class Animal {\n  constructor(name) { this.name = name; }\n  speak() { return `${this.name} makes a sound`; }\n  static kingdom() { return \"Animalia\"; }\n}\nclass Dog extends Animal {\n  constructor(name, breed) {\n    super(name);\n    this.breed = breed;\n  }\n  speak() { return `${super.speak()} - woof!`; }\n}\nconst d = new Dog(\"Bruno\", \"Labrador\");\nconsole.log(d.speak());\nconsole.log(d instanceof Dog, d instanceof Animal, Dog.kingdom());\nconsole.log(Object.getPrototypeOf(Dog.prototype) === Animal.prototype);\n\nclass ValidationError extends Error {\n  constructor(message, field) {\n    super(message);\n    this.name = \"ValidationError\";\n    this.field = field;\n  }\n}\ntry { throw new ValidationError(\"Email is invalid\", \"email\"); }\ncatch (e) { console.log(e.name, e.field, e instanceof Error); }"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does super do in a class?",
+          "a": "In a constructor super(...) calls the parent constructor; in methods super.method() calls the parent's version of the method."
+        },
+        {
+          "q": "Why must super() be called before this?",
+          "a": "In a derived class the parent constructor creates the object; this is not available until super() has run, so accessing it earlier throws a ReferenceError."
+        },
+        {
+          "q": "What is composition over inheritance?",
+          "a": "A design principle favouring building objects by combining small, focused pieces (has-a) rather than deep class hierarchies (is-a), which is more flexible."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-private-static-accessors",
+      "title": "Private Fields, Static Members, Getters and Setters",
+      "level": "advanced",
+      "summary": "Use #private fields for real encapsulation, static for class-level members and accessors for controlled access.",
+      "description": "### Private fields and methods (ES2022)\nNames starting with `#` are truly private - they can be accessed only inside the class body. Access from outside is a **syntax error**, not just `undefined`.\n\n```js\nclass Wallet {\n  #balance = 0;                    // private field\n  #log(msg) { /* private method */ }\n  static #instances = 0;           // private static\n  deposit(n) { this.#balance += n; }\n  get balance() { return this.#balance; }\n}\n```\n- Check existence with `#balance in obj`.\n- They are not inherited as visible names and are not copied by spread or `JSON.stringify`.\n\n### Static members and blocks\n```js\nclass Config {\n  static defaults = { theme: \"dark\" };\n  static getDefault(key) { return Config.defaults[key]; }\n  static { /* static initialisation block (ES2022) */ }\n}\n```\nStatics live on the class, not on instances.\n\n### Getters and setters\nAccessors look like properties but run code. Use them for validation, derived values and read-only properties:\n```js\nset age(v) { if (v < 0) throw new RangeError(\"age\"); this.#age = v; }\n```\n\n### Old convention\nBefore `#`, developers used a leading underscore (`_balance`) - a hint only; it was not enforced.\n\n### Singleton and factories\nStatics are used for factories (`User.from(json)`), counters and singletons.\n\n### Encapsulation benefit\nCallers use a stable public API and cannot corrupt internal state.",
+      "keyPoints": [
+        "#name makes truly private class members",
+        "Access from outside is a SyntaxError",
+        "static members belong to the class",
+        "Getters/setters allow validation and computed values",
+        "Underscore prefix is only a convention"
+      ],
+      "pitfalls": [
+        "Private fields cannot be accessed from subclasses",
+        "JSON.stringify and spread ignore private fields",
+        "Using this.#x on an object that is not an instance throws TypeError"
+      ],
+      "examples": [
+        {
+          "title": "Encapsulated wallet",
+          "language": "javascript",
+          "explanation": "",
+          "code": "class Wallet {\n  #balance = 0;\n  static #created = 0;\n\n  constructor(owner) {\n    this.owner = owner;\n    Wallet.#created++;\n  }\n  deposit(amount) {\n    if (amount <= 0) throw new RangeError(\"Deposit must be positive\");\n    this.#balance += amount;\n    return this;\n  }\n  get balance() { return this.#balance; }\n  set limit(v) { if (v < 0) throw new RangeError(\"negative\"); this._limit = v; }\n  static get created() { return Wallet.#created; }\n  static isWallet(o) { return #balance in o; }\n}\n\nconst w = new Wallet(\"Asha\").deposit(500);\nconsole.log(w.balance, Wallet.created, Wallet.isWallet(w), Wallet.isWallet({}));\nconsole.log(JSON.stringify(w), Object.keys(w));\nconsole.log(w.hasOwnProperty(\"#balance\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you create a private property in a class?",
+          "a": "Prefix the name with # (for example #balance). It can only be read or written inside the class body."
+        },
+        {
+          "q": "What is the difference between a static and a private member?",
+          "a": "static decides who owns the member (the class instead of instances); # decides who can access it (only code inside the class). They can be combined: static #count."
+        },
+        {
+          "q": "What are getters and setters useful for?",
+          "a": "They expose computed or validated properties with property syntax while running code behind the scenes, and let you make read-only properties by defining only a getter."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

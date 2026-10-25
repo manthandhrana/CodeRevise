@@ -1,0 +1,277 @@
+{
+ "id": "css-selectors-deep",
+ "title": "Selectors in Depth",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-combinators",
+   "title": "Combinators",
+   "level": "intermediate",
+   "summary": "Descendant, child, adjacent sibling and general sibling selectors describe relationships.",
+   "description": "**Combinators** connect two selectors by their position in the HTML tree.\n\n| Combinator | Syntax | Selects |\n|---|---|---|\n| Descendant | `A B` (space) | any B inside A, at any depth |\n| Child | `A > B` | B that is a **direct** child of A |\n| Adjacent sibling | `A + B` | the B immediately after A (same parent) |\n| General sibling | `A ~ B` | every B after A (same parent) |\n| Universal | `*` | every element (not a combinator but often grouped with them) |\n\n### Examples in practice\n```css\nnav a            { }   /* every link inside nav */\nul > li          { }   /* only top-level items of that list */\nh2 + p           { }   /* the paragraph right after each h2 */\ninput:checked ~ label { } /* labels after a checked input */\n```\n\n### Why child combinator matters\nWith nested lists, `ul li` also styles the nested items, but `ul > li` only styles the first level. The source course demonstrates this with brown (`.content-1 > ul > li`), pink (`p + li`) and purple (`p ~ li`) colors.\n\n### Sibling combinators\nThey only look **forward** (later siblings), never backward. For \"previous sibling\" or \"parent\" logic use `:has()`.\n\n### Specificity\nCombinators add no specificity; only the simple selectors around them count.\n\n### Tips\n- Use `>` to avoid accidental deep matches.\n- Lobotomized owl: `* + * { margin-top: 1em; }` adds spacing between all siblings except the first.",
+   "keyPoints": [
+    "Space = any descendant; > = direct child",
+    "+ = next sibling only; ~ = all following siblings",
+    "Sibling combinators only look forward",
+    "Combinators add zero specificity",
+    "Use :has() when you need parent/previous-sibling logic"
+   ],
+   "pitfalls": [
+    "Using descendant selector and unintentionally styling deeply nested elements",
+    "Expecting + to match elements that are not adjacent",
+    "Expecting ~ to select earlier siblings"
+   ],
+   "examples": [
+    {
+     "title": "Descendant vs child vs sibling",
+     "language": "web",
+     "html": "<ul class=\"menu\">\n  <p>I am first (p)</p>\n  <li>one</li>\n  <li>two\n    <ul><li>nested</li></ul>\n  </li>\n  <p>another p</p>\n  <li>three</li>\n</ul>",
+     "css": "body { font-family: sans-serif; font-size: 18px; }\n.menu li { color: green; }              /* all li, also nested */\n.menu > li { font-weight: bold; }       /* only direct children */\n.menu p + li { color: crimson; }        /* li right after a p */\n.menu p ~ li { text-decoration: underline; } /* all li after a p */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Lobotomized owl spacing",
+     "language": "web",
+     "html": "<div class=\"stack\"><p>First</p><p>Second</p><p>Third</p></div>",
+     "css": ".stack > * + * { margin-top: 1rem; }\np { background: #e0f2fe; padding: 8px; margin: 0; font-family: sans-serif; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between \"div p\" and \"div > p\"?",
+     "a": "\"div p\" matches every p inside a div at any depth; \"div > p\" matches only p elements that are direct children of the div."
+    },
+    {
+     "q": "Difference between + and ~ ?",
+     "a": "+ selects only the immediately following sibling; ~ selects all following siblings that share the parent."
+    },
+    {
+     "q": "Can CSS select a previous sibling or parent?",
+     "a": "Not with classic combinators, but :has() now makes it possible, e.g. li:has(+ li.active)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/combinators/index.html, combinators/style.css"
+  },
+  {
+   "id": "css-pseudo-classes",
+   "title": "Pseudo-classes",
+   "level": "intermediate",
+   "summary": "Style elements by state or position: :hover, :focus, :checked, :nth-child() and more.",
+   "description": "A **pseudo-class** (single colon `:`) selects an element in a particular *state* or *position*.\n\n### User-action states\n- `:hover` pointer is over the element.\n- `:active` being pressed.\n- `:focus` has keyboard/mouse focus; `:focus-visible` only when the focus ring should show (keyboard).\n- `:focus-within` the element or a descendant has focus.\n\n### Form states\n`:checked`, `:disabled`, `:enabled`, `:required`, `:optional`, `:valid`, `:invalid`, `:placeholder-shown`, `:read-only`.\n\n### Structural (position)\n| Selector | Meaning |\n|---|---|\n| `:first-child` / `:last-child` | first/last among all siblings |\n| `:nth-child(n)` | n-th among all siblings |\n| `:first-of-type` / `:last-of-type` | first/last of that tag among siblings |\n| `:nth-of-type(n)` | n-th of that tag |\n| `:only-child` | only child |\n| `:empty` | has no children/text |\n\n### nth-child formulas\n- `:nth-child(odd)` / `:nth-child(even)`\n- `:nth-child(3)` third item\n- `:nth-child(3n)` every third\n- `:nth-child(n+4)` from the fourth onward\n- `:nth-child(-n+3)` only the first three\n- `:nth-last-child(2)` counts from the end\n\n### :first-child vs :first-of-type\n`p:first-child` matches a paragraph only if it is the **very first child**. `p:first-of-type` matches the first paragraph even if a heading comes before it.\n\n### Other useful ones\n`:root` (html element, great for variables), `:target` (element whose id is in the URL hash), `:not()`, `:is()`, `:has()` (next topics).",
+   "keyPoints": [
+    "Pseudo-class = state or position, single colon",
+    ":focus-visible shows focus rings only when appropriate",
+    "nth-child counts all siblings; nth-of-type counts same tag",
+    "nth-child(an+b) formulas: odd, even, 3n, n+4, -n+3",
+    ":root, :target, :checked are very handy"
+   ],
+   "pitfalls": [
+    ":first-child failing because another element comes first",
+    "Applying :hover effects without a touch/keyboard alternative",
+    "Using :nth-child(n) selectors that depend on fragile DOM order"
+   ],
+   "examples": [
+    {
+     "title": "nth-child and states",
+     "language": "web",
+     "html": "<ul class=\"list\">\n  <li>Home</li><li>About</li><li>Services</li><li>Blog</li><li>Contact</li>\n</ul>\n<button class=\"btn\">Hover / press / Tab to me</button>",
+     "css": "body { font-family: sans-serif; }\n.list { list-style: none; padding: 0; width: 200px; }\n.list li { padding: 8px; }\n.list li:nth-child(odd)  { background: #e0f2fe; }\n.list li:nth-child(even) { background: #fff; }\n.list li:first-child { font-weight: bold; }\n.list li:last-child { border-bottom: 3px solid #2965f1; }\n.btn { padding: 10px 20px; border: 2px solid #2965f1; background: #fff; border-radius: 6px; }\n.btn:hover { background: #2965f1; color: #fff; }\n.btn:active { transform: scale(.96); }\n.btn:focus-visible { outline: 3px solid orange; outline-offset: 3px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "first-child vs first-of-type",
+     "language": "web",
+     "html": "<div class=\"box\">\n  <h4>Title</h4>\n  <p>First paragraph (first-of-type)</p>\n  <p>Second paragraph</p>\n</div>",
+     "css": ".box { font-family: sans-serif; }\np:first-child { color: red; }      /* no match: h4 is first child */\np:first-of-type { color: green; }  /* matches the first p */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": ":checked toggle",
+     "language": "web",
+     "html": "<input type=\"checkbox\" id=\"c\"><label for=\"c\">Tick me to restyle this label</label>",
+     "css": "body { font-family: sans-serif; }\ninput { width: 20px; height: 20px; vertical-align: middle; }\nlabel { padding: 6px 10px; border-radius: 6px; margin-left: 6px; background: #e2e8f0; }\ninput:checked + label { background: #16a34a; color: #fff; }",
+     "js": "",
+     "code": "",
+     "explanation": "The label is the next sibling of the checkbox, so input:checked + label works without JavaScript."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between :nth-child and :nth-of-type?",
+     "a": ":nth-child counts every sibling regardless of tag; :nth-of-type counts only siblings with the same tag name."
+    },
+    {
+     "q": "What is :focus-visible?",
+     "a": "It matches focused elements only when the browser decides a focus indicator is needed (typically keyboard navigation), avoiding rings on mouse clicks."
+    },
+    {
+     "q": "How do you select the first three items?",
+     "a": "li:nth-child(-n+3)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/pseudo-class/index.html, pseudo-class/style.css, anchor/style.css"
+  },
+  {
+   "id": "css-pseudo-elements",
+   "title": "Pseudo-elements",
+   "level": "intermediate",
+   "summary": "::before, ::after, ::first-letter, ::first-line, ::selection, ::marker and ::placeholder.",
+   "description": "A **pseudo-element** (double colon `::`) styles a *part* of an element or inserts virtual content.\n\n### ::before and ::after\nThey create a virtual child **before/after** the element's content. They only render if `content` is set (even an empty string).\n\n```css\n.title::before { content: \"★ \"; color: gold; }\n.title::after  { content: \"\"; display: block; width: 60%; border-bottom: 2px solid crimson; }\n```\n\nTypical uses: icons, decorative lines, badges, overlays, tooltips, clearfix, CSS shapes and loaders (see the Mini projects).\n\n### Other pseudo-elements\n| Pseudo-element | Targets |\n|---|---|\n| `::first-letter` | first letter (drop caps) |\n| `::first-line` | first formatted line |\n| `::selection` | highlighted text |\n| `::marker` | list bullet/number |\n| `::placeholder` | input placeholder text |\n| `::backdrop` | behind <dialog>/fullscreen |\n| `::file-selector-button` | file input button |\n\n### Positioning trick\nMake the parent `position: relative;` and the pseudo-element `position: absolute;` to place it precisely (underline animations, overlays, ribbons).\n\n### Useful facts\n- Pseudo-elements are not in the DOM; screen readers may read `content` text, so do not put essential content there.\n- `content` accepts strings, `attr(data-label)`, counters and icons (font escape codes like `\"\\f121\"`).\n- Interactive effects: animate `::after` width on hover for an underline.",
+   "keyPoints": [
+    "Use :: for pseudo-elements, : for pseudo-classes",
+    "::before/::after need the content property to render",
+    "Combine with position: relative/absolute for decorations",
+    "::first-letter, ::first-line, ::selection, ::marker style parts of text",
+    "Do not place essential content in pseudo-elements"
+   ],
+   "pitfalls": [
+    "Forgetting content: \"\" so nothing appears",
+    "Trying to add ::before to <img> or <input> (replaced elements)",
+    "Pseudo-element covering the element and blocking clicks (use pointer-events: none)"
+   ],
+   "examples": [
+    {
+     "title": "Decorative before/after",
+     "language": "web",
+     "html": "<h1 class=\"title\">Best CSS Course</h1>\n<p class=\"intro\">Pseudo-elements add icons and decoration without extra HTML. Select this text to see ::selection.</p>",
+     "css": "body { font-family: sans-serif; background: #080a0c; color: azure; padding: 20px; }\n.title { position: relative; display: inline-block; font-size: 40px; margin-top: 20px; }\n.title::before { content: \"THAPA TECHNICAL\"; position: absolute; top: -18px; font-size: 14px; letter-spacing: 6px; color: rgb(255,204,112); }\n.title::after { content: \"\"; position: absolute; right: 0; bottom: 2px; width: 60%; border: 2px solid #ae445a; }\n.intro::first-letter { font-size: 48px; color: #ae445a; font-weight: bold; }\n.intro::first-line { text-decoration: underline; }\n.intro::selection { background: rgb(255,204,112); color: #000; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Hover underline with ::after",
+     "language": "web",
+     "html": "<a href=\"#\" class=\"ul\">Animated underline</a>",
+     "css": ".ul { position: relative; font: 22px sans-serif; text-decoration: none; color: #0f172a; }\n.ul::after { content: \"\"; position: absolute; left: 0; bottom: -4px; width: 0; height: 3px; background: #2965f1; transition: width .3s; }\n.ul:hover::after { width: 100%; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between a pseudo-class and a pseudo-element?",
+     "a": "A pseudo-class (:hover) selects an element in a state; a pseudo-element (::before) selects or creates a part of an element."
+    },
+    {
+     "q": "Why is my ::before not showing?",
+     "a": "It has no content property. Add content: \"\" (or text) and, for shapes, give it display/size."
+    },
+    {
+     "q": "Can you add ::before to an img?",
+     "a": "No - replaced elements have no content box for generated content; wrap the image or use a container."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/pseudo-elements/index.html, pseudo-elements/style.css"
+  },
+  {
+   "id": "css-modern-selectors",
+   "title": "Modern Selectors: :is, :where, :not, :has",
+   "level": "intermediate",
+   "summary": "Functional pseudo-classes that shorten selectors and enable parent selection.",
+   "description": "Modern CSS added **functional pseudo-classes** that take a selector list. They make code shorter and more powerful.\n\n### :is()\nMatches any selector in the list; specificity = the most specific argument.\n\n```css\n/* before */\n.about h1, .about p, .testimonial h1, .testimonial p { color: yellow; }\n/* after */\n:is(.about, .testimonial) :is(h1, p) { color: yellow; }\n```\n\n### :where()\nSame as `:is()` but specificity is **always 0**. Perfect for resets and library defaults that must be easy to override:\n\n```css\n:where(h1, h2, h3) { margin-block: 0.5em; }\n```\n\n### :not()\nExcludes matching elements: `li:not(:last-child) { border-bottom: 1px solid #ddd; }` or `nav ul :not(li:first-child)` (source demo).\n\n### :has() - the parent selector\nSelects an element **based on its descendants or following siblings**:\n\n```css\n.card:has(img) { grid-template-columns: 1fr 2fr; }\n.parent:has(input[type=\"checkbox\"]:checked) label { color: red; }\nform:has(:invalid) button { opacity: .5; }\nlabel:has(+ input:required)::after { content: \" *\"; }\n```\n\n### :focus-visible and :focus-within\n- `:focus-visible` - show rings for keyboard focus only.\n- `:focus-within` - parent reacts when any child is focused (highlight a whole form row).\n\n### Browser support\nAll of these are supported in current evergreen browsers (check caniuse for older targets). Selector lists inside `:is()` are **forgiving** (one invalid selector does not kill the rule).",
+   "keyPoints": [
+    ":is() shortens selector lists; takes highest specificity",
+    ":where() is the same but with zero specificity",
+    ":not() excludes; accepts a selector list",
+    ":has() selects parents / previous siblings based on content",
+    ":focus-within and :focus-visible improve form and keyboard UX"
+   ],
+   "pitfalls": [
+    "Not realising :is() raises specificity to its most specific argument",
+    "Nesting :has() inside :has() (not allowed)",
+    "Using :has() with expensive broad selectors on huge DOMs"
+   ],
+   "examples": [
+    {
+     "title": ":has() as a parent selector",
+     "language": "web",
+     "html": "<div class=\"parent\">\n  <input type=\"checkbox\" id=\"chk\"> <label for=\"chk\">Select the box</label>\n</div>\n<div class=\"card\"><img alt=\"\" width=\"40\" height=\"40\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%232965f1'/%3E%3C/svg%3E\"><p>Card with image</p></div>\n<div class=\"card\"><p>Card without image</p></div>",
+     "css": "body { font-family: sans-serif; }\ninput[type=\"checkbox\"] { accent-color: pink; width: 22px; height: 22px; }\n.parent:has(input:checked) label { color: red; font-weight: bold; }\n.card { border: 1px solid #ccc; padding: 8px; margin-top: 10px; }\n.card:has(img) { display: flex; gap: 10px; align-items: center; background: #eef2ff; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": ":is() and :not()",
+     "language": "web",
+     "html": "<ul class=\"nav\"><li>Home</li><li>About</li><li>Blog</li><li>Contact</li></ul>",
+     "css": ".nav { display: flex; list-style: none; padding: 0; font-family: sans-serif; }\n.nav li { padding: 6px 14px; }\n:is(.nav) li:not(:last-child) { border-right: 2px solid #94a3b8; }\n.nav li:is(:hover, :focus-visible) { background: #2965f1; color: #fff; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between :is() and :where()?",
+     "a": "Both match any selector in a list. :is() contributes the specificity of its most specific argument; :where() contributes none, so it is easy to override."
+    },
+    {
+     "q": "What does :has() do?",
+     "a": "It selects an element if it contains (or is followed by) elements matching the given selector - effectively a parent selector."
+    },
+    {
+     "q": "How do you style a label when its checkbox is checked?",
+     "a": "If the input comes before the label: input:checked + label. Otherwise wrap and use .wrapper:has(input:checked) label."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/latestcss/pseudoclass/index.html, style.css"
+  },
+  {
+   "id": "css-nesting",
+   "title": "Native CSS Nesting",
+   "level": "intermediate",
+   "summary": "Write child rules inside parent rules with & - no preprocessor needed.",
+   "description": "**CSS Nesting** lets you put one rule inside another, like Sass but built into the browser.\n\n```css\n.card {\n  padding: 1rem;\n  background: white;\n\n  & h2 { font-size: 1.5rem; }       /* .card h2 */\n  & p + p { margin-top: .5rem; }\n\n  &:hover { box-shadow: 0 4px 12px #0003; }  /* .card:hover */\n  &.featured { border: 2px solid gold; }     /* .card.featured */\n  &::after { content: \"\"; }                  /* .card::after */\n\n  .dark & { background: #111; }              /* .dark .card */\n\n  @media (width < 600px) {                   /* nested at-rules */\n    padding: .5rem;\n  }\n}\n```\n\n### The & symbol\n- `&` stands for the parent selector.\n- It is **required** when you join without a space (`&:hover`, `&.active`) or place the parent later (`.dark &`).\n- Modern browsers also allow nested type selectors without `&` (`h2 { }` inside `.card`), but using `&` is clearer and more compatible.\n\n### Nested media/container queries\nYou can put `@media`, `@container`, `@supports` and `@layer` directly inside a rule, keeping the responsive code next to the component.\n\n### Specificity\nNested selectors behave like `:is()` on the parent: the parent's most specific selector counts.\n\n### Best practice\n- Nest **2-3 levels** at most; deep nesting creates long selectors that are hard to override.\n- Nest states (`&:hover`) and modifiers (`&.active`) - it is the biggest win.\n- The source final project and float demo use this style (`& h1 { ... }`).",
+   "keyPoints": [
+    "& represents the parent selector",
+    "Use &:hover, &.class, &::after for compound selectors",
+    "Media and container queries can be nested inside rules",
+    "Keep nesting shallow (2-3 levels)",
+    "No build step needed in modern browsers"
+   ],
+   "pitfalls": [
+    "Over-nesting that mirrors the HTML tree",
+    "Forgetting & when attaching a pseudo-class directly (\":hover\" alone means a descendant)",
+    "Using Sass-style &-suffix concatenation (.btn { &-primary {} }) - not supported natively"
+   ],
+   "examples": [
+    {
+     "title": "Card with nested rules",
+     "language": "web",
+     "html": "<article class=\"card featured\">\n  <h2>Nested card</h2>\n  <p>Hover me. Rules live inside .card.</p>\n  <button>Action</button>\n</article>",
+     "css": "body { font-family: sans-serif; padding: 16px; }\n.card {\n  width: 280px; padding: 16px; border: 2px solid #e2e8f0; border-radius: 10px; background: #fff;\n  transition: box-shadow .2s, transform .2s;\n  & h2 { margin: 0 0 6px; color: #0f172a; }\n  & p { color: #475569; }\n  & button { padding: 8px 14px; border: 0; border-radius: 6px; background: #2965f1; color: #fff;\n    &:hover { background: #1d4ed8; } }\n  &:hover { box-shadow: 0 10px 24px rgba(0,0,0,.15); transform: translateY(-3px); }\n  &.featured { border-color: gold; }\n}",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does & mean in native CSS nesting?",
+     "a": "It is the nesting selector that refers to the parent rule's selector, letting you write &:hover, &.active or .dark &."
+    },
+    {
+     "q": "Do you still need Sass for nesting?",
+     "a": "Not for nesting - it is native now. Sass still offers mixins, loops, functions and &-suffix concatenation."
+    },
+    {
+     "q": "How does nesting affect specificity?",
+     "a": "The nested rule is treated as if the parent were wrapped in :is(), so the parent's highest-specificity selector is used."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/latestcss/remaining/style.css, bonus/float/index.html"
+  }
+ ]
+}

@@ -1,0 +1,454 @@
+{
+ "id": "react-more-hooks",
+ "title": "More Built-in Hooks",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-usereducer",
+   "title": "useReducer: Complex State Logic",
+   "level": "intermediate",
+   "summary": "useReducer centralizes state transitions in a pure reducer function driven by dispatched actions.",
+   "description": "`useReducer` is an alternative to `useState` when state has several sub-values or when the next state depends on a named *event*. Instead of calling many setters, you **dispatch actions** and a **reducer** decides the new state.\n\n```jsx\nconst [state, dispatch] = useReducer(reducer, initialState);\ndispatch({ type: \"added\", text: \"Buy milk\" });\n```\n\n### The reducer\n\n`reducer(state, action)` is a **pure function** that returns the next state. It must not mutate `state`, call APIs or generate random values.\n\n```jsx\nfunction reducer(state, action) {\n  switch (action.type) {\n    case \"inc\": return { ...state, count: state.count + 1 };\n    case \"reset\": return initialState;\n    default: throw new Error(\"Unknown action \" + action.type);\n  }\n}\n```\n\n### When to prefer it over useState\n\n- Many related fields that change together.\n- Next state depends on previous state in non-trivial ways.\n- You want all update rules in **one testable place**.\n- You want to pass a single stable `dispatch` function down instead of many callbacks. `dispatch` identity never changes.\n\n### Tips\n\n- Describe *what happened* (`\"item_added\"`), not *how to set state* (`\"set_items\"`).\n- Third argument `init` lets you compute initial state lazily.\n- Combine with Context to build a small Redux-like store without a library.\n- Reducer logic can be unit tested without React.",
+   "keyPoints": [
+    "dispatch(action) -> reducer(state, action) -> new state",
+    "Reducers are pure and never mutate state",
+    "Great for related fields and complex transitions",
+    "dispatch has a stable identity",
+    "Pair with Context for app-wide state"
+   ],
+   "pitfalls": [
+    "Mutating state in the reducer (state.items.push).",
+    "Doing side effects (fetch, random, Date.now) inside the reducer."
+   ],
+   "examples": [
+    {
+     "title": "Counter with step and reset",
+     "language": "react",
+     "css": "",
+     "code": "const initial = { count: 0, step: 1 };\n\nfunction reducer(state, action) {\n  switch (action.type) {\n    case \"inc\": return { ...state, count: state.count + state.step };\n    case \"dec\": return { ...state, count: state.count - state.step };\n    case \"setStep\": return { ...state, step: action.step };\n    case \"reset\": return initial;\n    default: throw new Error(\"Unknown action: \" + action.type);\n  }\n}\n\nfunction App() {\n  const [state, dispatch] = useReducer(reducer, initial);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <h3>Count: {state.count}</h3>\n      <button onClick={() => dispatch({ type: \"dec\" })}>-</button>\n      <button onClick={() => dispatch({ type: \"inc\" })}>+</button>\n      <button onClick={() => dispatch({ type: \"reset\" })}>Reset</button>\n      <p>\n        Step:{\" \"}\n        <input type=\"number\" value={state.step} style={{ width: 60 }}\n          onChange={(e) => dispatch({ type: \"setStep\", step: Number(e.target.value) || 1 })} />\n      </p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you use useReducer instead of useState?",
+     "a": "When state is an object with related fields, transitions are complex, or you want centralized, testable update logic and a stable dispatch."
+    },
+    {
+     "q": "Why must reducers be pure?",
+     "a": "React may call them more than once (StrictMode) and relies on predictable results; side effects or mutation would cause bugs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usecontext",
+   "title": "Context API and useContext",
+   "level": "intermediate",
+   "summary": "Context lets you share values with deeply nested components without passing props through every level.",
+   "description": "**Context** solves *prop drilling*. A provider component makes a value available to everything below it, and any descendant can read it with `useContext`, no matter how deep.\n\n### Three steps\n\n1. **Create** the context: `const ThemeContext = createContext(\"light\");` (the argument is the default value used when there is no provider).\n2. **Provide** a value: `<ThemeContext.Provider value={theme}>...</ThemeContext.Provider>`. In React 19 you can write `<ThemeContext value={theme}>`.\n3. **Consume**: `const theme = useContext(ThemeContext);`\n\n### How updates work\n\nWhen the provider's `value` changes (compared by reference), **every component that calls `useContext` for that context re-renders**, even if `memo` wraps it. Parents between the provider and consumers are not forced to re-render.\n\n### Good use cases\n\nTheme, current user, locale, router information, feature flags, toast/notification API. Data that is read by many components at different depths and changes infrequently.\n\n### Limits\n\n- Context is not a full state manager. It has no selectors: any change re-renders all consumers.\n- An object literal as value (`value={{ user, setUser }}`) creates a new reference each render. Memoize it with `useMemo` if the provider re-renders often.\n- Put providers as low in the tree as practical.",
+   "keyPoints": [
+    "createContext -> Provider -> useContext",
+    "Default value is used only without a provider",
+    "Value change re-renders all consumers",
+    "Memoize object values passed to the provider",
+    "Best for low-frequency global-ish data"
+   ],
+   "pitfalls": [
+    "Passing a new object literal as value on every render.",
+    "Using context for rapidly changing state (typing, mouse position).",
+    "Calling useContext outside any provider and silently getting the default."
+   ],
+   "examples": [
+    {
+     "title": "Theme context",
+     "language": "react",
+     "css": "",
+     "code": "const ThemeContext = createContext(\"light\");\n\nfunction Toolbar() {\n  return <ThemedButton />;\n}\nfunction ThemedButton() {\n  const theme = useContext(ThemeContext);\n  const style = theme === \"dark\"\n    ? { background: \"#222\", color: \"#fff\" }\n    : { background: \"#eee\", color: \"#111\" };\n  return <button style={{ ...style, padding: \"8px 14px\" }}>I am a {theme} button</button>;\n}\n\nfunction App() {\n  const [theme, setTheme] = useState(\"light\");\n  return (\n    <ThemeContext.Provider value={theme}>\n      <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n        <button onClick={() => setTheme(theme === \"light\" ? \"dark\" : \"light\")}>Toggle theme</button>\n        <div style={{ marginTop: 10 }}><Toolbar /></div>\n      </div>\n    </ThemeContext.Provider>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem does Context solve?",
+     "a": "Prop drilling: passing data through many intermediate components that do not need it."
+    },
+    {
+     "q": "Does updating context re-render all components below the provider?",
+     "a": "Only components that consume that context (and their children as normal) re-render; there are no selectors, so any value change re-renders every consumer."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-context-patterns",
+   "title": "Context Patterns: Provider, Custom Hook, Split Contexts",
+   "level": "intermediate",
+   "summary": "Wrap context in a provider component and a custom hook; split state and dispatch to limit re-renders.",
+   "description": "Raw `Context.Provider` usage everywhere gets messy. The standard pattern is to encapsulate it.\n\n### Pattern 1: provider component + custom hook\n\n```jsx\nconst AuthContext = createContext(null);\n\nexport function AuthProvider({ children }) {\n  const [user, setUser] = useState(null);\n  const value = useMemo(() => ({ user, login: setUser, logout: () => setUser(null) }), [user]);\n  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;\n}\n\nexport function useAuth() {\n  const ctx = useContext(AuthContext);\n  if (ctx === null) throw new Error(\"useAuth must be used inside AuthProvider\");\n  return ctx;\n}\n```\n\nBenefits: consumers just call `useAuth()`, the context object stays private, and a missing provider fails loudly.\n\n### Pattern 2: split state and dispatch\n\nPut `state` in one context and `dispatch` in another. Components that only dispatch (buttons) do not re-render when state changes.\n\n### Pattern 3: several small contexts\n\nInstead of one giant `AppContext`, create `ThemeContext`, `AuthContext`, `CartContext`. Components subscribe only to what they need.\n\n### Pattern 4: context + useReducer\n\nA tiny store: reducer logic in the provider, `useCart()` exposes `{ state, dispatch }`. This is fine for small and medium apps.\n\n### Performance tips\n\n- Memoize the `value`.\n- Pass `children` through the provider; they will not re-render when provider state changes if their element identity is unchanged.\n- Move to Zustand/Redux when you need selectors.",
+   "keyPoints": [
+    "Wrap Context in a Provider component + useX hook",
+    "Throw a helpful error when used outside the provider",
+    "Split state and dispatch contexts to reduce renders",
+    "Prefer several focused contexts over one giant one",
+    "Memoize the value object"
+   ],
+   "pitfalls": [
+    "Exporting the raw context object and letting every file wire it differently.",
+    "Putting everything (theme, auth, cart) in one context so each change re-renders everyone."
+   ],
+   "examples": [
+    {
+     "title": "Counter store with split state/dispatch contexts",
+     "language": "react",
+     "css": "",
+     "code": "const CountStateContext = createContext(null);\nconst CountDispatchContext = createContext(null);\n\nfunction CountProvider({ children }) {\n  const [count, dispatch] = useReducer((s, a) => (a === \"inc\" ? s + 1 : a === \"reset\" ? 0 : s), 0);\n  return (\n    <CountStateContext.Provider value={count}>\n      <CountDispatchContext.Provider value={dispatch}>{children}</CountDispatchContext.Provider>\n    </CountStateContext.Provider>\n  );\n}\nfunction useCount() {\n  const v = useContext(CountStateContext);\n  if (v === null) throw new Error(\"useCount must be inside CountProvider\");\n  return v;\n}\nfunction useCountDispatch() {\n  const d = useContext(CountDispatchContext);\n  if (!d) throw new Error(\"useCountDispatch must be inside CountProvider\");\n  return d;\n}\n\nfunction Display() { return <h3>Count: {useCount()}</h3>; }\nfunction Buttons() {\n  const dispatch = useCountDispatch();\n  console.log(\"Buttons rendered\");\n  return (\n    <>\n      <button onClick={() => dispatch(\"inc\")}>+1</button>\n      <button onClick={() => dispatch(\"reset\")}>Reset</button>\n    </>\n  );\n}\n\nfunction App() {\n  return (\n    <CountProvider>\n      <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n        <Display />\n        <Buttons />\n      </div>\n    </CountProvider>\n  );\n}",
+     "explanation": "The Buttons component never re-renders when count changes (check console)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why wrap useContext in a custom hook?",
+     "a": "It hides the context object, gives a clear API, and lets you throw a helpful error when the provider is missing."
+    },
+    {
+     "q": "How do you reduce unnecessary re-renders with context?",
+     "a": "Memoize the value, split state and dispatch into separate contexts, use several small contexts, or switch to a store with selectors."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usememo",
+   "title": "useMemo: Caching Calculations",
+   "level": "intermediate",
+   "summary": "useMemo remembers the result of an expensive calculation until its dependencies change.",
+   "description": "`useMemo(calculate, dependencies)` runs `calculate` during render, caches the returned value, and returns the cached value on later renders unless a dependency changed.\n\n```jsx\nconst visible = useMemo(() => filterTodos(todos, filter), [todos, filter]);\n```\n\n### Typical uses\n\n1. **Skipping an expensive calculation** (sorting or filtering thousands of items). Measure first; `console.time` a calculation of ~1ms or more is worth it.\n2. **Keeping a stable reference** (object or array) so that a child wrapped in `memo`, or another hook's dependency array, does not see a \"new\" value every render.\n3. **Memoizing context values.**\n\n### What it is not\n\n- It is a **performance hint, not a semantic guarantee**. React may discard the cache (for example for offscreen content), so your code must still work without it.\n- It does not reduce the first-render cost.\n- Memoizing everything adds comparison overhead and code noise. Most calculations are cheap.\n\n### Rules\n\n- The function must be pure.\n- Include all reactive values used inside in the dependency array.\n- Do not use it to run side effects (use `useEffect`).\n- With the React Compiler (see performance section) most manual memoization becomes unnecessary.",
+   "keyPoints": [
+    "useMemo(() => value, deps) caches a computed value",
+    "Use for expensive work or stable object/array references",
+    "It is an optimization, not a guarantee",
+    "Calculation must be pure; list all dependencies",
+    "Do not memoize everything; measure first"
+   ],
+   "pitfalls": [
+    "Wrapping trivial calculations in useMemo and making code harder to read.",
+    "Forgetting deps, which returns stale cached results."
+   ],
+   "examples": [
+    {
+     "title": "Expensive filter only re-runs when needed",
+     "language": "react",
+     "css": "",
+     "code": "function countPrimesBelow(n) {\n  let count = 0;\n  for (let i = 2; i < n; i++) {\n    let isPrime = true;\n    for (let j = 2; j * j <= i; j++) if (i % j === 0) { isPrime = false; break; }\n    if (isPrime) count++;\n  }\n  return count;\n}\n\nfunction App() {\n  const [limit, setLimit] = useState(20000);\n  const [note, setNote] = useState(\"\");\n\n  const primes = useMemo(() => {\n    console.log(\"computing primes below\", limit);\n    return countPrimesBelow(limit);\n  }, [limit]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setLimit(limit + 10000)}>Limit: {limit} (click to raise)</button>\n      <p>Primes below limit: <b>{primes}</b></p>\n      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder=\"Type here - no recompute\" />\n    </div>\n  );\n}",
+     "explanation": "Typing in the other input does not recompute the primes."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does useMemo do?",
+     "a": "It caches the result of a calculation between renders and only recomputes it when a dependency changes."
+    },
+    {
+     "q": "Is useMemo a guarantee that a value is never recomputed?",
+     "a": "No. React may drop the cache, so it is a performance optimization and your code must be correct without it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usecallback",
+   "title": "useCallback: Stable Function References",
+   "level": "intermediate",
+   "summary": "useCallback returns the same function instance between renders until dependencies change.",
+   "description": "Every render creates **new function objects**. Usually that is harmless. It matters only when the function identity is compared: passed to a `memo`-wrapped child, or listed in the dependency array of `useEffect`, `useMemo`, etc.\n\n```jsx\nconst handleSave = useCallback((id) => {\n  save(id);\n}, [save]);\n```\n\n`useCallback(fn, deps)` is the same as `useMemo(() => fn, deps)`.\n\n### When it actually helps\n\n1. Passing a callback to a child wrapped in `React.memo` - without a stable function the memo is useless.\n2. A function used as a dependency of `useEffect` where re-running on every render would be wrong.\n3. A function stored in a custom hook returned to consumers who will use it in dependencies.\n\n### When it does not help\n\n- Passing handlers to plain DOM elements (`<button onClick=...>`).\n- Passing to children that are **not** memoized (they re-render anyway).\n- Tiny components where re-render is cheap.\n\n### Avoiding stale state\n\nUse the **functional updater** to avoid depending on state: `setItems(prev => [...prev, x])` lets you keep `[]` as dependencies.\n\n### Alternatives\n\n- Move the function **inside** the effect that uses it.\n- Move it **outside** the component if it uses no props/state.\n- Let the React Compiler do it automatically.",
+   "keyPoints": [
+    "useCallback(fn, deps) = stable function identity",
+    "Only useful with memo children or dependency arrays",
+    "Not needed for ordinary DOM event handlers",
+    "Use functional setState to keep dependencies small",
+    "Pair it with React.memo or it does nothing useful"
+   ],
+   "pitfalls": [
+    "Wrapping every handler in useCallback by habit.",
+    "Stale closure: missing dependency returns an old version of the function."
+   ],
+   "examples": [
+    {
+     "title": "Memoized child only re-renders when its props change",
+     "language": "react",
+     "css": "",
+     "code": "const Child = memo(function Child({ onAdd, label }) {\n  console.log(\"Child rendered:\", label);\n  return <button onClick={onAdd}>{label}</button>;\n});\n\nfunction App() {\n  const [count, setCount] = useState(0);\n  const [text, setText] = useState(\"\");\n\n  const addStable = useCallback(() => setCount((c) => c + 1), []);\n  const addUnstable = () => setCount((c) => c + 1);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>Count: {count}</p>\n      <Child onAdd={addStable} label=\"Stable (useCallback)\" />\n      <Child onAdd={addUnstable} label=\"Unstable (new fn each render)\" />\n      <p><input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"type and watch console\" /></p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When is useCallback useful?",
+     "a": "When a function is passed to a memoized child or used as a dependency of another hook, so its identity must stay stable between renders."
+    },
+    {
+     "q": "What is the relationship between useCallback and useMemo?",
+     "a": "useCallback(fn, deps) is equivalent to useMemo(() => fn, deps)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-memo",
+   "title": "React.memo: Skipping Re-renders",
+   "level": "intermediate",
+   "summary": "memo wraps a component so it re-renders only when its props change (shallow comparison).",
+   "description": "By default, when a parent re-renders, **all of its children re-render**, even if their props did not change. `React.memo` wraps a component and tells React: \"skip re-rendering this one if the new props are shallowly equal to the old props\".\n\n```jsx\nconst Row = memo(function Row({ item, onSelect }) { ... });\n```\n\n### Shallow comparison\n\nReact compares each prop with `Object.is`. Primitives (numbers, strings, booleans) compare by value. Objects, arrays and functions compare by **reference**, so a new `{}` or `() => {}` created in the parent on each render defeats `memo`.\n\n### Making memo effective\n\n- Pass primitives where possible.\n- Stabilize objects with `useMemo` and functions with `useCallback`.\n- Pass `children` carefully - JSX children are a new object each render.\n- Provide a custom comparison function as 2nd argument only if truly necessary (it is easy to get wrong).\n\n### When to use memo\n\n- A component is **expensive** to render (big list rows, charts).\n- It re-renders **often** with the **same props**.\n- You have *measured* a problem with the Profiler.\n\n### When not to\n\nMost components are cheap. Memoizing adds comparison cost and complexity. Do not wrap everything.\n\n### Notes\n\n- State inside the memoized component still triggers its own re-render.\n- Context changes bypass memo.\n- The React Compiler can automate memoization.",
+   "keyPoints": [
+    "memo skips re-render when props are shallow-equal",
+    "Parents re-rendering normally re-renders all children",
+    "New object/function props break memo",
+    "Own state and context changes still re-render",
+    "Use after profiling, not by default"
+   ],
+   "pitfalls": [
+    "Using memo with an inline object/function prop and seeing no benefit.",
+    "Writing a custom comparator that ignores props which later change."
+   ],
+   "examples": [
+    {
+     "title": "Parent state change vs memo child",
+     "language": "react",
+     "css": "",
+     "code": "const Expensive = memo(function Expensive({ value }) {\n  console.log(\"Expensive rendered with\", value);\n  return <p>Memoized child value: {value}</p>;\n});\n\nfunction Plain({ value }) {\n  console.log(\"Plain rendered with\", value);\n  return <p>Plain child value: {value}</p>;\n}\n\nfunction App() {\n  const [tick, setTick] = useState(0);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setTick(tick + 1)}>Parent re-render ({tick})</button>\n      <Expensive value={42} />\n      <Plain value={42} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does React.memo do?",
+     "a": "It memoizes a component so it only re-renders if its props changed according to a shallow comparison."
+    },
+    {
+     "q": "Why might memo not work with an object prop?",
+     "a": "A new object literal is created on each parent render, so its reference differs and the shallow comparison fails. Memoize it with useMemo."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-uselayouteffect",
+   "title": "useLayoutEffect vs useEffect",
+   "level": "advanced",
+   "summary": "useLayoutEffect runs synchronously after DOM updates but before the browser paints; use it for measuring and preventing flicker.",
+   "description": "Both hooks run after React updates the DOM, but at different moments:\n\n| | `useEffect` | `useLayoutEffect` |\n| --- | --- | --- |\n| Timing | after the browser **paints** | after DOM update, **before paint** |\n| Blocks painting | no | yes |\n| Typical use | fetching, subscriptions, logging | measuring DOM, positioning |\n\n### When you need useLayoutEffect\n\nWhen you must **read layout** (size, position via `getBoundingClientRect`) and **synchronously update state** based on it, so the user never sees the intermediate wrong frame. Examples: tooltips and popovers placed next to a target, auto-growing textareas, scroll position restoration, animations that start from measured values.\n\n```jsx\nuseLayoutEffect(() => {\n  const { height } = ref.current.getBoundingClientRect();\n  setHeight(height);\n}, []);\n```\n\n### Cautions\n\n- It **blocks the browser from painting**, so slow code here makes the UI feel janky. Keep it tiny.\n- It does not run on the server (`renderToString`); React warns. Use `useEffect` or `useIsomorphicLayoutEffect` for SSR code.\n- Default to `useEffect`. Switch only if you see a flicker.\n- The setState inside triggers a synchronous re-render before paint.",
+   "keyPoints": [
+    "Runs after DOM mutation, before paint",
+    "Use to measure layout and avoid visual flicker",
+    "Blocks paint, so keep it fast",
+    "Not run on the server; warns in SSR",
+    "Default to useEffect"
+   ],
+   "pitfalls": [
+    "Using it for data fetching or heavy work.",
+    "Reading layout in useEffect and causing a visible jump."
+   ],
+   "examples": [
+    {
+     "title": "Measure a box before paint",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const ref = useRef(null);\n  const [width, setWidth] = useState(0);\n  const [text, setText] = useState(\"Resize me by typing\");\n\n  useLayoutEffect(() => {\n    setWidth(ref.current.getBoundingClientRect().width);\n  }, [text]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input value={text} onChange={(e) => setText(e.target.value)} />\n      <div style={{ marginTop: 10 }}>\n        <span ref={ref} style={{ background: \"#fde68a\", padding: 4, display: \"inline-block\" }}>{text}</span>\n      </div>\n      <p>Measured width: {Math.round(width)}px</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between useEffect and useLayoutEffect?",
+     "a": "useEffect runs after the browser paints; useLayoutEffect runs synchronously after DOM mutations but before painting, so it can measure layout and update without flicker."
+    },
+    {
+     "q": "Why avoid useLayoutEffect on the server?",
+     "a": "Layout effects cannot run during server rendering, so React warns; use useEffect or an isomorphic wrapper."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-useid",
+   "title": "useId: Stable Unique IDs",
+   "level": "intermediate",
+   "summary": "useId generates a unique id that is the same on server and client, for linking labels and inputs.",
+   "description": "Accessibility needs ids: `<label htmlFor=\"email\">` points to `<input id=\"email\">`. Hard-coding ids breaks when the component is rendered more than once (two forms on a page share the same id). Generating random ids (`Math.random()`) breaks **server-side rendering hydration**, because server and client produce different values.\n\n`useId()` solves both. It returns a string like `:r1:` that is **stable across server and client** and **unique per call site**.\n\n```jsx\nfunction Field({ label }) {\n  const id = useId();\n  return (\n    <>\n      <label htmlFor={id}>{label}</label>\n      <input id={id} />\n    </>\n  );\n}\n```\n\n### Derived ids\n\nNeed several ids in one component? Call `useId()` once and add suffixes: `${id}-error`, `${id}-hint`. Great for `aria-describedby`.\n\n### What NOT to do\n\n- **Do not use it for list keys.** Keys should come from your data.\n- Do not use it for CSS selectors (the colon characters need escaping).\n- Do not call it conditionally (it is a hook).\n\n### Why useful\n\nIt makes reusable form components safe: render `<Field />` ten times and every label correctly points to its own input.",
+   "keyPoints": [
+    "Generates unique, SSR-safe ids",
+    "Use for htmlFor/id and aria-* relationships",
+    "Call once, add suffixes for related ids",
+    "Never use it as a list key",
+    "Replaces hard-coded ids and Math.random"
+   ],
+   "pitfalls": [
+    "Using useId output as a React key.",
+    "Hard-coding id=\"email\" in a reusable component."
+   ],
+   "examples": [
+    {
+     "title": "Reusable field with accessible hint",
+     "language": "react",
+     "css": "",
+     "code": "function Field({ label, hint }) {\n  const id = useId();\n  return (\n    <div style={{ marginBottom: 10 }}>\n      <label htmlFor={id} style={{ display: \"block\" }}>{label}</label>\n      <input id={id} aria-describedby={id + \"-hint\"} />\n      <small id={id + \"-hint\"} style={{ display: \"block\", color: \"#666\" }}>{hint}</small>\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Field label=\"First name\" hint=\"As on your ID\" />\n      <Field label=\"Last name\" hint=\"Family name\" />\n      <p style={{ fontSize: 12 }}>Click a label - the matching input gets focus.</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use useId instead of a random number?",
+     "a": "Random values differ between server and client and break hydration; useId is deterministic and unique."
+    },
+    {
+     "q": "Can useId be used for list keys?",
+     "a": "No. Keys should be derived from your data, not generated by useId."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usetransition",
+   "title": "useTransition: Non-blocking Updates",
+   "level": "advanced",
+   "summary": "useTransition marks a state update as low priority so the UI stays responsive during heavy re-renders.",
+   "description": "Some updates are urgent (typing, clicking) and some can wait (filtering a huge list, switching a heavy tab). **Transitions** let you mark the second kind as non-urgent so React can interrupt them if something more urgent happens.\n\n```jsx\nconst [isPending, startTransition] = useTransition();\n\nfunction onChange(e) {\n  setQuery(e.target.value);                 // urgent: update input\n  startTransition(() => setFilter(e.target.value)); // can wait\n}\n```\n\n### What you get\n\n- `startTransition(fn)` - state updates inside `fn` are low priority. React renders them in the background and discards them if new input arrives.\n- `isPending` - `true` while the transition is rendering, to show a subtle spinner or dim the list.\n\n### How it keeps the UI smooth\n\nWithout a transition, a slow render blocks the main thread and typing feels laggy. With it, React renders the heavy part in small chunks and yields to the browser.\n\n### Rules\n\n- Only works for **state updates** (not for controlling inputs' own value; the input should update urgently).\n- The function passed must run **synchronously** (in React 18; React 19 supports async functions as \"Actions\").\n- Transitions keep the **old UI** visible while new content is rendering, and with Suspense avoid replacing it with a fallback.\n- There is a standalone `startTransition` import when you do not need `isPending`.",
+   "keyPoints": [
+    "Marks updates as non-urgent and interruptible",
+    "isPending lets you show loading feedback",
+    "Input value must still update urgently",
+    "Works well with Suspense and heavy lists",
+    "Available as useTransition or standalone startTransition"
+   ],
+   "pitfalls": [
+    "Wrapping the input's own state update in a transition (typing feels broken).",
+    "Expecting it to speed up the render; it only prioritizes work."
+   ],
+   "examples": [
+    {
+     "title": "Responsive typing while rendering a heavy list",
+     "language": "react",
+     "css": "",
+     "code": "const ITEMS = Array.from({ length: 4000 }, (_, i) => \"Item \" + i);\n\nfunction Heavy({ filter }) {\n  const rows = [];\n  for (let i = 0; i < ITEMS.length; i++) {\n    if (ITEMS[i].includes(filter)) rows.push(<li key={i}>{ITEMS[i]}</li>);\n  }\n  return <ul style={{ maxHeight: 140, overflow: \"auto\" }}>{rows.slice(0, 300)}</ul>;\n}\n\nfunction App() {\n  const [text, setText] = useState(\"\");\n  const [filter, setFilter] = useState(\"\");\n  const [isPending, startTransition] = useTransition();\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input\n        value={text}\n        placeholder=\"filter, e.g. 99\"\n        onChange={(e) => {\n          setText(e.target.value);\n          startTransition(() => setFilter(e.target.value));\n        }}\n      />\n      {isPending && <span> updating...</span>}\n      <div style={{ opacity: isPending ? 0.5 : 1 }}>\n        <Heavy filter={filter} />\n      </div>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem does useTransition solve?",
+     "a": "It keeps the UI responsive by letting React treat expensive state updates as low priority and interruptible while urgent updates like typing stay instant."
+    },
+    {
+     "q": "What does isPending tell you?",
+     "a": "Whether a transition is currently being processed, so you can show feedback while old content stays visible."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usedeferredvalue",
+   "title": "useDeferredValue",
+   "level": "advanced",
+   "summary": "useDeferredValue gives you a lagging copy of a value so expensive UI can catch up without blocking typing.",
+   "description": "`useDeferredValue(value)` returns the same value on the first render, and on updates it first returns the **old value** while React re-renders in the background with the **new value**. Once the background render finishes, the deferred value catches up.\n\n```jsx\nconst [query, setQuery] = useState(\"\");\nconst deferredQuery = useDeferredValue(query);\n// input uses query, slow list uses deferredQuery\n<SlowList filter={deferredQuery} />\n```\n\n### Compared to useTransition\n\n- `useTransition` wraps the **setter** (you control the update).\n- `useDeferredValue` wraps the **value** (you receive it as a prop and cannot touch the setter), which is ideal inside child components or with props from libraries.\n\n### Making it effective\n\nWrap the slow child in `memo`. Otherwise the child re-renders anyway with the urgent render. Pass the deferred value only to the slow part.\n\n### Showing stale state\n\n`query !== deferredQuery` tells you the UI is behind, so you can dim the list.\n\n### Not debouncing\n\nDebounce waits a fixed time, then runs. `useDeferredValue` has no fixed delay: it adapts to the device (a fast computer catches up immediately) and the background render is interruptible. It does **not** reduce network requests, so still debounce API calls.",
+   "keyPoints": [
+    "Returns a value that lags behind during busy renders",
+    "Great when you receive the value as a prop",
+    "Wrap the slow consumer in memo",
+    "Compare with the original to show a stale state",
+    "Not a replacement for debouncing network calls"
+   ],
+   "pitfalls": [
+    "Forgetting memo on the slow child, so nothing improves.",
+    "Using it to delay API requests."
+   ],
+   "examples": [
+    {
+     "title": "Deferred query for a slow list",
+     "language": "react",
+     "css": "",
+     "code": "const SlowList = memo(function SlowList({ query }) {\n  const items = [];\n  for (let i = 0; i < 2500; i++) {\n    const text = \"Row \" + i;\n    if (text.includes(query)) items.push(<li key={i}>{text}</li>);\n  }\n  return <ul style={{ maxHeight: 120, overflow: \"auto\" }}>{items.slice(0, 200)}</ul>;\n});\n\nfunction App() {\n  const [query, setQuery] = useState(\"\");\n  const deferred = useDeferredValue(query);\n  const stale = query !== deferred;\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder=\"Type to filter rows\" />\n      <div style={{ opacity: stale ? 0.5 : 1, transition: \"opacity .2s\" }}>\n        <SlowList query={deferred} />\n      </div>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How is useDeferredValue different from debouncing?",
+     "a": "It has no fixed delay; React re-renders with the new value in the background at lower priority and interrupts if needed. Debouncing waits a set time and also reduces calls."
+    },
+    {
+     "q": "When prefer useDeferredValue over useTransition?",
+     "a": "When you only have the value (such as a prop) and cannot wrap the code that sets it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usesyncexternalstore",
+   "title": "useSyncExternalStore",
+   "level": "advanced",
+   "summary": "Subscribe safely to any external store (browser APIs, Redux-like stores) with tear-free updates.",
+   "description": "Not all data lives in React state. Browser APIs (`navigator.onLine`, `matchMedia`), third-party stores (Redux, Zustand internally) and your own global objects change outside React. `useSyncExternalStore` is the official way to read them and re-render when they change.\n\n```jsx\nconst value = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n```\n\n### The three arguments\n\n- **`subscribe(callback)`** - registers `callback` to be called when the store changes and returns an **unsubscribe** function.\n- **`getSnapshot()`** - returns the current value. It must return the **same reference** if nothing changed (otherwise React loops forever). Never create a new object each call.\n- **`getServerSnapshot()`** - value used during server rendering and hydration (optional on client-only apps).\n\n### Why not useEffect + useState?\n\nIn concurrent rendering, a store may change while React is rendering in slices, giving parts of the UI different values (**tearing**). `useSyncExternalStore` forces a consistent, synchronous read, so there is no tearing.\n\n### Where you see it\n\nState libraries use it internally. In your own code it is great for `useOnlineStatus`, `useMediaQuery`, `useWindowWidth`, and a tiny global store.\n\n### Tips\n\nDefine `subscribe` outside the component or memoize it; otherwise it resubscribes every render.",
+   "keyPoints": [
+    "Connects React to external changing data",
+    "subscribe returns an unsubscribe function",
+    "getSnapshot must return a cached, stable value",
+    "Prevents tearing in concurrent rendering",
+    "Define subscribe outside the component"
+   ],
+   "pitfalls": [
+    "getSnapshot returning a new object each call causes an infinite loop.",
+    "Defining subscribe inline so it re-subscribes every render."
+   ],
+   "examples": [
+    {
+     "title": "A tiny external store",
+     "language": "react",
+     "css": "",
+     "code": "// useSyncExternalStore is not in the pre-destructured list: take it from React\nconst { useSyncExternalStore } = React;\n\n// An external store living outside React\nconst store = {\n  value: 0,\n  listeners: new Set(),\n  get() { return store.value; },\n  set(v) { store.value = v; store.listeners.forEach((l) => l()); },\n  subscribe(cb) { store.listeners.add(cb); return () => store.listeners.delete(cb); },\n};\n\nfunction useStore() {\n  return useSyncExternalStore(store.subscribe, store.get);\n}\n\nfunction Show() { return <p>Store value: {useStore()}</p>; }\nfunction Controls() {\n  const v = useStore();\n  return <button onClick={() => store.set(v + 1)}>Increment store</button>;\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Show />\n      <Show />\n      <Controls />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When do you need useSyncExternalStore?",
+     "a": "When reading data from a source outside React that changes over time, like a browser API or custom store, and you want tear-free, consistent updates."
+    },
+    {
+     "q": "What must getSnapshot guarantee?",
+     "a": "It must return the same cached value when the store has not changed; returning a fresh object each call causes infinite re-renders."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-forwardref-imperativehandle",
+   "title": "forwardRef and useImperativeHandle",
+   "level": "advanced",
+   "summary": "Expose a child's DOM node or a limited set of methods to a parent through refs.",
+   "description": "By default a `ref` on a custom component does **not** give you a DOM node, because components are not DOM elements. In React 18 you wrap the child in **`forwardRef`** to pass the ref down to an inner element. In React 19, `ref` is just a regular prop for function components and `forwardRef` is no longer needed.\n\n```jsx\nconst FancyInput = forwardRef(function FancyInput(props, ref) {\n  return <input ref={ref} {...props} />;\n});\n// parent\nconst r = useRef(); <FancyInput ref={r} />; r.current.focus();\n```\n\n### Exposing a custom API\n\nHanding out the raw DOM node lets the parent do anything. **`useImperativeHandle(ref, createHandle, deps)`** lets you expose only chosen methods:\n\n```jsx\nuseImperativeHandle(ref, () => ({\n  focus() { inner.current.focus(); },\n  clear() { inner.current.value = \"\"; },\n}), []);\n```\n\n### When to use\n\n- Reusable input/design-system components that must support `.focus()`.\n- Imperative actions that props cannot express well: `modal.open()`, `video.play()`, `scrollToItem(i)`.\n\n### Prefer props when possible\n\nIf something can be a prop (`isOpen`), do that - it follows declarative data flow. Use imperative handles only for commands such as focus, scroll, play, or triggering an animation.",
+   "keyPoints": [
+    "forwardRef passes a ref to an inner element (React 18)",
+    "React 19: ref is a normal prop on function components",
+    "useImperativeHandle exposes a limited method API",
+    "Use for focus/scroll/play style commands",
+    "Prefer declarative props where possible"
+   ],
+   "pitfalls": [
+    "Expecting ref on a function component to work without forwardRef in React 18.",
+    "Exposing too many internals through the handle."
+   ],
+   "examples": [
+    {
+     "title": "Child exposes focus() and clear()",
+     "language": "react",
+     "css": "",
+     "code": "const { useImperativeHandle } = React;\n\nconst FancyInput = forwardRef(function FancyInput({ placeholder }, ref) {\n  const inner = useRef(null);\n  useImperativeHandle(ref, () => ({\n    focus() { inner.current.focus(); },\n    clear() { inner.current.value = \"\"; inner.current.focus(); },\n  }), []);\n  return <input ref={inner} placeholder={placeholder} />;\n});\n\nfunction App() {\n  const boxRef = useRef(null);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <FancyInput ref={boxRef} placeholder=\"Type something\" />\n      <button onClick={() => boxRef.current.focus()}>Focus</button>\n      <button onClick={() => boxRef.current.clear()}>Clear</button>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why do you need forwardRef?",
+     "a": "Function components cannot receive ref as a normal prop in React 18, so forwardRef gives access to the ref so it can be attached to an inner element. (React 19 passes ref as a prop.)"
+    },
+    {
+     "q": "What does useImperativeHandle do?",
+     "a": "It customizes the value a parent receives through the ref, exposing a controlled set of methods instead of the whole DOM node."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

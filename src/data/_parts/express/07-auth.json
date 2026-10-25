@@ -1,0 +1,268 @@
+{
+ "id": "express-auth",
+ "title": "Authentication and Authorization",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-bcrypt-passwords",
+   "title": "Password Hashing with bcrypt",
+   "level": "intermediate",
+   "summary": "Never store plain passwords: hash with bcrypt (salted, slow) and compare on login with a generic error message.",
+   "description": "If your database leaks, plain-text or fast-hashed (MD5, SHA-1) passwords are instantly compromised. Use a **slow, salted, adaptive** hashing algorithm: **bcrypt** (or argon2/scrypt).\n\n### What bcrypt does\n- Adds a random **salt** per password, so identical passwords produce different hashes and rainbow tables fail.\n- Is deliberately slow, controlled by the **cost factor** (salt rounds). 10-12 is typical: each +1 doubles the time.\n- Stores salt and cost inside the hash string, so you only save one value (`$2b$10$...`).\n\n### API\n```js\nconst hash = await bcrypt.hash(plain, 12)\nconst ok = await bcrypt.compare(plain, hash)   // true / false\n```\nAlways use the **async** versions so the event loop is not blocked. `bcrypt` is a native addon; `bcryptjs` is pure JavaScript with the same API (slower, easier to install).\n\n### Register flow\n1. Validate input (email format, password strength, max length 72 bytes for bcrypt).\n2. Check the email is not taken (or rely on the unique index and catch error 11000).\n3. Hash and store only the hash.\n4. Return the user **without** the password field.\n\n### Login flow\n1. Find the user by email, selecting the hash (`+password` if `select: false`).\n2. `bcrypt.compare`. If the user does not exist OR the password is wrong, return the **same** `401 Invalid credentials` message so attackers cannot discover which emails are registered.\n3. Issue a token or session.\n\n### Where to hash\nIn a Mongoose `pre('save')` hook (only when the password changed) or inside an auth service.",
+   "keyPoints": [
+    "Hash with bcrypt (cost 10-12) or argon2; never encrypt or store plain text",
+    "Salt and cost are embedded in the hash; one column is enough",
+    "Use async `hash`/`compare`",
+    "Use the same error for unknown email and wrong password",
+    "Never return the hash in API responses"
+   ],
+   "pitfalls": [
+    "Using MD5/SHA-256 for passwords",
+    "Hashing again inside `pre('save')` on every save (re-hashing a hash); check `isModified('password')`",
+    "Different error messages that reveal whether an email exists",
+    "Logging request bodies that contain passwords"
+   ],
+   "examples": [
+    {
+     "title": "Register and login",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/models/User.js\nimport mongoose from 'mongoose'\nimport bcrypt from 'bcryptjs'\n\nconst userSchema = new mongoose.Schema({\n  name: { type: String, required: true, trim: true },\n  email: { type: String, required: true, unique: true, lowercase: true },\n  password: { type: String, required: true, minlength: 8, select: false },\n}, { timestamps: true })\n\nuserSchema.pre('save', async function () {\n  if (!this.isModified('password')) return\n  this.password = await bcrypt.hash(this.password, 12)\n})\n\nuserSchema.methods.matchPassword = function (plain) {\n  return bcrypt.compare(plain, this.password)\n}\n\nexport default mongoose.model('User', userSchema)\n\n// ## src/controllers/authController.js\nimport User from '../models/User.js'\n\nexport const register = async (req, res) => {\n  const { name, email, password } = req.body\n  const user = await User.create({ name, email, password })    // hashed by the hook\n  res.status(201).json({ id: user._id, name: user.name, email: user.email })\n}\n\nexport const login = async (req, res) => {\n  const { email, password } = req.body\n  const user = await User.findOne({ email }).select('+password')\n  if (!user || !(await user.matchPassword(password))) {\n    return res.status(401).json({ error: 'Invalid credentials' })\n  }\n  res.json({ message: 'Logged in', user: { id: user._id, name: user.name } })\n}",
+     "explanation": ""
+    },
+    {
+     "title": "What a bcrypt hash looks like",
+     "language": "text",
+     "lang": "bash",
+     "code": "$2b$12$KIXx3p9u5oZ1dQ0Yb1vR0uJ8d0m6GZs4QvGg3t7yJ2s5sX1mH3j8K\n |  |  |                      |\n |  |  |                      +-- 31-char hash\n |  |  +-- 22-char salt\n |  +-- cost factor (2^12 rounds)\n +-- algorithm version",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why bcrypt instead of SHA-256 for passwords?",
+     "a": "SHA-256 is fast, so attackers can test billions of guesses per second; bcrypt is intentionally slow, salted and tunable, which makes brute force expensive."
+    },
+    {
+     "q": "Why return the same error for wrong email and wrong password?",
+     "a": "A specific message tells attackers which emails exist (user enumeration); a generic \"Invalid credentials\" hides that."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-jwt",
+   "title": "JWT Access and Refresh Tokens",
+   "level": "intermediate",
+   "summary": "Issue short-lived signed access tokens and long-lived refresh tokens; verify with middleware.",
+   "description": "A **JSON Web Token (JWT)** is a signed string `header.payload.signature`. The server signs it with a secret after login; later requests send it back, and the server verifies the signature without a database lookup - this keeps the API **stateless**.\n\n### What goes inside\nThe payload (claims) such as `{ sub: userId, role: 'user', iat, exp }`. It is only *encoded*, not encrypted - anyone can read it, so never put passwords or secrets inside.\n\n### Access vs refresh tokens\n| | Access token | Refresh token |\n|---|---|---|\n| Lifetime | short (5-15 min) | long (7-30 days) |\n| Used for | every API request (`Authorization: Bearer <token>`) | getting a new access token |\n| Secret | `JWT_ACCESS_SECRET` | different `JWT_REFRESH_SECRET` |\n| Storage | memory (SPA) or cookie | `httpOnly` cookie + hash saved in DB |\n\nShort access tokens limit damage if stolen. When one expires, the client calls `POST /auth/refresh`; the server checks the refresh token (and that it is still stored/valid), then issues a new access token and rotates the refresh token.\n\n### Verification middleware\nRead the `Authorization` header, verify with `jwt.verify`, attach `req.user`, or answer `401`. `TokenExpiredError` tells the client to refresh.\n\n### Logout and revocation\nJWTs cannot be revoked before they expire. Solutions: short expiry, store refresh tokens (or a token version) in the DB and delete them on logout, or keep a deny-list in Redis.\n\n### Best practices\nStrong random secrets (32+ bytes), set `algorithms: ['HS256']` when verifying, set `expiresIn`, serve over HTTPS.",
+   "keyPoints": [
+    "JWT = signed (not encrypted) claims; the server verifies the signature",
+    "Short access token + long refresh token in an httpOnly cookie",
+    "Different secrets for access and refresh tokens",
+    "Verify in middleware, set `req.user`, respond 401 on failure",
+    "Revocation needs server-side storage of refresh tokens"
+   ],
+   "pitfalls": [
+    "Storing sensitive data in the payload",
+    "Very long-lived access tokens with no refresh strategy",
+    "Saving tokens in `localStorage` (XSS can steal them)",
+    "Accepting `alg: none` / not pinning the algorithm"
+   ],
+   "examples": [
+    {
+     "title": "Token helpers and middleware",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/utils/tokens.js\nimport jwt from 'jsonwebtoken'\n\nexport const signAccessToken = (user) =>\n  jwt.sign({ sub: user.id, role: user.role }, process.env.JWT_ACCESS_SECRET, { expiresIn: '15m' })\n\nexport const signRefreshToken = (user) =>\n  jwt.sign({ sub: user.id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' })\n\nexport const verifyAccessToken = (token) =>\n  jwt.verify(token, process.env.JWT_ACCESS_SECRET, { algorithms: ['HS256'] })\n\nexport const verifyRefreshToken = (token) =>\n  jwt.verify(token, process.env.JWT_REFRESH_SECRET, { algorithms: ['HS256'] })\n\n// ## src/middleware/protect.js\nimport { verifyAccessToken } from '../utils/tokens.js'\n\nexport function protect(req, res, next) {\n  const header = req.get('authorization') ?? ''\n  const [scheme, token] = header.split(' ')\n  if (scheme !== 'Bearer' || !token) {\n    return res.status(401).json({ error: 'Missing token' })\n  }\n  try {\n    const payload = verifyAccessToken(token)\n    req.user = { id: payload.sub, role: payload.role }\n    next()\n  } catch (err) {\n    const msg = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token'\n    res.status(401).json({ error: msg })\n  }\n}\n\n// ## src/routes/auth.js\nimport { Router } from 'express'\nimport User from '../models/User.js'\nimport { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens.js'\n\nconst router = Router()\n\nrouter.post('/login', async (req, res) => {\n  const user = await User.findOne({ email: req.body.email }).select('+password')\n  if (!user || !(await user.matchPassword(req.body.password))) {\n    return res.status(401).json({ error: 'Invalid credentials' })\n  }\n  res.cookie('refreshToken', signRefreshToken(user), {\n    httpOnly: true, secure: process.env.NODE_ENV === 'production',\n    sameSite: 'lax', path: '/api/auth', maxAge: 7 * 24 * 3600 * 1000,\n  })\n  res.json({ accessToken: signAccessToken(user) })\n})\n\nrouter.post('/refresh', async (req, res) => {\n  const token = req.cookies.refreshToken\n  if (!token) return res.status(401).json({ error: 'No refresh token' })\n  try {\n    const { sub } = verifyRefreshToken(token)\n    const user = await User.findById(sub)\n    if (!user) return res.status(401).json({ error: 'User not found' })\n    res.json({ accessToken: signAccessToken(user) })\n  } catch {\n    res.status(401).json({ error: 'Invalid refresh token' })\n  }\n})\n\nrouter.post('/logout', (req, res) => {\n  res.clearCookie('refreshToken', { path: '/api/auth' })\n  res.status(204).end()\n})\n\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "Calling a protected route",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST localhost:3000/api/auth/login -H \"Content-Type: application/json\" \\\n  -d '{\"email\":\"asha@x.com\",\"password\":\"Secret@123\"}'\n# {\"accessToken\":\"eyJhbGciOiJIUzI1NiIs...\"}\n\ncurl localhost:3000/api/me -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIs...\"\n# 200 {...}\ncurl localhost:3000/api/me\n# 401 {\"error\":\"Missing token\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use both access and refresh tokens?",
+     "a": "A short-lived access token limits the damage of theft, while a longer-lived refresh token (kept more safely) lets users stay logged in without re-entering credentials."
+    },
+    {
+     "q": "Is a JWT encrypted?",
+     "a": "No. It is base64url encoded and signed; anyone can read the payload, but nobody can alter it without invalidating the signature."
+    },
+    {
+     "q": "How do you log a user out with JWT?",
+     "a": "Remove the client token and refresh cookie, and invalidate the refresh token server-side (delete it from the DB or deny-list); an access token stays valid until it expires, so keep it short."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-cookies-sessions",
+   "title": "Auth Cookies and Sessions (express-session)",
+   "level": "intermediate",
+   "summary": "Use secure cookie flags for tokens, or server-side sessions backed by Mongo or Redis for stateful login.",
+   "description": "### Cookie security flags\nBrowsers send cookies automatically, so their flags matter:\n| Flag | Effect |\n|---|---|\n| `httpOnly` | JavaScript cannot read the cookie, which blocks theft via XSS |\n| `secure` | sent only over HTTPS |\n| `sameSite` | `lax` (default-like, safe for most apps), `strict`, or `none` (needed for cross-site; requires `secure`) |\n| `maxAge` / `expires` | lifetime |\n| `path` / `domain` | where the cookie is sent |\n\nBehind a proxy (Render, Heroku, nginx), set `app.set('trust proxy', 1)` or `secure` cookies will not be set.\n\n### Sessions\nA **session** stores user data on the **server** and gives the browser only an id in a cookie. This is the classic *stateful* approach and is easy to revoke (delete the session).\n\n```js\napp.use(session({\n  secret: process.env.SESSION_SECRET,\n  resave: false, saveUninitialized: false,\n  cookie: { httpOnly: true, secure: isProd, sameSite: 'lax', maxAge: 86400000 },\n  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),\n}))\n```\n\nThe default `MemoryStore` leaks memory and does not work with multiple servers: in production use a persistent store such as **connect-mongo** or **connect-redis**.\n\n### Session vs JWT\n| | Session | JWT |\n|---|---|---|\n| State | on the server | in the token |\n| Revocation | easy | hard |\n| Scaling | needs shared store | stateless |\n| Best for | server-rendered apps, simple SPAs on one domain | mobile apps, microservices, third parties |\n\nBoth work with cookies; many SPAs store JWTs in an httpOnly cookie to combine the benefits.",
+   "keyPoints": [
+    "Use `httpOnly`, `secure` (production), and `sameSite` on auth cookies",
+    "Sessions keep data on the server; the browser holds only an id",
+    "Never use the default MemoryStore in production",
+    "Regenerate the session id on login to avoid fixation",
+    "`trust proxy` is required for secure cookies behind a proxy"
+   ],
+   "pitfalls": [
+    "Setting `secure: true` locally over http (cookie never stored) or forgetting it in production",
+    "`sameSite: 'none'` without `secure: true`",
+    "Using a weak or committed `SESSION_SECRET`"
+   ],
+   "examples": [
+    {
+     "title": "Session login with connect-mongo",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport session from 'express-session'\nimport MongoStore from 'connect-mongo'\n\nconst app = express()\nconst isProd = process.env.NODE_ENV === 'production'\napp.set('trust proxy', 1)\napp.use(express.json())\n\napp.use(session({\n  name: 'sid',\n  secret: process.env.SESSION_SECRET,\n  resave: false,\n  saveUninitialized: false,\n  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI, ttl: 24 * 60 * 60 }),\n  cookie: { httpOnly: true, secure: isProd, sameSite: 'lax', maxAge: 24 * 60 * 60 * 1000 },\n}))\n\napp.post('/login', async (req, res, next) => {\n  const user = await verifyUser(req.body.email, req.body.password)   // your own function\n  if (!user) return res.status(401).json({ error: 'Invalid credentials' })\n  req.session.regenerate((err) => {             // prevent session fixation\n    if (err) return next(err)\n    req.session.userId = user.id\n    res.json({ message: 'Logged in' })\n  })\n})\n\nconst requireLogin = (req, res, next) =>\n  req.session.userId ? next() : res.status(401).json({ error: 'Login required' })\n\napp.get('/profile', requireLogin, (req, res) => res.json({ userId: req.session.userId }))\n\napp.post('/logout', (req, res, next) => {\n  req.session.destroy((err) => {\n    if (err) return next(err)\n    res.clearCookie('sid')\n    res.status(204).end()\n  })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does httpOnly do?",
+     "a": "It tells the browser to hide the cookie from JavaScript (document.cookie), so XSS attacks cannot steal it; the browser still sends it with requests."
+    },
+    {
+     "q": "Sessions vs JWT - when each?",
+     "a": "Sessions are simple and easy to revoke, ideal for a single web app; JWTs are stateless and suit mobile apps and distributed services, at the cost of harder revocation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-rbac",
+   "title": "Authorization and Role-Based Access Control",
+   "level": "intermediate",
+   "summary": "Authentication proves who you are; authorization decides what you may do. Implement roles, ownership checks and permissions in middleware.",
+   "description": "**Authentication (AuthN)** answers *who are you?* **Authorization (AuthZ)** answers *what may you do?* Run authentication first, then authorization.\n\n### RBAC (Role-Based Access Control)\nEach user has a role (`user`, `editor`, `admin`) and each route requires one or more roles. A reusable factory middleware keeps routes readable:\n\n```js\nrouter.delete('/:id', protect, restrictTo('admin'), removeUser)\n```\n\n### Ownership checks\nRoles are not enough: a normal user may edit **their own** post but not others'. Check inside the handler or middleware: `post.author.equals(req.user.id) || req.user.role === 'admin'`.\n\n### Permissions (fine-grained)\nFor larger apps, map roles to permissions (`post:create`, `post:delete`) and check `can(user, 'post:delete', post)`. Libraries like CASL help.\n\n### Status codes\n- `401 Unauthorized` - no or invalid credentials (the user is not identified).\n- `403 Forbidden` - identified but not allowed.\n- Use `404` instead of `403` when you do not want to reveal that a resource exists.\n\n### Security rules\n- Enforce authorization on the **server** for every route; hiding buttons in React is only UX.\n- Take the role from the verified token/session, never from the request body.\n- Protect against IDOR (Insecure Direct Object Reference): when reading `/orders/:id`, query by id **and** owner.\n- Default deny: protect routers first, open specific routes deliberately.",
+   "keyPoints": [
+    "AuthN = identity, AuthZ = permissions; always in that order",
+    "`restrictTo(...roles)` factory middleware for role checks",
+    "Add ownership checks for user-owned resources",
+    "401 = not authenticated, 403 = not permitted",
+    "Never trust role data sent by the client"
+   ],
+   "pitfalls": [
+    "Checking permissions only in the React UI",
+    "Letting users pass `role` in the registration body (privilege escalation)",
+    "IDOR: `Order.findById(req.params.id)` without checking the owner"
+   ],
+   "examples": [
+    {
+     "title": "restrictTo and ownership",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/middleware/authorize.js\nexport const restrictTo = (...roles) => (req, res, next) => {\n  if (!req.user) return res.status(401).json({ error: 'Login required' })\n  if (!roles.includes(req.user.role)) {\n    return res.status(403).json({ error: 'You do not have permission to do this' })\n  }\n  next()\n}\n\n// ## src/routes/posts.js\nimport { Router } from 'express'\nimport Post from '../models/Post.js'\nimport User from '../models/User.js'\nimport { protect } from '../middleware/protect.js'\nimport { restrictTo } from '../middleware/authorize.js'\n\nconst router = Router()\nrouter.use(protect)                                    // everything below needs login\n\nrouter.get('/', async (req, res) => res.json(await Post.find()))\n\nrouter.delete('/:id', async (req, res) => {\n  const post = await Post.findById(req.params.id)\n  if (!post) return res.status(404).json({ error: 'Post not found' })\n\n  const isOwner = post.author.equals(req.user.id)\n  if (!isOwner && req.user.role !== 'admin') {\n    return res.status(403).json({ error: 'Not your post' })\n  }\n  await post.deleteOne()\n  res.status(204).end()\n})\n\n// admin-only route\nrouter.get('/admin/all-users', restrictTo('admin'), async (req, res) => {\n  res.json(await User.find())\n})\n\nexport default router",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Authentication vs authorization?",
+     "a": "Authentication verifies identity (who you are); authorization decides what that identity is allowed to do."
+    },
+    {
+     "q": "What is an IDOR vulnerability?",
+     "a": "Insecure Direct Object Reference: exposing a resource by id without checking that the caller owns it, so users can read or change others' data by changing the id."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-oauth-2fa",
+   "title": "OAuth / Google Login (Passport) and 2FA Overview",
+   "level": "advanced",
+   "summary": "Let users sign in with Google through Passport (OAuth 2.0) and add TOTP two-factor authentication.",
+   "description": "### OAuth 2.0 / social login\n\"Sign in with Google\" delegates login to a provider. You never see the user's Google password. The flow (**authorization code**):\n1. User clicks the button -> your server redirects to Google with `client_id`, `redirect_uri`, `scope` (profile, email) and a `state` value.\n2. User consents on Google.\n3. Google redirects back to your callback URL with a one-time `code`.\n4. Your server exchanges the code (plus `client_secret`) for tokens and fetches the profile.\n5. You find or create the local user and start your own session or JWT.\n\n**Passport.js** wraps this with *strategies*: `passport-google-oauth20`, `passport-github2`, `passport-local`, `passport-jwt`. You configure a verify callback and add two routes: one starting the flow and one for the callback.\n\nSetup: create credentials in Google Cloud Console, add the exact callback URL (`http://localhost:3000/api/auth/google/callback`), and keep `GOOGLE_CLIENT_ID/SECRET` in `.env`. For SPAs a common variant is the front end obtaining a Google ID token and posting it to your API to verify.\n\n### 2FA with TOTP\nTwo-factor authentication adds \"something you have\". **TOTP** (Google Authenticator, Authy):\n1. Generate a secret per user (`otplib` / `speakeasy`) and show a QR code of the `otpauth://` URL.\n2. User scans it and sends the first 6-digit code to confirm; you store the secret (encrypted) and enable 2FA.\n3. On login, after the password check, require the current 6-digit code and verify it (with a small time window).\n4. Provide one-time **backup codes** (store hashed) in case the phone is lost.\n\nRate-limit the code endpoint: only a million combinations exist.",
+   "keyPoints": [
+    "OAuth authorization-code flow: redirect -> consent -> callback with code -> token exchange",
+    "Passport strategies keep provider code small; you still issue your own session/JWT",
+    "Register exact callback URLs and use a `state` value",
+    "TOTP 2FA: secret + QR code, verify 6-digit code with a time window",
+    "Store backup codes hashed and rate-limit verification"
+   ],
+   "pitfalls": [
+    "Trusting the email from a provider without checking `email_verified`",
+    "Mismatched redirect URI between code and provider console",
+    "Storing the TOTP secret unprotected or skipping rate limiting"
+   ],
+   "examples": [
+    {
+     "title": "Google login with Passport",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport passport from 'passport'\nimport { Strategy as GoogleStrategy } from 'passport-google-oauth20'\nimport User from './models/User.js'\nimport { signAccessToken } from './utils/tokens.js'\n\nconst app = express()\n\npassport.use(new GoogleStrategy(\n  {\n    clientID: process.env.GOOGLE_CLIENT_ID,\n    clientSecret: process.env.GOOGLE_CLIENT_SECRET,\n    callbackURL: '/api/auth/google/callback',\n  },\n  async (accessToken, refreshToken, profile, done) => {\n    try {\n      const email = profile.emails?.[0]?.value\n      let user = await User.findOne({ googleId: profile.id })\n      if (!user) user = await User.create({ googleId: profile.id, name: profile.displayName, email })\n      done(null, user)\n    } catch (err) {\n      done(err)\n    }\n  }\n))\n\napp.use(passport.initialize())\n\n// 1. start the flow\napp.get('/api/auth/google',\n  passport.authenticate('google', { scope: ['profile', 'email'], session: false }))\n\n// 2. Google redirects here\napp.get('/api/auth/google/callback',\n  passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth' }),\n  (req, res) => {\n    const token = signAccessToken(req.user)\n    res.redirect(`${process.env.CLIENT_URL}/oauth-success#token=${token}`)\n  })\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "TOTP 2FA with otplib",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { Router } from 'express'\nimport { generateSecret, generateURI, verify } from 'otplib'   // otplib v13 API\nimport QRCode from 'qrcode'\nimport User from '../models/User.js'\nimport { protect } from '../middleware/protect.js'\n\nconst router = Router()\n\n// step 1: user enables 2FA\nrouter.post('/2fa/setup', protect, async (req, res) => {\n  const secret = generateSecret()\n  await User.findByIdAndUpdate(req.user.id, { twoFactorTempSecret: secret })\n  const otpauth = generateURI({ issuer: 'MyApp', label: req.user.email, secret })\n  res.json({ qr: await QRCode.toDataURL(otpauth) })     // show as <img src=...>\n})\n\n// step 2: user confirms with the first code from the authenticator app\nrouter.post('/2fa/enable', protect, async (req, res) => {\n  const user = await User.findById(req.user.id).select('+twoFactorTempSecret')\n  const result = await verify({ token: req.body.code, secret: user.twoFactorTempSecret })\n  if (!result.valid) return res.status(400).json({ error: 'Invalid code' })\n  user.twoFactorSecret = user.twoFactorTempSecret\n  user.twoFactorEnabled = true\n  await user.save()\n  res.json({ message: '2FA enabled' })\n})",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use the OAuth authorization code flow instead of getting tokens directly?",
+     "a": "The one-time code is exchanged server-side with the client secret, so tokens are never exposed in the browser URL and a stolen code alone is useless."
+    },
+    {
+     "q": "How does TOTP work?",
+     "a": "Both the server and authenticator app share a secret and compute a 6-digit code from the secret and the current 30-second time window; the server recomputes and compares it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-email-verify-reset",
+   "title": "Email Verification and Password Reset Flow",
+   "level": "advanced",
+   "summary": "Use single-use, expiring, hashed tokens sent by email to verify addresses and reset passwords securely.",
+   "description": "Both features use the same pattern: **prove control of an email address** with a secret link.\n\n### Token design\n1. Generate a random token: `crypto.randomBytes(32).toString('hex')`.\n2. Email the raw token in a link: `https://app.com/reset-password?token=...`.\n3. Store only a **hash** of the token (`sha256`) plus an **expiry** (10-60 min) in the database. If the DB leaks, the links are useless.\n4. When the user opens the link, hash the incoming token, find a user with that hash and a non-expired date.\n5. Perform the action, then **delete the token** (single use).\n\n### Email verification\nAfter registration set `isVerified: false` and email a verify link. `GET /auth/verify-email?token=...` sets `isVerified: true`. Block login (or sensitive actions) until verified, and allow re-sending (rate-limited).\n\n### Password reset\n1. `POST /auth/forgot-password { email }` - **always** respond `200` with \"If that email exists, we sent a link\" so you do not reveal which emails are registered.\n2. User opens the link; `POST /auth/reset-password { token, password }` verifies the token, sets the new password (hashed by the pre-save hook) and invalidates old sessions/refresh tokens.\n3. Notify the user by email that the password changed.\n\n### Sending\nUse nodemailer or a transactional service (SendGrid, Resend, SES). Never put the token in logs. Rate-limit both endpoints.",
+   "keyPoints": [
+    "Random 32-byte token emailed; only its hash + expiry stored",
+    "Tokens are single-use and expire quickly",
+    "Forgot-password responds identically whether the email exists or not",
+    "After reset, invalidate old sessions/refresh tokens",
+    "Rate-limit email-sending endpoints"
+   ],
+   "pitfalls": [
+    "Storing the reset token in plain text",
+    "Revealing whether an email is registered",
+    "Using predictable tokens (Math.random, user id, timestamp)"
+   ],
+   "examples": [
+    {
+     "title": "Forgot and reset password",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import crypto from 'node:crypto'\nimport { Router } from 'express'\nimport User from '../models/User.js'\nimport { sendEmail } from '../utils/email.js'\n\nconst router = Router()\nconst sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex')\n\nrouter.post('/forgot-password', async (req, res) => {\n  const user = await User.findOne({ email: req.body.email })\n  if (user) {\n    const token = crypto.randomBytes(32).toString('hex')\n    user.resetTokenHash = sha256(token)\n    user.resetTokenExpires = Date.now() + 15 * 60 * 1000\n    await user.save({ validateBeforeSave: false })\n\n    const link = `${process.env.CLIENT_URL}/reset-password?token=${token}`\n    await sendEmail(user.email, 'Reset your password', `Click to reset (valid 15 min): ${link}`)\n  }\n  // same answer either way\n  res.json({ message: 'If that email exists, a reset link has been sent' })\n})\n\nrouter.post('/reset-password', async (req, res) => {\n  const { token, password } = req.body\n  const user = await User.findOne({\n    resetTokenHash: sha256(token ?? ''),\n    resetTokenExpires: { $gt: Date.now() },\n  })\n  if (!user) return res.status(400).json({ error: 'Token is invalid or expired' })\n\n  user.password = password                 // pre-save hook hashes it\n  user.resetTokenHash = undefined\n  user.resetTokenExpires = undefined\n  user.tokenVersion = (user.tokenVersion ?? 0) + 1      // invalidates old refresh tokens\n  await user.save()\n  res.json({ message: 'Password updated. Please log in.' })\n})\n\nexport default router",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why store a hash of the reset token?",
+     "a": "If the database leaks, attackers cannot use the stored hashes to build valid reset links, just like password hashing."
+    },
+    {
+     "q": "Why return the same message in forgot-password for unknown emails?",
+     "a": "To prevent account enumeration: attackers cannot learn which emails are registered by observing different responses."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

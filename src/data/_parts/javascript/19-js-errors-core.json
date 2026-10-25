@@ -1,0 +1,598 @@
+{
+  "id": "js-err-core",
+  "title": "Error Types (Core)",
+  "level": "intermediate",
+  "topics": [
+    {
+      "source": "",
+      "pitfalls": [
+        "throw \"text\" has no stack and no name - callers cannot use instanceof or err.message.",
+        "console.log(JSON.stringify(err)) prints {} - copy fields explicitly (name, message, stack).",
+        "The format of err.stack is not standardised: never parse it in production logic."
+      ],
+      "id": "js-err-anatomy",
+      "title": "The Error Object: Anatomy and Hierarchy",
+      "level": "beginner",
+      "summary": "Every built-in error has name, message, stack and (optionally) cause - and all of them inherit from Error.",
+      "description": "An **error** in JavaScript is an object. When something goes wrong the engine (or your code) creates an error object and **throws** it. The throw stops normal execution and jumps to the nearest `catch` block. If nothing catches it, the error becomes *uncaught*: the browser prints it in the console and Node.js crashes the process.\n\n### Anatomy\n```js\nthrow new Error(\"Payment failed\", { cause: originalError });\n//               ^ message         ^ options (ES2022)\n```\n\n| Property | Standard? | Meaning |\n|---|---|---|\n| `name` | yes | Type label, e.g. `\"TypeError\"`. Comes from the prototype. |\n| `message` | yes | Human readable text you pass to the constructor. |\n| `cause` | ES2022 | The original error that made this one happen. |\n| `stack` | de-facto | String with the message and the call stack (format differs per engine). |\n| `errors` | ES2021 | Only on `AggregateError`: array of the individual errors. |\n\n`name` and `message` live on `Error.prototype`, so a fresh `new Error()` has an empty message and the name `\"Error\"`. `message`, `stack` and `cause` are **non-enumerable** own properties - that is why `JSON.stringify(err)` gives `{}` and `console.log(Object.keys(err))` gives `[]`.\n\n### The hierarchy\n```text\nError\n |- EvalError            (legacy, never thrown by modern engines)\n |- RangeError           (value outside the allowed range)\n |- ReferenceError       (variable does not exist / is in TDZ)\n |- SyntaxError          (code or data cannot be parsed)\n |- TypeError            (wrong type / not callable / null access)\n |- URIError             (bad URI encoding)\n |- AggregateError       (a group of errors)\n |- SuppressedError      (disposal error hiding another error)\n |- DOMException         (web platform errors: AbortError, NotFoundError...)\n |- WebAssembly.CompileError / LinkError / RuntimeError\n```\nBecause they all inherit from `Error`, `err instanceof Error` is true for each of them, while `err instanceof TypeError` is more specific. You can throw *any* value (even a string), but only `Error` objects carry a stack trace, so always throw `Error` objects.",
+      "keyPoints": [
+        "name, message, stack are the core properties; cause (ES2022) chains the original error.",
+        "message, stack and cause are non-enumerable, so JSON.stringify(err) returns \"{}\".",
+        "All native errors inherit from Error: use instanceof TypeError etc. to be specific.",
+        "Throw Error objects, not strings, so you get a stack trace.",
+        "Error.prototype.name is \"Error\" and Error.prototype.message is an empty string."
+      ],
+      "examples": [
+        {
+          "title": "Inspecting an error",
+          "language": "javascript",
+          "code": "const err = new Error(\"Payment failed\", { cause: \"card declined\" });\n\nconsole.log(err.name);                       // Error\nconsole.log(err.message);                    // Payment failed\nconsole.log(err.cause);                      // card declined\nconsole.log(err.stack.split(\"\\n\")[0]);       // Error: Payment failed\nconsole.log(Object.keys(err));               // []  (non-enumerable)\nconsole.log(JSON.stringify(err));            // {}\nconsole.log(Object.getOwnPropertyNames(err).sort().join(\", \"));\nconsole.log(String(err));                    // Error: Payment failed\nconsole.log(Object.prototype.toString.call(err)); // [object Error]\nconsole.log(new Error().message === \"\");     // true",
+          "explanation": "Only the fields are hidden from enumeration; they are all there."
+        },
+        {
+          "title": "The prototype chain of each type",
+          "language": "javascript",
+          "code": "const types = [TypeError, RangeError, SyntaxError, ReferenceError, EvalError, URIError, AggregateError];\nfor (const C of types) {\n  const e = C === AggregateError ? new C([], \"x\") : new C(\"x\");\n  console.log(C.name.padEnd(15),\n    \"instanceof Error:\", e instanceof Error,\n    \"| parent of prototype is Error.prototype:\", Object.getPrototypeOf(C.prototype) === Error.prototype);\n}\ntry { null.x; } catch (e) {\n  console.log(e instanceof TypeError, e instanceof Error, e instanceof RangeError); // true true false\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Throwing a non-Error loses information",
+          "language": "javascript",
+          "code": "function attempt(thrower) {\n  try { thrower(); } catch (e) {\n    console.log(typeof e, \"| has stack:\", typeof e === \"object\" && \"stack\" in e, \"| value:\", String(e));\n  }\n}\nattempt(() => { throw \"just a string\"; });\nattempt(() => { throw { code: 42 }; });\nattempt(() => { throw new Error(\"a real error\"); });",
+          "explanation": "Only the Error object has a stack trace."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does JSON.stringify(new Error(\"x\")) return \"{}\"?",
+          "a": "message, stack and cause are non-enumerable own properties and name is inherited, so JSON.stringify sees no enumerable own properties. Copy the fields manually or implement toJSON."
+        },
+        {
+          "q": "What is the difference between Error and TypeError?",
+          "a": "TypeError is a subclass of Error used for wrong types or invalid operations (calling a non-function, reading a property of undefined). It has name \"TypeError\" and passes instanceof Error as well."
+        },
+        {
+          "q": "Can you throw a string or number?",
+          "a": "Yes, JavaScript allows throwing any value, but it is bad practice: there is no stack trace and no consistent shape. Always throw Error objects."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Wrapping invalid source code in try/catch does nothing - the parser fails first.",
+        "Avoid eval/new Function on user input: besides SyntaxError it is a code injection hole."
+      ],
+      "id": "js-err-syntaxerror",
+      "title": "SyntaxError",
+      "level": "beginner",
+      "summary": "Thrown when code, JSON or a regular expression cannot be parsed - usually before any line runs.",
+      "description": "A **SyntaxError** means the engine could not understand the text it was given. It happens in three situations:\n\n1. **Your source code is invalid.** The whole file/script fails to parse, so *nothing* in it runs. You cannot `try/catch` it in the same file - the `try` itself was never parsed. You see it in the console as soon as the script loads.\n2. **Code built at runtime** with `eval()` or `new Function()` is invalid. This one *can* be caught because the parse happens while your program is running.\n3. **Data parsing** - `JSON.parse()`, `new RegExp()`, `BigInt(\"abc\")`, `document.querySelector(\"##\")` (a `DOMException` named `SyntaxError`).\n\n### Syntax\n```js\nthrow new SyntaxError(\"Invalid config format\", { cause: parseError });\n```\n\n### Typical messages (V8 / Chrome / Node)\n| Message | Usual cause |\n|---|---|\n| `Unexpected token '}'` | extra or missing bracket |\n| `Unexpected identifier 'bar'` | two words where an operator or comma is missing |\n| `Unexpected end of input` | a `(`, `{` or `[` was never closed |\n| `Invalid or unexpected token` | bad character, unterminated string |\n| `missing ) after argument list` | forgot `)` or `,` in a call |\n| `Invalid regular expression: /(/: Unterminated group` | broken RegExp |\n| `Unexpected token '<', \"<html>\" is not valid JSON` | server returned HTML instead of JSON |\n\n### How to fix\nRead the **line number** in the console, look at the line *and the one before it* (a missing `)` is reported on the next line), and use an editor with bracket matching and ESLint. For JSON, validate the text in `try/catch` and log the first characters of the raw string.\n\n### How to catch\nOnly runtime parsing can be caught: `catch (e) { if (e instanceof SyntaxError) ... }`. Remember that `JSON.parse` throwing `SyntaxError` is the normal way to detect invalid JSON.",
+      "keyPoints": [
+        "A SyntaxError in your own file stops the whole script from running - nothing executes.",
+        "Only runtime parsing (JSON.parse, eval, new Function, new RegExp) can be caught with try/catch.",
+        "Missing brackets are often reported on the line AFTER the real mistake.",
+        "JSON.parse is the most common source of catchable SyntaxErrors.",
+        "Use a linter/formatter to find syntax mistakes before running."
+      ],
+      "examples": [
+        {
+          "title": "Runtime-parsed invalid code",
+          "language": "javascript",
+          "code": "const bad = [\n  \"var 1a = 5\",              // invalid identifier\n  \"foo bar\",                 // missing operator\n  \"console.log('hi'\",        // missing )\n  \"if (true) {\",             // unclosed block\n  \"let a; let a;\",           // duplicate declaration\n  \"return 1\",                // return outside function\n];\nfor (const src of bad) {\n  try { (0, eval)(src); }\n  catch (e) { console.log(e.name + \": \" + e.message); }\n}",
+          "explanation": "Indirect eval parses at runtime, so the SyntaxError can be caught. The messages are the ones Chrome/Node print."
+        },
+        {
+          "title": "JSON.parse failures",
+          "language": "javascript",
+          "code": "const inputs = [\"{name: 'Asha'}\", '{\"a\":1,}', \"\", \"<html>\", \"undefined\", '{\"a\":1}}'];\nfor (const text of inputs) {\n  try { JSON.parse(text); }\n  catch (e) { console.log(JSON.stringify(text) + \" -> \" + e.name + \": \" + e.message); }\n}",
+          "explanation": "Each message tells you the position or the first bad token."
+        },
+        {
+          "title": "RegExp and BigInt",
+          "language": "javascript",
+          "code": "const attempts = [\n  () => new RegExp(\"[\"),\n  () => new RegExp(\"(abc\"),\n  () => new RegExp(\"a\", \"z\"),\n  () => new RegExp(\"*\"),\n  () => BigInt(\"12abc\"),\n];\nfor (const fn of attempts) {\n  try { fn(); } catch (e) { console.log(e instanceof SyntaxError, e.message); }\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Can you catch a SyntaxError with try/catch?",
+          "a": "Only if it is produced at runtime (eval, new Function, JSON.parse, new RegExp, import() of a broken module). A syntax error in the same script is raised while parsing, before the try block exists."
+        },
+        {
+          "q": "Why does the console point to the wrong line for a missing bracket?",
+          "a": "The parser notices the problem when it meets a token that does not fit, which is usually after the line where the bracket should have been."
+        },
+        {
+          "q": "How do you validate JSON safely?",
+          "a": "Wrap JSON.parse in try/catch and return a fallback or a typed error when a SyntaxError is thrown."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Do not hide ReferenceErrors with try/catch - fix the missing declaration.",
+        "var does not have a TDZ (it gives undefined), so switching var to let can reveal hidden bugs."
+      ],
+      "id": "js-err-referenceerror",
+      "title": "ReferenceError (including the TDZ)",
+      "level": "beginner",
+      "summary": "Thrown when you use a variable that does not exist or is not yet initialised.",
+      "description": "A **ReferenceError** is thrown when code refers to a binding (variable name) that the engine cannot resolve or is not allowed to read yet.\n\n### When it is thrown\n1. **Undeclared variable** - `console.log(total)` when `total` was never declared (typo, missing import, forgot `const`).\n2. **Temporal Dead Zone (TDZ)** - `let`, `const` and `class` are hoisted but *uninitialised* until their declaration line runs. Reading them before that throws `Cannot access 'x' before initialization`.\n3. **Strict mode assignment** to an undeclared name - `\"use strict\"; count = 1` throws, while sloppy mode silently creates a global.\n4. **Derived classes** - using `this` before `super()`.\n5. **Environment mismatch** - `window`, `document` in Node or Worker, `require` in an ES module, `process` in the browser.\n\n### Syntax\n```js\nthrow new ReferenceError(\"config is not defined\");\n```\n\n### Messages\n| Message | Meaning |\n|---|---|\n| `x is not defined` | no such variable in any scope |\n| `Cannot access 'x' before initialization` | TDZ |\n| `Must call super constructor in derived class before accessing 'this' or returning from derived constructor` | `this` before `super()` |\n| `window is not defined` / `document is not defined` | running outside a window (Node, Worker, SSR) |\n| `require is not defined in ES module scope` | Node ES modules |\n\n### Fix\nDeclare the variable, fix the typo, import it, move the declaration above its first use, or guard environment checks with `typeof`: `typeof window !== \"undefined\"` (**typeof** is safe for *undeclared* names, but still throws in the TDZ).\n\n### Catch\n`catch (e) { if (e instanceof ReferenceError) ... }` - but a ReferenceError is almost always a bug to fix, not to handle.",
+      "keyPoints": [
+        "ReferenceError = the name cannot be resolved (typo, missing import, not yet initialised).",
+        "let/const/class are in the TDZ from the start of the scope until their declaration runs.",
+        "typeof on an undeclared variable returns \"undefined\" instead of throwing; in the TDZ it still throws.",
+        "\"window is not defined\" means the code runs in Node/Worker/SSR - guard with typeof window.",
+        "Strict mode turns accidental global creation into a ReferenceError."
+      ],
+      "examples": [
+        {
+          "title": "Three common triggers",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); } catch (e) { console.log(e.name + \": \" + e.message); }\n}\nshow(() => console.log(total));                   // undeclared\nshow(() => { console.log(a); let a = 1; });       // TDZ\nshow(() => { \"use strict\"; leaked = 5; });        // strict mode assignment\nshow(() => { new Klass(); class Klass {} });      // class TDZ\nshow(() => typeof notDeclaredAnywhere === \"undefined\" && console.log(\"typeof is safe\"));\nshow(() => { typeof tdzVar; let tdzVar = 1; });   // typeof is NOT safe in the TDZ",
+          "explanation": ""
+        },
+        {
+          "title": "this before super()",
+          "language": "javascript",
+          "code": "class Animal { constructor(name) { this.name = name; } }\nclass Dog extends Animal {\n  constructor(name) {\n    // this.tricks = [];   // would throw ReferenceError here\n    super(name);\n    this.tricks = [];\n  }\n}\nclass Broken extends Animal {\n  constructor() { this.x = 1; }\n}\nconsole.log(new Dog(\"Rex\").name);\ntry { new Broken(); } catch (e) { console.log(e.name + \": \" + e.message); }",
+          "explanation": ""
+        },
+        {
+          "title": "Environment checks done right",
+          "language": "javascript",
+          "code": "const hasWindow = typeof window !== \"undefined\";\nconst hasDocument = typeof document !== \"undefined\";\nconsole.log(\"window:\", hasWindow, \"document:\", hasDocument);\ntry { document.title; } catch (e) { console.log(e.name + \": \" + e.message); }",
+          "explanation": "In a Web Worker or Node.js, document does not exist."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the temporal dead zone?",
+          "a": "The period between entering a scope and executing a let/const/class declaration. The binding exists but is uninitialised, so reading it throws ReferenceError."
+        },
+        {
+          "q": "Why does typeof usually not throw for undeclared variables?",
+          "a": "typeof is specified to return \"undefined\" for unresolvable references. Variables in the TDZ are resolvable but uninitialised, so typeof throws for them."
+        },
+        {
+          "q": "What causes \"document is not defined\"?",
+          "a": "The code runs where no DOM exists: Node.js, a Web Worker or server-side rendering. Guard with typeof document !== \"undefined\" or run it only on the client."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "API data may be null/undefined even when the docs say otherwise - never trust nested paths.",
+        "Using a method without its object (const f = obj.method; f()) loses this and often causes TypeError."
+      ],
+      "id": "js-err-typeerror",
+      "title": "TypeError",
+      "level": "beginner",
+      "summary": "The most common JavaScript error: a value is not the type an operation needs.",
+      "description": "A **TypeError** is thrown when an operation is applied to a value of the wrong type. It is by far the most frequent runtime error in real applications.\n\n### When it is thrown\n- Reading or writing a property of `undefined` / `null`.\n- Calling something that is not a function, or `new` on something that is not a constructor.\n- Assigning to a `const` variable or a read-only property in strict mode.\n- Using a non-iterable in `for...of`, spread or destructuring.\n- Mixing `BigInt` with `Number`, or converting a `Symbol` to a string/number.\n- Circular structures in `JSON.stringify`, invalid `URL` strings, wrong receiver for built-in methods.\n\n### Syntax\n```js\nif (typeof callback !== \"function\") {\n  throw new TypeError(\"callback must be a function, got \" + typeof callback);\n}\n```\n\n### Common messages\n| Message | Cause |\n|---|---|\n| `Cannot read properties of undefined (reading 'x')` | `undefined.x` |\n| `x is not a function` | calling a non-function |\n| `x is not iterable` | spread/for-of on a plain object |\n| `Assignment to constant variable.` | reassigning `const` |\n| `Cannot mix BigInt and other types, use explicit conversions` | `1n + 1` |\n| `Converting circular structure to JSON` | self-referencing object |\n| `Invalid URL` | `new URL(\"abc\")` |\n\n### How to fix\nCheck data *before* using it: optional chaining `a?.b`, default values `a ?? []`, `typeof`, `Array.isArray`, `Number.isFinite`. Validate API responses and function arguments at the boundaries. TypeScript or JSDoc types catch most of these at build time.\n\n### How to catch\n`catch (e) { if (e instanceof TypeError) ... }`. Prefer preventing the error over catching it - catching a TypeError usually hides a real bug.",
+      "keyPoints": [
+        "TypeError = right operation, wrong kind of value (undefined, non-function, non-iterable, BigInt mix...).",
+        "Use optional chaining (?.), nullish coalescing (??) and typeof checks to prevent it.",
+        "Validate arguments in your own functions and throw a TypeError with a clear message.",
+        "Strict-mode writes to frozen/read-only objects also throw TypeError.",
+        "Catching TypeError broadly often hides bugs - fix the data flow instead."
+      ],
+      "examples": [
+        {
+          "title": "Everyday TypeErrors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); } catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconst user = {};\nshow(() => user.address.city);              // undefined access\nshow(() => user.save());                    // not a function\nshow(() => { const [a] = 42; });            // not iterable\nshow(() => { const n = 1; n = 2; });        // const reassignment\nshow(() => 1n + 1);                         // BigInt mix\nshow(() => new URL(\"not a url\"));           // invalid URL\nshow(() => Symbol() + \"\");                  // Symbol conversion\nshow(() => null[0]);                        // null access",
+          "explanation": ""
+        },
+        {
+          "title": "Throwing your own TypeError",
+          "language": "javascript",
+          "code": "function sum(numbers) {\n  if (!Array.isArray(numbers)) {\n    throw new TypeError(\"sum() expects an array, got \" + typeof numbers);\n  }\n  return numbers.reduce((a, b) => a + b, 0);\n}\ntry { sum(\"1,2,3\"); } catch (e) {\n  console.log(e instanceof TypeError, e.message);\n}\nconsole.log(sum([1, 2, 3]));",
+          "explanation": ""
+        },
+        {
+          "title": "Preventing TypeError",
+          "language": "javascript",
+          "code": "const response = { data: null };\nconsole.log(response.data?.items?.length);          // undefined, no crash\nconsole.log((response.data?.items ?? []).length);   // 0\nconst fn = undefined;\nconsole.log(typeof fn === \"function\" ? fn() : \"no handler\");\nconsole.log(fn?.());                                // undefined",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do I get \"Cannot read properties of undefined\"?",
+          "a": "You accessed a property on a variable whose value is undefined, typically because data has not loaded yet, a key is misspelled or a function returned nothing. Check the value first or use optional chaining."
+        },
+        {
+          "q": "How is a TypeError different from a ReferenceError?",
+          "a": "ReferenceError means the name cannot be found or is in the TDZ. TypeError means the value exists but is the wrong type for the operation."
+        },
+        {
+          "q": "Should you catch TypeError?",
+          "a": "Rarely. Catch it at boundaries (parsing, plugins) and prefer validation and optional chaining to prevent it."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Date.parse and new Date(invalid) never throw - the error appears later at toISOString().",
+        "Spreading a huge array into a function call (Math.max(...hugeArray)) can overflow the stack."
+      ],
+      "id": "js-err-rangeerror",
+      "title": "RangeError",
+      "level": "beginner",
+      "summary": "A value is of the right type but outside the allowed range - including stack overflow.",
+      "description": "A **RangeError** is thrown when a numeric value is not inside the set or range of allowed values for an operation.\n\n### When it is thrown\n- **Stack overflow** - runaway recursion: `Maximum call stack size exceeded`.\n- **Invalid array length** - `new Array(-1)`, `arr.length = -1`, lengths above 2^32 - 1.\n- **Number formatting** - `toFixed(101)`, `toPrecision(0)`, `toString(1)`, `toExponential(-1)`.\n- **String sizes** - `\"a\".repeat(-1)`, `\"a\".repeat(Infinity)`, strings longer than the engine limit (`Invalid string length`).\n- **Dates** - `new Date(\"abc\").toISOString()` (`Invalid time value`).\n- **Typed arrays / ArrayBuffer / DataView** - bad sizes or offsets.\n- **BigInt** - `BigInt(1.5)`.\n- **Intl** - invalid currency code, unknown time zone, out-of-range digit options.\n- **WebAssembly.Memory** - initial size above the limit.\n\n### Syntax\n```js\nif (n < 0 || n > 100) throw new RangeError(\"n must be between 0 and 100, got \" + n);\n```\n\n### Messages\n| Message | Trigger |\n|---|---|\n| `Maximum call stack size exceeded` | infinite recursion |\n| `Invalid array length` | `new Array(-1)` |\n| `Invalid count value: -1` | `\"a\".repeat(-1)` |\n| `Invalid time value` | `new Date(NaN).toISOString()` |\n| `toFixed() digits argument must be between 0 and 100` | `(1).toFixed(101)` |\n| `Invalid string length` | building a string larger than ~512 MB |\n| `Invalid typed array length: -1` | `new Uint8Array(-1)` |\n\n### How to fix\nValidate numbers before use (`Number.isInteger`, clamp with `Math.min/max`), give recursion a base case or convert it to a loop, and check dates with `isNaN(date)` before calling `toISOString()`.\n\n### How to catch\n`catch (e) { if (e instanceof RangeError) ... }`. Catching stack overflow is possible but the stack is almost full, so only do minimal work (log and exit).",
+      "keyPoints": [
+        "RangeError = right type, wrong magnitude.",
+        "Infinite recursion produces \"Maximum call stack size exceeded\".",
+        "toFixed/toPrecision/toString(radix)/repeat/Array length all validate their numeric argument.",
+        "toISOString() on an invalid Date throws RangeError: check isNaN(date) first.",
+        "Fix recursion with a base case, an iterative loop or a trampoline."
+      ],
+      "examples": [
+        {
+          "title": "Common RangeErrors",
+          "language": "javascript",
+          "code": "function show(fn) {\n  try { fn(); } catch (e) { console.log(e.name + \": \" + e.message); }\n}\nfunction infinite() { return infinite(); }\nshow(infinite);\nshow(() => new Array(-1));\nshow(() => { const a = []; a.length = -1; });\nshow(() => \"ab\".repeat(-1));\nshow(() => (123.456).toFixed(101));\nshow(() => (10).toString(37));\nshow(() => new Date(\"garbage\").toISOString());\nshow(() => new Uint8Array(-1));\nshow(() => BigInt(1.5));\nshow(() => String.fromCodePoint(-1));",
+          "explanation": ""
+        },
+        {
+          "title": "Validate before you call",
+          "language": "javascript",
+          "code": "function safeIso(value) {\n  const d = new Date(value);\n  return Number.isNaN(d.getTime()) ? null : d.toISOString();\n}\nconsole.log(safeIso(\"2024-05-01T10:00:00Z\"));\nconsole.log(safeIso(\"not a date\"));\n\nfunction toFixedSafe(n, digits) {\n  const d = Math.min(100, Math.max(0, Math.trunc(digits)));\n  return n.toFixed(d);\n}\nconsole.log(toFixedSafe(Math.PI, 2), toFixedSafe(Math.PI, 500).length);",
+          "explanation": ""
+        },
+        {
+          "title": "Recursion: base case or loop",
+          "language": "javascript",
+          "code": "function sumTo(n) { return n === 0 ? 0 : n + sumTo(n - 1); }   // deep recursion\nfunction sumToLoop(n) { let s = 0; for (let i = 1; i <= n; i++) s += i; return s; }\n\nconsole.log(sumTo(100));\ntry { sumTo(1e6); } catch (e) { console.log(e.name + \": \" + e.message); }\nconsole.log(sumToLoop(1e6));",
+          "explanation": "The loop version uses constant stack space."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What causes \"Maximum call stack size exceeded\"?",
+          "a": "Too many nested function calls, almost always recursion without a reachable base case (or very deep valid recursion). Each call uses stack memory and the engine throws RangeError at its limit."
+        },
+        {
+          "q": "Why does new Date(\"abc\") not throw but toISOString() does?",
+          "a": "The Date constructor produces an \"Invalid Date\" object with NaN time. Methods that need a real time, like toISOString(), throw RangeError: Invalid time value."
+        },
+        {
+          "q": "How can you avoid stack overflow in deep recursion?",
+          "a": "Use iteration, an explicit stack, or a trampoline. JavaScript engines (except Safari) do not guarantee tail-call optimisation."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "decodeURIComponent(\"%\") in a router or search box crashes the page when the user types a percent sign.",
+        "Loosening CSP to allow unsafe-eval re-opens XSS holes - remove eval instead."
+      ],
+      "id": "js-err-eval-uri",
+      "title": "EvalError and URIError",
+      "level": "intermediate",
+      "summary": "URIError for malformed encoding in decodeURIComponent and friends; EvalError is legacy and no longer thrown.",
+      "description": "These two are the quiet members of the family.\n\n### URIError\nThrown by the global URI functions when they receive text that is not valid for encoding/decoding:\n- `decodeURIComponent(\"%\")` / `decodeURI(\"%E0%A4%A\")` - a `%` not followed by two hex digits, or an invalid UTF-8 byte sequence.\n- `encodeURIComponent(\"\\uD800\")` - a **lone surrogate** (half of an emoji) cannot be encoded.\n\nThe message is always `URI malformed` in V8.\n\n```js\ntry { decodeURIComponent(location.search); }\ncatch (e) { if (e instanceof URIError) { /* use the raw string */ } }\n```\n\nUser-controlled URLs (query strings, cookies, redirect parameters) are a classic source: a stray `%` in a search term crashes `decodeURIComponent`. Always wrap decoding of untrusted input in `try/catch`. The newer `URLSearchParams` API is more forgiving - it decodes leniently and never throws.\n\n### EvalError\nThe specification keeps `EvalError` for historical reasons, but **no modern engine throws it**: problems with `eval` are reported as `SyntaxError`, `ReferenceError` or `TypeError` instead. The constructor still exists, so you can create one manually, and you will see it in old code or old IE.\n\nA far more important \"eval error\" today is the **Content Security Policy** block: when the page forbids `unsafe-eval`, calling `eval()` or `new Function()` throws an **EvalError** in Chrome: `Refused to evaluate a string as JavaScript because 'unsafe-eval' is not an allowed source of script in the following Content Security Policy directive...`. Fix it by removing `eval` (use `JSON.parse`, real functions) rather than loosening the CSP.\n\n### Summary\n| Error | Real-world trigger | Fix |\n|---|---|---|\n| URIError: URI malformed | decoding user input with a bad `%` | `try/catch` or `URLSearchParams` |\n| URIError: URI malformed | encoding a lone surrogate | normalise with `str.toWellFormed()` |\n| EvalError (CSP) | `eval` under strict CSP | avoid `eval` |",
+      "keyPoints": [
+        "URIError: URI malformed comes from decodeURI/decodeURIComponent/encodeURI/encodeURIComponent.",
+        "Always try/catch decodeURIComponent on user-supplied strings.",
+        "String.prototype.toWellFormed() replaces lone surrogates so encoding cannot fail.",
+        "EvalError is legacy: the spec defines it but engines do not throw it for normal eval problems.",
+        "CSP without unsafe-eval blocks eval/new Function (reported as EvalError in Chrome)."
+      ],
+      "examples": [
+        {
+          "title": "URIError triggers",
+          "language": "javascript",
+          "code": "const attempts = [\n  () => decodeURIComponent(\"%\"),\n  () => decodeURIComponent(\"%E0%A4%A\"),\n  () => decodeURI(\"%zz\"),\n  () => encodeURIComponent(\"\\uD800\"),\n  () => encodeURI(\"\\uDC00\"),\n];\nfor (const fn of attempts) {\n  try { fn(); } catch (e) { console.log(e.name + \": \" + e.message, \"| instanceof URIError:\", e instanceof URIError); }\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Safe decoding helper",
+          "language": "javascript",
+          "code": "function safeDecode(value) {\n  try { return decodeURIComponent(value); }\n  catch (e) {\n    if (e instanceof URIError) return value;   // fall back to the raw text\n    throw e;\n  }\n}\nconsole.log(safeDecode(\"hello%20world\"));   // hello world\nconsole.log(safeDecode(\"100%\"));            // 100%\nconsole.log(new URLSearchParams(\"q=100%\").get(\"q\"));   // lenient: never throws\nconsole.log(encodeURIComponent(\"a\\uD800b\".toWellFormed()));",
+          "explanation": ""
+        },
+        {
+          "title": "EvalError can still be constructed",
+          "language": "javascript",
+          "code": "const e = new EvalError(\"custom eval problem\");\nconsole.log(e.name, e instanceof Error, e.message);\n// Modern engines report bad eval code as SyntaxError instead:\ntry { eval(\"let let = 1\"); } catch (err) { console.log(err.name + \": \" + err.message); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "When does decodeURIComponent throw?",
+          "a": "When the input has a % not followed by two hex digits or the bytes do not form valid UTF-8. It throws URIError: URI malformed."
+        },
+        {
+          "q": "Does JavaScript still throw EvalError?",
+          "a": "Not for normal eval failures. The class exists for compatibility; CSP violations are the main case where you may see an EvalError in browsers."
+        },
+        {
+          "q": "How do you avoid URIError when reading query parameters?",
+          "a": "Use URLSearchParams, or wrap decodeURIComponent in try/catch and fall back to the raw value."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "console.log(aggErr.message) shows only \"All promises were rejected\" - look inside err.errors.",
+        "Do not confuse it with Promise.allSettled, which reports results instead of throwing."
+      ],
+      "id": "js-err-aggregateerror",
+      "title": "AggregateError",
+      "level": "intermediate",
+      "summary": "Wraps several errors into one - thrown by Promise.any when every promise rejects.",
+      "description": "An **AggregateError** (ES2021) represents *many errors at once*. It extends `Error` and adds an `errors` array holding the individual failures.\n\n### When it is thrown\n- **`Promise.any(iterable)`** rejects with an `AggregateError` (message `All promises were rejected`) when *every* input promise rejects, or when the iterable is empty.\n- **Your own code** that runs several independent tasks and wants to report all failures together (form validation, batch jobs, parallel cleanup).\n\n### Syntax\n```js\nnew AggregateError(errors, message?, options?)\nthrow new AggregateError([err1, err2], \"2 tasks failed\", { cause });\n```\nThe first argument is any iterable of errors; it is copied into `error.errors` (an array).\n\n### Reading it\n```js\ntry { await Promise.any([a(), b(), c()]); }\ncatch (e) {\n  if (e instanceof AggregateError) {\n    for (const inner of e.errors) console.log(inner.message);\n  }\n}\n```\nThe order of `errors` follows the *input order*, not the order of rejection.\n\n### Fix\nAn AggregateError from `Promise.any` is not a bug in itself - it says \"no source succeeded\". Handle it by showing a fallback or a combined message. If you only want the first failure use `Promise.race` or `Promise.all`; if you need all outcomes use `Promise.allSettled` which never rejects.\n\n### Comparison\n| Combinator | Rejects when | Rejection value |\n|---|---|---|\n| `all` | first rejection | that single error |\n| `race` | first settled is a rejection | that single error |\n| `any` | all reject | `AggregateError` |\n| `allSettled` | never | - |",
+      "keyPoints": [
+        "AggregateError holds an array of errors in err.errors.",
+        "Promise.any rejects with AggregateError only when ALL promises reject (or the list is empty).",
+        "You can create one yourself: new AggregateError([e1, e2], \"message\").",
+        "errors keeps input order, not rejection order.",
+        "Use instanceof AggregateError and loop over err.errors."
+      ],
+      "examples": [
+        {
+          "title": "Promise.any rejects with AggregateError",
+          "language": "javascript",
+          "code": "const fail = (msg, ms) => new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms));\n\nPromise.any([fail(\"server A down\", 20), fail(\"server B down\", 5), fail(\"server C down\", 10)])\n  .catch((e) => {\n    console.log(e.name + \": \" + e.message);\n    console.log(e instanceof AggregateError, e instanceof Error);\n    console.log(e.errors.map((x) => x.message));\n  });\n\nPromise.any([]).catch((e) => console.log(\"empty list ->\", e.name, e.errors.length));",
+          "explanation": "The errors array is in input order (A, B, C)."
+        },
+        {
+          "title": "One success wins",
+          "language": "javascript",
+          "code": "const ok = (v, ms) => new Promise((res) => setTimeout(() => res(v), ms));\nconst bad = (m) => Promise.reject(new Error(m));\nPromise.any([bad(\"x\"), ok(\"mirror 2\", 10), bad(\"y\")]).then((v) => console.log(\"winner:\", v));",
+          "explanation": ""
+        },
+        {
+          "title": "Creating your own",
+          "language": "javascript",
+          "code": "function validate(form) {\n  const errors = [];\n  if (!form.name) errors.push(new TypeError(\"name is required\"));\n  if (!(form.age >= 18)) errors.push(new RangeError(\"age must be 18+\"));\n  if (errors.length) throw new AggregateError(errors, \"Form has \" + errors.length + \" problems\");\n  return true;\n}\ntry { validate({ name: \"\", age: 10 }); }\ncatch (e) {\n  console.log(e.message);\n  e.errors.forEach((x, i) => console.log(i + 1 + \".\", x.name, \"-\", x.message));\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "When does Promise.any reject?",
+          "a": "Only when all input promises reject (or the iterable is empty). It rejects with an AggregateError whose errors array lists every rejection reason."
+        },
+        {
+          "q": "What is the difference between Promise.any and Promise.race?",
+          "a": "race settles with the first promise to settle, success or failure. any ignores rejections and resolves with the first fulfilment."
+        },
+        {
+          "q": "How do you read the individual failures?",
+          "a": "Check err instanceof AggregateError and iterate err.errors."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Referencing InternalError in Chrome throws ReferenceError - always feature-detect with typeof.",
+        "SuppressedError is new: older browsers lack it, so guard its use."
+      ],
+      "id": "js-err-other-types",
+      "title": "InternalError, SuppressedError, WebAssembly and Intl Errors",
+      "level": "advanced",
+      "summary": "The less common error types: Firefox-only InternalError, disposal SuppressedError, WebAssembly CompileError/LinkError/RuntimeError and Intl failures.",
+      "description": "Besides the well-known types there are a few specialised ones you may meet.\n\n### InternalError (non-standard)\nFirefox (SpiderMonkey) only. It signals an **engine-internal limit**: `InternalError: too much recursion` (Firefox's stack overflow, where Chrome throws `RangeError`), `InternalError: script stack space quota is exhausted`. It does **not exist** in Chrome/Safari/Node (`typeof InternalError` is `\"undefined\"` there), so never rely on `instanceof InternalError`. Check `e.message` or `e instanceof RangeError || e.name === \"InternalError\"`.\n\n### SuppressedError (explicit resource management)\nNew in ES2026 with `using` / `DisposableStack`. If the body of a block throws **and** disposing a resource also throws, the engine throws a `SuppressedError` with two properties: `error` (the later disposal error) and `suppressed` (the original error it replaces). Feature-detect it with `typeof SuppressedError`.\n\n```js\nnew SuppressedError(error, suppressed, message)\n```\n\n### WebAssembly errors\nThree subclasses of `Error` in the `WebAssembly` namespace:\n| Class | Thrown when |\n|---|---|\n| `WebAssembly.CompileError` | the binary is invalid (`expected magic word 00 61 73 6d`) |\n| `WebAssembly.LinkError` | imports are missing or have the wrong type during instantiation |\n| `WebAssembly.RuntimeError` | trap while running: `unreachable`, divide by zero, out-of-bounds memory access |\nInvalid arguments (`new WebAssembly.Instance(1)`) are ordinary `TypeError` and oversize memory is `RangeError`.\n\n### Intl errors\nThe `Intl` API reuses the standard types: `RangeError` for bad values (`Invalid time zone specified: Mars/Base`, `Invalid currency code : XX`, `Incorrect locale information provided` for `en_US` - use `en-US`) and `TypeError` for missing options (`Currency code is required with currency style.`).\n\n### Catch strategy\nFor all of them: catch, check `e.name` or `instanceof` (after a feature test), and fall back to a default.",
+      "keyPoints": [
+        "InternalError exists only in Firefox; use message/RangeError checks for cross-browser code.",
+        "SuppressedError appears when disposal fails while another error is already propagating.",
+        "WebAssembly has CompileError, LinkError and RuntimeError (all extend Error).",
+        "Intl APIs throw RangeError for invalid values and TypeError for missing required options.",
+        "Locale tags use hyphens: en-US, not en_US."
+      ],
+      "examples": [
+        {
+          "title": "Intl errors",
+          "language": "javascript",
+          "code": "const attempts = [\n  () => new Intl.NumberFormat(\"en\", { style: \"currency\" }),\n  () => new Intl.NumberFormat(\"en\", { style: \"currency\", currency: \"XX\" }),\n  () => new Intl.DateTimeFormat(\"en\", { timeZone: \"Mars/Base\" }),\n  () => Intl.getCanonicalLocales(\"en_US\"),\n  () => (1).toLocaleString(\"en\", { minimumFractionDigits: 200 }),\n];\nfor (const fn of attempts) {\n  try { fn(); } catch (e) { console.log(e.name + \": \" + e.message); }\n}\nconsole.log(Intl.getCanonicalLocales(\"en-us\")[0]);",
+          "explanation": ""
+        },
+        {
+          "title": "WebAssembly errors",
+          "language": "javascript",
+          "code": "function show(fn) { try { fn(); } catch (e) { console.log(e.name + \" | \" + e.message); } }\nshow(() => new WebAssembly.Module(new Uint8Array([1, 2, 3, 4])));   // CompileError\nshow(() => new WebAssembly.Instance(1));                            // TypeError\nshow(() => new WebAssembly.Memory({ initial: 100000 }));            // RangeError\nconst e = new WebAssembly.RuntimeError(\"unreachable executed\");\nconsole.log(e.name, e instanceof Error, new WebAssembly.LinkError(\"x\").name);",
+          "explanation": "Message text may differ slightly between engines."
+        },
+        {
+          "title": "Feature-detecting the exotic ones",
+          "language": "javascript",
+          "code": "console.log(\"InternalError available:\", typeof InternalError !== \"undefined\");\nif (typeof SuppressedError === \"function\") {\n  const s = new SuppressedError(new Error(\"disposal failed\"), new Error(\"original\"), \"both failed\");\n  console.log(s.name, \"|\", s.error.message, \"|\", s.suppressed.message, \"|\", s instanceof Error);\n} else {\n  console.log(\"SuppressedError not supported here\");\n}\nfunction isStackOverflow(e) {\n  return e instanceof RangeError || (typeof InternalError !== \"undefined\" && e instanceof InternalError);\n}\nfunction loop() { return loop(); }\ntry { loop(); } catch (e) { console.log(\"stack overflow detected:\", isStackOverflow(e)); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is InternalError?",
+          "a": "A non-standard Firefox error for engine limits such as \"too much recursion\". Other browsers throw RangeError instead."
+        },
+        {
+          "q": "When is SuppressedError thrown?",
+          "a": "When an error is already propagating and disposing a resource (using / DisposableStack) throws another error. The new error becomes the error property and the original is stored in suppressed."
+        },
+        {
+          "q": "What WebAssembly error types exist?",
+          "a": "CompileError (invalid binary), LinkError (bad imports during instantiation) and RuntimeError (trap during execution)."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Messages differ per browser (and per language): only name is reliable.",
+        "In older browsers a DOMException may not pass instanceof Error.",
+        "Rejections from fetch with AbortController are DOMException AbortError, not TypeError."
+      ],
+      "id": "js-err-domexception",
+      "title": "DOMException",
+      "level": "intermediate",
+      "summary": "The error type of the web platform: thrown by DOM, fetch, storage, workers - identified by its name, not its class.",
+      "description": "**DOMException** is the error class used by browser APIs (and by Node's web-compatible APIs). Unlike `TypeError` or `RangeError`, there is only *one* class and the **kind** of problem is stored in the `name` property: `NotFoundError`, `AbortError`, `QuotaExceededError` and so on.\n\n### Anatomy\n| Property | Meaning |\n|---|---|\n| `name` | the error kind, e.g. `\"AbortError\"` |\n| `message` | description, often the form `Failed to execute 'x' on 'Y': ...` |\n| `code` | legacy numeric code (`8` for NotFoundError); `0` for newer names |\n| `stack` | stack trace in modern engines |\n\n`DOMException` inherits from `Error`, so `instanceof Error` and `instanceof DOMException` are both true.\n\n### Syntax\n```js\nthrow new DOMException(\"User cancelled\", \"AbortError\");\n//                      ^ message         ^ name\n```\n\n### When is it thrown?\n- DOM manipulation: `removeChild` on a non-child (NotFoundError), `createElement(\"1a\")` (InvalidCharacterError).\n- `fetch` aborted by `AbortController` (AbortError) or `AbortSignal.timeout()` (TimeoutError).\n- `structuredClone(fn)` / `postMessage` with a function (DataCloneError).\n- Storage: `localStorage.setItem` over the quota (QuotaExceededError), blocked cookies (SecurityError).\n- Media/permission APIs: `play()` blocked by autoplay policy (NotAllowedError).\n\n### How to catch\nBecause the class is the same, branch on **`name`**:\n```js\ntry { await fetch(url, { signal }); }\ncatch (e) {\n  if (e.name === \"AbortError\") return;        // user left the page\n  if (e.name === \"TimeoutError\") showRetry();\n  else throw e;\n}\n```\nDo not branch on `message` (it is localised and differs between browsers) or on `code` (legacy).",
+      "keyPoints": [
+        "DOMException is one class; the error kind lives in err.name (NotFoundError, AbortError...).",
+        "Create one with new DOMException(message, name).",
+        "It extends Error, so instanceof Error is true.",
+        "Branch on e.name, never on e.message or the legacy numeric code.",
+        "Thrown by DOM, fetch/AbortController, structuredClone, storage, media and permission APIs."
+      ],
+      "examples": [
+        {
+          "title": "DOMException basics",
+          "language": "javascript",
+          "code": "const d = new DOMException(\"Item missing\", \"NotFoundError\");\nconsole.log(d.name, d.code, d.message);\nconsole.log(d instanceof DOMException, d instanceof Error);\nconsole.log(Object.prototype.toString.call(d));\n\ntry { structuredClone(() => {}); }\ncatch (e) { console.log(e instanceof DOMException, e.name, e.code); }",
+          "explanation": ""
+        },
+        {
+          "title": "AbortController reasons",
+          "language": "javascript",
+          "code": "const ac = new AbortController();\nac.abort();\nconsole.log(ac.signal.aborted, ac.signal.reason.name, ac.signal.reason.code);\ntry { ac.signal.throwIfAborted(); }\ncatch (e) { console.log(\"caught:\", e.name); }\n\nconst custom = new AbortController();\ncustom.abort(new DOMException(\"Timed out after 3s\", \"TimeoutError\"));\nconsole.log(custom.signal.reason.name, \"-\", custom.signal.reason.message);",
+          "explanation": "abort(reason) lets you decide which error is exposed to listeners."
+        },
+        {
+          "title": "Branching on name",
+          "language": "javascript",
+          "code": "function classify(e) {\n  switch (e.name) {\n    case \"AbortError\": return \"cancelled by the user\";\n    case \"TimeoutError\": return \"took too long\";\n    case \"DataCloneError\": return \"value cannot be cloned\";\n    case \"InvalidCharacterError\": return \"bad characters\";\n    default: return \"unknown: \" + e.name;\n  }\n}\nconst errors = [\n  new DOMException(\"x\", \"AbortError\"),\n  new DOMException(\"x\", \"TimeoutError\"),\n  new DOMException(\"x\", \"DataCloneError\"),\n  new Error(\"plain\"),\n];\nerrors.forEach((e) => console.log(classify(e)));\ntry { atob(\"***\"); } catch (e) { console.log(\"atob ->\", classify(e)); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you tell which kind of DOMException you got?",
+          "a": "Read err.name (for example \"AbortError\"). The class is always DOMException; message text and numeric codes are not reliable."
+        },
+        {
+          "q": "Why does an aborted fetch reject with an AbortError?",
+          "a": "When the AbortSignal is aborted, fetch rejects with signal.reason, which by default is a DOMException named AbortError. You can pass your own reason to abort()."
+        },
+        {
+          "q": "Is DOMException an instance of Error?",
+          "a": "In modern engines yes - it inherits from Error.prototype, so it has name, message and stack."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Autoplay and clipboard failures are NotAllowedError, not a bug in your code - they need a user gesture.",
+        "NetworkError in fetch does not exist: fetch rejects with TypeError: Failed to fetch."
+      ],
+      "id": "js-err-dom-names",
+      "title": "DOMException Names Reference",
+      "level": "intermediate",
+      "summary": "What NotFoundError, InvalidStateError, SecurityError, QuotaExceededError, NotAllowedError and the others mean and how to fix them.",
+      "description": "Use this table to decode any `DOMException` by its **name**. The *code* column is the legacy numeric value (`0` means the name has no legacy code).\n\n| name | code | Typical cause | Fix |\n|---|---|---|---|\n| `IndexSizeError` | 1 | index outside a range (`getImageData`, text selection) | clamp the index |\n| `HierarchyRequestError` | 3 | inserting a node somewhere illegal, e.g. appending a parent into its own child | check the tree first |\n| `InvalidCharacterError` | 5 | `createElement(\"1a\")`, `setAttribute(\"a b\", 1)`, `atob(\"***\")` | validate names / Base64 |\n| `NotFoundError` | 8 | `removeChild` of a non-child, `insertBefore` with a missing reference | check `node.parentNode` |\n| `NotSupportedError` | 9 | feature or codec unsupported | feature-detect |\n| `InvalidStateError` | 11 | object is in the wrong state: `ws.send` before open, `IDBTransaction` finished | wait for the right state |\n| `SyntaxError` | 12 | invalid selector: `querySelector(\"##\")` | fix the selector string |\n| `InvalidAccessError` | 15 | bad parameter combination for the object | check docs |\n| `SecurityError` | 18 | blocked by same-origin policy, cross-origin iframe access, blocked storage | same origin, user permission |\n| `NetworkError` | 19 | network failure in some APIs (XHR sync, IDB) | retry / show offline UI |\n| `AbortError` | 20 | operation cancelled (`AbortController`, `play()` interrupted) | usually ignore |\n| `QuotaExceededError` | 22 | storage full | delete old data, ask for more quota |\n| `TimeoutError` | 23 | `AbortSignal.timeout()` fired | retry or fail |\n| `DataCloneError` | 25 | `postMessage`/`structuredClone`/IndexedDB with functions, DOM nodes | send plain data |\n| `NotAllowedError` | 0 | permission denied or no user gesture: `play()`, clipboard, camera | request in a click handler |\n| `NotReadableError` | 0 | file/device cannot be read (camera in use) | close other users |\n| `EncodingError` | 0 | image/media decode failed | validate the file |\n| `ConstraintError` | 0 | IndexedDB unique index violated | handle duplicates |\n| `DataError` | 0 | invalid data for the operation (IDB key, WebCrypto) | validate input |\n| `TransactionInactiveError` | 0 | IDB request after the transaction finished | do work synchronously in callbacks |\n| `OperationError` | 0 | WebCrypto operation failed (wrong key/tag) | check key and data |\n| `UnknownError` | 0 | unspecific failure | log and retry |\n\n### Handling pattern\nCombine `e instanceof DOMException` with `e.name === \"QuotaExceededError\"`, because other libraries may throw plain objects that merely have a `name` field.",
+      "keyPoints": [
+        "NotFoundError/HierarchyRequestError/InvalidCharacterError come from DOM tree and name APIs.",
+        "InvalidStateError means \"right call, wrong moment\" (WebSocket not open, finished transaction).",
+        "SecurityError = same-origin or permission policy; NotAllowedError = user denied or no gesture.",
+        "QuotaExceededError (storage full), DataCloneError (non-cloneable data), AbortError/TimeoutError (cancel/timeout).",
+        "Newer names (NotAllowedError, ConstraintError...) have legacy code 0."
+      ],
+      "examples": [
+        {
+          "title": "Names and legacy codes",
+          "language": "javascript",
+          "code": "const names = [\"IndexSizeError\", \"HierarchyRequestError\", \"InvalidCharacterError\", \"NotFoundError\",\n  \"NotSupportedError\", \"InvalidStateError\", \"SyntaxError\", \"SecurityError\", \"NetworkError\",\n  \"AbortError\", \"QuotaExceededError\", \"TimeoutError\", \"DataCloneError\", \"NotAllowedError\", \"ConstraintError\"];\nfor (const name of names) {\n  const e = new DOMException(\"demo\", name);\n  console.log(name.padEnd(24), \"code\", e.code);\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Triggering real DOM errors",
+          "language": "web",
+          "html": "<p>Open the console tab to see the results.</p>",
+          "css": "",
+          "js": "function show(label, fn) {\n  try { fn(); console.log(label, '-> no error'); }\n  catch (e) { console.log(label, '->', e.name, e instanceof DOMException); }\n}\nshow('createElement(\"1a\")', () => document.createElement('1a'));\nshow('setAttribute(\"a b\")', () => document.body.setAttribute('a b', '1'));\nshow('querySelector(\"##\")', () => document.querySelector('##'));\nshow('removeChild(stranger)', () => document.body.removeChild(document.createElement('div')));\nshow('append parent into child', () => { const p = document.createElement('div'); const c = document.createElement('div'); p.append(c); c.append(p); });\nshow('atob(\"***\")', () => atob('***'));\nshow('structuredClone(fn)', () => structuredClone(function () {}));",
+          "explanation": "Expected names: InvalidCharacterError, InvalidCharacterError, SyntaxError, NotFoundError, HierarchyRequestError, InvalidCharacterError, DataCloneError."
+        },
+        {
+          "title": "Recoverable vs ignorable",
+          "language": "javascript",
+          "code": "function handle(e) {\n  if (!(e instanceof DOMException)) return \"rethrow\";\n  const map = {\n    AbortError: \"ignore - user cancelled\",\n    QuotaExceededError: \"free some storage\",\n    NotAllowedError: \"ask the user to click first\",\n    InvalidStateError: \"retry when ready\",\n  };\n  return map[e.name] || \"log and report\";\n}\nfor (const n of [\"AbortError\", \"QuotaExceededError\", \"NotAllowedError\", \"InvalidStateError\", \"OperationError\"]) {\n  console.log(n, \"=>\", handle(new DOMException(\"\", n)));\n}\nconsole.log(handle(new Error(\"plain\")));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does InvalidStateError mean?",
+          "a": "The object is not in a state that allows the operation, e.g. calling WebSocket.send() while still CONNECTING or using a finished IndexedDB transaction. Wait for the right state."
+        },
+        {
+          "q": "SecurityError vs NotAllowedError?",
+          "a": "SecurityError comes from same-origin / secure-context restrictions (cross-origin frame access, blocked storage). NotAllowedError means permission was denied or a required user gesture was missing."
+        },
+        {
+          "q": "What causes QuotaExceededError?",
+          "a": "Writing past the storage limit of localStorage (~5 MB), IndexedDB or Cache storage - or localStorage being disabled in private mode on old Safari. Catch it and clear old data."
+        },
+        {
+          "q": "Why is there no NetworkError from fetch?",
+          "a": "fetch rejects with a TypeError (\"Failed to fetch\") on network failure. NetworkError DOMException is used by some other APIs."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "An empty catch block (or catch that only logs) silently swallows bugs.",
+        "Checking e.message.includes(\"...\") breaks when the engine wording changes."
+      ],
+      "id": "js-err-catch-by-type",
+      "title": "Catching Errors by Type",
+      "level": "intermediate",
+      "summary": "Use instanceof, name and error codes to handle each error kind differently - and rethrow what you do not understand.",
+      "description": "A `catch` block catches **everything** thrown inside `try` - programmer bugs, network failures, your own validation errors. Good error handling therefore *discriminates*: handle what you expect, rethrow the rest.\n\n### Four ways to identify an error\n| Technique | Example | Notes |\n|---|---|---|\n| `instanceof` | `e instanceof TypeError` | best for classes in the **same realm** |\n| `name` | `e.name === \"AbortError\"` | needed for `DOMException`; works across iframes |\n| custom `code` field | `e.code === \"ENOENT\"` | Node.js style, stable machine-readable id |\n| `Error.isError(e)` | true for real errors | new (ES2026); works across realms and for DOMException |\n\n### The golden pattern\n```js\ntry {\n  doWork();\n} catch (e) {\n  if (e instanceof ValidationError) {\n    showMessage(e.message);        // expected\n  } else if (e instanceof NetworkError) {\n    scheduleRetry();               // expected\n  } else {\n    throw e;                       // unexpected: do NOT swallow\n  }\n}\n```\n\n### Cross-realm trap\nAn error created inside an `iframe` or `vm` context has *that realm's* `Error` constructor, so `e instanceof Error` is **false** in the parent page. Use `Error.isError(e)`, or compare `Object.prototype.toString.call(e) === \"[object Error]\"`, or check `e.name`.\n\n### Also remember\n- Anything can be thrown: `e` might be a string, `null` or a plain object. Normalise first: `const err = e instanceof Error ? e : new Error(String(e))`.\n- In TypeScript the caught variable is `unknown` (with `useUnknownInCatchVariables`), forcing a type check.\n- Match on **name/instanceof/code**, never on `message` text - it can change between versions and languages.",
+      "keyPoints": [
+        "catch gets every error; handle the ones you expect and rethrow the rest.",
+        "Use instanceof for your own classes and e.name for DOMException.",
+        "instanceof fails across realms (iframes, vm); use Error.isError or the name.",
+        "Normalise non-Error throws before reading e.message.",
+        "Never match on error message text."
+      ],
+      "examples": [
+        {
+          "title": "The discriminate-and-rethrow pattern",
+          "language": "javascript",
+          "code": "class ValidationError extends Error { constructor(m) { super(m); this.name = \"ValidationError\"; } }\nclass NetworkError extends Error { constructor(m) { super(m); this.name = \"NetworkError\"; } }\n\nfunction run(task) {\n  try { task(); return \"ok\"; }\n  catch (e) {\n    if (e instanceof ValidationError) return \"show form message: \" + e.message;\n    if (e instanceof NetworkError) return \"retry later\";\n    throw e;                                   // unknown -> let it bubble\n  }\n}\nconsole.log(run(() => {}));\nconsole.log(run(() => { throw new ValidationError(\"email is invalid\"); }));\nconsole.log(run(() => { throw new NetworkError(\"offline\"); }));\ntry { run(() => { undefinedFunction(); }); }\ncatch (e) { console.log(\"bubbled up:\", e.name, \"-\", e.message); }",
+          "explanation": ""
+        },
+        {
+          "title": "Normalising unknown throws",
+          "language": "javascript",
+          "code": "function toError(e) {\n  if (e instanceof Error) return e;\n  if (typeof e === \"string\") return new Error(e);\n  try { return new Error(JSON.stringify(e) ?? String(e)); } catch { return new Error(String(e)); }\n}\nfor (const thrown of [\"oops\", { code: 7 }, null, undefined, 42, new RangeError(\"r\")]) {\n  try { throw thrown; }\n  catch (e) { const err = toError(e); console.log(err.name + \": \" + err.message); }\n}",
+          "explanation": ""
+        },
+        {
+          "title": "name vs instanceof, and Error.isError",
+          "language": "javascript",
+          "code": "const fake = { name: \"TypeError\", message: \"looks like one\" };\nconsole.log(fake instanceof TypeError, fake.name === \"TypeError\");   // false true (name can be spoofed)\nconst real = new TypeError(\"real\");\nconsole.log(real instanceof TypeError, Object.prototype.toString.call(real));\nif (typeof Error.isError === \"function\") {\n  console.log(Error.isError(real), Error.isError(fake), Error.isError(new DOMException(\"x\", \"AbortError\")));\n}",
+          "explanation": "Error.isError is very new; the guard keeps the example safe on older engines."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you handle only certain errors in a catch block?",
+          "a": "Test with instanceof / name / code for the expected kinds and rethrow everything else with throw e."
+        },
+        {
+          "q": "Why can instanceof Error be false for a real error?",
+          "a": "Errors from another realm (iframe, vm context, worker transferred value) were created with a different Error constructor. Use Error.isError(e) or check the name."
+        },
+        {
+          "q": "Why not check error.message?",
+          "a": "Message text is meant for humans, varies by engine, version and locale, and changes without notice."
+        }
+      ]
+    }
+  ]
+}

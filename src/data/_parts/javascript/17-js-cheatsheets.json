@@ -1,0 +1,491 @@
+{
+  "id": "js-cheatsheets",
+  "title": "Cheat Sheets (method tables)",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-cs-array",
+      "title": "Array Methods Cheat Sheet",
+      "level": "beginner",
+      "summary": "Every Array static and instance method with what it returns, whether it mutates, and the ES version.",
+      "description": "Know first whether a method **mutates** the array: mutating methods (`push`, `sort`, `splice`...) change it in place, while the rest return new values. ES2023 added non-mutating twins (`toSorted`, `toReversed`, `toSpliced`, `with`).\n\n### Mutating methods\n| Method | Returns | Mutates | ES |\n|---|---|---|---|\n| `push(...x)` / `unshift(...x)` | new length | yes | 3 |\n| `pop()` / `shift()` | removed item | yes | 3 |\n| `splice(i, del, ...add)` | array of removed | yes | 3 |\n| `sort(cmp)` | same array | yes | 3 |\n| `reverse()` | same array | yes | 3 |\n| `fill(v, s, e)` | same array | yes | 6 |\n| `copyWithin(t, s, e)` | same array | yes | 6 |\n\n### Non-mutating methods\n| Method | Returns | ES |\n|---|---|---|\n| `slice(s, e)` | shallow copy of range | 3 |\n| `concat(...a)` | new merged array | 3 |\n| `join(sep)` | string | 3 |\n| `indexOf(x)` / `lastIndexOf(x)` | index or -1 | 5 |\n| `includes(x)` | boolean (finds NaN) | 2016 |\n| `at(i)` | item (negative allowed) | 2022 |\n| `flat(depth)` / `flatMap(fn)` | new flattened array | 2019 |\n| `toSorted(cmp)` / `toReversed()` | sorted / reversed copy | 2023 |\n| `toSpliced(i, d, ...a)` / `with(i, v)` | modified copy | 2023 |\n| `keys()` / `values()` / `entries()` | iterator | 6 |\n| `toString()` | comma string | 1 |\n\n### Iteration and search\n| Method | Returns | ES |\n|---|---|---|\n| `forEach(fn)` | `undefined` | 5 |\n| `map(fn)` | new array, same length | 5 |\n| `filter(fn)` | new array of passing items | 5 |\n| `reduce(fn, init)` / `reduceRight` | accumulated value | 5 |\n| `some(fn)` / `every(fn)` | boolean | 5 |\n| `find(fn)` / `findIndex(fn)` | item / index (-1) | 6 |\n| `findLast(fn)` / `findLastIndex(fn)` | from the end | 2023 |\n\n### Statics\n| Method | Returns | ES |\n|---|---|---|\n| `Array.isArray(x)` | boolean | 5 |\n| `Array.of(...x)` | array from args | 6 |\n| `Array.from(iter, mapFn)` | array from iterable/array-like | 6 |\n| `Array.fromAsync(iter)` | Promise of array | 2023+ (engines; Node 22+) |\n\nCallbacks receive `(item, index, array)`. Holes are skipped by most iteration methods.",
+      "keyPoints": [
+        "Mutating: push, pop, shift, unshift, splice, sort, reverse, fill, copyWithin.",
+        "ES2023 added toSorted, toReversed, toSpliced and with as non-mutating versions.",
+        "map/filter/reduce return new values; forEach returns undefined.",
+        "includes finds NaN, indexOf does not.",
+        "Array.from converts iterables and array-likes and can map in one step."
+      ],
+      "pitfalls": [
+        "sort() without a comparator sorts as strings, so [10, 9, 1] becomes [1, 10, 9].",
+        "Array.prototype.fill with an object shares one reference across slots."
+      ],
+      "examples": [
+        {
+          "title": "One tiny example per group",
+          "language": "javascript",
+          "code": "const a = [3, 1, 2];\nconsole.log(a.push(4), a.pop(), a.splice(1, 1), a);        // length, removed, removed, mutated array\nconst b = [3, 1, 2];\nconsole.log(b.toSorted(), b.toReversed(), b.with(0, 9), b.toSpliced(1, 1), b);\nconsole.log(b.slice(1), b.concat([7]), b.at(-1), b.includes(2), b.indexOf(2));\nconsole.log(b.map(x => x * 2), b.filter(x => x > 1), b.reduce((s, x) => s + x, 0));\nconsole.log(b.some(x => x > 2), b.every(x => x > 0), b.find(x => x < 3), b.findLast(x => x < 3), b.findIndex(x => x === 1));\nconsole.log([[1], [2, [3]]].flat(), [1, 2].flatMap(x => [x, x * 10]), Array.from('abc', c => c + c), Array.of(7));\nconsole.log([...b.entries()], b.join('-'));",
+          "explanation": "Mutating vs non-mutating results."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Which array methods mutate the original array?",
+          "a": "push, pop, shift, unshift, splice, sort, reverse, fill and copyWithin."
+        },
+        {
+          "q": "What is the difference between find and filter?",
+          "a": "find returns the first matching item (or undefined) and stops; filter returns an array of all matches."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-string",
+      "title": "String Methods Cheat Sheet",
+      "level": "beginner",
+      "summary": "All common String methods with return types and ES versions; strings are immutable so every method returns a new value.",
+      "description": "Strings are **immutable**: no method changes the original, they all return a new string (or another type). Indexes are UTF-16 code units.\n\n### Inspect and search\n| Method | Returns | ES |\n|---|---|---|\n| `length` | number of UTF-16 units | 1 |\n| `charAt(i)` / `s[i]` / `at(i)` | one character (`at` allows negatives) | 1 / 5 / 2022 |\n| `charCodeAt(i)` / `codePointAt(i)` | UTF-16 unit / full code point number | 1 / 6 |\n| `indexOf(x, from)` / `lastIndexOf(x)` | index or -1 | 1 |\n| `includes(x)` | boolean | 6 |\n| `startsWith(x)` / `endsWith(x)` | boolean | 6 |\n| `search(re)` | index or -1 | 3 |\n| `match(re)` | array / null (all matches with `g`) | 3 |\n| `matchAll(re)` | iterator of match arrays (needs `g`) | 2020 |\n| `localeCompare(b)` | -1, 0, 1 | 3 |\n\n### Transform\n| Method | Returns | ES |\n|---|---|---|\n| `slice(s, e)` | substring (negative indexes ok) | 3 |\n| `substring(s, e)` | substring (swaps args, no negatives) | 1 |\n| `substr(s, len)` | deprecated, avoid | legacy |\n| `toUpperCase()` / `toLowerCase()` | new string | 1 |\n| `trim()` / `trimStart()` / `trimEnd()` | new string | 5 / 2019 |\n| `padStart(n, ch)` / `padEnd(n, ch)` | padded string | 2017 |\n| `repeat(n)` | repeated string | 6 |\n| `replace(x, y)` / `replaceAll(x, y)` | replace first / all | 3 / 2021 |\n| `split(sep, limit)` | array | 3 |\n| `concat(...s)` | joined string | 1 |\n| `normalize(form)` | Unicode normalised string | 6 |\n| `isWellFormed()` / `toWellFormed()` | boolean / fixed string | 2024 |\n\n### Statics\n| Method | Returns |\n|---|---|\n| `String.fromCharCode(...n)` | string from UTF-16 units |\n| `String.fromCodePoint(...n)` | string from code points |\n| `String.raw` (as a template tag) | raw template text |\n\n`replace` callbacks receive `(match, ...groups, offset, string)`; replacement strings support `$1`, `$&`, `$<name>`.",
+      "keyPoints": [
+        "Strings are immutable; every method returns a new value.",
+        "slice supports negative indexes; substring does not.",
+        "replaceAll and matchAll are ES2021 and ES2020 respectively.",
+        "padStart is perfect for zero-padding numbers.",
+        "split('') splits UTF-16 units; use [...str] for code points."
+      ],
+      "pitfalls": [
+        "replace with a string pattern replaces only the first occurrence.",
+        "match without the g flag returns match details, with g it returns plain matched strings.",
+        "indexOf returns 0 for a match at the start, so check !== -1 not truthiness."
+      ],
+      "examples": [
+        {
+          "title": "String method tour",
+          "language": "javascript",
+          "code": "const s = '  Hello, World  ';\nconst t = s.trim();\nconsole.log(t.length, t.at(-1), t.slice(-5), t.substring(7), t.toUpperCase());\nconsole.log(t.includes('World'), t.startsWith('He'), t.indexOf('o'), t.lastIndexOf('o'));\nconsole.log(t.replace('o', '0'), t.replaceAll('o', '0'), t.split(', '), 'a-b-c'.split('-', 2));\nconsole.log('5'.padStart(3, '0'), 'ab'.repeat(2), 'abc'.localeCompare('abd'), 'x'.codePointAt(0));\nconsole.log(t.match(/o/g), [...t.matchAll(/l+/g)].map(m => m[0] + '@' + m.index));\nconsole.log('2024-05-06'.replace(/(\\d+)-(\\d+)-(\\d+)/, '$3/$2/$1'), String.fromCodePoint(128512));\nconsole.log('ab\\uD800'.isWellFormed(), 'ab\\uD800'.toWellFormed().length);",
+          "explanation": "Common methods on one sentence."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between slice, substring and substr?",
+          "a": "slice and substring take start and end; slice accepts negatives while substring treats them as 0 and swaps arguments if needed. substr takes a length and is deprecated."
+        },
+        {
+          "q": "How do you replace all occurrences of a substring?",
+          "a": "Use replaceAll, or replace with a global regex."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-object",
+      "title": "Object Static Methods Cheat Sheet",
+      "level": "intermediate",
+      "summary": "Object.* methods for keys, entries, copying, freezing, prototypes and property descriptors with mutation notes.",
+      "description": "`Object` statics are the toolkit for inspecting and building objects. \"Own\" means directly on the object, not inherited.\n\n### Inspect\n| Method | Returns | ES |\n|---|---|---|\n| `Object.keys(o)` | own enumerable string keys | 5 |\n| `Object.values(o)` | own enumerable values | 2017 |\n| `Object.entries(o)` | `[key, value]` pairs | 2017 |\n| `Object.getOwnPropertyNames(o)` | own string keys incl. non-enumerable | 5 |\n| `Object.getOwnPropertySymbols(o)` | own symbol keys | 6 |\n| `Reflect.ownKeys(o)` | all own keys | 6 |\n| `Object.hasOwn(o, k)` | boolean (replaces hasOwnProperty) | 2022 |\n| `Object.is(a, b)` | boolean `SameValue` | 6 |\n| `Object.getPrototypeOf(o)` | prototype | 5 |\n| `Object.getOwnPropertyDescriptor(s)` | descriptor(s) | 5 / 2017 |\n\n### Create and copy\n| Method | Returns | Mutates | ES |\n|---|---|---|---|\n| `Object.assign(target, ...src)` | target | **target** | 6 |\n| `Object.create(proto, descs)` | new object | no | 5 |\n| `Object.fromEntries(iter)` | object from pairs | no | 2019 |\n| `Object.groupBy(items, fn)` | null-prototype object of arrays | no | 2024 |\n| `{ ...o }` (syntax) | shallow copy | no | 2018 |\n| `structuredClone(o)` (global) | deep copy | no | web/Node 17 |\n\n### Define and restrict\n| Method | Effect | Mutates |\n|---|---|---|\n| `Object.defineProperty(o, k, d)` / `defineProperties` | add/change one property | yes |\n| `Object.setPrototypeOf(o, p)` | change prototype (slow) | yes |\n| `Object.preventExtensions(o)` | no new props | yes |\n| `Object.seal(o)` | no add/delete, values editable | yes |\n| `Object.freeze(o)` | read-only (shallow) | yes |\n| `Object.isExtensible / isSealed / isFrozen` | boolean | no |\n\nInstance methods: `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toString`, `toLocaleString`, `valueOf`.",
+      "keyPoints": [
+        "keys/values/entries return only own enumerable string-keyed data.",
+        "Object.assign and defineProperty mutate their target; fromEntries and spread create new objects.",
+        "freeze is shallow; sealed objects still allow value changes.",
+        "Use Object.hasOwn instead of obj.hasOwnProperty.",
+        "Object.groupBy returns a null-prototype object."
+      ],
+      "pitfalls": [
+        "Object.assign({}, obj) skips nothing but copies getters as values and is shallow.",
+        "Frozen objects silently ignore writes in sloppy mode but throw in strict mode."
+      ],
+      "examples": [
+        {
+          "title": "Inspect, copy, restrict",
+          "language": "javascript",
+          "code": "const o = { a: 1, b: 2 };\nObject.defineProperty(o, 'hidden', { value: 'h', enumerable: false });\nconsole.log(Object.keys(o), Object.getOwnPropertyNames(o), Object.entries(o), Object.values(o));\nconsole.log(Object.hasOwn(o, 'hidden'), Object.is(NaN, NaN), Object.getPrototypeOf(o) === Object.prototype);\nconst merged = Object.assign({}, o, { c: 3 });\nconsole.log(merged, Object.fromEntries([['x', 1], ['y', 2]]));\nconst f = Object.freeze({ n: 1, inner: { v: 1 } });\nf.n = 2; f.inner.v = 2;\nconsole.log(f, Object.isFrozen(f), Object.isFrozen(f.inner));\nconst sealed = Object.seal({ s: 1 }); sealed.s = 5; sealed.t = 9; delete sealed.s;\nconsole.log(sealed);\nconst child = Object.create({ inherited: true }, { own: { value: 1, enumerable: true } });\nconsole.log(child.inherited, Object.keys(child), 'inherited' in child);",
+          "explanation": "Shows several statics at work."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between Object.freeze and Object.seal?",
+          "a": "freeze makes properties read-only and non-configurable; seal prevents adding or deleting properties but still allows changing values."
+        },
+        {
+          "q": "Does Object.keys include inherited or symbol keys?",
+          "a": "No, only own enumerable string keys."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-number-math",
+      "title": "Number and Math Cheat Sheet",
+      "level": "beginner",
+      "summary": "Number statics and instance methods plus every Math function, with returns and gotchas.",
+      "description": "### Number\n| Member | Returns / meaning | ES |\n|---|---|---|\n| `Number.isInteger(x)` | true for integers (no coercion) | 6 |\n| `Number.isSafeInteger(x)` | within +-(2^53 - 1) | 6 |\n| `Number.isFinite(x)` / `Number.isNaN(x)` | strict checks, no coercion | 6 |\n| `Number.parseFloat` / `parseInt` | same as globals | 6 |\n| `Number.EPSILON` | smallest difference near 1 | 6 |\n| `MAX_SAFE_INTEGER`, `MIN_SAFE_INTEGER` | +-9007199254740991 | 6 |\n| `MAX_VALUE`, `MIN_VALUE` | largest / smallest positive | 1 |\n| `n.toFixed(d)` | string with d decimals | 3 |\n| `n.toPrecision(p)` | string with p significant digits | 3 |\n| `n.toString(radix)` | string in base 2-36 | 1 |\n| `n.toExponential(d)` | exponent string | 3 |\n| `n.toLocaleString(loc, opts)` | locale string | 3 |\n\n### Math (all static, never `new Math`)\n| Group | Functions |\n|---|---|\n| Rounding | `round` (half up), `floor`, `ceil`, `trunc`, `fround`, `sign` |\n| Power/roots | `pow(x, y)`, `sqrt`, `cbrt`, `hypot`, `exp`, `expm1` |\n| Logs | `log` (natural), `log2`, `log10`, `log1p` |\n| Trig | `sin cos tan asin acos atan atan2 sinh cosh tanh` and inverses |\n| Min/max | `min(...n)` (empty gives Infinity), `max(...n)` (empty gives -Infinity) |\n| Other | `abs`, `random()` in [0, 1), `clz32`, `imul` |\n| Constants | `PI`, `E`, `LN2`, `LN10`, `LOG2E`, `LOG10E`, `SQRT2`, `SQRT1_2` |\n\n### Recipes\n- Random int in [min, max]: `Math.floor(Math.random() * (max - min + 1)) + min`.\n- Clamp: `Math.min(max, Math.max(min, n))`.\n- Round to 2 decimals: `Math.round(n * 100) / 100` (or `Intl`).\n- Math methods coerce arguments; `Number.isX` methods do not.\n\n`Math.round(-2.5)` is `-2` (rounds toward +Infinity at .5), while `Math.trunc` cuts decimals.",
+      "keyPoints": [
+        "Number.isX functions do not coerce; global isNaN and isFinite do.",
+        "toFixed returns a string and may misround due to binary storage.",
+        "Math.round rounds .5 up toward +Infinity, so -2.5 becomes -2.",
+        "Math.random() returns [0, 1) and is not cryptographically secure.",
+        "Safe integers end at 2^53 - 1; use BigInt beyond that."
+      ],
+      "pitfalls": [
+        "Math.max([1,2,3]) is NaN; spread the array or use apply.",
+        "Number('') is 0 and Number(null) is 0, which surprises validation code."
+      ],
+      "examples": [
+        {
+          "title": "Numbers and Math",
+          "language": "javascript",
+          "code": "console.log(Number.isInteger(5.0), Number.isSafeInteger(2 ** 53), Number.isNaN('x'), isNaN('x'));\nconsole.log((255).toString(16), (255).toString(2), (3.14159).toFixed(2), (1234.5678).toPrecision(6), (12345).toExponential(1));\nconsole.log(Math.round(2.5), Math.round(-2.5), Math.floor(-2.5), Math.ceil(2.1), Math.trunc(-2.9), Math.sign(-7));\nconsole.log(Math.max(1, 5, 3), Math.max(...[4, 9]), Math.min(), Math.max(), Math.hypot(3, 4), Math.cbrt(27), Math.pow(2, 10));\nconsole.log(Math.log2(8), Math.log10(1000), Math.abs(-3), Math.PI.toFixed(4));\nconst clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));\nconsole.log(clamp(15, 0, 10), clamp(-3, 0, 10));\nconst r = Math.floor(Math.random() * 6) + 1;\nconsole.log(r >= 1 && r <= 6, Math.random() < 1);",
+          "explanation": "Rounding, clamping, random range, formatting."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does (1.005).toFixed(2) give '1.00'?",
+          "a": "1.005 is stored as a binary value slightly below 1.005, so rounding to two decimals goes down."
+        },
+        {
+          "q": "What is the difference between Number.isNaN and isNaN?",
+          "a": "isNaN coerces its argument first (isNaN('abc') is true); Number.isNaN is true only for the actual NaN value."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-date",
+      "title": "Date Cheat Sheet",
+      "level": "intermediate",
+      "summary": "Date construction, getters/setters, formatting and parsing with local vs UTC variants and common traps.",
+      "description": "A `Date` stores milliseconds since 1970-01-01T00:00:00Z. Most methods come in **local** and **UTC** pairs.\n\n### Creating\n| Code | Meaning |\n|---|---|\n| `new Date()` / `Date.now()` | now (object / ms number) |\n| `new Date(ms)` | from timestamp |\n| `new Date('2024-05-06T10:00:00Z')` | parse ISO string |\n| `new Date(2024, 4, 6, 10, 0)` | local components, **month is 0-11** |\n| `Date.UTC(y, m, d, ...)` | timestamp from UTC components |\n| `Date.parse(str)` | timestamp or NaN |\n\n### Getters (setters use `set` instead of `get`)\n| Local | UTC | Range |\n|---|---|---|\n| `getFullYear()` | `getUTCFullYear()` | year |\n| `getMonth()` | `getUTCMonth()` | 0-11 |\n| `getDate()` | `getUTCDate()` | 1-31 |\n| `getDay()` | `getUTCDay()` | 0 (Sun) - 6 |\n| `getHours()` | `getUTCHours()` | 0-23 |\n| `getMinutes()` / `getSeconds()` / `getMilliseconds()` | UTC versions | |\n| `getTime()` / `valueOf()` | - | ms since epoch |\n| `getTimezoneOffset()` | - | minutes behind UTC |\n\n### Output\n| Method | Example output |\n|---|---|\n| `toISOString()` | `2024-05-06T10:00:00.000Z` (always UTC) |\n| `toJSON()` | same as ISO |\n| `toString()` | long local string |\n| `toDateString()` / `toTimeString()` | parts |\n| `toUTCString()` | `Mon, 06 May 2024 10:00:00 GMT` |\n| `toLocaleDateString(loc, opts)` / `toLocaleTimeString` / `toLocaleString` | localised |\n\n### Behaviour to remember\n- Setters mutate the date and **overflow rolls over**: `d.setDate(32)` moves to next month.\n- Date minus Date gives milliseconds; Date plus anything concatenates strings.\n- Invalid dates have `getTime()` of `NaN` and print \"Invalid Date\".\n- ISO date-only strings parse as UTC; date-time strings without `Z` parse as local.\n- Temporal (a new API) is the long-term replacement; see the latest-features section.",
+      "keyPoints": [
+        "Months are zero-based; days of month start at 1.",
+        "ISO date-only strings are UTC, other forms are local.",
+        "Setters mutate and overflow carries into the next unit.",
+        "Subtract Dates to get milliseconds; use Intl for display.",
+        "toISOString always outputs UTC and throws on invalid dates."
+      ],
+      "pitfalls": [
+        "Looping 24 * 3600 * 1000 ms steps drifts across DST changes.",
+        "new Date('2024-02-30') is Invalid Date in most engines, but new Date(2024, 1, 30) rolls to March 1."
+      ],
+      "examples": [
+        {
+          "title": "Date operations",
+          "language": "javascript",
+          "code": "const d = new Date(Date.UTC(2024, 0, 31, 10, 30));\nconsole.log(d.toISOString(), d.getTime(), d.getUTCDay(), d.getUTCMonth());\nconst e = new Date(d);\ne.setUTCMonth(e.getUTCMonth() + 1); // Jan 31 + 1 month overflows\nconsole.log(e.toISOString());\nconst next = new Date(d); next.setUTCDate(next.getUTCDate() + 30);\nconsole.log(next.toISOString().slice(0, 10));\nconsole.log((Date.UTC(2024, 11, 25) - Date.UTC(2024, 0, 1)) / 864e5, new Date('nope').getTime(), String(new Date('nope')));\nconsole.log(d.toUTCString(), JSON.stringify({ d }));\nconsole.log(d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));\nconsole.log(typeof Date.now(), new Date(0).toISOString(), Date.parse('2024-01-01T00:00:00Z'));",
+          "explanation": "UTC based so output is stable anywhere."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do dates show the previous day sometimes?",
+          "a": "A date-only ISO string is parsed as UTC midnight but displayed in local time, which is behind UTC in many zones."
+        },
+        {
+          "q": "How do you get the number of days between two dates?",
+          "a": "Subtract the timestamps and divide by 86,400,000, rounding because of DST."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-map-set",
+      "title": "Map, Set, WeakMap, WeakSet Cheat Sheet",
+      "level": "intermediate",
+      "summary": "Complete member tables for Map, Set, WeakMap and WeakSet including the ES2025 set algebra methods.",
+      "description": "### Map (key-value, any key type, insertion order)\n| Member | Returns | Mutates |\n|---|---|---|\n| `new Map(iterable)` | map from `[k, v]` pairs | - |\n| `set(k, v)` | the map (chainable) | yes |\n| `get(k)` | value or `undefined` | no |\n| `has(k)` | boolean | no |\n| `delete(k)` | boolean | yes |\n| `clear()` | undefined | yes |\n| `size` | number | - |\n| `keys()` / `values()` / `entries()` | iterators | no |\n| `forEach((v, k, m) => ...)` | undefined | no |\n| `Map.groupBy(items, fn)` | map of arrays (ES2024) | - |\n\nKeys compare with `SameValueZero` (NaN works as a key, `0` and `-0` are the same). Map is directly iterable.\n\n### Set (unique values)\n| Member | Returns |\n|---|---|\n| `new Set(iterable)` | set of unique values |\n| `add(v)` (chainable), `has(v)`, `delete(v)`, `clear()`, `size` | as expected |\n| `values()` / `keys()` / `entries()` / `forEach` | iteration |\n| `union(o)`, `intersection(o)`, `difference(o)`, `symmetricDifference(o)` | new Set (ES2025) |\n| `isSubsetOf(o)`, `isSupersetOf(o)`, `isDisjointFrom(o)` | boolean (ES2025) |\n\n### WeakMap and WeakSet\n| | WeakMap | WeakSet |\n|---|---|---|\n| Keys/values | object (or non-registered symbol) keys only | objects only |\n| Methods | `get set has delete` | `add has delete` |\n| Iterable / size | **no** | **no** |\n| Purpose | private data, caches tied to object lifetime | tagging objects |\n\n### Map vs Object\nMap keeps insertion order for all keys, accepts any key type, has `size`, and is faster for frequent add/delete. Objects are better for fixed-shape records and JSON.",
+      "keyPoints": [
+        "Map and Set preserve insertion order and use SameValueZero equality.",
+        "set and add return the collection, so calls can be chained.",
+        "Set algebra methods (union, intersection ...) are standard in modern engines (ES2025).",
+        "WeakMap/WeakSet keys are weakly held, are not iterable and have no size.",
+        "Convert with [...map], Object.fromEntries(map) and new Map(Object.entries(o))."
+      ],
+      "pitfalls": [
+        "Map keys that are objects are compared by reference, not by value.",
+        "JSON.stringify(map) gives {}; convert to entries first."
+      ],
+      "examples": [
+        {
+          "title": "Collections in action",
+          "language": "javascript",
+          "code": "const m = new Map([['a', 1]]).set({ id: 1 }, 'obj').set(NaN, 'nan');\nconsole.log(m.size, m.get(NaN), m.has('a'), [...m.keys()].length, m.delete('a'));\nconsole.log(Object.fromEntries(new Map([['x', 1], ['y', 2]])), new Map(Object.entries({ k: 1 })));\nconst s = new Set([1, 2, 2, 3]);\nconsole.log(s.size, s.has(2), [...s]);\nconst A = new Set([1, 2, 3]), B = new Set([2, 3, 4]);\nconsole.log(A.union(B), A.intersection(B), A.difference(B), A.symmetricDifference(B));\nconsole.log(A.isSubsetOf(new Set([1, 2, 3, 4])), A.isDisjointFrom(new Set([9])));\nconst priv = new WeakMap();\nclass User { constructor(p) { priv.set(this, p); } check(x) { return priv.get(this) === x; } }\nconsole.log(new User('pw').check('pw'), JSON.stringify(m), Map.groupBy([1, 2, 3, 4], n => n % 2 ? 'odd' : 'even'));",
+          "explanation": "Map, Set, set algebra, WeakMap privacy."
+        }
+      ],
+      "interview": [
+        {
+          "q": "When should you pick Map over a plain object?",
+          "a": "When keys are not plain strings, when insertion order and size matter, or when entries are added and removed frequently."
+        },
+        {
+          "q": "Why can't you iterate a WeakMap?",
+          "a": "Keys are held weakly and may be collected at any time, so the engine does not expose enumeration or size."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-promise-json",
+      "title": "Promise and JSON Cheat Sheet",
+      "level": "intermediate",
+      "summary": "Promise statics and instance methods (all, allSettled, race, any, withResolvers) and JSON.parse/stringify options.",
+      "description": "### Promise\n| Method | Resolves with | Rejects when | ES |\n|---|---|---|---|\n| `new Promise((res, rej) => {})` | value passed to `res` | `rej` or throw | 6 |\n| `Promise.resolve(v)` / `reject(e)` | already settled promise | - | 6 |\n| `Promise.all(list)` | array of all values | **first** rejection | 6 |\n| `Promise.allSettled(list)` | array of `{status, value/reason}` | never | 2020 |\n| `Promise.race(list)` | first to settle | first to settle (if rejected) | 6 |\n| `Promise.any(list)` | first **fulfilled** value | all reject (`AggregateError`) | 2021 |\n| `Promise.withResolvers()` | `{ promise, resolve, reject }` | - | 2024 |\n| `Promise.try(fn)` | result of sync or async fn | fn throws | 2025 |\n| `p.then(onOk, onErr)` | new promise | - | 6 |\n| `p.catch(fn)` | new promise | - | 6 |\n| `p.finally(fn)` | same value, runs always | - | 2018 |\n\nHandlers run as **microtasks**. A thrown error inside `then` rejects the returned promise. An unhandled rejection crashes Node (default since v15).\n\n### JSON\n| Call | Notes |\n|---|---|\n| `JSON.stringify(v, replacer, space)` | `space` (2 or '\\t') pretty prints; replacer is a function or key whitelist array |\n| `JSON.parse(text, reviver)` | reviver `(key, value)` transforms values bottom-up |\n| `toJSON()` method | object controls its own serialisation (`Date` has one) |\n| Skipped | `undefined`, functions, symbols are omitted in objects and become `null` in arrays |\n| `NaN`, `Infinity` | become `null` |\n| `BigInt` | throws TypeError |\n| Cycles | throw TypeError |\n| `Map`, `Set` | become `{}` |\n| `JSON.rawJSON(text)` / `isRawJSON` | embed exact number text (new) |\n\nInvalid JSON (single quotes, trailing commas, comments) throws `SyntaxError`.",
+      "keyPoints": [
+        "Promise.all fails fast, allSettled waits for all, any picks the first success, race the first settlement.",
+        "Promise.withResolvers gives resolve/reject outside the executor.",
+        "finally passes the original value or error through.",
+        "JSON.stringify drops undefined, functions and symbols; Dates become ISO strings.",
+        "JSON.parse needs double-quoted strict JSON."
+      ],
+      "pitfalls": [
+        "Forgetting to return a promise inside then breaks the chain order.",
+        "JSON.parse(JSON.stringify(x)) changes types (Dates become strings)."
+      ],
+      "examples": [
+        {
+          "title": "Promise combinators and JSON options",
+          "language": "javascript",
+          "code": "const ok = (v, ms) => new Promise(r => setTimeout(() => r(v), ms));\nconst bad = (m, ms) => new Promise((_, r) => setTimeout(() => r(new Error(m)), ms));\n(async () => {\n  console.log(await Promise.all([ok(1, 10), ok(2, 5)]));\n  console.log((await Promise.allSettled([ok('a', 1), bad('x', 2)])).map(r => r.status + ':' + (r.value ?? r.reason.message)));\n  console.log(await Promise.race([ok('slow', 30), ok('fast', 5)]));\n  console.log(await Promise.any([bad('e', 1), ok('first-ok', 10)]));\n  console.log(await Promise.all([bad('boom', 1), ok(1, 5)]).catch(e => e.message));\n  const { promise, resolve } = Promise.withResolvers();\n  setTimeout(() => resolve('resolved later'), 1);\n  console.log(await promise);\n  console.log(await Promise.try(() => { throw new Error('sync throw'); }).catch(e => e.message));\n  console.log(await Promise.resolve(1).finally(() => 99));\n  const data = { n: 1, d: new Date(0), u: undefined, f() {}, s: Symbol('s'), nan: NaN, arr: [undefined, () => 1] };\n  console.log(JSON.stringify(data));\n  console.log(JSON.stringify({ a: 1, b: [1, 2], c: 'x' }, null, 2));\n  console.log(JSON.stringify({ a: 1, b: 2, c: 3 }, ['a', 'c']), JSON.stringify({ a: 1, b: 'k' }, (k, v) => (typeof v === 'number' ? v * 2 : v)));\n  console.log(JSON.parse('{\"d\":\"2024-01-01T00:00:00.000Z\"}', (k, v) => (k === 'd' ? new Date(v) : v)).d.getUTCFullYear());\n})();",
+          "explanation": "Deterministic results via Promise.resolve."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between Promise.all and Promise.allSettled?",
+          "a": "all rejects as soon as one promise rejects; allSettled waits for every promise and reports each outcome."
+        },
+        {
+          "q": "What does JSON.stringify do with undefined and functions?",
+          "a": "They are omitted from objects and replaced with null inside arrays."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-reflect-proxy",
+      "title": "Reflect and Proxy Traps Cheat Sheet",
+      "level": "advanced",
+      "summary": "All 13 Proxy traps paired with their Reflect methods, trigger operations and invariants.",
+      "description": "`Reflect` has a static method for each Proxy trap, with identical signature. Inside a trap, call the matching `Reflect` method to perform the default action.\n\n| Trap (handler method) | Triggered by | Reflect equivalent | Returns |\n|---|---|---|---|\n| `get(t, k, receiver)` | `obj.k`, `obj[k]` | `Reflect.get` | value |\n| `set(t, k, v, receiver)` | `obj.k = v` | `Reflect.set` | boolean (success) |\n| `has(t, k)` | `k in obj` | `Reflect.has` | boolean |\n| `deleteProperty(t, k)` | `delete obj.k` | `Reflect.deleteProperty` | boolean |\n| `ownKeys(t)` | `Object.keys`, `for...in`, `Reflect.ownKeys` | `Reflect.ownKeys` | array of keys |\n| `getOwnPropertyDescriptor(t, k)` | `Object.getOwnPropertyDescriptor`, `keys` filtering | same name | descriptor/undefined |\n| `defineProperty(t, k, d)` | `Object.defineProperty` | same name | boolean |\n| `getPrototypeOf(t)` | `instanceof`, `Object.getPrototypeOf` | same name | object/null |\n| `setPrototypeOf(t, p)` | `Object.setPrototypeOf` | same name | boolean |\n| `isExtensible(t)` | `Object.isExtensible` | same name | boolean |\n| `preventExtensions(t)` | `Object.preventExtensions` | same name | boolean |\n| `apply(t, thisArg, args)` | `proxy(...)` (target must be callable) | `Reflect.apply` | any |\n| `construct(t, args, newTarget)` | `new proxy(...)` | `Reflect.construct` | object |\n\n### Extras\n- `Proxy.revocable(target, handler)` returns `{ proxy, revoke }`; after `revoke()` every operation throws.\n- `Reflect.apply(fn, thisArg, args)` is a safe replacement for `Function.prototype.apply.call`.\n- Reflect returns booleans (instead of throwing) for `defineProperty`, `set`, `deleteProperty`.\n\n### Invariants\nA trap cannot lie about non-configurable, non-writable target properties: reporting a different value for a frozen property throws a `TypeError`. A `set` trap that returns `false` throws in strict mode.",
+      "keyPoints": [
+        "Each of the 13 traps has a Reflect method with the same name and parameters.",
+        "A set trap must return true to indicate success, otherwise strict mode throws.",
+        "Proxy.revocable provides a kill switch for access.",
+        "Traps must respect invariants of non-configurable target properties.",
+        "apply and construct traps require a callable target."
+      ],
+      "pitfalls": [
+        "Forgetting to return true from the set trap causes TypeErrors in modules and classes.",
+        "Proxies do not forward internal slots, so wrapping a Map without binding methods fails."
+      ],
+      "examples": [
+        {
+          "title": "Logging proxy with Reflect",
+          "language": "javascript",
+          "code": "const log = [];\nconst handler = {};\nfor (const trap of ['get', 'set', 'has', 'deleteProperty', 'ownKeys']) {\n  handler[trap] = (...args) => {\n    log.push(`${trap}:${typeof args[1] === 'symbol' ? 'sym' : String(args[1] ?? '')}`);\n    return Reflect[trap](...args);\n  };\n}\nconst p = new Proxy({ a: 1 }, handler);\np.a; p.b = 2; 'a' in p; delete p.a; Object.keys(p);\nconsole.log(log.join(' | '));\n\nconst fnProxy = new Proxy(function add(a, b) { return a + b; }, {\n  apply: (t, thisArg, args) => Reflect.apply(t, thisArg, args) * 10,\n  construct: (t, args) => ({ built: args }),\n});\nconsole.log(fnProxy(1, 2), new fnProxy(1));\nconst { proxy, revoke } = Proxy.revocable({ x: 1 }, {});\nconsole.log(proxy.x); revoke();\ntry { proxy.x; } catch (e) { console.log(e.constructor.name); }\nconsole.log(Reflect.has({ y: 1 }, 'y'), Reflect.ownKeys({ a: 1, [Symbol('s')]: 2 }), Reflect.defineProperty({}, 'k', { value: 1 }));",
+          "explanation": "A single handler printing every operation."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why use Reflect in a Proxy handler?",
+          "a": "It runs the default operation with correct receiver semantics and returns the proper boolean or value so invariants are preserved."
+        },
+        {
+          "q": "How many Proxy traps exist?",
+          "a": "Thirteen: get, set, has, deleteProperty, ownKeys, getOwnPropertyDescriptor, defineProperty, getPrototypeOf, setPrototypeOf, isExtensible, preventExtensions, apply and construct."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-regexp",
+      "title": "RegExp Syntax, Flags, Lookarounds and Named Groups",
+      "level": "intermediate",
+      "summary": "Complete regex syntax table plus flags, lookahead/lookbehind, named groups, and RegExp/String method behaviours.",
+      "description": "### Syntax\n| Token | Meaning |\n|---|---|\n| `.` | any char except line break (`s` flag includes it) |\n| `\\d \\w \\s` / `\\D \\W \\S` | digit, word char, whitespace / negations |\n| `\\b` / `\\B` | word boundary / not boundary |\n| `^` `$` | start / end (per line with `m`) |\n| `[abc]` `[^abc]` `[a-z]` | class, negated class, range |\n| `a\\|b` | alternation |\n| `(x)` / `(?:x)` | capturing / non-capturing group |\n| `(?<name>x)` / `\\k<name>` | named group / back-reference |\n| `\\1` | numbered back-reference |\n| `* + ? {n} {n,} {n,m}` | quantifiers (greedy) |\n| `*? +? ??` | lazy quantifiers |\n| `x(?=y)` / `x(?!y)` | lookahead positive / negative |\n| `(?<=y)x` / `(?<!y)x` | **lookbehind** positive / negative |\n| `\\p{L}` `\\p{Script=Greek}` `\\P{...}` | Unicode property escapes (needs `u` or `v`) |\n| `\\u{1F600}` | code point (needs `u`) |\n| `(?i:x)` | inline flag modifiers (ES2025) |\n\n### Flags\n| Flag | Meaning |\n|---|---|\n| `g` | global, all matches (stateful `lastIndex`) |\n| `i` | ignore case |\n| `m` | multiline anchors |\n| `s` | dotAll |\n| `u` | Unicode mode |\n| `v` | unicodeSets (set operations, string properties) |\n| `y` | sticky, match only at `lastIndex` |\n| `d` | indices, adds `match.indices` |\n\n### Methods\n| Method | Returns |\n|---|---|\n| `re.test(s)` | boolean |\n| `re.exec(s)` | match array (with `index`, `groups`) or null |\n| `s.match(re)` | first match, or all strings with `g` |\n| `s.matchAll(re)` | iterator of full matches (needs `g`) |\n| `s.replace / replaceAll(re, fn or $-string)` | new string; `$<name>`, `$1`, `$&` |\n| `s.split(re)` | array (captures are included) |\n| `s.search(re)` | index |\n| `RegExp.escape(str)` | escaped literal text (ES2025) |\n\nRegex literals with the `g` or `y` flag keep `lastIndex` state: `re.test()` twice on the same string can differ.",
+      "keyPoints": [
+        "Named groups (?<year>\\d{4}) are read from match.groups.",
+        "Lookbehind (?<=...) and (?<!...) match without consuming text.",
+        "The g flag makes test/exec stateful through lastIndex.",
+        "Use u (or v) for Unicode property escapes like \\p{L}.",
+        "Lazy quantifiers (*?) match as little as possible."
+      ],
+      "pitfalls": [
+        "Reusing a global regex with test() alternates true/false because of lastIndex.",
+        "Greedy .* can cause catastrophic backtracking on adversarial input."
+      ],
+      "examples": [
+        {
+          "title": "Named groups, lookarounds, flags",
+          "language": "javascript",
+          "code": "const m = /(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})/.exec('Date: 2024-05-06!');\nconsole.log(m.groups.year, m.groups.month, m.index);\nconsole.log('2024-05-06'.replace(/(?<y>\\d+)-(?<m>\\d+)-(?<d>\\d+)/, '$<d>/$<m>/$<y>'));\nconsole.log('price: $30, cost: $45'.match(/(?<=\\$)\\d+/g), 'foobar foobaz'.match(/foo(?=baz)/g), 'a1 b2'.match(/(?<!a)\\d/g));\nconsole.log('Hello World'.match(/[A-Z]/g), 'aBc'.match(/b/i)[0], 'a\\nb'.match(/^b/m)[0], /a.b/s.test('a\\nb'));\nconsole.log(/\\p{Lu}/u.test('É'), /^\\p{Script=Greek}+$/u.test('αβγ'));\nconst g = /a/g;\nconsole.log(g.test('aa'), g.test('aa'), g.test('aa'), g.lastIndex);\nconsole.log([...'a1b22c333'.matchAll(/\\d+/g)].map(x => x[0] + '@' + x.index));\nconsole.log('a, b;c'.split(/[,;]\\s*/), 'x'.repeat(3).replace(/x/g, (c, i) => i), '<b>x</b><b>y</b>'.match(/<b>.*?<\\/b>/g));\nconsole.log(/(\\w)\\1/.test('hello'), /^(?:\\+91)?\\d{10}$/.test('+919876543210'));\nconsole.log(/a(?<n>b)?/d.exec('ac').indices[0], RegExp.escape('a.b*c'));",
+          "explanation": "Practical regex snippets."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between greedy and lazy quantifiers?",
+          "a": "Greedy ones (*, +) match as much as possible and backtrack; lazy ones (*?, +?) match as little as possible."
+        },
+        {
+          "q": "Why does a global regex's test() alternate results on the same string?",
+          "a": "The g flag stores lastIndex; each successful test continues from there, and after a failure lastIndex resets to 0."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-intl",
+      "title": "Intl API Cheat Sheet",
+      "level": "intermediate",
+      "summary": "Every Intl formatter with its options, typical output and when to use it.",
+      "description": "`Intl` is the built-in internationalisation API. Create a formatter once with a locale and options, then call its method repeatedly.\n\n| Constructor | Main method | Common options | Example |\n|---|---|---|---|\n| `Intl.NumberFormat` | `format(n)` | `style` (decimal, currency, percent, unit), `currency`, `unit`, `notation` (compact, scientific), `minimumFractionDigits`, `maximumFractionDigits`, `signDisplay`, `compactDisplay` | `1,234.50` or `$1,234.50` |\n| `Intl.DateTimeFormat` | `format(d)`, `formatToParts` | `dateStyle`, `timeStyle`, `year`, `month`, `day`, `weekday`, `hour`, `hour12`, `timeZone`, `timeZoneName` | `6 May 2024` |\n| `Intl.RelativeTimeFormat` | `format(n, unit)` | `numeric: 'auto'`, `style` | `yesterday`, `in 3 days` |\n| `Intl.ListFormat` | `format(arr)` | `type` (conjunction, disjunction, unit), `style` | `a, b, and c` |\n| `Intl.PluralRules` | `select(n)` | `type: 'ordinal'` | `one`, `other`, `few` |\n| `Intl.Collator` | `compare(a, b)` | `numeric`, `sensitivity`, `caseFirst` | natural sort |\n| `Intl.Segmenter` | `segment(str)` | `granularity` (grapheme, word, sentence) | split visible characters |\n| `Intl.DisplayNames` | `of(code)` | `type` (region, language, currency) | `India` from `IN` |\n| `Intl.Locale` | properties | language, region, maximize() | parse `en-US` |\n| `Intl.DurationFormat` | `format(obj)` | newer, check support | `1 hr, 30 min` |\n\n### Shortcuts\n`n.toLocaleString(loc, opts)`, `d.toLocaleDateString`, `arr.toLocaleString`, and `a.localeCompare(b, loc, { numeric: true })` call Intl internally. For sorting use `arr.sort(new Intl.Collator('en', { numeric: true }).compare)`.\n\n### Notes\n- Pass `undefined` as locale to use the user's default; hard-code a locale in tests.\n- `formatToParts` returns typed parts (integer, group, currency) for custom rendering.\n- `Intl.supportedValuesOf('timeZone')` lists available names.\n- Currency has no default; you must pass `currency`.",
+      "keyPoints": [
+        "Create a formatter once and reuse it for performance.",
+        "Collator with numeric: true gives natural sort (file2 before file10).",
+        "RelativeTimeFormat with numeric: 'auto' prints yesterday/tomorrow.",
+        "Intl.Segmenter splits text by grapheme, word or sentence correctly.",
+        "Tests should pass an explicit locale for stable output."
+      ],
+      "pitfalls": [
+        "Locale default differs between environments, so unpinned output varies.",
+        "Intl.NumberFormat with style currency throws if currency is missing."
+      ],
+      "examples": [
+        {
+          "title": "Several Intl formatters",
+          "language": "javascript",
+          "code": "console.log(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(1234567.5));\nconsole.log(new Intl.NumberFormat('en', { style: 'unit', unit: 'kilometer-per-hour' }).format(88));\nconsole.log(new Intl.NumberFormat('en', { signDisplay: 'always' }).format(5), new Intl.NumberFormat('en', { minimumFractionDigits: 2 }).format(3));\nconsole.log(['file10', 'file2', 'file1'].sort(new Intl.Collator('en', { numeric: true }).compare));\nconsole.log(new Intl.DateTimeFormat('en-US', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(0)));\nconsole.log(new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date(0)));\nconsole.log(new Intl.RelativeTimeFormat('en').format(3, 'day'), new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(1, 'day'));\nconsole.log(new Intl.DisplayNames('en', { type: 'region' }).of('IN'));\nconsole.log([1, 2, 3].map(n => new Intl.PluralRules('en', { type: 'ordinal' }).select(n)));\nconsole.log(new Intl.NumberFormat('en-US').formatToParts(1234.5).map(p => p.type).join(','));\nconsole.log([...new Intl.Segmenter('en', { granularity: 'word' }).segment('Hi there')].filter(s => s.isWordLike).length);",
+          "explanation": "Pinned locales for deterministic output."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you sort strings with numbers naturally?",
+          "a": "Use Intl.Collator with numeric: true, or localeCompare(b, undefined, { numeric: true })."
+        },
+        {
+          "q": "Why create Intl formatters outside loops?",
+          "a": "Constructing them is relatively expensive; reuse one instance and call format repeatedly."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-console",
+      "title": "Console API Cheat Sheet",
+      "level": "beginner",
+      "summary": "Every console method, format specifier and its effect in Node and browsers.",
+      "description": "| Method | Purpose | Notes |\n|---|---|---|\n| `log` / `info` / `debug` | general output | `debug` hidden by default in browsers |\n| `warn` | warning (yellow) | goes to stderr in Node |\n| `error` | error (red) | stderr; includes stack in browsers |\n| `table(data, cols?)` | tabular view | arrays of objects or arrays |\n| `dir(obj, opts)` | object inspector | `depth: null` for full depth (Node) |\n| `dirxml(el)` | DOM tree view | browsers |\n| `group(label)` / `groupCollapsed` / `groupEnd` | indent output | nest freely |\n| `time(l)` / `timeLog(l)` / `timeEnd(l)` | timers | label based |\n| `count(l)` / `countReset(l)` | counters | default label `default` |\n| `assert(cond, ...msg)` | logs if false | does not throw |\n| `trace()` | stack trace | prints call stack |\n| `clear()` | clear console | no-op in some environments |\n| `profile()` / `timeStamp()` | profiler marker | browsers/devtools |\n\n### Format specifiers (first argument)\n| Spec | Meaning |\n|---|---|\n| `%s` | string |\n| `%d` / `%i` | number / integer |\n| `%f` | float |\n| `%o` / `%O` | object (expandable / plain) |\n| `%j` | JSON (Node) |\n| `%c` | CSS styles (browsers) |\n| `%%` | literal percent |\n\n### Tips\n- `console.log({ a, b })` prints names and values.\n- Template: `console.log('%c Title', 'font-size:20px;color:teal')` in browsers.\n- Arrays of objects with `console.table(rows, ['id'])` filter columns.\n- `console.log(JSON.stringify(x, null, 2))` prints a stable snapshot.\n- In Node, `util.inspect` and `console.dir` accept `colors`, `depth`, `compact`, `breakLength`.\n- Replace console methods to build a logger: `console.log = (...a) => orig('[app]', ...a)`.\n- Browser console utilities (not on `console`): `$0`, `$_`, `copy()`, `monitorEvents()`, `getEventListeners()`.",
+      "keyPoints": [
+        "table, group, time, count and assert are the underused console methods.",
+        "%s %d %i %f %o %O %j and %c format specifiers work in the first argument.",
+        "error and warn write to stderr in Node, log writes to stdout.",
+        "console.assert logs but never throws.",
+        "console.log({ x }) is a handy way to label values."
+      ],
+      "pitfalls": [
+        "Logging huge objects in loops slows the app and DevTools.",
+        "Browser consoles evaluate live objects lazily, so expanded output may show later state."
+      ],
+      "examples": [
+        {
+          "title": "Console API tour",
+          "language": "javascript",
+          "code": "console.info('info'); console.debug('debug');\nconsole.table([[1, 2], [3, 4]]);\nconsole.table({ a: { x: 1 }, b: { x: 2 } });\nconsole.group('G'); console.log('indented'); console.groupEnd();\nconsole.count(); console.count(); console.count('named');\nconsole.assert(false, 'assertion shown on stderr');\nconsole.log('%s | %d | %i | %f | %j | %o | 100%%', 'str', 42.5, 42.5, 1.5, { a: 1 }, [1]);\nconsole.time('t'); const x = [...Array(1000).keys()].reduce((s, n) => s + n); // console.timeEnd('t') would print the elapsed ms\nconsole.dir({ deep: { deeper: { deepest: { bottom: 1 } } } }, { depth: 0 });\nconst orig = console.log;\nconsole.log = (...a) => orig('[app]', ...a);\nconsole.log('wrapped logger', x);\nconsole.log = orig;",
+          "explanation": "Every group once."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between console.log and console.dir?",
+          "a": "log prints a formatted representation, while dir prints the object as an inspectable structure with options such as depth in Node."
+        },
+        {
+          "q": "Does console.assert throw?",
+          "a": "No; it only logs a message when the condition is false."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-dom",
+      "title": "DOM API Quick List",
+      "level": "beginner",
+      "summary": "Quick reference of selecting, creating, modifying, styling, traversing and event APIs in the DOM.",
+      "description": "### Select\n| API | Returns |\n|---|---|\n| `document.getElementById(id)` | element or null |\n| `querySelector(sel)` / `querySelectorAll(sel)` | first element / **static** NodeList |\n| `getElementsByClassName / TagName` | **live** HTMLCollection |\n| `el.closest(sel)` | nearest matching ancestor (or itself) |\n| `el.matches(sel)` | boolean |\n| `document.forms`, `document.body`, `document.documentElement` | shortcuts |\n\n### Create and change\n| API | Purpose |\n|---|---|\n| `document.createElement(tag)` / `createTextNode` / `createDocumentFragment` | make nodes |\n| `parent.append(...)` / `prepend` / `before` / `after` | insert nodes or text |\n| `appendChild`, `insertBefore`, `replaceChild`, `removeChild` | classic insertion |\n| `el.remove()` / `replaceWith()` / `replaceChildren()` | remove/replace |\n| `el.cloneNode(deep)` | copy |\n| `el.insertAdjacentHTML(pos, html)` | `beforebegin afterbegin beforeend afterend` |\n| `textContent` | text (safe) |\n| `innerHTML` / `outerHTML` | parse HTML (XSS risk with user data) |\n\n### Attributes, classes, styles\n| API | Purpose |\n|---|---|\n| `getAttribute / setAttribute / removeAttribute / hasAttribute / toggleAttribute` | attributes |\n| `el.dataset.fooBar` | `data-foo-bar` |\n| `el.classList.add / remove / toggle / contains / replace` | classes |\n| `el.style.prop = v`, `style.setProperty('--x', v)` | inline style |\n| `getComputedStyle(el)` | resolved styles |\n| `el.hidden`, `el.value`, `el.checked`, `el.disabled` | properties |\n\n### Traversal\n`parentElement`, `children`, `firstElementChild`, `lastElementChild`, `nextElementSibling`, `previousElementSibling`, `childNodes` (includes text nodes), `contains(node)`.\n\n### Geometry\n`getBoundingClientRect()`, `offsetWidth/Height`, `scrollTop`, `scrollIntoView()`, `window.innerWidth`.\n\n### Events\n`addEventListener(type, fn, { once, passive, capture, signal })`, `removeEventListener`, `dispatchEvent(new CustomEvent(name, { detail }))`, `event.preventDefault()`, `stopPropagation()`, `target`, `currentTarget`.",
+      "keyPoints": [
+        "querySelectorAll returns a static list; getElementsBy* returns a live collection.",
+        "textContent is safe; innerHTML parses HTML and is an XSS risk.",
+        "classList and dataset are the clean ways to handle classes and data attributes.",
+        "append/prepend/before/after accept strings and multiple nodes.",
+        "addEventListener accepts options including once, passive and an AbortSignal."
+      ],
+      "pitfalls": [
+        "children excludes text nodes but childNodes includes them (including whitespace).",
+        "Reading layout properties after writes forces reflow; batch reads and writes."
+      ],
+      "examples": [
+        {
+          "title": "Build and modify DOM",
+          "language": "web",
+          "html": "<div id=\"box\" class=\"card\" data-user-id=\"42\"><button class=\"btn\">Toggle</button> <span id=\"info\"></span></div>\n<ul id=\"list\"></ul>",
+          "css": ".card{padding:12px;border:2px solid #888;border-radius:8px;font-family:sans-serif} .card.on{border-color:seagreen;background:#e8fff0} li{margin:3px 0}",
+          "js": "const box = document.querySelector('#box');\nconst info = document.querySelector('#info');\nbox.querySelector('.btn').addEventListener('click', (e) => {\n  const on = box.classList.toggle('on');\n  info.textContent = `on=${on}, user=${box.dataset.userId}, card=${e.target.closest('.card').id}`;\n});\nconst frag = document.createDocumentFragment();\n['one', 'two', 'three'].forEach((t, i) => {\n  const li = document.createElement('li');\n  li.textContent = t; li.dataset.index = i;\n  frag.append(li);\n});\ndocument.querySelector('#list').append(frag);\nconsole.log(document.querySelectorAll('li').length, document.getElementsByTagName('li').length);",
+          "explanation": "Create, class toggle, dataset, closest."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between querySelectorAll and getElementsByClassName?",
+          "a": "querySelectorAll returns a static NodeList snapshot; getElementsByClassName returns a live HTMLCollection that updates as the DOM changes."
+        },
+        {
+          "q": "Why prefer textContent over innerHTML for user data?",
+          "a": "textContent inserts plain text, whereas innerHTML parses HTML and can execute injected markup (XSS)."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-cs-fetch-url-storage",
+      "title": "Fetch, URL, Storage and Timers API List",
+      "level": "intermediate",
+      "summary": "Quick reference for fetch/Response/Headers, URL and URLSearchParams, localStorage/sessionStorage, timers and other common web globals.",
+      "description": "### fetch\n```js\nconst res = await fetch(url, { method, headers, body, signal, credentials, cache, mode });\n```\n| Member | Notes |\n|---|---|\n| `res.ok`, `res.status`, `res.statusText` | fetch **does not reject on 404/500**, check `ok` |\n| `res.headers.get(name)` | `Headers` object (case-insensitive) |\n| `res.json() / text() / blob() / arrayBuffer() / formData()` | body readers, **one use only** |\n| `res.clone()` | read the body twice |\n| `res.body` | ReadableStream |\n| `AbortController` + `signal` | cancel; `AbortSignal.timeout(ms)` auto-abort |\n| `new Request(url, init)` / `new Response(body, init)` | constructors (Service Workers, tests) |\n| `FormData`, `Blob`, `File`, `URLSearchParams` | request bodies |\n\n### URL and URLSearchParams\n`new URL(str, base)` with `href`, `origin`, `protocol`, `host`, `hostname`, `port`, `pathname`, `search`, `hash`, `searchParams`. Methods: `get`, `getAll`, `set`, `append`, `delete`, `has`, `toString`, iteration, `sort`. Static `URL.canParse(str)` and `URL.createObjectURL(blob)`.\n\n### Storage\n| API | Lifetime | Limit |\n|---|---|---|\n| `localStorage` | until cleared | about 5 MB, strings only |\n| `sessionStorage` | tab session | about 5 MB |\n| `setItem / getItem / removeItem / clear / key(i) / length` | synchronous | |\n| Cookies (`document.cookie`) | configurable | about 4 KB, sent with requests |\n| IndexedDB | persistent, async | large, structured data |\n| Cache API / Service Worker | offline caching | |\n\nStore objects with `JSON.stringify`; reads return `null` when missing. The `storage` event fires in **other** tabs.\n\n### Timers and scheduling\n`setTimeout / clearTimeout`, `setInterval / clearInterval`, `requestAnimationFrame / cancelAnimationFrame`, `requestIdleCallback`, `queueMicrotask(fn)`, `structuredClone`, `performance.now()`, `crypto.randomUUID()`, `crypto.getRandomValues(arr)`, `navigator.clipboard`, `navigator.onLine`.",
+      "keyPoints": [
+        "fetch only rejects on network failure; always check response.ok.",
+        "A response body can be read once; clone it to read twice.",
+        "AbortSignal.timeout(ms) gives a built-in timeout for requests.",
+        "localStorage is synchronous, string-only and shared across tabs of the same origin.",
+        "queueMicrotask and requestAnimationFrame schedule work at different phases of the event loop."
+      ],
+      "pitfalls": [
+        "Sending JSON needs both JSON.stringify(body) and the Content-Type: application/json header.",
+        "Never store secrets or tokens in localStorage if XSS is a risk."
+      ],
+      "examples": [
+        {
+          "title": "Parsing and storage helpers",
+          "language": "javascript",
+          "code": "const store = typeof localStorage !== 'undefined' ? localStorage : (() => {\n  const m = new Map();\n  return { setItem: (k, v) => m.set(k, String(v)), getItem: (k) => (m.has(k) ? m.get(k) : null), removeItem: (k) => m.delete(k), get length() { return m.size; } };\n})();\nstore.setItem('user', JSON.stringify({ name: 'Ann', tags: ['a'] }));\nconsole.log(JSON.parse(store.getItem('user')), store.getItem('missing'));\nstore.removeItem('user');\nconsole.log(store.getItem('user'));\nconst u = new URL('https://api.test/v1/users?active=true');\nu.searchParams.set('limit', '10');\nconsole.log(u.toString(), URL.canParse('nope'), URL.canParse('https://x.y'));\nconst res = new Response(JSON.stringify({ ok: true }), { status: 201, headers: { 'Content-Type': 'application/json' } });\nconsole.log(res.ok, res.status, res.headers.get('content-type'));\nres.clone().text().then(t => console.log('clone text', t));\nres.json().then(j => console.log('json', j));\nconst ac = new AbortController();\nac.abort();\nfetch('http://localhost:1/never', { signal: ac.signal }).catch(e => console.log(e.name));\nconsole.log(typeof crypto.randomUUID(), typeof performance.now());",
+          "explanation": "Uses a Map-backed storage shim so it also runs in Node."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Does fetch reject on a 404 response?",
+          "a": "No. It only rejects on network errors; check response.ok or response.status yourself."
+        },
+        {
+          "q": "What is the difference between localStorage and sessionStorage?",
+          "a": "localStorage persists until cleared and is shared across tabs of an origin; sessionStorage lives only for the tab session."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

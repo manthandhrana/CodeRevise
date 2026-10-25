@@ -1,0 +1,201 @@
+{
+ "id": "py-oop",
+ "title": "Object-Oriented Python",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-classes-inheritance",
+   "title": "Classes and Inheritance",
+   "level": "intermediate",
+   "summary": "Model data and behaviour with classes, instance vs class attributes, and reuse code through inheritance.",
+   "description": "A **class** is a blueprint; an **object** (instance) is something built from it. Classes bundle data (attributes) and behaviour (methods).\n\n### Defining a class\n```python\nclass Account:\n    bank = \"PyBank\"                 # class attribute, shared\n\n    def __init__(self, owner, balance=0):\n        self.owner = owner          # instance attribute\n        self.balance = balance\n\n    def deposit(self, amount):\n        self.balance += amount\n```\n`self` is the instance and is passed automatically. `__init__` initialises a new object.\n\n### Method kinds\n- Instance method: gets `self`.\n- `@classmethod`: gets `cls`; often used as alternative constructors (`Date.from_string`).\n- `@staticmethod`: no automatic argument; a plain function living in the class namespace.\n\n### Inheritance\n`class Savings(Account):` reuses and extends the parent. `super()` calls the parent's version of a method. Python supports **multiple inheritance**; the **MRO** (method resolution order, `Class.__mro__`) decides lookup order using C3 linearisation.\n\n### Encapsulation by convention\n`_name` means \"internal, please don't touch\"; `__name` triggers name mangling to avoid clashes in subclasses. Python has no truly private attributes.\n\n### Composition over inheritance\nIf the relationship is \"has a\" rather than \"is a\", store an object as an attribute instead of inheriting. It is usually more flexible.",
+   "keyPoints": [
+    "__init__ initialises each instance; self is the instance",
+    "Class attributes are shared; instance attributes belong to one object",
+    "classmethod gets cls, staticmethod gets nothing",
+    "super() delegates to the parent class",
+    "Prefer composition when the relationship is \"has a\""
+   ],
+   "pitfalls": [
+    "Mutable class attributes shared by all instances",
+    "Forgetting self in method definitions",
+    "Deep inheritance trees that are hard to follow"
+   ],
+   "examples": [
+    {
+     "title": "Inheritance with super()",
+     "language": "python",
+     "code": "class Animal:\n    count = 0\n\n    def __init__(self, name):\n        self.name = name\n        Animal.count += 1\n\n    def speak(self):\n        return f\"{self.name} makes a sound\"\n\n    @classmethod\n    def from_pair(cls, text):\n        return cls(text.split(\"-\")[0])\n\n    @staticmethod\n    def kingdom():\n        return \"Animalia\"\n\nclass Dog(Animal):\n    def __init__(self, name, breed):\n        super().__init__(name)\n        self.breed = breed\n\n    def speak(self):\n        return f\"{self.name} the {self.breed} barks\"\n\nd = Dog(\"Rex\", \"Labrador\")\na = Animal.from_pair(\"Cat-small\")\nprint(d.speak())\nprint(a.speak())\nprint(Animal.count, Animal.kingdom())\nprint(isinstance(d, Animal), [c.__name__ for c in Dog.__mro__])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between a class attribute and an instance attribute?",
+     "a": "A class attribute is stored on the class and shared by all instances; an instance attribute is stored on the object and is unique to it."
+    },
+    {
+     "q": "What is MRO?",
+     "a": "Method Resolution Order: the order in which Python searches base classes for a method, computed by C3 linearisation and visible via __mro__."
+    },
+    {
+     "q": "classmethod vs staticmethod?",
+     "a": "classmethod receives the class as first argument and can create instances; staticmethod receives nothing and is just a namespaced function."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-dunder-methods",
+   "title": "Dunder (Magic) Methods",
+   "level": "intermediate",
+   "summary": "Special double-underscore methods that let your objects work with Python syntax and built-ins.",
+   "description": "Methods named `__like_this__` (\"dunder\" = double underscore) are hooks Python calls for built-in operations. Implementing them makes your objects behave like native types.\n\n### Most useful\n| Method | Triggered by |\n|---|---|\n| `__init__` | `Class(...)` |\n| `__repr__` | `repr(obj)`, debugging, REPL |\n| `__str__` | `str(obj)`, `print(obj)` |\n| `__len__` | `len(obj)` |\n| `__getitem__` / `__setitem__` | `obj[key]` |\n| `__iter__` / `__next__` | `for x in obj` |\n| `__contains__` | `x in obj` |\n| `__eq__`, `__lt__` ... | `==`, `<` ... |\n| `__add__`, `__mul__` | `+`, `*` |\n| `__call__` | `obj()` |\n| `__enter__` / `__exit__` | `with obj:` |\n| `__hash__` | `hash(obj)`, dict keys |\n| `__bool__` | `if obj:` |\n\n### repr vs str\n`__repr__` is for developers and should ideally look like valid code; `__str__` is for end users. If only `__repr__` is defined, `print` uses it too, so always write `__repr__` first.\n\n### Equality and hashing\nIf you define `__eq__` without `__hash__`, instances become unhashable. Objects that compare equal must have equal hashes.\n\n### Operators return NotImplemented\nFor unsupported operand types return `NotImplemented` (not raise) so Python can try the reflected operation.",
+   "keyPoints": [
+    "__repr__ is for developers, __str__ for users",
+    "__len__, __getitem__, __iter__ make containers",
+    "__eq__ and __hash__ must agree",
+    "__call__ makes instances callable",
+    "__enter__/__exit__ power the with statement"
+   ],
+   "pitfalls": [
+    "Defining __eq__ and unintentionally losing hashability",
+    "Returning non-strings from __str__",
+    "Mutating objects used as dict keys"
+   ],
+   "examples": [
+    {
+     "title": "A Vector class",
+     "language": "python",
+     "code": "class Vector:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n\n    def __repr__(self):\n        return f\"Vector({self.x}, {self.y})\"\n\n    def __add__(self, other):\n        if not isinstance(other, Vector):\n            return NotImplemented\n        return Vector(self.x + other.x, self.y + other.y)\n\n    def __mul__(self, k):\n        return Vector(self.x * k, self.y * k)\n\n    def __eq__(self, other):\n        return isinstance(other, Vector) and (self.x, self.y) == (other.x, other.y)\n\n    def __hash__(self):\n        return hash((self.x, self.y))\n\n    def __len__(self):\n        return 2\n\n    def __iter__(self):\n        yield self.x\n        yield self.y\n\n    def __bool__(self):\n        return bool(self.x or self.y)\n\nv = Vector(1, 2) + Vector(3, 4)\nprint(v, v * 2, len(v), list(v))\nprint(v == Vector(4, 6), {v: \"ok\"}[Vector(4, 6)])\nprint(bool(Vector(0, 0)))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between __str__ and __repr__?",
+     "a": "__str__ gives a readable string for users; __repr__ gives an unambiguous developer representation. print() uses __str__ and falls back to __repr__."
+    },
+    {
+     "q": "Why define __hash__ with __eq__?",
+     "a": "Equal objects must have equal hashes so they work correctly in sets and as dict keys; defining __eq__ alone sets __hash__ to None."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-dataclasses",
+   "title": "Dataclasses",
+   "level": "intermediate",
+   "summary": "Generate __init__, __repr__ and comparisons automatically for classes that mainly hold data.",
+   "description": "`@dataclass` (module `dataclasses`, Python 3.7+) writes the boring methods for you based on **annotated fields**.\n\n```python\nfrom dataclasses import dataclass, field\n\n@dataclass\nclass Product:\n    name: str\n    price: float\n    tags: list[str] = field(default_factory=list)\n```\n\nYou automatically get `__init__`, `__repr__` and `__eq__`.\n\n### Useful options\n- `frozen=True`: instances are immutable and hashable.\n- `order=True`: adds `<`, `<=`, `>`, `>=` comparing fields in order.\n- `slots=True` (3.10+): less memory, faster attribute access.\n- `kw_only=True` (3.10+): all fields must be passed by keyword.\n\n### Field tricks\n- `field(default_factory=list)` for mutable defaults (a plain `= []` is rejected).\n- `field(repr=False, compare=False)` to hide or exclude a field.\n- `__post_init__` runs after `__init__` for validation or derived fields.\n- `field(init=False)` for computed fields.\n\n### Helpers\n`asdict(obj)`, `astuple(obj)`, `replace(obj, price=5)`, `fields(cls)`.\n\n### Dataclass vs alternatives\n`namedtuple` is immutable and tuple-like; plain classes give full control; **Pydantic** models add validation and parsing, which is why FastAPI uses them.",
+   "keyPoints": [
+    "@dataclass generates __init__, __repr__, __eq__",
+    "Use field(default_factory=...) for mutable defaults",
+    "frozen=True makes instances immutable and hashable",
+    "__post_init__ is the hook for validation",
+    "asdict() and replace() are handy helpers"
+   ],
+   "pitfalls": [
+    "Using a mutable default value directly",
+    "Forgetting that fields without annotations are ignored",
+    "Expecting runtime type validation (there is none)"
+   ],
+   "examples": [
+    {
+     "title": "Dataclass in use",
+     "language": "python",
+     "code": "from dataclasses import dataclass, field, asdict, replace\n\n@dataclass(order=True)\nclass Product:\n    price: float\n    name: str = field(compare=False)\n    tags: list = field(default_factory=list, compare=False)\n\n    def __post_init__(self):\n        if self.price < 0:\n            raise ValueError(\"price must be >= 0\")\n\n@dataclass(frozen=True)\nclass Point:\n    x: int\n    y: int\n\np1 = Product(9.5, \"Pen\", [\"office\"])\np2 = replace(p1, price=12.0)\nprint(p1)\nprint(p1 < p2, asdict(p2))\n\npt = Point(1, 2)\nprint(pt, {pt: \"hashable\"})\ntry:\n    pt.x = 5\nexcept Exception as e:\n    print(type(e).__name__)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use dataclasses?",
+     "a": "They remove boilerplate (init, repr, eq) for data-holding classes while remaining normal classes you can extend."
+    },
+    {
+     "q": "How do you give a dataclass field a list default?",
+     "a": "Use field(default_factory=list); a bare list default would be shared across instances and is rejected."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-properties",
+   "title": "Properties and Encapsulation",
+   "level": "intermediate",
+   "summary": "Control attribute access with @property getters, setters and computed attributes.",
+   "description": "A **property** lets you expose a method as if it were a plain attribute. You can start with a simple public attribute and, later, add validation or computation **without changing the calling code**.\n\n```python\nclass Temperature:\n    def __init__(self, celsius):\n        self._celsius = celsius\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if value < -273.15:\n            raise ValueError(\"below absolute zero\")\n        self._celsius = value\n\n    @property\n    def fahrenheit(self):          # read-only computed\n        return self._celsius * 9 / 5 + 32\n```\n\n### Why not getX()/setX()?\nPython prefers direct attribute access. Properties give you Java-style control only where you need it.\n\n### Read-only and computed attributes\nDefine only a getter and assignment raises `AttributeError`. Combine with `functools.cached_property` for expensive values.\n\n### Deleter\n`@celsius.deleter` handles `del obj.celsius`.\n\n### Under the hood: descriptors\n`property` is implemented with the **descriptor protocol** (`__get__`, `__set__`, `__delete__`). Methods, `classmethod` and `staticmethod` are descriptors too. You rarely write one, but it explains how attribute lookup works.\n\n### Naming conventions\n`_x` = internal, `__x` = name-mangled. Use them to signal intent, not to enforce secrecy.\n\n### When to choose a property\nPick a property when an attribute needs validation, must stay consistent with another attribute (like `fahrenheit` derived from `celsius`), or when you want to deprecate a stored field and compute it instead. If the attribute is just data, keep it as a plain public attribute.",
+   "keyPoints": [
+    "@property turns a method into an attribute read",
+    "@name.setter adds validation on assignment",
+    "A getter-only property is read-only",
+    "Properties allow changing internals without breaking callers",
+    "Descriptors are the mechanism behind property"
+   ],
+   "pitfalls": [
+    "Naming the backing attribute the same as the property (infinite recursion)",
+    "Doing slow work in a property getter without caching",
+    "Writing Java-style getters/setters unnecessarily"
+   ],
+   "examples": [
+    {
+     "title": "Validated property",
+     "language": "python",
+     "code": "class Temperature:\n    def __init__(self, celsius):\n        self.celsius = celsius        # goes through the setter\n\n    @property\n    def celsius(self):\n        return self._celsius\n\n    @celsius.setter\n    def celsius(self, value):\n        if value < -273.15:\n            raise ValueError(\"below absolute zero\")\n        self._celsius = value\n\n    @property\n    def fahrenheit(self):\n        return self._celsius * 9 / 5 + 32\n\nt = Temperature(25)\nprint(t.celsius, t.fahrenheit)\nt.celsius = 100\nprint(t.fahrenheit)\ntry:\n    t.celsius = -500\nexcept ValueError as e:\n    print(\"error:\", e)\ntry:\n    t.fahrenheit = 10\nexcept AttributeError:\n    print(\"fahrenheit is read-only\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use @property?",
+     "a": "To add validation or computation behind attribute syntax, keeping a stable public interface and avoiding getter/setter boilerplate."
+    },
+    {
+     "q": "Does Python have private attributes?",
+     "a": "No. A leading underscore is a convention, and double underscore triggers name mangling, but neither prevents access."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-abc-enums",
+   "title": "Abstract Base Classes and Enums",
+   "level": "intermediate",
+   "summary": "Define interfaces that subclasses must implement, and named constants with Enum.",
+   "description": "### Abstract base classes (ABC)\nAn **ABC** declares an interface: methods that every subclass must implement. A class with unimplemented `@abstractmethod`s cannot be instantiated, so mistakes show up early.\n\n```python\nfrom abc import ABC, abstractmethod\n\nclass Shape(ABC):\n    @abstractmethod\n    def area(self) -> float: ...\n```\n\nUse ABCs when you want an explicit contract and shared base behaviour, for example payment gateways or storage backends. For lighter \"duck typing\" with static checks, use `typing.Protocol` instead.\n\n### Enums\n`Enum` defines a fixed set of named constants. Compared with plain strings or ints they are safer (typos fail), self-documenting and iterable.\n\n```python\nfrom enum import Enum, auto\n\nclass Status(Enum):\n    ACTIVE = auto()\n    BANNED = auto()\n```\n\n- Access: `Status.ACTIVE`, `Status[\"ACTIVE\"]`, `Status(1)`.\n- `.name` and `.value` give the label and the value.\n- `IntEnum` and `StrEnum` (3.11+) behave like ints/strings and are handy for JSON or database values.\n- `Flag` supports bitwise combinations of options.\n\n### Where you meet them\nDjango `TextChoices`, SQLAlchemy `Enum` columns, FastAPI request parameters restricted to a set of values, and state machines in your own code.",
+   "keyPoints": [
+    "ABC + @abstractmethod enforce an interface",
+    "Abstract classes cannot be instantiated",
+    "Enum gives named, comparable constants",
+    "Use auto() to generate values and StrEnum for string values",
+    "Protocol is the structural alternative to ABC"
+   ],
+   "pitfalls": [
+    "Using strings as magic constants instead of Enum",
+    "Comparing an Enum member to its raw value (Status.ACTIVE == 1 is False for plain Enum)",
+    "Instantiating an ABC with missing abstract methods"
+   ],
+   "examples": [
+    {
+     "title": "ABC and Enum",
+     "language": "python",
+     "code": "from abc import ABC, abstractmethod\nfrom enum import Enum, auto\nimport math\n\nclass Shape(ABC):\n    @abstractmethod\n    def area(self): ...\n\n    def describe(self):\n        return f\"{type(self).__name__} with area {self.area():.2f}\"\n\nclass Circle(Shape):\n    def __init__(self, r):\n        self.r = r\n    def area(self):\n        return math.pi * self.r ** 2\n\nclass Square(Shape):\n    def __init__(self, s):\n        self.s = s\n    def area(self):\n        return self.s ** 2\n\nprint(Circle(1).describe(), \"|\", Square(2).describe())\ntry:\n    Shape()\nexcept TypeError as e:\n    print(\"cannot instantiate\")\n\nclass Color(Enum):\n    RED = auto()\n    GREEN = auto()\n\nprint(Color.RED, Color.RED.name, Color.RED.value, Color[\"GREEN\"])\nprint([c.name for c in Color])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does an abstract method do?",
+     "a": "It forces subclasses to implement it; a class that does not cannot be instantiated."
+    },
+    {
+     "q": "Why use Enum over constants?",
+     "a": "Enums group related constants, prevent invalid values, support iteration and give readable names in logs and debugging."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,121 @@
+{
+ "id": "css-interview-prep",
+ "title": "Interview Preparation",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "css-interview-fundamentals",
+   "title": "Interview Questions: Fundamentals",
+   "level": "beginner",
+   "summary": "The most common beginner and mid-level CSS interview questions with crisp answers.",
+   "description": "Quick-fire answers for the questions asked most often. Practise saying each one in 2-3 sentences.\n\n### Box model and sizing\n- **What is the box model?** Content + padding + border + margin. Width/height apply to content in the default `content-box`.\n- **content-box vs border-box?** border-box includes padding and border in the declared width, which makes layout math easy.\n- **margin vs padding?** Padding is inside the border and shows the background; margin is outside, transparent, and can collapse.\n\n### Selectors and cascade\n- **Specificity order?** inline > id > class/attribute/pseudo-class > element/pseudo-element; `!important` overrides.\n- **What is inheritance?** Some properties (color, font) flow to children; margin/border do not.\n- **Child vs descendant?** `>` is direct children only; a space is any depth.\n- **Pseudo-class vs pseudo-element?** State/position (`:hover`) vs a part or generated content (`::before`).\n\n### Display and position\n- **display none vs visibility hidden vs opacity 0?** Removed, hidden but keeps space, invisible but still interactive.\n- **absolute vs relative vs fixed vs sticky?** Absolute: nearest positioned ancestor; relative: offset from own place; fixed: viewport; sticky: switches at a scroll threshold.\n- **How does z-index work?** Needs positioned/flex items and respects stacking contexts.\n\n### Units and values\n- **em vs rem?** Parent font-size vs root font-size.\n- **What is currentColor?** The element's current text color.\n\n### Quick wins to mention\n- Use semantic class names, avoid !important, prefer rem, mobile-first, and a reset with border-box.",
+   "keyPoints": [
+    "Explain the box model and border-box confidently",
+    "Specificity order and why !important is a last resort",
+    "em vs rem; inline vs block vs inline-block",
+    "position values and when each is used",
+    "display none vs visibility hidden vs opacity 0"
+   ],
+   "pitfalls": [
+    "Answering with only definitions - add a one-line example",
+    "Confusing pseudo-class with pseudo-element syntax"
+   ],
+   "examples": [
+    {
+     "title": "Output question: which color wins?",
+     "language": "web",
+     "html": "<p class=\"text\" id=\"msg\" style=\"\">Which color am I?</p>",
+     "css": "p { color: red; }\n.text { color: green; }\np.text { color: blue; }\n#msg { color: orange; }\n/* answer: orange (id beats class and element) */",
+     "js": "",
+     "code": "",
+     "explanation": "Add an inline style or !important mentally to practise: inline beats id; !important beats inline."
+    },
+    {
+     "title": "Output question: spacing",
+     "language": "web",
+     "html": "<div class=\"a\">A</div><div class=\"b\">B</div>",
+     "css": ".a { margin-bottom: 30px; background: #fde68a; }\n.b { margin-top: 50px; background: #bfdbfe; }\n/* gap between A and B? 50px, not 80px (margin collapse) */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between display: none and visibility: hidden?",
+     "a": "display: none removes the element from layout; visibility: hidden hides it but it still takes space."
+    },
+    {
+     "q": "Which has higher specificity: an id or 10 classes?",
+     "a": "The id. Specificity is compared column by column, not summed."
+    },
+    {
+     "q": "How do you center a div?",
+     "a": "Parent display: grid; place-items: center; or flex with justify-content and align-items center (plus a height)."
+    },
+    {
+     "q": "What is the box model?",
+     "a": "Each element is a box of content, padding, border and margin; box-sizing controls whether width includes padding and border."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code (INTERVIEW QUESTIONS comments in each folder)"
+  },
+  {
+   "id": "css-interview-advanced",
+   "title": "Interview Questions: Layout, Modern CSS and Tricky Cases",
+   "level": "advanced",
+   "summary": "Layout, responsive, animation and modern-CSS questions with practical answers.",
+   "description": "Mid-to-senior interviews test your ability to **choose and explain**.\n\n### Layout\n- **Flexbox vs Grid?** 1D content-driven vs 2D layout-driven. Use both together.\n- **How to make a responsive card grid without media queries?** `grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))`.\n- **Why does a flex child overflow with long text?** `min-width: auto` default; set `min-width: 0`.\n- **How do floats collapse the parent and how to fix it?** Use `display: flow-root` or a clearfix.\n\n### Stacking and position\n- **Why does z-index: 9999 not work?** It is inside a lower stacking context; fix the ancestor or avoid creating contexts (transform, opacity, filter).\n- **Why is position: sticky not sticking?** Ancestor overflow or missing offset.\n\n### Performance and animation\n- **Which properties are cheap to animate?** transform and opacity.\n- **What is will-change?** A hint to promote a layer; use sparingly.\n- **Transition vs animation?** A to B on state change vs keyframed, autonomous sequences.\n\n### Modern CSS\n- **What are custom properties and how do they differ from preprocessors?** Runtime, cascading, JS-controllable.\n- **What is :has()?** A relational (parent) selector.\n- **What are container queries?** Styles based on container size, ideal for reusable components.\n- **What are cascade layers?** Explicit priority groups that beat specificity.\n- **What does clamp() do?** Fluid value bounded by min and max.\n\n### Responsive and accessibility\n- **Mobile-first?** Base styles for small screens and min-width queries upwards.\n- **How do you support dark mode and reduced motion?** `prefers-color-scheme` and `prefers-reduced-motion` media queries.\n\n### How to answer\nState the concept, give the one-line syntax, and mention a trade-off or pitfall.",
+   "keyPoints": [
+    "Explain trade-offs, not just definitions",
+    "Know stacking contexts and sticky pitfalls",
+    "Transform/opacity for performance",
+    "Modern features: :has, container queries, @layer, clamp",
+    "Accessibility: focus-visible, reduced motion, contrast"
+   ],
+   "pitfalls": [
+    "Claiming Grid replaces Flexbox",
+    "Using vendor-specific hacks you cannot explain"
+   ],
+   "examples": [
+    {
+     "title": "Tricky: flex item overflow fix",
+     "language": "web",
+     "html": "<div class=\"row\"><div class=\"long\">averyveryveryveryveryveryveryverylongunbrokenwordthatoverflowsthecontainer</div><div class=\"side\">side</div></div>",
+     "css": ".row { display: flex; width: 280px; border: 2px solid #94a3b8; font-family: sans-serif; }\n.long { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: #dbeafe; }\n.side { flex: 0 0 60px; background: #fde68a; text-align: center; }\n/* remove min-width: 0 to see the overflow bug */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Tricky: responsive grid without media queries",
+     "language": "web",
+     "html": "<div class=\"g\"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i></div>",
+     "css": ".g { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }\ni { font-style: normal; background: #16a34a; color: #fff; height: 50px; display: grid; place-items: center; border-radius: 8px; font-family: sans-serif; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why might z-index: 9999 not put an element on top?",
+     "a": "The element is inside a stacking context (created by transform, opacity, filter, positioned parent with z-index) that ranks lower than another context."
+    },
+    {
+     "q": "What problem does :has() solve?",
+     "a": "It lets you style a parent or earlier sibling based on its children or following siblings, which was impossible with pure CSS before."
+    },
+    {
+     "q": "How do you make a layout respond to a component's own width?",
+     "a": "Use container queries: container-type: inline-size on the parent and @container rules for children."
+    },
+    {
+     "q": "How would you reduce layout shift (CLS) in CSS?",
+     "a": "Reserve space with width/height or aspect-ratio, size-adjust fallback fonts, avoid injecting content above existing content, and avoid animating layout properties."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

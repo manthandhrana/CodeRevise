@@ -1,0 +1,143 @@
+{
+ "id": "py-interview",
+ "title": "Interview Q&A and Best Practices",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-interview-core-qa",
+   "title": "Interview Q&A: Core Python",
+   "level": "intermediate",
+   "summary": "The most frequently asked Python language questions with crisp answers.",
+   "description": "Quick-fire answers to questions that appear in almost every Python interview.\n\n### Language basics\n- **Interpreted or compiled?** CPython compiles source to bytecode and runs it on a virtual machine.\n- **Mutable vs immutable?** Mutable: list, dict, set. Immutable: int, float, str, tuple, frozenset, bytes. Only immutable (hashable) objects can be dict keys.\n- **`is` vs `==`?** `is` compares identity; `==` compares value.\n- **What is `None`?** The single object that represents \"no value\"; check with `is None`.\n- **List vs tuple?** Lists are mutable and for homogeneous collections; tuples are immutable and for fixed records.\n\n### Functions and scope\n- **`*args` and `**kwargs`?** Gather extra positional arguments (tuple) and keyword arguments (dict).\n- **Mutable default argument?** Evaluated once; use `None` and create inside.\n- **LEGB?** Local, Enclosing, Global, Built-in lookup order.\n- **Decorator?** A function that wraps another to extend behaviour.\n- **Generator?** A function with `yield` producing values lazily.\n\n### OOP\n- **`__init__` vs `__new__`?** `__new__` creates the instance; `__init__` initialises it.\n- **Method types?** instance, class (`@classmethod`), static (`@staticmethod`).\n- **MRO?** The order in which base classes are searched (C3 linearisation).\n- **Shallow vs deep copy?** Shallow copies outer container only; deep copies recursively.\n\n### Internals\n- **GIL?** A lock allowing one thread to run Python bytecode at a time.\n- **Memory management?** Reference counting plus cyclic garbage collection.\n- **Pass by value or reference?** Pass by object reference (names bound to objects).\n- **How are dicts implemented?** Hash tables, average O(1) operations, insertion ordered since 3.7.\n\n### Common gotchas\n- `[[0] * 3] * 3` makes three references to one row.\n- Late binding in closures inside loops.\n- Modifying a list while iterating.",
+   "keyPoints": [
+    "Know mutable vs immutable and is vs ==",
+    "Explain args/kwargs, scope (LEGB) and mutable defaults",
+    "Know decorators, generators and context managers conceptually",
+    "Be able to describe the GIL and when to use threads vs processes",
+    "Recognise classic gotchas such as shared list multiplication"
+   ],
+   "pitfalls": [
+    "Memorising definitions without being able to show a code example",
+    "Claiming Python has no multithreading",
+    "Saying \"pass by reference\" without explaining object references"
+   ],
+   "examples": [
+    {
+     "title": "Classic interview gotchas",
+     "language": "python",
+     "code": "# 1. list multiplication shares references\ngrid = [[0] * 3] * 3\ngrid[0][0] = 1\nprint(grid)                       # every row changed\n\ngrid = [[0] * 3 for _ in range(3)]\ngrid[0][0] = 1\nprint(grid)\n\n# 2. late binding\nfuncs = [lambda: i for i in range(3)]\nprint([f() for f in funcs])\n\n# 3. identity vs equality\na, b = [1, 2], [1, 2]\nprint(a == b, a is b)\n\n# 4. mutable default\ndef add(x, bucket=[]):\n    bucket.append(x)\n    return bucket\nprint(add(1), add(2))\n\n# 5. tuple immutability is shallow\nt = ([1], 2)\nt[0].append(99)\nprint(t)\n\n# 6. integer division and rounding\nprint(7 // 2, -7 // 2, round(2.5), round(3.5))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What happens when you assign one list to another variable?",
+     "a": "Both names refer to the same list object, so changes through one are visible through the other; use copy() for an independent shallow copy."
+    },
+    {
+     "q": "Explain pass-by-object-reference.",
+     "a": "The function receives a reference to the same object; mutating it affects the caller, but rebinding the parameter name does not."
+    },
+    {
+     "q": "What is the difference between __new__ and __init__?",
+     "a": "__new__ creates and returns the instance (rarely overridden); __init__ initialises the already-created instance."
+    },
+    {
+     "q": "How would you make a class hashable and usable as a dict key?",
+     "a": "Implement __eq__ and __hash__ consistently using immutable fields, or use @dataclass(frozen=True)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-interview-coding-patterns",
+   "title": "Interview Q&A: Coding Patterns",
+   "level": "intermediate",
+   "summary": "Common coding-interview problems solved the Pythonic way.",
+   "description": "Interviewers like small problems that test fluency with Python's built-ins. Learn the pattern, not the exact problem.\n\n### Patterns and their tools\n| Pattern | Tool |\n|---|---|\n| Counting / frequency | `Counter`, `dict.get` |\n| Fast lookup / seen-before | `set`, `dict` |\n| Two numbers sum to target | dict of value -> index |\n| Sliding window | `deque`, two indexes |\n| Sorting by custom key | `sorted(key=...)` |\n| Grouping | `defaultdict(list)` |\n| Top-K | `heapq.nlargest` |\n| Queue / BFS | `deque` |\n| Reverse / palindrome | slicing `[::-1]` |\n| Unique preserving order | `dict.fromkeys` |\n| Combinations | `itertools` |\n\n### How to answer\n1. Clarify inputs, edge cases (empty, duplicates, negatives).\n2. State a brute-force solution and its complexity.\n3. Improve it with the right data structure.\n4. Code it cleanly with meaningful names.\n5. Test with an example and an edge case.\n6. State time and space complexity.\n\n### Complexity cheat sheet\n- list append O(1), insert/pop at front O(n), `in` O(n).\n- set/dict lookup, insert O(1) average.\n- sort O(n log n), `heapq.push/pop` O(log n).\n\n### Style tips\nUse comprehension, `enumerate`, `zip`, `any/all`, early returns and built-ins; they show Python fluency and reduce bugs.",
+   "keyPoints": [
+    "Choose the data structure that matches the pattern",
+    "Counter, set, dict, deque and heapq solve most problems",
+    "State complexity and mention edge cases",
+    "Start brute force, then optimise",
+    "Use enumerate, zip, any/all for clean code"
+   ],
+   "pitfalls": [
+    "Jumping to code without clarifying the problem",
+    "Using lists for membership tests in loops (O(n^2))",
+    "Ignoring empty-input edge cases"
+   ],
+   "examples": [
+    {
+     "title": "Five classic solutions",
+     "language": "python",
+     "code": "from collections import Counter, defaultdict\n\ndef two_sum(nums, target):\n    seen = {}\n    for i, n in enumerate(nums):\n        if target - n in seen:\n            return [seen[target - n], i]\n        seen[n] = i\n\ndef is_anagram(a, b):\n    return Counter(a.replace(\" \", \"\").lower()) == Counter(b.replace(\" \", \"\").lower())\n\ndef is_palindrome(s):\n    cleaned = [c.lower() for c in s if c.isalnum()]\n    return cleaned == cleaned[::-1]\n\ndef group_anagrams(words):\n    groups = defaultdict(list)\n    for w in words:\n        groups[\"\".join(sorted(w))].append(w)\n    return list(groups.values())\n\ndef first_unique_char(s):\n    counts = Counter(s)\n    return next((i for i, c in enumerate(s) if counts[c] == 1), -1)\n\nprint(two_sum([2, 7, 11, 15], 9))\nprint(is_anagram(\"Listen\", \"Silent\"))\nprint(is_palindrome(\"A man, a plan, a canal: Panama\"))\nprint(group_anagrams([\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"]))\nprint(first_unique_char(\"leetcode\"))",
+     "explanation": ""
+    },
+    {
+     "title": "Flatten and chunk",
+     "language": "python",
+     "code": "def flatten(items):\n    for x in items:\n        if isinstance(x, (list, tuple)):\n            yield from flatten(x)\n        else:\n            yield x\n\ndef chunks(seq, size):\n    for i in range(0, len(seq), size):\n        yield seq[i:i + size]\n\nprint(list(flatten([1, [2, [3, 4]], (5, [6])])))\nprint(list(chunks(list(range(7)), 3)))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find duplicates in a list efficiently?",
+     "a": "Track items in a set while iterating (O(n)), or use Counter and select counts above one."
+    },
+    {
+     "q": "How would you reverse a string?",
+     "a": "s[::-1] is the idiomatic way; \"\".join(reversed(s)) also works."
+    },
+    {
+     "q": "How do you find the most common element?",
+     "a": "collections.Counter(items).most_common(1) in O(n)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-best-practices",
+   "title": "Best Practices and Pythonic Style",
+   "level": "intermediate",
+   "summary": "Write readable, maintainable, safe and idiomatic Python following PEP 8 and the Zen of Python.",
+   "description": "Python code is read far more often than it is written. These habits make your code easy to maintain.\n\n### Style (PEP 8)\n- 4-space indentation, lines around 88-100 characters.\n- `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_CASE` for constants.\n- Imports grouped: standard library, third-party, local.\n- Use a formatter and linter: **ruff** or **black** + **flake8**, plus **mypy** for types.\n\n### Pythonic idioms\n- Iterate directly: `for x in items`, use `enumerate`, `zip`.\n- Truthiness: `if items:`; `is None` for None.\n- Use `with` for resources, f-strings for formatting, comprehensions for simple transforms.\n- Unpacking: `a, b = b, a`; `first, *rest = items`.\n- EAFP error handling.\n- `dict.get`, `setdefault`, `defaultdict`, `Counter`.\n- `pathlib` instead of string paths.\n\n### Design\n- Small functions with one job and clear names; docstrings for public APIs.\n- Avoid global state and mutable default arguments.\n- Prefer composition over inheritance; use dataclasses for data.\n- Raise specific exceptions; never `except:` blindly.\n\n### Project hygiene\n- Virtual environment per project; pinned dependencies.\n- Tests with pytest; CI to run lint and tests.\n- Logging instead of print; configuration from environment variables.\n- Never commit secrets; keep `.gitignore` current.\n- Use type hints on public functions.\n\n### Security\nParameterised SQL, validate and escape user input, hash passwords, keep dependencies updated (`pip-audit`), and never use `eval`/`exec` or `pickle` on untrusted data.\n\n### The Zen of Python\n`import this`: \"Readability counts\", \"Explicit is better than implicit\", \"Simple is better than complex\".",
+   "keyPoints": [
+    "Follow PEP 8 and automate it with ruff or black",
+    "Prefer clear, direct idioms: enumerate, zip, with, f-strings",
+    "Small functions, good names, docstrings and type hints",
+    "Test, log, and keep secrets and dependencies under control",
+    "Readability counts"
+   ],
+   "pitfalls": [
+    "Cleverness over clarity",
+    "Catching broad exceptions and hiding errors",
+    "Using eval/pickle on untrusted input"
+   ],
+   "examples": [
+    {
+     "title": "Before and after",
+     "language": "python",
+     "code": "# Before\ndef f(l):\n    r = []\n    for i in range(len(l)):\n        if l[i] % 2 == 0:\n            r.append(l[i] * l[i])\n    return r\n\n# After\ndef squares_of_evens(numbers: list[int]) -> list[int]:\n    \"\"\"Return the squares of the even numbers, preserving order.\"\"\"\n    return [n * n for n in numbers if n % 2 == 0]\n\ndata = [1, 2, 3, 4, 5, 6]\nprint(squares_of_evens(data))\n\n# Idioms\nnames = [\"asha\", \"ravi\"]\nscores = [90, 82]\nfor rank, (name, score) in enumerate(zip(names, scores), start=1):\n    print(f\"{rank}. {name.title():<6} {score:>3}\")\n\nconfig = {\"debug\": False}\ntimeout = config.get(\"timeout\", 30)\nprint(timeout)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is PEP 8?",
+     "a": "The official Python style guide covering naming, indentation, imports and layout conventions."
+    },
+    {
+     "q": "What does Pythonic mean?",
+     "a": "Using the language's idioms and built-ins to write clear, concise code, such as comprehensions, enumerate and context managers, instead of translating patterns from other languages."
+    },
+    {
+     "q": "Which tools do you use to keep a Python codebase healthy?",
+     "a": "A formatter and linter (ruff/black), type checker (mypy), pytest with coverage, pre-commit hooks and CI, plus dependency pinning and auditing."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

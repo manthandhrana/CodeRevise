@@ -1,0 +1,625 @@
+{
+ "id": "node-projects",
+ "title": "Real Projects",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-project-todo-cli",
+   "title": "Project: CLI Todo App",
+   "level": "beginner",
+   "summary": "A command line todo manager that stores data in a JSON file with atomic saves, colours and proper exit codes.",
+   "description": "Command line tools are the best first Node project: no server, no framework, instant feedback. This todo CLI stores tasks in `~/.todos.json` (or the path in `TODO_FILE`).\n\n### What you practise\n* `process.argv` to read the command and arguments\n* `fs/promises` to load and save JSON\n* **Atomic writes**: write to a temporary file and `rename` it, so a crash never leaves a half-written file\n* `os.homedir()` and `path.join` for cross-platform locations\n* `util.styleText` for terminal colours (automatically disabled when output is piped)\n* Exit codes: `process.exit(1)` on errors, `0` on success, so scripts can react\n\n### Design\n1. `load()` returns `[]` when the file does not exist yet (handle `ENOENT`)\n2. A `switch` on the command (`add`, `list`, `done`, `remove`, `clear`) keeps each action small\n3. Ids increase from the highest existing id, so deleting a task never reuses an id\n4. Errors print to **stderr** (`console.error`) and the program exits with code 1\n\n### Making it a real command\nAdd `\"bin\": { \"todo\": \"./todo.js\" }` to `package.json`, keep the `#!/usr/bin/env node` first line and run `npm link`. Now `todo add \"Buy milk\"` works from anywhere. Publish with `npm publish` to share it with others.\n\n### Ideas to extend\nDue dates and priorities, `todo list --done`, a `--json` flag, colours per priority, an interactive mode using `readline`, or tests that set `TODO_FILE` to a temp path.",
+   "keyPoints": [
+    "CLI tools use process.argv, stdout/stderr and exit codes",
+    "Write JSON atomically with a temp file plus rename",
+    "Handle a missing data file gracefully (ENOENT)",
+    "The bin field and npm link turn a script into a global command"
+   ],
+   "pitfalls": [
+    "Writing directly to the data file (corruption on crash)",
+    "Printing errors to stdout and returning exit code 0",
+    "Hard-coding a Windows or Linux specific path"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir todo-cli && cd todo-cli\nnpm init -y && npm pkg set type=module\n# create todo.js (next tab), then:\n\nnode todo.js add Learn Node\nnode todo.js add Build a CLI\nnode todo.js list\nnode todo.js done 1\nnode todo.js list\nnode todo.js clear\n\n# optional: make a global \"todo\" command\nnpm pkg set bin.todo=./todo.js\nnpm link\ntodo list",
+     "explanation": "Files: package.json and todo.js. Data is saved in your home folder as .todos.json.",
+     "lang": "bash"
+    },
+    {
+     "title": "todo.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- todo.js ----\n#!/usr/bin/env node\nimport fs from 'node:fs/promises';\nimport os from 'node:os';\nimport path from 'node:path';\nimport { styleText } from 'node:util';\n\nconst FILE = process.env.TODO_FILE ?? path.join(os.homedir(), '.todos.json');\n\nasync function load() {\n  try {\n    return JSON.parse(await fs.readFile(FILE, 'utf8'));\n  } catch (err) {\n    if (err.code === 'ENOENT') return [];\n    throw err;\n  }\n}\n\nasync function save(todos) {\n  const tmp = `${FILE}.tmp`;\n  await fs.writeFile(tmp, JSON.stringify(todos, null, 2));\n  await fs.rename(tmp, FILE);              // atomic replace: no half-written file\n}\n\nfunction fail(message) {\n  console.error(styleText('red', `Error: ${message}`));\n  process.exit(1);\n}\n\nconst [command, ...args] = process.argv.slice(2);\nconst todos = await load();\n\nswitch (command) {\n  case 'add': {\n    const title = args.join(' ').trim();\n    if (!title) fail('Usage: todo add <text>');\n    const id = todos.reduce((max, t) => Math.max(max, t.id), 0) + 1;\n    todos.push({ id, title, done: false, createdAt: new Date().toISOString() });\n    await save(todos);\n    console.log(`Added #${id}: ${title}`);\n    break;\n  }\n  case 'list': {\n    if (todos.length === 0) { console.log('Nothing to do. Enjoy!'); break; }\n    for (const t of todos) {\n      const box = t.done ? '[x]' : '[ ]';\n      const line = `${String(t.id).padStart(2)} ${box} ${t.title}`;\n      console.log(t.done ? styleText('gray', line) : line);\n    }\n    const open = todos.filter((t) => !t.done).length;\n    console.log(`\\n${open} open, ${todos.length - open} done`);\n    break;\n  }\n  case 'done': {\n    const todo = todos.find((t) => t.id === Number(args[0]));\n    if (!todo) fail(`No todo with id ${args[0]}`);\n    todo.done = true;\n    await save(todos);\n    console.log(`Completed #${todo.id}`);\n    break;\n  }\n  case 'remove': {\n    const index = todos.findIndex((t) => t.id === Number(args[0]));\n    if (index === -1) fail(`No todo with id ${args[0]}`);\n    const [removed] = todos.splice(index, 1);\n    await save(todos);\n    console.log(`Removed #${removed.id}`);\n    break;\n  }\n  case 'clear': {\n    await save(todos.filter((t) => !t.done));\n    console.log('Cleared completed todos');\n    break;\n  }\n  default:\n    console.log('Usage: todo <add|list|done|remove|clear> [args]');\n    process.exitCode = command ? 1 : 0;\n}",
+     "explanation": "About 70 lines, no dependencies.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Example session",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node todo.js add Learn Node\nAdded #1: Learn Node\n$ node todo.js add Build a CLI\nAdded #2: Build a CLI\n$ node todo.js list\n 1 [ ] Learn Node\n 2 [ ] Build a CLI\n\n2 open, 0 done\n$ node todo.js done 1\nCompleted #1\n$ node todo.js done 9\nError: No todo with id 9\n$ echo $?\n1",
+     "explanation": "The error goes to stderr and the exit code is 1.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why write the file to a temp name and rename it?",
+     "a": "rename is atomic on the same file system: readers see either the old file or the complete new file, never a partially written one, even if the process crashes during the write."
+    },
+    {
+     "q": "How do you turn a Node script into a global command?",
+     "a": "Add a bin entry in package.json pointing to the file, start the file with the #!/usr/bin/env node shebang and run npm link locally or npm install -g after publishing."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-file-organizer",
+   "title": "Project: File Organizer",
+   "level": "beginner",
+   "summary": "Sort a messy folder into Images, Documents and other folders by file extension with dry-run and conflict handling.",
+   "description": "This script cleans up a downloads folder by moving each file into a category folder (Images, Documents, Videos, ...) based on its extension. It is a practical way to learn the file system API.\n\n### What you practise\n* `fs.readdir(dir, { withFileTypes: true })` to distinguish files from folders without extra `stat` calls\n* `path.extname`, `path.parse`, `path.join`\n* `fs.mkdir({ recursive: true })` and `fs.rename`\n* `util.parseArgs` for a `--dry-run` flag\n* `console.table` to print a summary\n\n### Design decisions\n1. **Dry run first**: scripts that move or delete files should offer a mode that only prints what would happen\n2. **Never overwrite**: when `Documents/report.pdf` already exists, the new file becomes `report (1).pdf`\n3. **Skip** sub-folders and hidden files (names starting with a dot)\n4. **Case-insensitive** extensions (`.PNG` equals `.png`)\n5. Unknown extensions go into `Other`\n\n### Safety\nNever run it on system folders. Resolve the target folder explicitly and keep operations inside it. `fs.rename` only works within the same drive/volume; when moving across drives you must copy then delete (error code `EXDEV`).\n\n### Ideas to extend\nOrganise by modification date (`YYYY/MM`), undo support by writing a log file of moves, a `--watch` mode with `fs.watch`, recursive scanning, and detecting duplicates with a SHA-256 hash.",
+   "keyPoints": [
+    "readdir with withFileTypes separates files and folders",
+    "Provide a dry-run mode for destructive scripts",
+    "Avoid overwriting by generating unique names",
+    "rename works within one volume; EXDEV means copy then delete"
+   ],
+   "pitfalls": [
+    "Overwriting files with the same name",
+    "Running the script on the wrong folder without a dry run",
+    "Forgetting that extensions can have upper-case letters"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir organizer && cd organizer\nnpm init -y && npm pkg set type=module\n# create organize.js (next tab)\n\nnode organize.js ~/Downloads --dry-run     # preview only\nnode organize.js ~/Downloads               # do it",
+     "explanation": "Use -n as a short form of --dry-run.",
+     "lang": "bash"
+    },
+    {
+     "title": "organize.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- organize.js ----\nimport fs from 'node:fs/promises';\nimport path from 'node:path';\nimport { parseArgs } from 'node:util';\n\nconst CATEGORIES = {\n  Images:    ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],\n  Documents: ['.pdf', '.doc', '.docx', '.txt', '.md', '.xlsx', '.pptx'],\n  Videos:    ['.mp4', '.mkv', '.mov', '.avi'],\n  Audio:     ['.mp3', '.wav', '.flac'],\n  Archives:  ['.zip', '.tar', '.gz', '.rar', '.7z'],\n  Code:      ['.js', '.ts', '.json', '.html', '.css', '.py'],\n};\n\nconst categoryOf = (file) => {\n  const ext = path.extname(file).toLowerCase();\n  const found = Object.entries(CATEGORIES).find(([, exts]) => exts.includes(ext));\n  return found ? found[0] : 'Other';\n};\n\nasync function exists(p) {\n  try { await fs.access(p); return true; } catch { return false; }\n}\n\n// report.pdf -> report (1).pdf when the name is taken\nasync function uniquePath(target) {\n  const { dir, name, ext } = path.parse(target);\n  let candidate = target;\n  for (let n = 1; await exists(candidate); n++) {\n    candidate = path.join(dir, `${name} (${n})${ext}`);\n  }\n  return candidate;\n}\n\nconst { values, positionals } = parseArgs({\n  allowPositionals: true,\n  options: { 'dry-run': { type: 'boolean', short: 'n' } },\n});\n\nconst root = path.resolve(positionals[0] ?? '.');\nconst dryRun = values['dry-run'];\nconst summary = {};\n\nfor (const entry of await fs.readdir(root, { withFileTypes: true })) {\n  if (!entry.isFile() || entry.name.startsWith('.')) continue;   // skip folders and dotfiles\n\n  const category = categoryOf(entry.name);\n  const from = path.join(root, entry.name);\n  const folder = path.join(root, category);\n  const to = await uniquePath(path.join(folder, entry.name));\n\n  console.log(`${dryRun ? '[dry-run] ' : ''}${entry.name}  ->  ${category}/${path.basename(to)}`);\n  if (!dryRun) {\n    await fs.mkdir(folder, { recursive: true });\n    await fs.rename(from, to);\n  }\n  summary[category] = (summary[category] ?? 0) + 1;\n}\n\nconsole.table(summary);",
+     "explanation": "Categories are a simple object mapping names to extension lists.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node organize.js ./messy --dry-run\n[dry-run] a.jpg  ->  Images/a.jpg\n[dry-run] app.js  ->  Code/app.js\n[dry-run] data.zip  ->  Archives/data.zip\n[dry-run] notes.txt  ->  Documents/notes.txt\n[dry-run] weird.xyz  ->  Other/weird.xyz\n┌───────────┬────────┐\n│ (index)   │ Values │\n├───────────┼────────┤\n│ Images    │ 1      │\n│ Code      │ 1      │\n│ Archives  │ 1      │\n│ Documents │ 1      │\n│ Other     │ 1      │\n└───────────┴────────┘\n\n$ node organize.js ./messy        # same names, but files move\nreport.pdf  ->  Documents/report (1).pdf     # name clash handled",
+     "explanation": "Running it twice never loses a file.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why add a dry-run option to scripts that modify files?",
+     "a": "It lets users preview the effect safely before any irreversible change, which prevents mistakes and builds trust in the tool."
+    },
+    {
+     "q": "What does the EXDEV error mean when renaming?",
+     "a": "You tried to rename a file across different file systems or drives. rename cannot do that, so copy the file to the destination and then delete the source."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-http-guestbook",
+   "title": "Project: Server-Rendered Guestbook (No Frameworks)",
+   "level": "intermediate",
+   "summary": "A complete website using only node:http: HTML forms, urlencoded bodies, cookies, escaping and Post/Redirect/Get.",
+   "description": "Before REST APIs and single page apps, websites were plain HTML pages produced by the server and forms that post data. This project builds such a site with **no framework and no JSON API**.\n\n### Routes\n| Route | Behaviour |\n|---|---|\n| `GET /` | Render the HTML page with the form and all messages |\n| `POST /sign` | Read a urlencoded form body, store the message, redirect |\n| `GET /health` | Plain \"ok\" for monitors |\n| anything else | 404 |\n\n### Concepts\n* **Template strings** build the HTML. Every user value passes through `escapeHtml` to prevent **XSS** (script injection)\n* **Form bodies** (`application/x-www-form-urlencoded`) are parsed with `URLSearchParams`; a size limit protects memory\n* **Post/Redirect/Get**: after a successful POST the server answers `303 See Other` with `Location: /`. The browser then does a GET, so pressing refresh does not resubmit the form\n* **Cookies** carry a small visit counter: `Set-Cookie` with `HttpOnly`, `SameSite=Lax`, `Max-Age`, and parsing `req.headers.cookie`\n* **Validation** returns 400 for missing fields, 413 for huge bodies\n\n### Limitations (on purpose)\nMessages live in memory, so a restart clears them. There is no CSRF token and no rate limit. A real guestbook would use a database, a template engine (EJS, Nunjucks, Handlebars) and CSRF protection.\n\n### Ideas to extend\nPersist messages to a JSON file or SQLite (`node:sqlite`), add pagination, a delete button for admins protected by sessions, and a `Content-Security-Policy` header.",
+   "keyPoints": [
+    "Server-rendered pages are HTML strings built on the server",
+    "Always escape user text before putting it into HTML",
+    "Form posts arrive as urlencoded bodies; parse with URLSearchParams",
+    "Post/Redirect/Get prevents duplicate form submissions",
+    "Cookies need HttpOnly and SameSite attributes"
+   ],
+   "pitfalls": [
+    "Inserting raw user input into HTML (XSS)",
+    "Responding to a form POST with HTML instead of a redirect (resubmission on refresh)",
+    "Trusting a counter cookie for anything security related"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir guestbook && cd guestbook\nnpm init -y && npm pkg set type=module\n# create server.js (next tab)\n\nnode server.js\n# open http://localhost:3000 and sign the guestbook\ncurl -i -X POST -d \"name=Ann&text=Hello\" http://localhost:3000/sign",
+     "explanation": "No npm packages are needed.",
+     "lang": "bash"
+    },
+    {
+     "title": "server.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- server.js ----\nimport http from 'node:http';\n\nconst messages = [];                       // in-memory \"database\"\nconst PORT = process.env.PORT ?? 3000;\n\nconst escapeHtml = (s) =>\n  String(s).replace(/[&<>\"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' })[c]);\n\nfunction page(visits) {\n  const items = messages\n    .map((m) => `<li><strong>${escapeHtml(m.name)}</strong>: ${escapeHtml(m.text)} <small>${m.at}</small></li>`)\n    .join('\\n') || '<li><em>No messages yet</em></li>';\n\n  return `<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Guestbook</title>\n<style>body{font-family:system-ui;max-width:36rem;margin:2rem auto;padding:0 1rem}input,textarea{display:block;width:100%;margin:.4rem 0;padding:.5rem}</style>\n</head><body>\n<h1>Guestbook</h1>\n<p>You have visited ${visits} time(s).</p>\n<form method=\"post\" action=\"/sign\">\n  <input name=\"name\" placeholder=\"Your name\" required maxlength=\"40\">\n  <textarea name=\"text\" placeholder=\"Your message\" required maxlength=\"200\"></textarea>\n  <button>Sign</button>\n</form>\n<ul>${items}</ul>\n</body></html>`;\n}\n\nfunction parseCookies(header = '') {\n  return Object.fromEntries(header.split(';').map((p) => p.trim().split('=')).filter(([k]) => k));\n}\n\nasync function readForm(req, limit = 10_000) {\n  let size = 0;\n  const chunks = [];\n  for await (const chunk of req) {\n    size += chunk.length;\n    if (size > limit) throw Object.assign(new Error('Too large'), { status: 413 });\n    chunks.push(chunk);\n  }\n  return Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString()));\n}\n\nconst server = http.createServer(async (req, res) => {\n  const { pathname } = new URL(req.url, 'http://localhost');\n  try {\n    if (req.method === 'GET' && pathname === '/') {\n      const visits = Number(parseCookies(req.headers.cookie).visits ?? 0) + 1;\n      res.writeHead(200, {\n        'Content-Type': 'text/html; charset=utf-8',\n        'Set-Cookie': `visits=${visits}; Max-Age=31536000; HttpOnly; SameSite=Lax; Path=/`,\n      });\n      return res.end(page(visits));\n    }\n\n    if (req.method === 'POST' && pathname === '/sign') {\n      const { name = '', text = '' } = await readForm(req);\n      if (!name.trim() || !text.trim()) {\n        res.writeHead(400, { 'Content-Type': 'text/plain' });\n        return res.end('Name and message are required');\n      }\n      messages.unshift({ name: name.trim(), text: text.trim(), at: new Date().toLocaleTimeString() });\n      res.writeHead(303, { Location: '/' });          // Post/Redirect/Get: refresh will not resubmit\n      return res.end();\n    }\n\n    if (pathname === '/health') {\n      res.writeHead(200, { 'Content-Type': 'text/plain' });\n      return res.end('ok');\n    }\n\n    res.writeHead(404, { 'Content-Type': 'text/plain' });\n    res.end('Not found');\n  } catch (err) {\n    res.writeHead(err.status ?? 500, { 'Content-Type': 'text/plain' });\n    res.end(err.status ? err.message : 'Server error');\n  }\n});\n\nserver.listen(PORT, () => console.log(`Guestbook on http://localhost:${PORT}`));",
+     "explanation": "The whole site is one file.",
+     "lang": "javascript"
+    },
+    {
+     "title": "What the browser receives",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ curl -i localhost:3000/\nHTTP/1.1 200 OK\nContent-Type: text/html; charset=utf-8\nSet-Cookie: visits=1; Max-Age=31536000; HttpOnly; SameSite=Lax; Path=/\n\n$ curl -i -X POST -d \"name=Ann&text=<b>hi</b>\" localhost:3000/sign\nHTTP/1.1 303 See Other\nLocation: /\n\n$ curl -b \"visits=4\" localhost:3000/ | grep -E \"visited|<li>\"\n<p>You have visited 5 time(s).</p>\n<ul><li><strong>Ann</strong>: &lt;b&gt;hi&lt;/b&gt; <small>11:46:03 am</small></li></ul>",
+     "explanation": "The bold tags the user typed are shown as text, not interpreted, because of escapeHtml.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is Post/Redirect/Get?",
+     "a": "After handling a POST, the server replies with a redirect (303) to a GET page. If the user refreshes, only the harmless GET is repeated, so the form is not submitted twice."
+    },
+    {
+     "q": "Why escape HTML when rendering user input?",
+     "a": "Otherwise attackers can submit script tags that run in other visitors' browsers (XSS). Escaping converts < > & quotes into entities so they display as text."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-url-shortener",
+   "title": "Project: URL Shortener Core",
+   "level": "intermediate",
+   "summary": "A tiny bit.ly clone with random short codes, validation, redirects, click counters and file persistence.",
+   "description": "A URL shortener has a simple core: **store a mapping from a short code to a long URL, and redirect when the code is requested**. This project builds that core with `node:http` and a JSON file as the database.\n\n### API\n| Route | Result |\n|---|---|\n| `POST /shorten` with `{ \"url\": \"https://...\" }` | `201` and `{ code, short, url }` |\n| `GET /abc1234` | `302` redirect to the original URL and counts a hit |\n| `GET /api/stats/abc1234` | `{ url, hits, createdAt }` |\n\n### Design points\n* **Code generation**: `crypto.randomBytes(5).toString('base64url').slice(0, 7)` gives URL-safe random codes, and a loop retries on collisions. Sequential ids with Base62 are an alternative, but random codes are not guessable.\n* **Validation**: parse with `new URL()` and accept only `http:` and `https:`. Rejecting `javascript:` and `file:` URLs prevents XSS and local file abuse. Also consider blocking your own domain to avoid redirect loops.\n* **Persistence**: a `Map` in memory, saved to `links.json` with an atomic write (temp file plus rename). Saves are queued on a promise chain so two writes never overlap.\n* **Redirect status**: `302` keeps browsers asking the server (so clicks are counted). `301` is cached by browsers and would hide later clicks.\n* **Limits**: body size cap, JSON parse errors answered with 400.\n\n### Scaling the idea\nSwap the Map for Redis or PostgreSQL with a unique index on `code`. Add a cache for hot codes, rate limiting per IP, expiry dates, custom aliases, QR codes, and analytics (referrer, country) in a queue worker so redirects stay fast.",
+   "keyPoints": [
+    "A shortener maps a short code to a URL and redirects with 302",
+    "Generate unguessable URL-safe codes and handle collisions",
+    "Accept only http and https URLs",
+    "Persist with atomic file writes (or a real database)",
+    "302 allows click counting; 301 gets cached by browsers"
+   ],
+   "pitfalls": [
+    "Accepting any URL scheme (javascript: links)",
+    "Using 301 and losing analytics",
+    "Writing the JSON file concurrently from several requests"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir shortener && cd shortener\nnpm init -y && npm pkg set type=module\n# create server.js (next tab)\n\nnode server.js\ncurl -X POST localhost:3000/shorten -H \"Content-Type: application/json\" \\\n     -d '{\"url\":\"https://nodejs.org/en/learn\"}'",
+     "explanation": "Data is stored in links.json next to the script.",
+     "lang": "bash"
+    },
+    {
+     "title": "server.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- server.js ----\nimport http from 'node:http';\nimport crypto from 'node:crypto';\nimport fs from 'node:fs/promises';\n\nconst PORT = process.env.PORT ?? 3000;\nconst BASE = process.env.BASE_URL ?? `http://localhost:${PORT}`;\nconst DB_FILE = process.env.DB_FILE ?? 'links.json';\n\n// ---- storage: a Map persisted to a JSON file ----\nconst links = new Map();\ntry {\n  for (const [code, link] of Object.entries(JSON.parse(await fs.readFile(DB_FILE, 'utf8')))) links.set(code, link);\n} catch (err) {\n  if (err.code !== 'ENOENT') throw err;\n}\n\nlet saving = Promise.resolve();\nfunction persist() {\n  saving = saving.then(async () => {\n    const tmp = `${DB_FILE}.tmp`;\n    await fs.writeFile(tmp, JSON.stringify(Object.fromEntries(links)));\n    await fs.rename(tmp, DB_FILE);\n  });\n  return saving;\n}\n\n// ---- core logic ----\nfunction newCode() {\n  for (;;) {\n    const code = crypto.randomBytes(5).toString('base64url').slice(0, 7);\n    if (!links.has(code)) return code;\n  }\n}\n\nfunction validateUrl(input) {\n  let url;\n  try { url = new URL(input); } catch { return null; }\n  return ['http:', 'https:'].includes(url.protocol) ? url.href : null;   // block javascript: and file:\n}\n\nconst json = (res, status, data) => {\n  res.writeHead(status, { 'Content-Type': 'application/json' });\n  res.end(JSON.stringify(data));\n};\n\nasync function readJson(req, limit = 10_000) {\n  const chunks = [];\n  let size = 0;\n  for await (const chunk of req) {\n    if ((size += chunk.length) > limit) throw Object.assign(new Error('Payload too large'), { status: 413 });\n    chunks.push(chunk);\n  }\n  try { return JSON.parse(Buffer.concat(chunks).toString() || '{}'); }\n  catch { throw Object.assign(new Error('Invalid JSON'), { status: 400 }); }\n}\n\nconst server = http.createServer(async (req, res) => {\n  const { pathname } = new URL(req.url, BASE);\n  try {\n    if (req.method === 'POST' && pathname === '/shorten') {\n      const { url } = await readJson(req);\n      const target = validateUrl(url);\n      if (!target) return json(res, 422, { error: 'A valid http(s) url is required' });\n\n      const code = newCode();\n      links.set(code, { url: target, hits: 0, createdAt: new Date().toISOString() });\n      await persist();\n      return json(res, 201, { code, short: `${BASE}/${code}`, url: target });\n    }\n\n    const stats = pathname.match(/^\\/api\\/stats\\/([\\w-]{7})$/);\n    if (req.method === 'GET' && stats) {\n      const link = links.get(stats[1]);\n      return link ? json(res, 200, link) : json(res, 404, { error: 'Unknown code' });\n    }\n\n    const redirect = pathname.match(/^\\/([\\w-]{7})$/);\n    if (req.method === 'GET' && redirect) {\n      const link = links.get(redirect[1]);\n      if (!link) return json(res, 404, { error: 'Unknown code' });\n      link.hits++;\n      persist();                                      // fire and forget is fine for a counter\n      res.writeHead(302, { Location: link.url });\n      return res.end();\n    }\n\n    json(res, 404, { error: 'Not found' });\n  } catch (err) {\n    json(res, err.status ?? 500, { error: err.status ? err.message : 'Internal error' });\n  }\n});\n\nserver.listen(PORT, () => console.log(`Shortener ready at ${BASE}`));",
+     "explanation": "Top-level await loads the saved links before the server starts.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Trying it",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ curl -X POST localhost:3000/shorten -H \"Content-Type: application/json\" -d '{\"url\":\"https://nodejs.org/en/learn\"}'\n{\"code\":\"T5bUIqk\",\"short\":\"http://localhost:3000/T5bUIqk\",\"url\":\"https://nodejs.org/en/learn\"}\n\n$ curl -i localhost:3000/T5bUIqk\nHTTP/1.1 302 Found\nLocation: https://nodejs.org/en/learn\n\n$ curl localhost:3000/api/stats/T5bUIqk\n{\"url\":\"https://nodejs.org/en/learn\",\"hits\":1,\"createdAt\":\"2026-10-16T06:16:11.763Z\"}\n\n$ curl -X POST localhost:3000/shorten -H \"Content-Type: application/json\" -d '{\"url\":\"javascript:alert(1)\"}'\n{\"error\":\"A valid http(s) url is required\"}",
+     "explanation": "Your code will differ because it is random.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Should a URL shortener use 301 or 302?",
+     "a": "302 (temporary) if you want every click to reach your server for analytics or if targets may change. 301 is cached by browsers and search engines, which is faster but hides repeat visits."
+    },
+    {
+     "q": "How do you generate short codes safely?",
+     "a": "Use a cryptographically secure random source (crypto.randomBytes), encode in base64url or base62, enforce a unique index and retry on collision. Avoid sequential ids if links must not be guessable."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-chat-server",
+   "title": "Project: Real-Time Chat with ws",
+   "level": "intermediate",
+   "summary": "A multi-user chat room with nicknames, join/leave notices, an online list, heartbeats and a browser client.",
+   "description": "This project builds a chat room with the **`ws`** library. The same `http` server serves the page and upgrades connections to WebSocket.\n\n### Message protocol\nAll messages are JSON with a `type`:\n* client to server: `{ type: 'join', nick }`, `{ type: 'chat', text }`\n* server to client: `{ type: 'chat', from, text, at }`, `{ type: 'system', text }`, `{ type: 'users', users }`, `{ type: 'error', text }`\n\nA tiny protocol like this keeps client and server loosely coupled and easy to extend (typing indicators, private messages, rooms).\n\n### Server responsibilities\n1. Keep a `Map` of socket to nickname\n2. Reject duplicate nicknames\n3. **Broadcast** by looping over `wss.clients` and sending only to sockets in the `OPEN` state\n4. Announce joins and leaves and refresh the online list on `close`\n5. **Heartbeat**: ping every 30 s and terminate sockets that did not answer with pong\n6. Protect the server: `maxPayload`, trim and cap text length, ignore invalid JSON, require a join before chatting\n\n### Client notes\nThe browser `WebSocket` is built in. Use `textContent` (not `innerHTML`) when showing messages so a user cannot inject HTML. Choose `wss://` automatically when the page is served over HTTPS.\n\n### Scaling beyond one process\nSockets live in memory, so two server instances do not see each other's users. Add a Redis pub/sub adapter (or use socket.io with its Redis adapter), sticky sessions at the load balancer, and persist history in a database.\n\n### Ideas to extend\nChat rooms, message history on join, typing indicators, authentication by JWT in the upgrade request, and rate limiting messages per socket.",
+   "keyPoints": [
+    "One http server serves the page and upgrades to WebSocket",
+    "Define a small JSON message protocol with a type field",
+    "Broadcast to sockets in the OPEN state",
+    "Use ping/pong heartbeats and a maxPayload limit",
+    "In-memory state breaks across multiple server instances"
+   ],
+   "pitfalls": [
+    "Rendering received text with innerHTML (XSS)",
+    "No heartbeat, leaving ghost users in the list",
+    "Trusting client input lengths and shapes"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir chat && cd chat\nnpm init -y && npm pkg set type=module\nnpm install ws\nmkdir public\n# create server.js and public/index.html (next tabs)\n\nnode server.js\n# open http://localhost:3000 in two browser tabs",
+     "explanation": "Only one dependency: ws.",
+     "lang": "bash"
+    },
+    {
+     "title": "server.js and public/index.html",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- server.js ----\nimport http from 'node:http';\nimport fs from 'node:fs/promises';\nimport path from 'node:path';\nimport { WebSocketServer, WebSocket } from 'ws';\n\nconst PORT = process.env.PORT ?? 3000;\nconst indexHtml = await fs.readFile(path.join(import.meta.dirname, 'public', 'index.html'));\n\nconst server = http.createServer((req, res) => {\n  if (req.url === '/') {\n    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });\n    return res.end(indexHtml);\n  }\n  res.writeHead(404).end('Not found');\n});\n\nconst wss = new WebSocketServer({ server, maxPayload: 4 * 1024 });   // reject giant frames\nconst users = new Map();                                              // socket -> nickname\n\nfunction broadcast(message) {\n  const data = JSON.stringify(message);\n  for (const client of wss.clients) {\n    if (client.readyState === WebSocket.OPEN) client.send(data);\n  }\n}\n\nconst sendUsers = () => broadcast({ type: 'users', users: [...users.values()].sort() });\n\nwss.on('connection', (socket) => {\n  socket.isAlive = true;\n  socket.on('pong', () => { socket.isAlive = true; });\n\n  socket.on('message', (raw) => {\n    let msg;\n    try { msg = JSON.parse(raw.toString()); } catch { return; }       // ignore garbage\n\n    if (msg.type === 'join') {\n      const nick = String(msg.nick ?? '').trim().slice(0, 20) || 'guest';\n      if ([...users.values()].includes(nick)) {\n        return socket.send(JSON.stringify({ type: 'error', text: `\"${nick}\" is taken` }));\n      }\n      users.set(socket, nick);\n      broadcast({ type: 'system', text: `${nick} joined` });\n      sendUsers();\n    } else if (msg.type === 'chat' && users.has(socket)) {\n      const text = String(msg.text ?? '').trim().slice(0, 500);\n      if (text) broadcast({ type: 'chat', from: users.get(socket), text, at: Date.now() });\n    }\n  });\n\n  socket.on('close', () => {\n    const nick = users.get(socket);\n    if (nick) {\n      users.delete(socket);\n      broadcast({ type: 'system', text: `${nick} left` });\n      sendUsers();\n    }\n  });\n});\n\n// heartbeat: drop dead connections\nconst heartbeat = setInterval(() => {\n  for (const socket of wss.clients) {\n    if (!socket.isAlive) { socket.terminate(); continue; }\n    socket.isAlive = false;\n    socket.ping();\n  }\n}, 30_000);\nwss.on('close', () => clearInterval(heartbeat));\n\nserver.listen(PORT, () => console.log(`Chat on http://localhost:${PORT}`));\nprocess.on('SIGINT', () => { wss.close(); server.close(() => process.exit(0)); });\n\n<!-- ---- index.html ---- -->\n<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <title>Node Chat</title>\n  <style>\n    body { font-family: system-ui; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }\n    #log { height: 18rem; overflow-y: auto; border: 1px solid #ccc; padding: .5rem; }\n    .system { color: #888; font-style: italic; }\n    form { display: flex; gap: .5rem; margin-top: .5rem; }\n    input { flex: 1; padding: .5rem; }\n  </style>\n</head>\n<body>\n  <h1>Node Chat</h1>\n  <p id=\"users\">Connecting...</p>\n  <div id=\"log\"></div>\n  <form id=\"form\"><input id=\"text\" autocomplete=\"off\" placeholder=\"Type a message\"><button>Send</button></form>\n  <script>\n    const nick = prompt('Nickname?') || 'guest';\n    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);\n    const log = document.getElementById('log');\n\n    const add = (text, cls = '') => {\n      const div = document.createElement('div');\n      div.className = cls;\n      div.textContent = text;                       // textContent: no HTML injection\n      log.append(div);\n      log.scrollTop = log.scrollHeight;\n    };\n\n    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', nick }));\n    ws.onmessage = (event) => {\n      const msg = JSON.parse(event.data);\n      if (msg.type === 'chat') add(`${msg.from}: ${msg.text}`);\n      else if (msg.type === 'system') add(msg.text, 'system');\n      else if (msg.type === 'error') add(msg.text, 'system');\n      else if (msg.type === 'users') document.getElementById('users').textContent = 'Online: ' + msg.users.join(', ');\n    };\n    ws.onclose = () => add('Disconnected', 'system');\n\n    document.getElementById('form').onsubmit = (e) => {\n      e.preventDefault();\n      const input = document.getElementById('text');\n      if (input.value.trim()) ws.send(JSON.stringify({ type: 'chat', text: input.value }));\n      input.value = '';\n    };\n  </script>\n</body>\n</html>",
+     "explanation": "The server is about 70 lines; the client is plain HTML and JavaScript.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Protocol trace",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// tab 1 (ann) sends:\n{\"type\":\"join\",\"nick\":\"ann\"}\n// everyone receives:\n{\"type\":\"system\",\"text\":\"ann joined\"}\n{\"type\":\"users\",\"users\":[\"ann\"]}\n// tab 2 (bob) joins, then ann writes:\n{\"type\":\"chat\",\"text\":\"hello bob\"}\n// everyone receives:\n{\"type\":\"chat\",\"from\":\"ann\",\"text\":\"hello bob\",\"at\":1760000000000}\n// a third tab tries to join as ann:\n{\"type\":\"error\",\"text\":\"\\\"ann\\\" is taken\"}",
+     "explanation": "Lines starting with // are annotations, not part of the messages.",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does the server broadcast a message?",
+     "a": "It loops over wss.clients and calls send on every socket whose readyState is OPEN, usually serialising a JSON message once before the loop."
+    },
+    {
+     "q": "Why use heartbeats with WebSockets?",
+     "a": "TCP connections can die silently (network drop, sleeping laptop) without a close event. Periodic ping/pong detects dead peers so the server can terminate them and free resources."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-web-scraper",
+   "title": "Project: Web Scraper with fetch and cheerio",
+   "level": "intermediate",
+   "summary": "Download pages with fetch, extract data with CSS selectors in cheerio, follow pagination politely and save JSON.",
+   "description": "A scraper downloads HTML and extracts structured data. Libraries: **cheerio** (jQuery-like selectors on server-side HTML). Pages that need JavaScript to render require a headless browser such as Playwright instead.\n\n### Pipeline\n1. **Fetch** HTML with retries, timeouts and a descriptive `User-Agent`\n2. **Parse** with `cheerio.load(html)` and select elements (`$('article.product_pod')`)\n3. **Extract** text and attributes (`.text()`, `.attr('href')`), clean numbers (`£51.77` to `51.77`)\n4. **Resolve relative links** with `new URL(href, pageUrl)`\n5. **Follow pagination** (`li.next a`) with a page limit\n6. **Save** results as JSON (or CSV)\n\n### Being a good citizen\n* Read the site's `robots.txt` and terms of service before scraping\n* Add a delay between requests and limit concurrency\n* Identify yourself in the `User-Agent`\n* Cache pages while developing so you do not hammer the server\n* Never collect personal data or bypass paywalls and logins\n* Prefer an official API when one exists\n\n### Practice site\n`https://books.toscrape.com` exists specifically for learning to scrape.\n\n### Robustness\nSelectors break when sites change: validate that fields exist, log pages that fail and save raw HTML for debugging. Handle encoding, redirects and 429 responses (back off).\n\n### Ideas to extend\nConcurrent fetching with a small pool (2-3), a CSV exporter, storing results in SQLite, detecting price changes and sending notifications on a schedule.",
+   "keyPoints": [
+    "fetch downloads the HTML, cheerio queries it with CSS selectors",
+    "Resolve relative URLs with new URL(href, base)",
+    "Delay requests, set a User-Agent and respect robots.txt",
+    "Handle failures with timeouts and retries",
+    "JavaScript-rendered pages need a headless browser"
+   ],
+   "pitfalls": [
+    "Hammering a site with parallel requests",
+    "Relying on fragile selectors without validation",
+    "Scraping content you are not allowed to collect"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir scraper && cd scraper\nnpm init -y && npm pkg set type=module\nnpm install cheerio\n# create scrape.js (next tab)\n\nnode scrape.js https://books.toscrape.com/ 2",
+     "explanation": "The second argument is the maximum number of pages.",
+     "lang": "bash"
+    },
+    {
+     "title": "scrape.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- scrape.js ----\nimport fs from 'node:fs/promises';\nimport { setTimeout as sleep } from 'node:timers/promises';\nimport * as cheerio from 'cheerio';\n\nconst START = process.argv[2] ?? 'https://books.toscrape.com/';\nconst MAX_PAGES = Number(process.argv[3] ?? 2);\nconst DELAY_MS = 500;                                    // be polite: pause between requests\n\nasync function fetchHtml(url, retries = 2) {\n  for (let attempt = 0; ; attempt++) {\n    try {\n      const res = await fetch(url, {\n        headers: { 'User-Agent': 'learn-node-scraper/1.0 (+student project)' },\n        signal: AbortSignal.timeout(10_000),\n      });\n      if (!res.ok) throw new Error(`HTTP ${res.status}`);\n      return await res.text();\n    } catch (err) {\n      if (attempt >= retries) throw err;\n      await sleep(1000 * (attempt + 1));\n    }\n  }\n}\n\nfunction parsePage(html, pageUrl) {\n  const $ = cheerio.load(html);\n  const books = $('article.product_pod').map((_, el) => {\n    const card = $(el);\n    return {\n      title: card.find('h3 a').attr('title'),\n      price: Number(card.find('.price_color').text().replace(/[^\\d.]/g, '')),\n      inStock: card.find('.availability').text().includes('In stock'),\n      rating: card.find('p.star-rating').attr('class').replace('star-rating', '').trim(),\n      url: new URL(card.find('h3 a').attr('href'), pageUrl).href,   // resolve relative links\n    };\n  }).get();\n  const next = $('li.next a').attr('href');\n  return { books, nextUrl: next ? new URL(next, pageUrl).href : null };\n}\n\nconst all = [];\nlet url = START;\nfor (let page = 1; url && page <= MAX_PAGES; page++) {\n  console.log(`Page ${page}: ${url}`);\n  const { books, nextUrl } = parsePage(await fetchHtml(url), url);\n  all.push(...books);\n  url = nextUrl;\n  if (url) await sleep(DELAY_MS);\n}\n\nawait fs.writeFile('books.json', JSON.stringify(all, null, 2));\nconst cheapest = [...all].sort((a, b) => a.price - b.price)[0];\nconsole.log(`Saved ${all.length} books to books.json`);\nconsole.log('Cheapest:', cheapest.title, `(£${cheapest.price})`);",
+     "explanation": "Selectors are specific to the target site; adapt them for other pages.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node scrape.js https://books.toscrape.com/ 2\nPage 1: https://books.toscrape.com/\nPage 2: https://books.toscrape.com/catalogue/page-2.html\nSaved 40 books to books.json\nCheapest: In Her Wake (£12.84)\n\n$ head books.json\n[\n  {\n    \"title\": \"A Light in the Attic\",\n    \"price\": 51.77,\n    \"inStock\": true,\n    \"rating\": \"Three\",\n    \"url\": \"https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html\"\n  },",
+     "explanation": "Results change when the site content changes.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between cheerio and a headless browser?",
+     "a": "Cheerio only parses the HTML text it receives, which is fast and light. A headless browser (Playwright, Puppeteer) runs the page's JavaScript, so it can scrape content rendered on the client but is much slower and heavier."
+    },
+    {
+     "q": "How do you scrape politely?",
+     "a": "Follow robots.txt and the terms of service, limit request rate and concurrency, identify your bot with a User-Agent, cache responses and avoid personal or protected data."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-cron-runner",
+   "title": "Project: Cron and Job Runner",
+   "level": "advanced",
+   "summary": "Build a scheduler that understands cron expressions, prevents overlapping runs and survives failing jobs.",
+   "description": "Many apps need scheduled work: clean up temp files every night, send a report at 09:30 on weekdays, sync data every five minutes. This project implements a small scheduler so you understand what libraries such as `node-cron`, `croner` or `node-schedule` do.\n\n### Cron syntax\nFive fields: `minute hour day-of-month month day-of-week`\n* `*` any value, `*/15` every 15, `1-5` a range, `1,15,30` a list\n* `30 9 * * 1-5` means 09:30 on Monday to Friday\n\n### Design\n1. `parseCron` turns every field into a `Set` of allowed numbers and rejects out-of-range input\n2. `matches(schedule, date)` checks each field against a `Date`\n3. The scheduler wakes up **at the start of every minute**. It computes the delay with `60_000 - (Date.now() % 60_000)` so timer drift never accumulates\n4. For every matching job it calls the task **without awaiting it**, so slow jobs do not delay others\n5. An `running` flag prevents **overlapping runs** of the same job\n6. Errors are caught per job, logged and never stop the scheduler\n7. `SIGINT` and `SIGTERM` stop the timer for a clean shutdown\n\n### Production concerns\n* **Multiple instances**: every instance would run every job. Use a distributed lock (Redis `SET NX EX`), a single scheduler process, or a queue such as BullMQ with repeatable jobs\n* **Missed runs**: this scheduler skips jobs while the process is down; persistent queues can catch up\n* **Time zones**: `Date` uses the server time zone; libraries like `croner` accept an explicit zone; run servers in UTC\n* **Long jobs**: add timeouts with `AbortSignal.timeout`\n\n### Ideas to extend\nSupport names (`MON`, `JAN`), seconds, job history, retries with backoff, and a web endpoint that lists jobs and last run time.",
+   "keyPoints": [
+    "Cron has five fields: minute, hour, day, month, weekday",
+    "Parse each field into a set of allowed values",
+    "Align wake-ups to the start of each minute to avoid drift",
+    "Guard against overlapping runs and isolate job failures",
+    "Multiple instances need a lock or a queue to avoid duplicates"
+   ],
+   "pitfalls": [
+    "setInterval(60000) drifting away from the minute boundary",
+    "Letting one thrown error stop the scheduler",
+    "Running the same scheduled job on every server instance"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir cron-runner && cd cron-runner\nnpm init -y && npm pkg set type=module\n# create cron.js (library) and app.js (usage) - next tabs\n\nnode app.js\n# [heartbeat] runs every minute; Ctrl+C stops the scheduler",
+     "explanation": "No dependencies.",
+     "lang": "bash"
+    },
+    {
+     "title": "cron.js and app.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- cron.js ----\n// Parse one cron field such as \"*\", \"*/15\", \"1-5\", \"1,15,30\" into a Set of numbers\nfunction parseField(field, min, max) {\n  const values = new Set();\n  for (const part of field.split(',')) {\n    const [range, stepText] = part.split('/');\n    const step = stepText ? Number(stepText) : 1;\n    let from, to;\n    if (range === '*') [from, to] = [min, max];\n    else if (range.includes('-')) [from, to] = range.split('-').map(Number);\n    else [from, to] = stepText ? [Number(range), max] : [Number(range), Number(range)];\n\n    if ([from, to, step].some(Number.isNaN) || step < 1 || from < min || to > max || from > to) {\n      throw new Error(`Invalid cron field \"${field}\"`);\n    }\n    for (let v = from; v <= to; v += step) values.add(v);\n  }\n  return values;\n}\n\nexport function parseCron(expression) {\n  const parts = expression.trim().split(/\\s+/);\n  if (parts.length !== 5) throw new Error('Cron needs 5 fields: minute hour day month weekday');\n  const [minute, hour, day, month, weekday] = parts;\n  return {\n    minute: parseField(minute, 0, 59),\n    hour: parseField(hour, 0, 23),\n    day: parseField(day, 1, 31),\n    month: parseField(month, 1, 12),\n    weekday: parseField(weekday, 0, 6),             // 0 = Sunday\n  };\n}\n\nexport function matches(schedule, date) {\n  return schedule.minute.has(date.getMinutes())\n    && schedule.hour.has(date.getHours())\n    && schedule.day.has(date.getDate())\n    && schedule.month.has(date.getMonth() + 1)\n    && schedule.weekday.has(date.getDay());\n}\n\nexport class Scheduler {\n  #jobs = [];\n  #timer = null;\n\n  add(name, expression, task) {\n    this.#jobs.push({ name, schedule: parseCron(expression), task, running: false });\n    return this;\n  }\n\n  start() {\n    const tick = () => {\n      const now = new Date();\n      for (const job of this.#jobs) {\n        if (!matches(job.schedule, now)) continue;\n        if (job.running) { console.warn(`[${job.name}] skipped: previous run still active`); continue; }\n        this.#run(job);\n      }\n      // schedule the next tick at the start of the next minute (no drift)\n      this.#timer = setTimeout(tick, 60_000 - (Date.now() % 60_000));\n    };\n    this.#timer = setTimeout(tick, 60_000 - (Date.now() % 60_000));\n    return this;\n  }\n\n  async #run(job) {\n    job.running = true;\n    const started = Date.now();\n    try {\n      await job.task();\n      console.log(`[${job.name}] finished in ${Date.now() - started} ms`);\n    } catch (err) {\n      console.error(`[${job.name}] failed:`, err.message);     // one bad job never stops the scheduler\n    } finally {\n      job.running = false;\n    }\n  }\n\n  stop() { clearTimeout(this.#timer); }\n}\n\n// ---- app.js ----\nimport { Scheduler } from './cron.js';\n\nconst scheduler = new Scheduler()\n  .add('heartbeat', '* * * * *', async () => console.log('tick', new Date().toISOString()))\n  .add('cleanup', '*/5 * * * *', async () => { /* delete old temp files */ })\n  .add('weekday-report', '30 9 * * 1-5', async () => { /* build and email the report */ })\n  .start();\n\nconsole.log('Scheduler running. Press Ctrl+C to stop.');\nprocess.on('SIGINT', () => { scheduler.stop(); console.log('bye'); process.exit(0); });\nprocess.on('SIGTERM', () => { scheduler.stop(); process.exit(0); });",
+     "explanation": "cron.js is the reusable scheduler; app.js registers the jobs.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Testing the matcher",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- check.js ----\nimport { parseCron, matches } from './cron.js';\n\nconst at = (s) => new Date(s);\nconst test = (expr, date) => console.log(expr.padEnd(14), date, matches(parseCron(expr), at(date)));\n\ntest('* * * * *',     '2026-10-16T10:07:00');   // every minute\ntest('*/15 * * * *',  '2026-10-16T10:30:00');   // every 15 minutes\ntest('*/15 * * * *',  '2026-10-16T10:31:00');\ntest('30 9 * * 1-5',  '2026-10-16T09:30:00');   // Friday 09:30\ntest('30 9 * * 1-5',  '2026-10-17T09:30:00');   // Saturday\ntest('0 0 1 1 *',     '2027-01-01T00:00:00');   // new year\ntry { parseCron('61 * * * *'); } catch (e) { console.log(e.message); }",
+     "explanation": "Testing the pure function matches() directly needs no waiting.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why compute the delay with 60000 - (Date.now() % 60000)?",
+     "a": "It aligns each wake-up to the start of the next minute, so errors from timer inaccuracy do not accumulate the way they do with a plain setInterval."
+    },
+    {
+     "q": "How do you stop a cron job from running twice in a multi-server deployment?",
+     "a": "Run the scheduler in one dedicated process, or acquire a distributed lock (for example Redis SET NX with expiry) at the start of each run, or use a queue with repeatable jobs like BullMQ."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-markdown-builder",
+   "title": "Project: Markdown to HTML Build Script",
+   "level": "intermediate",
+   "summary": "A static site generator in one file: front matter, a small Markdown parser, templates and an output folder.",
+   "description": "Static site generators (Eleventy, Astro, Hugo) take content files and produce plain HTML. Building a mini generator is a great exercise in file processing and text parsing.\n\n### Pipeline\n1. **Clean** the `dist/` folder (`fs.rm` recursive) and recreate it\n2. **Read** every `.md` file in `content/`\n3. **Front matter**: split the `--- key: value ---` block (title, date) from the body with a regular expression\n4. **Convert Markdown** to HTML:\n   * block level: headings, lists, fenced code blocks, paragraphs\n   * inline: bold, italic, inline code, links\n   * **escape HTML first**, so `<` in text cannot create tags\n   * protect inline code spans while other rules run\n5. **Template**: wrap the HTML in a layout with a shared navigation bar\n6. **Write** one `.html` per page and an `index.html` listing all pages\n\n### Why not regular expressions for everything?\nMarkdown has many edge cases (nested lists, tables, HTML blocks). A hand-made converter is fine for learning, but real sites should use `marked`, `markdown-it` or `remark`. The structure of this script stays the same: swap `markdownToHtml` for the library call.\n\n### Useful extensions\n* Sorting posts by date, a tags page, an RSS feed\n* Copying a `static/` folder with `fs.cp(src, dest, { recursive: true })`\n* `node --watch build.js` for rebuilding while editing\n* Serving `dist/` with `npx serve dist`\n\n### Exporting for tests\nThe script exports `markdownToHtml` and only runs the build when executed directly (`process.argv[1] === import.meta.filename`), so it can be unit tested.",
+   "keyPoints": [
+    "A generator reads content, transforms it and writes files",
+    "Parse front matter separately from the Markdown body",
+    "Escape HTML before applying Markdown rules",
+    "Use a layout template and a generated index page",
+    "Replace the hand-written converter with markdown-it or marked in real projects"
+   ],
+   "pitfalls": [
+    "Applying inline rules inside code spans",
+    "Not escaping HTML in user content",
+    "Forgetting to clean the output folder, leaving stale pages"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir mdsite && cd mdsite\nnpm init -y && npm pkg set type=module\nmkdir content\n# create build.js and content/hello.md (next tabs)\n\nnode build.js\nnpx serve dist",
+     "explanation": "Output goes to dist/.",
+     "lang": "bash"
+    },
+    {
+     "title": "build.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- build.js ----\nimport fs from 'node:fs/promises';\nimport path from 'node:path';\n\nconst SRC = path.resolve('content');\nconst OUT = path.resolve('dist');\n\nconst escapeHtml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// ---- inline: **bold**, *italic*, `code`, [text](url) ----\nfunction inline(text) {\n  const codes = [];\n  let out = escapeHtml(text).replace(/`([^`]+)`/g, (_, c) => `\\u0000${codes.push(`<code>${c}</code>`) - 1}\\u0000`);\n  out = out\n    .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')\n    .replace(/\\*([^*]+)\\*/g, '<em>$1</em>')\n    .replace(/\\[([^\\]]+)\\]\\(([^)\\s]+)\\)/g, '<a href=\"$2\">$1</a>');\n  return out.replace(/\\u0000(\\d+)\\u0000/g, (_, i) => codes[i]);       // restore code spans untouched\n}\n\n// ---- blocks: headings, lists, code fences, paragraphs ----\nexport function markdownToHtml(md) {\n  const lines = md.replace(/\\r/g, '').split('\\n');\n  const html = [];\n  let i = 0;\n\n  while (i < lines.length) {\n    const line = lines[i];\n\n    if (line.startsWith('```')) {                                      // fenced code block\n      const lang = line.slice(3).trim();\n      const code = [];\n      for (i++; i < lines.length && !lines[i].startsWith('```'); i++) code.push(lines[i]);\n      i++;\n      html.push(`<pre><code${lang ? ` class=\"language-${lang}\"` : ''}>${escapeHtml(code.join('\\n'))}</code></pre>`);\n      continue;\n    }\n\n    const heading = line.match(/^(#{1,6})\\s+(.*)$/);\n    if (heading) {\n      const level = heading[1].length;\n      html.push(`<h${level}>${inline(heading[2])}</h${level}>`);\n      i++;\n      continue;\n    }\n\n    if (/^\\s*[-*]\\s+/.test(line)) {                                    // unordered list\n      const items = [];\n      while (i < lines.length && /^\\s*[-*]\\s+/.test(lines[i])) items.push(`<li>${inline(lines[i++].replace(/^\\s*[-*]\\s+/, ''))}</li>`);\n      html.push(`<ul>\\n${items.join('\\n')}\\n</ul>`);\n      continue;\n    }\n\n    if (line.trim() === '') { i++; continue; }\n\n    const para = [];                                                   // paragraph: until blank line\n    while (i < lines.length && lines[i].trim() !== '' && !/^(#{1,6}\\s|```|\\s*[-*]\\s)/.test(lines[i])) para.push(lines[i++]);\n    html.push(`<p>${inline(para.join(' '))}</p>`);\n  }\n  return html.join('\\n');\n}\n\n// ---- front matter: --- key: value --- ----\nfunction parseFrontMatter(raw) {\n  const match = raw.match(/^---\\n([\\s\\S]*?)\\n---\\n?([\\s\\S]*)$/);\n  if (!match) return { meta: {}, body: raw };\n  const meta = Object.fromEntries(match[1].split('\\n').map((l) => l.split(/:\\s*(.*)/s).slice(0, 2)));\n  return { meta, body: match[2] };\n}\n\nconst template = ({ title, body, nav }) => `<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>${escapeHtml(title)}</title>\n  <style>body{font-family:system-ui;max-width:42rem;margin:2rem auto;padding:0 1rem;line-height:1.6}pre{background:#f4f4f4;padding:1rem;overflow:auto}nav a{margin-right:1rem}</style>\n</head>\n<body>\n  <nav>${nav}</nav>\n  <main>\n${body}\n  </main>\n</body>\n</html>\n`;\n\nasync function build() {\n  await fs.rm(OUT, { recursive: true, force: true });\n  await fs.mkdir(OUT, { recursive: true });\n\n  const files = (await fs.readdir(SRC)).filter((f) => f.endsWith('.md')).sort();\n  const pages = [];\n\n  for (const file of files) {\n    const { meta, body } = parseFrontMatter(await fs.readFile(path.join(SRC, file), 'utf8'));\n    const slug = path.basename(file, '.md');\n    pages.push({ slug, title: meta.title ?? slug, date: meta.date ?? '', html: markdownToHtml(body) });\n  }\n\n  const nav = ['<a href=\"index.html\">Home</a>', ...pages.map((p) => `<a href=\"${p.slug}.html\">${escapeHtml(p.title)}</a>`)].join('');\n\n  for (const page of pages) {\n    await fs.writeFile(path.join(OUT, `${page.slug}.html`), template({ title: page.title, body: page.html, nav }));\n  }\n\n  const list = pages.map((p) => `<li><a href=\"${p.slug}.html\">${escapeHtml(p.title)}</a> <small>${p.date}</small></li>`).join('\\n');\n  await fs.writeFile(path.join(OUT, 'index.html'), template({ title: 'Home', body: `<h1>My Site</h1>\\n<ul>\\n${list}\\n</ul>`, nav }));\n\n  console.log(`Built ${pages.length} pages into ${path.relative(process.cwd(), OUT)}/`);\n}\n\nif (process.argv[1] === import.meta.filename) await build();",
+     "explanation": "About 110 lines.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Sample content and result",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# content/hello.md\n---\ntitle: Hello Node\ndate: 2026-10-01\n---\n# Hello Node\n\nNode is **fast** and *friendly*. Read the [docs](https://nodejs.org).\n\n- Runs on V8\n- Uses `libuv`\n\n# dist/hello.html (main part)\n<h1>Hello Node</h1>\n<p>Node is <strong>fast</strong> and <em>friendly</em>. Read the <a href=\"https://nodejs.org\">docs</a>.</p>\n<ul>\n<li>Runs on V8</li>\n<li>Uses <code>libuv</code></li>\n</ul>\n\n$ node build.js\nBuilt 2 pages into dist/",
+     "explanation": "Comments with # are annotations for this page.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is front matter?",
+     "a": "A small metadata block (usually YAML between --- lines) at the top of a content file that holds fields like title, date and tags, separated from the actual Markdown body."
+    },
+    {
+     "q": "Why escape HTML before converting Markdown?",
+     "a": "So any raw < or & in the content is shown as text and cannot inject elements or scripts. The generator then adds its own safe tags."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-jwt-auth",
+   "title": "Project: JWT Authentication Service",
+   "level": "advanced",
+   "summary": "Register, login, access tokens, rotating refresh tokens in HttpOnly cookies, protected routes and role checks with Express.",
+   "description": "This service combines most security topics of the course: password hashing, short-lived access JWTs, rotating refresh tokens, cookies and role-based access.\n\n### Endpoints\n| Endpoint | Purpose |\n|---|---|\n| `POST /auth/register` | Validate, hash password (bcrypt), create user |\n| `POST /auth/login` | Verify password, return an **access token** (JSON) and set a **refresh token** cookie |\n| `POST /auth/refresh` | Exchange the refresh cookie for a new access token and a **new** refresh token |\n| `POST /auth/logout` | Revoke the refresh token and clear the cookie |\n| `GET /me` | Protected: needs `Authorization: Bearer <access>` |\n| `GET /admin/users` | Protected and requires the `admin` role |\n\n### Token design\n* **Access token**: JWT (`HS256`), 15 minutes, contains `sub` and `role`. Sent in the Authorization header and kept in memory by the client\n* **Refresh token**: random opaque string (not a JWT), valid 7 days. Only its **SHA-256 hash** is stored server side, so a database leak does not reveal usable tokens. Stored in an `HttpOnly; SameSite=Strict; Path=/auth` cookie\n* **Rotation**: every refresh deletes the used token and issues a new one. A reused old token is rejected, which exposes theft\n\n### Security details\n* Same error for unknown email and wrong password, and a dummy hash comparison to equalise timing\n* Pin the JWT algorithm on verify\n* Input validation, 10 KB body limit and JSON parse errors answered with 400\n* Central error handler: no stack traces to clients\n\n### What a real version adds\nA database instead of Maps, rate limiting on `/auth/login`, email verification, password reset, MFA, secrets from environment variables, HTTPS and the `Secure` cookie flag (enabled when `NODE_ENV=production`).",
+   "keyPoints": [
+    "Short access JWT plus rotating opaque refresh token",
+    "Store only a hash of the refresh token on the server",
+    "Refresh token in an HttpOnly, SameSite cookie scoped to /auth",
+    "Same error and timing for unknown user and wrong password",
+    "requireAuth and requireRole middleware protect routes"
+   ],
+   "pitfalls": [
+    "Storing the refresh token unhashed",
+    "Long-lived access tokens",
+    "Distinguishing \"unknown email\" from \"wrong password\" in errors"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir auth-service && cd auth-service\nnpm init -y && npm pkg set type=module\nnpm install express bcryptjs jsonwebtoken\n# create server.js (next tab)\n\nACCESS_SECRET=$(node -p \"require('crypto').randomBytes(32).toString('hex')\") node server.js",
+     "explanation": "Without ACCESS_SECRET the server generates a random one, which invalidates tokens on each restart.",
+     "lang": "bash"
+    },
+    {
+     "title": "server.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- server.js ----\nimport crypto from 'node:crypto';\nimport express from 'express';\nimport bcrypt from 'bcryptjs';\nimport jwt from 'jsonwebtoken';\n\nconst PORT = process.env.PORT ?? 3000;\nconst ACCESS_SECRET = process.env.ACCESS_SECRET ?? crypto.randomBytes(32).toString('hex'); // set it in .env for real use\nconst ACCESS_TTL = '15m';\nconst REFRESH_TTL_MS = 7 * 24 * 3600 * 1000;\n\n// ---- \"database\" (replace with a real one) ----\nconst users = new Map();           // email -> { id, email, name, role, passwordHash }\nconst refreshTokens = new Map();   // sha256(token) -> { userId, expiresAt }\n\nconst sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');\nconst publicUser = ({ id, email, name, role }) => ({ id, email, name, role });\n\nclass HttpError extends Error {\n  constructor(status, message) {\n    super(message);\n    this.status = status;\n  }\n}\n\nfunction signAccessToken(user) {\n  return jwt.sign({ sub: user.id, role: user.role }, ACCESS_SECRET, { expiresIn: ACCESS_TTL, algorithm: 'HS256' });\n}\n\nfunction issueRefreshToken(userId) {\n  const token = crypto.randomBytes(48).toString('base64url'); // opaque random token\n  refreshTokens.set(sha256(token), { userId, expiresAt: Date.now() + REFRESH_TTL_MS });\n  return token; // only the hash is stored\n}\n\nfunction setRefreshCookie(res, token) {\n  res.cookie('refresh_token', token, {\n    httpOnly: true,\n    secure: process.env.NODE_ENV === 'production',\n    sameSite: 'strict',\n    path: '/auth',\n    maxAge: REFRESH_TTL_MS,\n  });\n}\n\nconst readCookie = (req, name) =>\n  req.headers.cookie?.split(';').map((c) => c.trim().split('=')).find(([k]) => k === name)?.[1];\n\nfunction requireAuth(req, res, next) {\n  const header = req.headers.authorization ?? '';\n  if (!header.startsWith('Bearer ')) return next(new HttpError(401, 'Missing token'));\n  try {\n    req.auth = jwt.verify(header.slice(7), ACCESS_SECRET, { algorithms: ['HS256'] });\n    next();\n  } catch (err) {\n    next(new HttpError(401, err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token'));\n  }\n}\n\nconst requireRole = (role) => (req, res, next) =>\n  req.auth.role === role ? next() : next(new HttpError(403, 'Forbidden'));\n\nconst app = express();\napp.use(express.json({ limit: '10kb' }));\n\napp.post('/auth/register', async (req, res) => {\n  const { email, password, name } = req.body ?? {};\n  if (typeof email !== 'string' || !/^\\S+@\\S+\\.\\S+$/.test(email)) throw new HttpError(422, 'Valid email required');\n  if (typeof password !== 'string' || password.length < 8) throw new HttpError(422, 'Password must be at least 8 characters');\n  if (users.has(email.toLowerCase())) throw new HttpError(409, 'Email already registered');\n\n  const user = {\n    id: crypto.randomUUID(),\n    email: email.toLowerCase(),\n    name: String(name ?? '').slice(0, 50),\n    role: users.size === 0 ? 'admin' : 'user', // first user becomes admin (demo only)\n    passwordHash: await bcrypt.hash(password, 12),\n  };\n  users.set(user.email, user);\n  res.status(201).json(publicUser(user));\n});\n\nconst DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 12);\n\napp.post('/auth/login', async (req, res) => {\n  const { email = '', password = '' } = req.body ?? {};\n  const user = users.get(String(email).toLowerCase());\n  const ok = await bcrypt.compare(String(password), user?.passwordHash ?? DUMMY_HASH);\n  if (!user || !ok) throw new HttpError(401, 'Invalid credentials'); // same message for both cases\n\n  setRefreshCookie(res, issueRefreshToken(user.id));\n  res.json({ accessToken: signAccessToken(user), user: publicUser(user) });\n});\n\napp.post('/auth/refresh', (req, res) => {\n  const token = readCookie(req, 'refresh_token');\n  const record = token && refreshTokens.get(sha256(token));\n  if (!record || record.expiresAt < Date.now()) throw new HttpError(401, 'Invalid refresh token');\n\n  refreshTokens.delete(sha256(token)); // rotation: each refresh token works only once\n  const user = [...users.values()].find((u) => u.id === record.userId);\n  setRefreshCookie(res, issueRefreshToken(user.id));\n  res.json({ accessToken: signAccessToken(user) });\n});\n\napp.post('/auth/logout', (req, res) => {\n  const token = readCookie(req, 'refresh_token');\n  if (token) refreshTokens.delete(sha256(token));\n  res.clearCookie('refresh_token', { path: '/auth' }).status(204).end();\n});\n\napp.get('/me', requireAuth, (req, res) => {\n  const user = [...users.values()].find((u) => u.id === req.auth.sub);\n  res.json(publicUser(user));\n});\n\napp.get('/admin/users', requireAuth, requireRole('admin'), (req, res) => {\n  res.json([...users.values()].map(publicUser));\n});\n\napp.use((req, res) => res.status(404).json({ error: 'Not found' }));\n\napp.use((err, req, res, next) => {\n  const status = err.status ?? (err.type === 'entity.parse.failed' ? 400 : 500);\n  if (status === 500) console.error(err);\n  res.status(status).json({ error: status === 500 ? 'Internal error' : err.message });\n});\n\napp.listen(PORT, () => console.log(`Auth service on http://localhost:${PORT}`));",
+     "explanation": "Uses Express 5, so errors thrown in async handlers reach the error middleware automatically.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Trying the flow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ curl -X POST localhost:3000/auth/register -H \"Content-Type: application/json\" \\\n       -d '{\"email\":\"ann@x.com\",\"password\":\"secret-pass\",\"name\":\"Ann\"}'\n{\"id\":\"6f1c...\",\"email\":\"ann@x.com\",\"name\":\"Ann\",\"role\":\"admin\"}\n\n$ curl -i -c jar.txt -X POST localhost:3000/auth/login -H \"Content-Type: application/json\" \\\n       -d '{\"email\":\"ann@x.com\",\"password\":\"secret-pass\"}'\nHTTP/1.1 200 OK\nSet-Cookie: refresh_token=...; Max-Age=604800; Path=/auth; HttpOnly; SameSite=Strict\n{\"accessToken\":\"eyJhbGciOi...\",\"user\":{...}}\n\n$ curl localhost:3000/me -H \"Authorization: Bearer eyJhbGciOi...\"\n{\"id\":\"6f1c...\",\"email\":\"ann@x.com\",\"name\":\"Ann\",\"role\":\"admin\"}\n\n$ curl -X POST -b jar.txt -c jar.txt localhost:3000/auth/refresh      # new access token, cookie rotated\n$ curl -X POST -b old-cookie.txt localhost:3000/auth/refresh          # reused token\n{\"error\":\"Invalid refresh token\"}",
+     "explanation": "In a test run: register 201, duplicate register 409, wrong password 401, /me without a token 401, non-admin on /admin/users 403.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use both an access token and a refresh token?",
+     "a": "The short-lived access token limits damage if stolen and needs no database lookup. The long-lived refresh token, stored hashed and revocable on the server, lets the user stay logged in and be signed out centrally."
+    },
+    {
+     "q": "What does refresh token rotation protect against?",
+     "a": "If a refresh token is stolen and used, the legitimate client's next use of the old token fails (or vice versa), which reveals the compromise; each token only works once, limiting the replay window."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-project-file-upload",
+   "title": "Project: File Upload Service",
+   "level": "advanced",
+   "summary": "Accept multipart uploads by streaming to disk with busboy: size and type limits, random names and safe downloads.",
+   "description": "Uploads are a classic source of bugs and vulnerabilities. This service shows the safe pattern: **stream** the file to disk, **limit** it, **validate** the type and **never trust** the client's file name.\n\n### Endpoints\n| Endpoint | Purpose |\n|---|---|\n| `POST /upload` | `multipart/form-data`, up to 5 files of 2 MB each |\n| `GET /files` | List stored files |\n| `GET /files/:name` | Download a file |\n| `DELETE /files/:name` | Delete a file |\n\n### Key techniques\n* **busboy** parses the multipart stream without buffering it. Each file arrives as a Readable stream and is piped to `fs.createWriteStream` with `stream.pipeline`\n* **Limits**: `fileSize`, `files` and `fields`. busboy emits `'limit'` when the size is exceeded; the service answers **413** and deletes the partial file\n* **Type allow-list** (`image/png`, `application/pdf`, ...). The client-declared MIME type is only a hint; for stricter checks read the file's magic bytes (package `file-type`)\n* **Random stored names** (`crypto.randomUUID()` plus a fixed extension): prevents path traversal, overwrites and executable names. The original name is kept only as metadata\n* **`path.basename`** on every name taken from a URL\n* Respond with `Connection: close` when stopping before the body is fully read\n\n### Production checklist\nStore files in object storage (S3, R2) with pre-signed URLs, scan for malware, serve user content from a separate domain, set `Content-Disposition` and `X-Content-Type-Options: nosniff`, require authentication and add per-user quotas.\n\n### Alternatives\n`multer` (Express middleware built on busboy), `formidable`, and direct browser-to-S3 uploads with pre-signed URLs so your server never handles the bytes.",
+   "keyPoints": [
+    "Stream uploads to disk (or object storage) instead of buffering in memory",
+    "Enforce file size, count and type limits",
+    "Generate random file names; never use the client's name for paths",
+    "Allow-list MIME types and verify content when it matters",
+    "Prefer pre-signed direct uploads for large-scale systems"
+   ],
+   "pitfalls": [
+    "Saving files under the original name (path traversal, overwrites)",
+    "Trusting the Content-Type sent by the client",
+    "Reading entire uploads into memory"
+   ],
+   "examples": [
+    {
+     "title": "Setup and run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "mkdir upload-service && cd upload-service\nnpm init -y && npm pkg set type=module\nnpm install express busboy\n# create server.js (next tab)\n\nnode server.js\ncurl -F \"file=@photo.png;type=image/png\" http://localhost:3000/upload",
+     "explanation": "Files are stored in ./uploads (or UPLOAD_DIR).",
+     "lang": "bash"
+    },
+    {
+     "title": "server.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// ---- server.js ----\nimport crypto from 'node:crypto';\nimport fs from 'node:fs';\nimport fsp from 'node:fs/promises';\nimport path from 'node:path';\nimport { pipeline } from 'node:stream/promises';\nimport express from 'express';\nimport busboy from 'busboy';\n\nconst PORT = process.env.PORT ?? 3000;\nconst UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR ?? 'uploads');\nconst MAX_BYTES = 2 * 1024 * 1024; // 2 MB per file\nconst ALLOWED = new Map([\n  ['image/png', '.png'],\n  ['image/jpeg', '.jpg'],\n  ['application/pdf', '.pdf'],\n  ['text/plain', '.txt'],\n]);\n\nawait fsp.mkdir(UPLOAD_DIR, { recursive: true });\n\nconst app = express();\n\napp.post('/upload', (req, res, next) => {\n  if (!req.is('multipart/form-data')) return res.status(415).json({ error: 'Send multipart/form-data' });\n\n  const saved = [];\n  const pending = [];\n  let failed = false;\n\n  const bb = busboy({ headers: req.headers, limits: { fileSize: MAX_BYTES, files: 5, fields: 10 } });\n\n  const fail = (status, message) => {\n    if (failed) return;\n    failed = true;\n    res.set('Connection', 'close'); // we stop reading the body, so do not reuse this socket\n    res.status(status).json({ error: message });\n    req.unpipe(bb);\n    for (const file of saved) fsp.rm(path.join(UPLOAD_DIR, file.name), { force: true }); // clean partial uploads\n  };\n\n  bb.on('file', (field, stream, info) => {\n    const ext = ALLOWED.get(info.mimeType);\n    if (!ext) {\n      stream.resume(); // discard the data\n      return fail(415, `File type ${info.mimeType} is not allowed`);\n    }\n\n    const name = `${crypto.randomUUID()}${ext}`; // never trust the original file name\n    const target = path.join(UPLOAD_DIR, name);\n    const entry = { name, original: path.basename(info.filename), type: info.mimeType, size: 0 };\n    saved.push(entry);\n\n    stream.on('data', (chunk) => { entry.size += chunk.length; });\n    stream.on('limit', () => {\n      stream.unpipe();\n      fail(413, `File too large (max ${MAX_BYTES / 1024 / 1024} MB)`);\n    });\n\n    // stream straight to disk: memory stays flat for any file size\n    pending.push(pipeline(stream, fs.createWriteStream(target)).catch(() => {}));\n  });\n\n  bb.on('error', next);\n  bb.on('close', async () => {\n    await Promise.all(pending);\n    if (failed) return;\n    if (saved.length === 0) return res.status(400).json({ error: 'No file received' });\n    res.status(201).json({ files: saved.map((f) => ({ ...f, url: `/files/${f.name}` })) });\n  });\n\n  req.pipe(bb);\n});\n\napp.get('/files', async (req, res) => {\n  const names = await fsp.readdir(UPLOAD_DIR);\n  res.json(names.map((name) => ({ name, url: `/files/${name}` })));\n});\n\napp.get('/files/:name', (req, res) => {\n  const name = path.basename(req.params.name); // blocks ../ tricks\n  res.sendFile(path.join(UPLOAD_DIR, name), (err) => {\n    if (err && !res.headersSent) res.status(404).json({ error: 'Not found' });\n  });\n});\n\napp.delete('/files/:name', async (req, res) => {\n  await fsp.rm(path.join(UPLOAD_DIR, path.basename(req.params.name)), { force: true });\n  res.status(204).end();\n});\n\napp.use((err, req, res, next) => {\n  console.error(err);\n  if (!res.headersSent) res.status(500).json({ error: 'Upload failed' });\n});\n\napp.listen(PORT, () => console.log(`Upload service on http://localhost:${PORT} -> ${UPLOAD_DIR}`));",
+     "explanation": "About 100 lines including the safety checks.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Results",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ curl -F \"file=@notes.txt;type=text/plain\" localhost:3000/upload\n{\"files\":[{\"name\":\"3f2b6c1e-....txt\",\"original\":\"notes.txt\",\"type\":\"text/plain\",\"size\":12,\"url\":\"/files/3f2b6c1e-....txt\"}]}\n\n$ curl -F \"file=@setup.exe;type=application/x-msdownload\" localhost:3000/upload\n{\"error\":\"File type application/x-msdownload is not allowed\"}        # 415\n\n$ curl -F \"file=@big.png;type=image/png\" localhost:3000/upload        # 3 MB file\n{\"error\":\"File too large (max 2 MB)\"}                                 # 413\n\n$ curl localhost:3000/files/..%2F..%2Fserver.js -i | head -1\nHTTP/1.1 404 Not Found",
+     "explanation": "Error responses show the validations; the last request shows that traversal attempts fail.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why generate random names for uploaded files?",
+     "a": "Client names can contain path tricks (../), collide with existing files or hide executable extensions. A random server-generated name avoids traversal, overwrites and guessing."
+    },
+    {
+     "q": "Why stream uploads to disk instead of using memory?",
+     "a": "Memory use would grow with file size and many parallel uploads could crash the process. Streaming keeps memory constant and lets you enforce limits while the data arrives."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

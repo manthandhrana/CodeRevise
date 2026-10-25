@@ -1,0 +1,279 @@
+{
+ "id": "react-performance",
+ "title": "Performance",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "react-rendering-model",
+   "title": "The Rendering Model: When and Why Components Re-render",
+   "level": "intermediate",
+   "summary": "Understand triggers, render vs commit, and why a parent re-render re-renders its children.",
+   "description": "You cannot optimize what you do not understand. React work happens in three phases: **trigger -> render -> commit**.\n\n### What triggers a render\n\n1. The **initial render** (`root.render`).\n2. A **state update** in the component (`setState`, `dispatch`).\n3. A **parent re-render** (children re-render by default, even if their props are identical).\n4. A **context** value change for components that consume it.\n\nProps changing is not the trigger; the parent rendering is. `memo` is what adds the props comparison.\n\n### Render phase\n\nReact calls your component function and builds the new element tree. It must be **pure** (same props/state -> same JSX, no side effects). Rendering is cheap if components are small, but can be costly for huge trees or expensive calculations.\n\n### Commit phase\n\nReact applies the minimum DOM changes, runs layout effects, then the browser paints, then passive effects (`useEffect`) run. If a render produces the same output, the DOM is not touched. **A re-render is not a DOM update.**\n\n### Batching and priority\n\nUpdates in the same tick are batched. Transitions (`startTransition`) are interruptible low-priority renders.\n\n### Common misconceptions\n\n- \"Re-rendering is always bad.\" Usually it is fine; measure first.\n- \"Props changes cause re-render.\" The parent's render does; `memo` stops it.\n- \"Setting state to the same value re-renders.\" React bails out (may render the component once more but not the children).\n\n### Where cost really comes from\n\nLarge lists, expensive calculations in render, deep trees re-rendering from high-up state, and huge DOM sizes.",
+   "keyPoints": [
+    "Triggers: initial render, state change, parent render, context change",
+    "Render = calculate; commit = DOM + effects",
+    "Re-render does not mean DOM update",
+    "Children re-render with parents unless memoized",
+    "Measure before optimizing"
+   ],
+   "pitfalls": [
+    "Optimizing blindly without profiling.",
+    "Doing heavy work or side effects directly in the render body."
+   ],
+   "examples": [
+    {
+     "title": "Visualize re-renders",
+     "language": "react",
+     "css": "",
+     "code": "function useRenderCount() {\n  const ref = useRef(0);\n  ref.current += 1;\n  return ref.current;\n}\n\nfunction Plain() {\n  const n = useRenderCount();\n  return <p>Plain child renders: {n}</p>;\n}\nconst Memoized = memo(function Memoized() {\n  const n = useRenderCount();\n  return <p>Memoized child renders: {n}</p>;\n});\n\nfunction App() {\n  const [count, setCount] = useState(0);\n  const n = useRenderCount();\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setCount(count + 1)}>Parent state: {count}</button>\n      <p>Parent renders: {n}</p>\n      <Plain />\n      <Memoized />\n    </div>\n  );\n}",
+     "explanation": "Render counts show which components re-render when the parent state changes."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What causes a React component to re-render?",
+     "a": "Its own state change, a parent re-render, or a change in a context it consumes (plus the initial render)."
+    },
+    {
+     "q": "Does a re-render always update the DOM?",
+     "a": "No. React diffs the output and only changes the DOM where something differs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-optimization-strategies",
+   "title": "Optimizing Re-renders: Colocation, Children Trick, memo Done Right",
+   "level": "advanced",
+   "summary": "Fix slow renders by moving state down, passing children, and only then reaching for memo, useMemo and useCallback.",
+   "description": "Apply these in order, from cheapest to most complex.\n\n### 1. Colocate state (move state down)\n\nIf only `<SearchBox />` needs the typed text, keep that state **inside** it, not in the big parent. Now typing re-renders only the small component.\n\n### 2. Lift content up (the children trick)\n\nPass expensive subtrees as `children` or props. They are created by a parent that does not re-render when the wrapper's state changes:\n\n```jsx\nfunction Wrapper({ children }) {\n  const [x, setX] = useState(0);        // changes often\n  return <div onMouseMove={...}>{children}</div>;   // children element is unchanged\n}\n```\n\n### 3. Avoid expensive work in render\n\nMove calculations out of the component, or `useMemo` them if measurably slow. Paginate or filter data early.\n\n### 4. memo + stable props\n\nWrap an expensive component in `memo` **and** ensure props are stable: primitives, `useMemo` objects, `useCallback` handlers. If even one prop is a fresh object each render, memo is wasted.\n\n### 5. Split context\n\nSeparate frequently changing values from stable ones, or use a store with selectors.\n\n### 6. Fix keys and list size\n\nStable keys, virtualization for long lists.\n\n### 7. Reduce update frequency\n\nDebounce, throttle, `useDeferredValue`, `startTransition`.\n\n### Measure\n\nUse the React DevTools Profiler (\"Why did this render?\") and `console.time`. Optimization that is not measured is a guess. With the **React Compiler**, step 4 largely disappears.",
+   "keyPoints": [
+    "Colocate state close to where it is used",
+    "Pass expensive subtrees as children to avoid re-render",
+    "memo only works with stable props",
+    "Debounce / defer / transition to reduce work",
+    "Profile first, optimize second"
+   ],
+   "pitfalls": [
+    "Wrapping everything in memo/useCallback/useMemo \"just in case\".",
+    "Passing inline object/array props to memoized children."
+   ],
+   "examples": [
+    {
+     "title": "Moving state down fixes slow siblings",
+     "language": "react",
+     "css": "",
+     "code": "let slowRenders = 0;\nfunction SlowTree() {\n  slowRenders += 1;\n  console.log(\"SlowTree rendered\", slowRenders);\n  return <p>I am an expensive tree (renders: {slowRenders})</p>;\n}\n\n// BAD: state in the parent re-renders SlowTree on every keystroke\nfunction Bad() {\n  const [text, setText] = useState(\"\");\n  return (\n    <div>\n      <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"bad: parent state\" />\n      <SlowTree />\n    </div>\n  );\n}\n\n// GOOD: state moved down into its own component\nfunction TextBox() {\n  const [text, setText] = useState(\"\");\n  return <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"good: colocated state\" />;\n}\nfunction Good() {\n  return (\n    <div>\n      <TextBox />\n      <p><small>SlowTree is not rendered here</small></p>\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Bad />\n      <hr />\n      <Good />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the \"move state down\" optimization?",
+     "a": "Place state in the smallest component that needs it so updates do not re-render unrelated siblings."
+    },
+    {
+     "q": "Why can memo be useless?",
+     "a": "If any prop is a new object, array or function on every parent render, the shallow comparison fails and the component re-renders anyway."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-virtualization",
+   "title": "List Virtualization (react-window)",
+   "level": "advanced",
+   "summary": "Render only the rows visible in the viewport so huge lists stay fast.",
+   "description": "Rendering 10,000 rows means 10,000 components and DOM nodes. Layout, memory and React work explode. **Virtualization** (windowing) renders only the items inside (and just around) the scroll viewport, and uses a tall spacer so the scrollbar behaves normally.\n\n### Libraries\n\n- **react-window** - small and fast: `FixedSizeList`, `VariableSizeList`, `FixedSizeGrid`.\n- **react-virtuoso** - dynamic heights, grouping, reverse/infinite scroll out of the box.\n- **@tanstack/react-virtual** - headless hook, maximum flexibility.\n- **react-virtualized** - older, larger predecessor.\n\n### react-window example\n\n```jsx\nimport { FixedSizeList } from \"react-window\";\n\n<FixedSizeList height={400} width=\"100%\" itemCount={10000} itemSize={36}>\n  {({ index, style }) => <div style={style}>Row {index}</div>}\n</FixedSizeList>\n```\n\nYou **must spread the `style`** prop; it positions each row absolutely.\n\n### How it works (idea)\n\n1. Know the item height and the scroll position (`scrollTop`).\n2. `startIndex = floor(scrollTop / itemHeight)`.\n3. Render `startIndex ... startIndex + visibleCount` (plus an **overscan** buffer).\n4. Offset them with `transform` or absolute positioning inside a container of total height `itemCount * itemHeight`.\n\n### Caveats\n\n- Browser find-in-page (Ctrl+F) will not find non-rendered rows.\n- Accessibility needs care (`aria-rowcount`, `aria-rowindex`).\n- Variable heights require measurement.\n- Do it only when lists are long (hundreds+). For smaller lists use pagination.",
+   "keyPoints": [
+    "Render only visible rows plus overscan",
+    "react-window, react-virtuoso, @tanstack/react-virtual",
+    "Spread the provided style on rows",
+    "Needs known or measured item heights",
+    "Use for lists of hundreds or thousands of items"
+   ],
+   "pitfalls": [
+    "Forgetting to apply the style prop in react-window rows.",
+    "Virtualizing small lists, adding complexity for no benefit."
+   ],
+   "examples": [
+    {
+     "title": "Hand-rolled fixed-height virtual list (10,000 rows)",
+     "language": "react",
+     "css": "",
+     "code": "const ITEM_H = 28;\nconst COUNT = 10000;\nconst VIEW_H = 168;\n\nfunction VirtualList() {\n  const [scrollTop, setScrollTop] = useState(0);\n  const overscan = 3;\n  const start = Math.max(0, Math.floor(scrollTop / ITEM_H) - overscan);\n  const visible = Math.ceil(VIEW_H / ITEM_H) + overscan * 2;\n  const end = Math.min(COUNT, start + visible);\n\n  const rows = [];\n  for (let i = start; i < end; i++) {\n    rows.push(\n      <div key={i} style={{ position: \"absolute\", top: i * ITEM_H, height: ITEM_H, left: 0, right: 0, lineHeight: ITEM_H + \"px\", paddingLeft: 8, borderBottom: \"1px solid #eee\" }}>\n        Row {i + 1}\n      </div>\n    );\n  }\n  return (\n    <div style={{ height: VIEW_H, overflow: \"auto\", border: \"1px solid #ccc\" }} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}>\n      <div style={{ height: COUNT * ITEM_H, position: \"relative\" }}>{rows}</div>\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>10,000 rows, only ~{Math.ceil(VIEW_H / ITEM_H) + 6} are in the DOM.</p>\n      <VirtualList />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is list virtualization?",
+     "a": "Rendering only the items currently visible in the viewport (plus a small buffer) instead of the whole list, which keeps DOM size and render cost small."
+    },
+    {
+     "q": "What is a downside of virtualized lists?",
+     "a": "Browser search cannot find offscreen items, variable heights are harder, and accessibility needs extra attributes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-code-splitting-bundle",
+   "title": "Code Splitting and Bundle Analysis",
+   "level": "advanced",
+   "summary": "Ship less JavaScript: split by route, lazy load heavy features and inspect the bundle with a visualizer.",
+   "description": "JavaScript is the most expensive resource per byte: it must be downloaded, parsed and executed. Reducing the initial bundle improves Largest Contentful Paint and interactivity.\n\n### Code splitting strategies\n\n1. **Route-based**: `lazy(() => import(\"./pages/Admin\"))` per page (biggest win).\n2. **Component-based**: heavy widgets (charts, editors, maps, PDF viewers) loaded when needed.\n3. **Library-based**: dynamic `import(\"xlsx\")` inside the click handler that needs it.\n4. **Vendor chunks**: Vite/Rollup `manualChunks` to cache stable libraries separately.\n5. **Prefetch/preload** next likely chunks on hover or idle.\n\n### Find the weight: analyze the bundle\n\n- **`rollup-plugin-visualizer`** (Vite): generates a treemap `stats.html`.\n- **webpack-bundle-analyzer** for webpack.\n- Chrome DevTools **Coverage** tab shows unused code; **Lighthouse** gives guidance.\n- `source-map-explorer` for source maps.\n\n### Common wins\n\n| Problem | Fix |\n| --- | --- |\n| Moment.js with all locales | use `date-fns` / `dayjs` |\n| `import _ from \"lodash\"` | `import debounce from \"lodash/debounce\"` or `lodash-es` |\n| Huge icon pack | import individual icons |\n| Large images | modern formats (WebP/AVIF), `loading=\"lazy\"`, correct sizes |\n| Duplicate libs/versions | dedupe with the package manager |\n\n### Tree shaking\n\nUse ES module imports and libraries with `sideEffects: false`; avoid barrel files that pull in everything.\n\n### Budgets\n\nSet a performance budget (e.g. under 170 KB gzipped initial JS) and fail CI when exceeded.",
+   "keyPoints": [
+    "Split by route first, then heavy features",
+    "Dynamic import() inside handlers for rare features",
+    "Analyze with rollup-plugin-visualizer",
+    "Watch for moment, lodash, giant icon packs",
+    "Set bundle size budgets in CI"
+   ],
+   "pitfalls": [
+    "Importing a large library for one function.",
+    "Lazy loading everything, creating a waterfall of tiny requests."
+   ],
+   "examples": [
+    {
+     "title": "vite.config.js with visualizer and manual chunks",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\nimport { visualizer } from \"rollup-plugin-visualizer\";\n\nexport default defineConfig({\n  plugins: [react(), visualizer({ filename: \"stats.html\", gzipSize: true, open: false })],\n  build: {\n    rollupOptions: {\n      output: {\n        manualChunks: {\n          react: [\"react\", \"react-dom\"],\n          router: [\"react-router-dom\"],\n        },\n      },\n    },\n  },\n});\n\n// Load a heavy library only when the user needs it:\n// async function exportToExcel(rows) {\n//   const XLSX = await import(\"xlsx\");\n//   XLSX.writeFile(XLSX.utils.json_to_sheet(rows), \"data.xlsx\");\n// }"
+    },
+    {
+     "title": "Build and inspect",
+     "language": "text",
+     "lang": "bash",
+     "code": "npm run build\n# dist/assets/index-abc123.js   142.30 kB | gzip: 45.80 kB\n# dist/assets/Admin-def456.js    38.10 kB | gzip: 11.20 kB   <- lazy chunk\nopen stats.html   # treemap of what's inside each chunk"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is code splitting?",
+     "a": "Breaking the bundle into smaller chunks that are loaded on demand, such as per route, so the initial download is smaller."
+    },
+    {
+     "q": "How do you find what is making your bundle large?",
+     "a": "Use a bundle visualizer like rollup-plugin-visualizer or webpack-bundle-analyzer to see the treemap of modules and their sizes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-profiler",
+   "title": "Profiling with React DevTools",
+   "level": "advanced",
+   "summary": "Record renders in the Profiler tab to see what rendered, why, and how long it took.",
+   "description": "Measure before you optimize. React gives two tools.\n\n### React DevTools Profiler\n\nInstall the **React Developer Tools** browser extension. In the **Profiler** tab:\n\n1. Click **Record**.\n2. Interact with the app (type, click).\n3. Click **Stop**.\n\nYou get a **flamegraph** (each bar a component, width = render time, gray = did not render) and a **ranked chart** of slowest components. Enable \"**Record why each component rendered**\" in settings to see reasons: *props changed*, *state changed*, *hooks changed*, *parent rendered*, *context changed*.\n\nThe **Components** tab has \"Highlight updates when components render\", which flashes re-rendering components.\n\n### Always profile a production build\n\nDevelopment mode is much slower (StrictMode double renders, extra checks). Use `npm run build && npm run preview` for real numbers, or the profiling build.\n\n### The `<Profiler>` component\n\nProgrammatic measurement:\n\n```jsx\n<Profiler id=\"Feed\" onRender={(id, phase, actualDuration) => log(id, phase, actualDuration)}>\n  <Feed />\n</Profiler>\n```\n\n`phase` is `\"mount\"` or `\"update\"`; `actualDuration` is time spent rendering. Useful for logging metrics.\n\n### Other tools\n\n- Chrome **Performance** panel for long tasks and layout thrash.\n- **Lighthouse** and **Web Vitals** (LCP, INP, CLS).\n- `why-did-you-render` library for development.\n\n### Workflow\n\nReproduce slow interaction -> record -> find the expensive or unnecessarily re-rendering component -> fix -> record again to confirm.",
+   "keyPoints": [
+    "Profiler tab: record, interact, stop, inspect",
+    "Enable \"why did this render\" for reasons",
+    "Profile a production build",
+    "<Profiler onRender> gives programmatic timings",
+    "Re-measure after each change"
+   ],
+   "pitfalls": [
+    "Profiling the dev build and chasing problems that don't exist in production.",
+    "Optimizing components that take 0.1 ms."
+   ],
+   "examples": [
+    {
+     "title": "Profiler component logging render time",
+     "language": "react",
+     "css": "",
+     "code": "const Profiler = React.Profiler;\n\nfunction Heavy({ n }) {\n  let total = 0;\n  for (let i = 0; i < 200000; i++) total += i % (n + 1);\n  return <p>Result: {total}</p>;\n}\n\nfunction App() {\n  const [n, setN] = useState(1);\n  const lastRef = useRef(null);       // do NOT setState inside onRender: it would loop\n  const [shown, setShown] = useState(null);\n\n  function onRender(id, phase, actualDuration) {\n    lastRef.current = { id, phase, ms: actualDuration.toFixed(2) };\n    console.log(\"Profiler:\", id, phase, actualDuration.toFixed(2) + \"ms\");\n  }\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setN(n + 1)}>Re-render heavy ({n})</button>{\" \"}\n      <button onClick={() => setShown(lastRef.current)}>Show last measurement</button>\n      <Profiler id=\"Heavy\" onRender={onRender}>\n        <Heavy n={n} />\n      </Profiler>\n      {shown && <p>{shown.id} {shown.phase}: {shown.ms} ms</p>}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find which component is slow?",
+     "a": "Record an interaction in the React DevTools Profiler and look at the flamegraph and ranked chart, ideally on a production build."
+    },
+    {
+     "q": "What does the Profiler onRender callback give you?",
+     "a": "The id, phase (mount or update), actual render duration, base duration, and start and commit times for the profiled tree."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-compiler",
+   "title": "React Compiler Overview",
+   "level": "advanced",
+   "summary": "The React Compiler automatically memoizes components and values at build time so manual memo/useMemo/useCallback are rarely needed.",
+   "description": "Manual memoization (`memo`, `useMemo`, `useCallback`) is noisy and easy to get wrong. The **React Compiler** (formerly \"React Forget\"), stable as of React 19-era tooling (v1.0), is a build-time Babel/SWC plugin that analyzes your components and **automatically inserts memoization** where it is safe.\n\n### What it does\n\n- Understands the **Rules of React** (pure render, immutable state and props, hooks rules).\n- Splits your component into cached pieces so JSX and values are reused if their inputs did not change.\n- Even memoizes things that hooks cannot, such as values after early returns.\n- Works with React 17, 18 and 19 (via `react-compiler-runtime`).\n\n### Setup (Vite)\n\n```bash\nnpm i -D babel-plugin-react-compiler\n```\n\n```js\n// vite.config.js\nreact({ babel: { plugins: [[\"babel-plugin-react-compiler\", {}]] } })\n```\n\nFrameworks (Next.js `experimental.reactCompiler`, Expo) have flags. Run **`npx react-compiler-healthcheck`** to see how much of your code is compatible and use the `eslint-plugin-react-compiler` / `eslint-plugin-react-hooks` rules to find violations.\n\n### What changes for you\n\n- Write plain code; drop most `useMemo`/`useCallback`/`memo`.\n- Keep manual memo where you need exact control, such as stable effect dependencies.\n- Components breaking the rules are **skipped** (not broken), and you can opt out with `\"use no memo\"`.\n- DevTools shows a \"Memo\" badge for compiled components.\n\n### Caveats\n\nIt will not fix algorithmic problems, big lists or network waterfalls. Mutating props/state or reading refs in render makes components ineligible.",
+   "keyPoints": [
+    "Build-time automatic memoization",
+    "Requires following the Rules of React",
+    "Removes most manual memo, useMemo, useCallback",
+    "Incompatible components are skipped safely",
+    "Adopt gradually with healthcheck and lint rules"
+   ],
+   "pitfalls": [
+    "Assuming the compiler fixes slow algorithms or huge lists.",
+    "Writing impure components (mutating props) and expecting compilation."
+   ],
+   "examples": [
+    {
+     "title": "Enabling the compiler in Vite",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// vite.config.js\nimport { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({\n  plugins: [\n    react({\n      babel: {\n        plugins: [[\"babel-plugin-react-compiler\", { /* compilationMode: \"annotation\" to opt in per component */ }]],\n      },\n    }),\n  ],\n});"
+    },
+    {
+     "title": "Before and after (conceptually)",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// BEFORE: manual memoization everywhere\nconst Row = memo(function Row({ item, onSelect }) { /* ... */ });\nfunction List({ items }) {\n  const sorted = useMemo(() => [...items].sort(byName), [items]);\n  const onSelect = useCallback((id) => select(id), []);\n  return sorted.map((i) => <Row key={i.id} item={i} onSelect={onSelect} />);\n}\n\n// AFTER: write plain code; the compiler memoizes automatically\nfunction List({ items }) {\n  const sorted = [...items].sort(byName);\n  const onSelect = (id) => select(id);\n  return sorted.map((i) => <Row key={i.id} item={i} onSelect={onSelect} />);\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does the React Compiler do?",
+     "a": "It analyzes components at build time and automatically adds memoization so values and JSX are reused when inputs do not change, reducing the need for memo, useMemo and useCallback."
+    },
+    {
+     "q": "What happens to components that break the Rules of React?",
+     "a": "The compiler skips them, leaving them uncompiled, and ESLint rules point out the violations."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-perf-checklist",
+   "title": "Web Performance Checklist for React Apps",
+   "level": "advanced",
+   "summary": "A practical checklist covering loading speed, rendering, images, network and Core Web Vitals.",
+   "description": "Use this checklist when an app feels slow.\n\n### Loading (LCP, bundle)\n\n- Route-level code splitting and lazy loading.\n- Analyze the bundle; remove or replace heavy libraries.\n- Compress with gzip/Brotli; serve from a CDN with long-term caching (hashed filenames).\n- Preload critical resources (`<link rel=\"preload\">` for fonts and hero image), `preconnect` to API origins.\n- Consider **SSR/SSG** (Next.js) for content pages so HTML arrives ready.\n\n### Images and fonts\n\n- Modern formats, correct dimensions, `srcset`, `loading=\"lazy\"` below the fold, `width`/`height` to avoid layout shift (CLS).\n- `font-display: swap`, subset fonts, self-host.\n\n### Rendering and interactivity (INP)\n\n- Keep state local, avoid unnecessary re-renders (see optimization topic).\n- Virtualize long lists; paginate.\n- Debounce inputs; use `startTransition` / `useDeferredValue` for heavy updates.\n- Avoid long tasks (> 50 ms): split work, use Web Workers for CPU-heavy code.\n- Avoid layout thrashing (reading and writing layout in loops).\n\n### Network\n\n- Cache with TanStack Query; dedupe and prefetch.\n- Request only needed fields/pages; use HTTP caching headers.\n- Avoid request waterfalls: parallelize with `Promise.all`, load data at the route level.\n\n### Measure\n\n| Metric | Good |\n| --- | --- |\n| LCP | <= 2.5 s |\n| INP | <= 200 ms |\n| CLS | <= 0.1 |\n\nUse Lighthouse, PageSpeed Insights, the `web-vitals` package and real-user monitoring.",
+   "keyPoints": [
+    "Split code, compress, cache, and use a CDN",
+    "Optimize images and fonts; reserve space to avoid CLS",
+    "Virtualize, debounce and defer heavy UI work",
+    "Avoid network waterfalls",
+    "Track LCP, INP, CLS with real user data"
+   ],
+   "pitfalls": [
+    "Optimizing React internals while shipping multi-megabyte images.",
+    "Fetching data in nested components sequentially (waterfalls)."
+   ],
+   "examples": [
+    {
+     "title": "Reporting Web Vitals",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { onLCP, onINP, onCLS } from \"web-vitals\";\n\nfunction send(metric) {\n  navigator.sendBeacon(\"/analytics\", JSON.stringify({ name: metric.name, value: metric.value }));\n}\n\nonLCP(send);\nonINP(send);\nonCLS(send);"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Name the Core Web Vitals.",
+     "a": "LCP (loading), INP (interactivity/responsiveness) and CLS (visual stability)."
+    },
+    {
+     "q": "What is a request waterfall and how do you avoid it?",
+     "a": "Requests that start only after a previous one finishes (often from nested components fetching on mount). Avoid by loading data in parallel at the route level or prefetching."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

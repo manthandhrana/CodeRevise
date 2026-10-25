@@ -1,0 +1,269 @@
+{
+ "id": "devnotes-scaling",
+ "title": "Scaling a Backend",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "dev-scaling-roadmap",
+   "title": "The Scaling Roadmap: Final Flow",
+   "level": "intermediate",
+   "summary": "Scale in order of cost and complexity: indexes, query tuning, cache, replicas, partitioning - and only then sharding.",
+   "description": "When a database gets slow the temptation is to jump to the most \"advanced\" tool (sharding, microservices). The correct approach is to move through the cheap, high-impact steps first.\n\n### The final flow\n```\nSingle DB\n   |\n   v\nIndexes\n   |\n   v\nQuery optimization\n   |\n   v\nRedis (cache)\n   |\n   v\nRead replicas\n   |\n   v\nPartitioning\n   |\n   v\nOnly then -> Sharding\n```\n\n### Why this order\n1. **Single DB** - start simple; one well-tuned database goes a long way.\n2. **Indexes** - turn full scans into seeks; often a 100x win for one line of SQL.\n3. **Query optimization** - fix N+1 queries, select only needed columns, paginate, use `EXPLAIN`.\n4. **Redis / cache** - serve repeated reads from memory and lighten the DB.\n5. **Read replicas** - copies of the database that handle read traffic; the primary handles writes.\n6. **Partitioning** - split one huge table into smaller parts inside one database (by date, region...).\n7. **Sharding** - split data across multiple database servers. Powerful but complex: cross-shard queries, rebalancing, operational pain.\n\n### Rule of thumb\nEvery step adds operational cost. Measure first (slow query log, APM, EXPLAIN), fix the real bottleneck, and move to the next step only when the previous one is exhausted.",
+   "keyPoints": [
+    "Order: indexes, query tuning, cache, replicas, partitioning, sharding",
+    "Measure before you scale",
+    "Each step adds complexity - take the cheapest one that works",
+    "Sharding is the last resort"
+   ],
+   "pitfalls": [
+    "Sharding too early",
+    "Adding cache on top of un-indexed slow queries",
+    "Scaling without monitoring or load tests"
+   ],
+   "examples": [
+    {
+     "title": "The ladder with typical tools",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "Step                 Tool / action                       Cost\n-------------------  ----------------------------------  ------\n1 Indexes            CREATE INDEX, EXPLAIN               low\n2 Query tuning       fix N+1, LIMIT, projections         low\n3 Cache              Redis, CDN                          medium\n4 Read replicas      primary + N replicas                medium\n5 Partitioning       table partitions by date/range      medium\n6 Sharding           split data across DB servers        high",
+     "explanation": "Climb one rung at a time."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What would you do first if the database is slow?",
+     "a": "Find the slow queries, check indexes and execution plans, fix inefficient queries; then consider caching."
+    },
+    {
+     "q": "Why is sharding the last step?",
+     "a": "It makes queries, transactions and operations much more complex, so it is only worthwhile when a single primary (even with replicas) cannot handle the write volume or data size."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  },
+  {
+   "id": "dev-load-balancer-pools",
+   "title": "Load Balancer & Connection Pools",
+   "level": "intermediate",
+   "summary": "Spread traffic over many API servers and protect the database by reusing a limited number of connections.",
+   "description": "Imagine **1M users** hitting your service. One server cannot handle them, so you run many copies of the API behind a **load balancer**.\n\n### Flow\n```\n1M users\n   |\n   v\nLoad Balancer\n   |\n   v\n100 API servers\n   |\n   v\nConnection pools\n   |\n   v\nDatabase\n```\n\n### Load balancer\nReceives every request and forwards it to a healthy server (Nginx, HAProxy, AWS ALB, Cloudflare).\n* **Algorithms**: round robin, least connections, IP hash.\n* **Health checks** remove dead servers automatically.\n* Enables **zero-downtime deploys** and horizontal scaling: add servers, no code change.\n* Requires **stateless** servers - sessions and files must live in Redis / object storage, not on one machine.\n\n### Connection pooling\nOpening a database connection is expensive and a database can only hold a limited number (e.g. 100-500). 100 API servers each opening 20 connections would crush it. A **pool** keeps a small set of open connections that requests borrow and return. Tools: pool settings in your driver/ORM, **PgBouncer** for PostgreSQL, ProxySQL for MySQL.\n\n### Sizing\nTotal connections = servers x pool size per server. Keep it below the database limit.",
+   "keyPoints": [
+    "Load balancer distributes requests and health-checks servers",
+    "Servers must be stateless to scale horizontally",
+    "Connection pools reuse a small set of DB connections",
+    "servers x pool size must stay under the DB limit"
+   ],
+   "pitfalls": [
+    "Storing sessions or uploads on the local disk of one server",
+    "Opening a new DB connection per request",
+    "Huge pool sizes on every server"
+   ],
+   "examples": [
+    {
+     "title": "Nginx upstream (sketch)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "upstream api_servers {\n    least_conn;\n    server 10.0.0.11:3000;\n    server 10.0.0.12:3000;\n    server 10.0.0.13:3000;\n}\nserver {\n    listen 80;\n    location / { proxy_pass http://api_servers; }\n}",
+     "explanation": "Nginx sends each request to the server with the fewest active connections."
+    },
+    {
+     "title": "Pool in Node (pg)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const { Pool } = require('pg');\nconst pool = new Pool({ max: 10, idleTimeoutMillis: 30000 });\n\nasync function getUser(id) {\n  const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);\n  return rows[0];\n}",
+     "explanation": "The pool lends one of 10 connections per query and takes it back."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why must app servers be stateless?",
+     "a": "So any server can handle any request; otherwise the load balancer would need sticky sessions and you could not add or remove servers freely."
+    },
+    {
+     "q": "Why use a connection pool?",
+     "a": "Creating connections is slow and databases limit them; pooling reuses connections and caps the load."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  },
+  {
+   "id": "dev-redis-uses",
+   "title": "Redis: Cache, Sessions, Rate Limits & More",
+   "level": "intermediate",
+   "summary": "Redis is a very fast in-memory data store used for caching, sessions, rate limiting, counters, locks, temporary data and light queues.",
+   "description": "**Redis** keeps data in RAM, so reads and writes take microseconds. It is rarely the primary database; it sits **next to** it and takes pressure off.\n\n### What it is used for\n| Use | How |\n|---|---|\n| **Cache** | store query results / pages with a TTL |\n| **Sessions** | shared session store for many servers |\n| **Rate limiting** | counter per IP/user with expiry (`INCR` + `EXPIRE`) |\n| **Counters** | likes, views, stock counters (atomic `INCR`) |\n| **Locks** | distributed locks (`SET key value NX PX 30000`) |\n| **Temporary data** | OTPs, password-reset tokens, short-lived state |\n| **Queue support** | lists, streams and BullMQ job queues |\n| **Leaderboards** | sorted sets |\n\n### Data types\nStrings, hashes, lists, sets, **sorted sets**, streams, bitmaps, HyperLogLog.\n\n### Important traits\n* Single-threaded command execution -> operations are atomic.\n* **TTL** on keys for automatic expiry.\n* Persistence is optional (RDB snapshots, AOF log); memory is the limit, so choose an **eviction policy** (e.g. `allkeys-lru`).\n* Scales with replication, Sentinel (failover) and Cluster (sharding).",
+   "keyPoints": [
+    "In-memory, microsecond latency",
+    "Used for cache, sessions, rate limits, counters, locks, temp data, queues",
+    "Keys can expire with a TTL",
+    "Atomic operations like INCR make counters and limits safe",
+    "Set an eviction policy because RAM is limited"
+   ],
+   "pitfalls": [
+    "Treating Redis as the only copy of important data",
+    "Keys without TTL growing forever",
+    "Using `KEYS *` in production (blocks the server) - use `SCAN`"
+   ],
+   "examples": [
+    {
+     "title": "Fixed-window rate limiter",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "async function allow(userId) {\n  const key = 'rate:' + userId + ':' + Math.floor(Date.now() / 60000);\n  const count = await redis.incr(key);        // atomic\n  if (count === 1) await redis.expire(key, 60);\n  return count <= 100;                        // 100 requests per minute\n}",
+     "explanation": "One counter per user per minute that expires on its own."
+    },
+    {
+     "title": "Redis commands",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "SET session:abc '{\"userId\":42}' EX 3600\nGET session:abc\nINCR page:views\nZADD leaderboard 1500 \"asha\"\nZREVRANGE leaderboard 0 9 WITHSCORES",
+     "explanation": "Session with an hour TTL, a counter and a leaderboard."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is Redis fast?",
+     "a": "Data lives in memory and it uses efficient single-threaded event-loop processing with simple data structures."
+    },
+    {
+     "q": "How would you implement rate limiting with Redis?",
+     "a": "Use a key per client and time window, increment it atomically, set an expiry on the first hit and reject when the count exceeds the limit."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  },
+  {
+   "id": "dev-message-queues",
+   "title": "Message Queues & Background Workers",
+   "level": "advanced",
+   "summary": "Move slow or non-critical work (email, search indexing, analytics) off the request path with a queue and workers.",
+   "description": "Some tasks should **not** run inside the HTTP request: sending e-mails, resizing images, processing a resume, updating a search index. A **queue** lets the API respond immediately while **workers** process jobs in the background.\n\n### Architecture\n```\nAPI\n |\n v\nKafka / RabbitMQ / SQS / BullMQ\n |\n |-- Email worker\n |-- Notification worker\n |-- Search indexing worker\n |-- Recommendation worker\n |-- Analytics pipeline\n +-- Resume processing worker\n```\n\n### Why queues\n* **Faster responses** - the API only enqueues a job.\n* **Resilience** - if a worker is down the jobs wait; failed jobs are **retried**.\n* **Smoothing spikes** - the queue absorbs bursts, workers consume at their pace.\n* **Decoupling** - producers do not know consumers; add new workers without touching the API.\n\n### Choosing a tool\n* **BullMQ** (Redis based) - easy job queue for Node.js with retries, delays, priorities.\n* **RabbitMQ** - classic message broker with routing.\n* **SQS** - managed AWS queue.\n* **Kafka** - distributed log for very high throughput event streaming; many consumers can replay events.\n\n### Design rules\nMake jobs **idempotent** (running twice is harmless), add retries with back-off and a **dead-letter queue** for jobs that keep failing.",
+   "keyPoints": [
+    "The API enqueues, workers process asynchronously",
+    "Queues add retries, buffering and decoupling",
+    "BullMQ/RabbitMQ/SQS for jobs, Kafka for event streams",
+    "Jobs must be idempotent",
+    "Use a dead-letter queue for poison messages"
+   ],
+   "pitfalls": [
+    "Doing slow work inside the request handler",
+    "Non-idempotent jobs that double-charge or double-email on retry",
+    "No monitoring of queue length"
+   ],
+   "examples": [
+    {
+     "title": "BullMQ producer and worker",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// producer (API)\nconst emailQueue = new Queue('email', { connection });\nawait emailQueue.add('welcome', { userId: 42 }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });\nres.status(202).json({ queued: true });\n\n// worker (separate process)\nnew Worker('email', async (job) => {\n  await sendWelcomeEmail(job.data.userId);\n}, { connection });",
+     "explanation": "202 Accepted tells the client the work was queued but not finished."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a message queue?",
+     "a": "To make slow work asynchronous, absorb traffic spikes, retry failures and decouple services."
+    },
+    {
+     "q": "Kafka vs RabbitMQ?",
+     "a": "RabbitMQ is a broker that delivers messages to consumers and removes them; Kafka is a persistent distributed log that supports very high throughput and replaying events."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  },
+  {
+   "id": "dev-replication-sharding",
+   "title": "Replication & Sharding",
+   "level": "advanced",
+   "summary": "Replication copies the same data to several servers; sharding splits the data so each server holds a part.",
+   "description": "These two ideas are often confused. They solve **different** problems.\n\n### Replication - same data, many copies\nA **primary** (leader) accepts writes and streams changes to **replicas** (followers).\n* Scales **reads** (send SELECTs to replicas).\n* Gives **high availability**: if the primary dies, a replica is promoted (failover).\n* Backups can run on a replica.\n* Caveat: **replication lag** - a replica may be a few milliseconds behind, so a user may not immediately see their own write (read-your-writes problem).\n\n### Sharding - split the data\nSharding = breaking one very large database into **multiple smaller databases** so that load and data are distributed over several machines.\n* Scales **writes** and **total storage**.\n* A **shard key** decides where a row lives, e.g. `user_id % 4`, a hash range, or region.\n* Good keys give an even spread; bad keys create **hot shards**.\n\n```\nReplication:  Primary --> Replica 1\n                      \\-> Replica 2        (all hold ALL data)\n\nSharding:     Shard A: users 1..1M\n              Shard B: users 1M..2M         (each holds PART of data)\n              Shard C: users 2M..3M\n```\n\n### Cost of sharding\nCross-shard JOINs and transactions are hard, re-sharding is painful, and every query needs routing. That is why it comes last in the scaling roadmap. In practice you combine both: each shard has its own replicas.",
+   "keyPoints": [
+    "Replication = copies for read scale and availability",
+    "Sharding = splitting data for write scale and size",
+    "Replication lag causes stale reads",
+    "The shard key must spread load evenly",
+    "Large systems use both: shards with replicas"
+   ],
+   "pitfalls": [
+    "Believing replicas increase write capacity",
+    "Choosing a monotonic shard key (like timestamp) that creates a hot shard",
+    "Sharding before indexes, caching and replicas"
+   ],
+   "examples": [
+    {
+     "title": "Routing by shard key",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "function shardFor(userId) {\n  const SHARDS = ['db-a', 'db-b', 'db-c', 'db-d'];\n  return SHARDS[userId % SHARDS.length];\n}\nconst db = connect(shardFor(order.userId));",
+     "explanation": "Simple modulo routing. Production systems prefer consistent hashing so adding a shard moves few keys."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Replication vs sharding?",
+     "a": "Replication duplicates all data across servers (reads, availability); sharding partitions data across servers (writes, capacity)."
+    },
+    {
+     "q": "What is a hot shard?",
+     "a": "A shard that receives a disproportionate share of traffic because of an uneven shard key distribution."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  },
+  {
+   "id": "dev-search-engines",
+   "title": "Search Engines: Elasticsearch, OpenSearch, Solr",
+   "level": "advanced",
+   "summary": "Dedicated search engines build inverted indexes for fast full-text search, ranking and filtering at scale.",
+   "description": "A relational database is poor at searches like \"find products matching *wireless headphones* with typos, sorted by relevance\". A **search engine** is built for exactly this.\n\n### Tools\n* **Elasticsearch** - most popular, built on Lucene, REST/JSON API.\n* **OpenSearch** - AWS-led fork of Elasticsearch.\n* **Solr** - mature Lucene-based server from Apache.\n* **Lucene** - the Java library underneath all of them.\n\n### How it works: inverted index\nInstead of \"document -> words\", it stores \"word -> documents\".\n\n```\ndoc1: \"red running shoes\"\ndoc2: \"blue running jacket\"\n\nrunning -> [doc1, doc2]\nshoes   -> [doc1]\njacket  -> [doc2]\n```\n\nLookups are fast and results are **scored** by relevance (TF-IDF / BM25).\n\n### Features\nFull-text search, typo tolerance (fuzzy), autocomplete, synonyms, facets/filters, aggregations, geo search.\n\n### How it fits into the system\nThe search engine is **not** the source of truth. Your primary DB stays authoritative; a **search indexing worker** consumes change events from a queue and updates the index. Search results return ids which you can hydrate from the database if needed.",
+   "keyPoints": [
+    "Built on inverted indexes (word -> documents)",
+    "Relevance scoring and fuzzy matching out of the box",
+    "Elasticsearch, OpenSearch, Solr all build on Lucene",
+    "Keep the primary DB as the source of truth",
+    "Update the index asynchronously via queue workers"
+   ],
+   "pitfalls": [
+    "Using SQL `LIKE '%term%'` for real search at scale",
+    "Using the search engine as the only data store",
+    "Forgetting to re-index after schema/mapping changes"
+   ],
+   "examples": [
+    {
+     "title": "Elasticsearch query",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "GET /products/_search\n{\n  \"query\": {\n    \"bool\": {\n      \"must\":   { \"match\": { \"name\": { \"query\": \"wirless headphones\", \"fuzziness\": \"AUTO\" } } },\n      \"filter\": { \"range\": { \"price\": { \"lte\": 5000 } } }\n    }\n  },\n  \"sort\": [ \"_score\" ]\n}",
+     "explanation": "A typo tolerant text search combined with a price filter."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why not use SQL LIKE for search?",
+     "a": "A leading wildcard cannot use a normal index, so it scans the table, and it has no relevance ranking, stemming or typo tolerance."
+    },
+    {
+     "q": "What is an inverted index?",
+     "a": "A map from each term to the list of documents that contain it, enabling fast full-text lookups."
+    }
+   ],
+   "source": "Adv Dev.txt"
+  }
+ ]
+}

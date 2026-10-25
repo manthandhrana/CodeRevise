@@ -1,0 +1,381 @@
+[
+ {
+  "id": "q-web-center-div-three-ways",
+  "title": "Center a Box - Three Ways",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "flexbox",
+   "grid",
+   "positioning"
+  ],
+  "statement": "Three stage areas (`.a`, `.b`, `.c`) each contain a small `.box`. Center the box **horizontally and vertically** inside its stage using a different technique each time:\n\n1. `.a` - **Flexbox**\n2. `.b` - **CSS Grid**\n3. `.c` - **Absolute positioning** with `transform`\n\nDo not change the HTML or the stage sizes.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"stage a\"><div class=\"box\">flex</div></div>\n<div class=\"stage b\"><div class=\"box\">grid</div></div>\n<div class=\"stage c\"><div class=\"box\">abs</div></div>",
+   "css": "body { display: flex; gap: 16px; font-family: sans-serif; }\n.stage { width: 180px; height: 140px; border: 2px dashed #94a3b8; }\n.box { width: 60px; height: 60px; background: #6366f1; color: #fff; display: grid; place-items: center; border-radius: 8px; }\n\n/* TODO: center .box inside .a (flex), .b (grid) and .c (absolute) */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<div class=\"stage a\"><div class=\"box\">flex</div></div>\n<div class=\"stage b\"><div class=\"box\">grid</div></div>\n<div class=\"stage c\"><div class=\"box\">abs</div></div>",
+   "css": "body { display: flex; gap: 16px; font-family: sans-serif; }\n.stage { width: 180px; height: 140px; border: 2px dashed #94a3b8; }\n.box { width: 60px; height: 60px; background: #6366f1; color: #fff; display: grid; place-items: center; border-radius: 8px; }\n\n.a { display: flex; justify-content: center; align-items: center; }\n.b { display: grid; place-items: center; }\n.c { position: relative; }\n.c .box { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }\n",
+   "js": ""
+  },
+  "solutionExplanation": "**Flexbox** and **Grid** center children from the parent. The **absolute** technique places the top-left corner of the child at 50%/50% and then pulls it back by half of its own size with `translate(-50%, -50%)`.\n\nAll three are O(1) CSS rules; Grid's `place-items: center` is the shortest.",
+  "hints": [
+   "Flexbox: `display: flex` plus `justify-content` and `align-items` on the parent.",
+   "Grid: `display: grid; place-items: center` is a two-line solution.",
+   "Absolute: parent `position: relative`, child `top: 50%; left: 50%` then `transform: translate(-50%, -50%)`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-responsive-card-grid",
+  "title": "Responsive Card Grid",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "grid",
+   "responsive"
+  ],
+  "statement": "Six cards are inside a `.grid` container. Make a **responsive grid** without media queries: cards should be at least 160px wide, fill the available width equally and wrap to new rows as the window gets narrower. Use a 16px gap.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"grid\">\n  <div class=\"card\">1</div>\n  <div class=\"card\">2</div>\n  <div class=\"card\">3</div>\n  <div class=\"card\">4</div>\n  <div class=\"card\">5</div>\n  <div class=\"card\">6</div>\n</div>",
+   "css": "body { font-family: sans-serif; padding: 16px; }\n.card { background: #e0e7ff; padding: 32px 16px; text-align: center; border-radius: 10px; font-weight: bold; }\n\n/* TODO: make .grid a responsive grid */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<div class=\"grid\">\n  <div class=\"card\">1</div>\n  <div class=\"card\">2</div>\n  <div class=\"card\">3</div>\n  <div class=\"card\">4</div>\n  <div class=\"card\">5</div>\n  <div class=\"card\">6</div>\n</div>",
+   "css": "body { font-family: sans-serif; padding: 16px; }\n.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }\n.card { background: #e0e7ff; padding: 32px 16px; text-align: center; border-radius: 10px; font-weight: bold; }\n",
+   "js": ""
+  },
+  "solutionExplanation": "`repeat(auto-fit, minmax(160px, 1fr))` lets the browser create as many columns of at least 160px as fit; `1fr` distributes the remaining space. No media query is needed.",
+  "hints": [
+   "Use `display: grid` on `.grid`.",
+   "`grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))` does the job.",
+   "Use `gap` for spacing between cards."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-flex-navbar",
+  "title": "Flexbox Navbar",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "flexbox",
+   "layout"
+  ],
+  "statement": "Build a horizontal navigation bar with flexbox: the logo sits on the **left**, the links (Home, About, Contact) on the **right**, everything vertically centered, with 16px padding and a dark background. Links must have no bullets and a hover colour change.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<nav class=\"navbar\">\n  <div class=\"logo\">MySite</div>\n  <ul class=\"links\">\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>",
+   "css": "body { margin: 0; font-family: sans-serif; }\n/* TODO: style .navbar, .logo, .links and the links */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<nav class=\"navbar\">\n  <div class=\"logo\">MySite</div>\n  <ul class=\"links\">\n    <li><a href=\"#\">Home</a></li>\n    <li><a href=\"#\">About</a></li>\n    <li><a href=\"#\">Contact</a></li>\n  </ul>\n</nav>",
+   "css": "body { margin: 0; font-family: sans-serif; }\n.navbar { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #0f172a; }\n.logo { color: #fff; font-weight: bold; font-size: 1.25rem; }\n.links { display: flex; gap: 20px; list-style: none; margin: 0; padding: 0; }\n.links a { color: #cbd5e1; text-decoration: none; }\n.links a:hover { color: #38bdf8; }\n",
+   "js": ""
+  },
+  "solutionExplanation": "`justify-content: space-between` pushes the logo and link list to opposite ends; the inner `ul` is another flex row. `align-items: center` gives vertical centering.",
+  "hints": [
+   "Make the `nav` a flex container with `align-items: center`.",
+   "Put `margin-left: auto` on the `ul` (or use `justify-content: space-between`).",
+   "Make the `ul` itself a flex container with a gap and `list-style: none`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-css-accordion",
+  "title": "Pure CSS Accordion",
+  "difficulty": "medium",
+  "track": "css",
+  "tags": [
+   "css",
+   "accordion",
+   "checkbox-hack",
+   "no-js"
+  ],
+  "statement": "Make each FAQ item open and close **without JavaScript**. Clicking the question label toggles the answer. Use the hidden checkbox technique: a checkbox, its label and the answer, where `input:checked + label + .answer` shows the answer. Animate the open/close with a `max-height` transition.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"item\">\n  <input type=\"checkbox\" id=\"q1\" class=\"toggle\">\n  <label for=\"q1\">What is CSS?</label>\n  <div class=\"answer\"><p>Cascading Style Sheets describe how HTML is displayed.</p></div>\n</div>\n<div class=\"item\">\n  <input type=\"checkbox\" id=\"q2\" class=\"toggle\">\n  <label for=\"q2\">Why no JavaScript?</label>\n  <div class=\"answer\"><p>The :checked pseudo-class is enough for simple toggles.</p></div>\n</div>",
+   "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.item { border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }\nlabel { display: block; padding: 12px 16px; cursor: pointer; font-weight: bold; background: #f1f5f9; }\n.answer p { margin: 0; padding: 12px 16px; }\n/* TODO: hide the checkbox, collapse .answer and open it when checked */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<div class=\"item\">\n  <input type=\"checkbox\" id=\"q1\" class=\"toggle\">\n  <label for=\"q1\">What is CSS?</label>\n  <div class=\"answer\"><p>Cascading Style Sheets describe how HTML is displayed.</p></div>\n</div>\n<div class=\"item\">\n  <input type=\"checkbox\" id=\"q2\" class=\"toggle\">\n  <label for=\"q2\">Why no JavaScript?</label>\n  <div class=\"answer\"><p>The :checked pseudo-class is enough for simple toggles.</p></div>\n</div>",
+   "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.item { border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 8px; overflow: hidden; }\nlabel { display: block; padding: 12px 16px; cursor: pointer; font-weight: bold; background: #f1f5f9; }\n.answer p { margin: 0; padding: 12px 16px; }\n.toggle { display: none; }\n.answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }\n.toggle:checked ~ .answer { max-height: 120px; }\n.toggle:checked + label { background: #e0e7ff; }\n",
+   "js": ""
+  },
+  "solutionExplanation": "A label toggles its checkbox; the general sibling selector `~` lets CSS react to `:checked`. Because `height: auto` cannot be animated, a generous `max-height` is transitioned instead. For production, the native `<details>` element is the better choice.",
+  "hints": [
+   "Hide the checkbox (`display: none`) - the label still toggles it.",
+   "The answer starts with `max-height: 0; overflow: hidden`.",
+   "Use the sibling combinator: `.toggle:checked ~ .answer { max-height: 120px }`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-loading-spinner",
+  "title": "CSS Loading Spinner",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "animation",
+   "keyframes"
+  ],
+  "statement": "Create a **40px circular spinner**: a light grey ring where one quarter of the border is coloured, rotating endlessly (1 second per turn, linear). Style the `.spinner` element and define a `@keyframes` animation.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"spinner\"></div>",
+   "css": "body { display: grid; place-items: center; height: 100vh; margin: 0; }\n/* TODO: style .spinner and add @keyframes spin */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<div class=\"spinner\"></div>",
+   "css": "body { display: grid; place-items: center; height: 100vh; margin: 0; }\n.spinner { width: 40px; height: 40px; border: 5px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; }\n@keyframes spin { to { transform: rotate(360deg); } }\n",
+   "js": ""
+  },
+  "solutionExplanation": "The ring is a bordered circle; only one side is coloured so rotation is visible. The animation rotates the element a full turn; `linear` keeps a constant speed and `infinite` loops forever.",
+  "hints": [
+   "A circle is a square with `border-radius: 50%`.",
+   "Give the border a colour on one side only (`border-top-color`).",
+   "Animate `transform: rotate(360deg)` with `animation: spin 1s linear infinite`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-sticky-header",
+  "title": "Sticky Header",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "position",
+   "sticky"
+  ],
+  "statement": "The page has a long article under a header. Make the `header` **stick to the top** of the viewport while scrolling, stay above the content (z-index) and show a subtle shadow.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<header>My Blog</header>\n<main>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n</main>",
+   "css": "body { margin: 0; font-family: sans-serif; }\nheader { padding: 16px; background: #fff; font-weight: bold; font-size: 1.2rem; }\nmain { padding: 16px; line-height: 2; }\nmain p { margin: 0 0 120px; }\n/* TODO: make the header sticky */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<header>My Blog</header>\n<main>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</p>\n  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.</p>\n  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>\n  <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim.</p>\n</main>",
+   "css": "body { margin: 0; font-family: sans-serif; }\nheader { position: sticky; top: 0; z-index: 10; padding: 16px; background: #fff; font-weight: bold; font-size: 1.2rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }\nmain { padding: 16px; line-height: 2; }\nmain p { margin: 0 0 120px; }\n",
+   "js": ""
+  },
+  "solutionExplanation": "`position: sticky` behaves like relative until the scroll position reaches `top: 0`, then it sticks. It only works if no ancestor has `overflow` set that creates a different scroll container.",
+  "hints": [
+   "`position: sticky; top: 0` is enough - no JS.",
+   "Give it a solid background so text does not show through.",
+   "Add `z-index` so it overlaps the content."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-css-tooltip",
+  "title": "Hover Tooltip",
+  "difficulty": "easy",
+  "track": "css",
+  "tags": [
+   "css",
+   "pseudo-elements",
+   "hover",
+   "attr"
+  ],
+  "statement": "Add a tooltip to every element with a `data-tip` attribute: on **hover** (or keyboard focus) a small dark bubble with the tip text appears **above** the element, centered. Use `::after` with `content: attr(data-tip)` - no JavaScript, no extra HTML.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<p style=\"margin-top:80px;text-align:center\">\n  <button data-tip=\"Saves your work\">Save</button>\n  <button data-tip=\"Deletes forever\">Delete</button>\n</p>",
+   "css": "body { font-family: sans-serif; }\nbutton { padding: 8px 16px; margin: 0 8px; }\n/* TODO: build the tooltip with [data-tip]::after */\n",
+   "js": ""
+  },
+  "solution": {
+   "html": "<p style=\"margin-top:80px;text-align:center\">\n  <button data-tip=\"Saves your work\">Save</button>\n  <button data-tip=\"Deletes forever\">Delete</button>\n</p>",
+   "css": "body { font-family: sans-serif; }\nbutton { padding: 8px 16px; margin: 0 8px; }\n[data-tip] { position: relative; }\n[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; }\n[data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; }\n",
+   "js": ""
+  },
+  "solutionExplanation": "`attr()` reads the attribute into generated content. Opacity + a transition gives a fade; `pointer-events: none` stops the bubble from stealing hover.",
+  "hints": [
+   "The host element needs `position: relative`.",
+   "`::after` is absolutely positioned: `bottom: 100%; left: 50%; transform: translateX(-50%)`.",
+   "Hide it with `opacity: 0` and show it on `:hover` and `:focus`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-js-counter",
+  "title": "Counter Component",
+  "difficulty": "easy",
+  "track": "javascript",
+  "tags": [
+   "dom",
+   "events",
+   "javascript"
+  ],
+  "statement": "Build a counter: a number display with id `count` (starts at 0) and three buttons with ids `inc`, `dec` and `reset`. Increment, decrement and reset the number when clicked. Colour the number **green** when positive, **red** when negative and grey at zero.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"counter\">\n  <button id=\"dec\">-</button>\n  <span id=\"count\">0</span>\n  <button id=\"inc\">+</button>\n  <button id=\"reset\">Reset</button>\n</div>",
+   "css": ".counter { font-family: sans-serif; display: flex; gap: 12px; align-items: center; font-size: 1.5rem; }\nbutton { font-size: 1.2rem; padding: 4px 12px; cursor: pointer; }\n#count { min-width: 40px; text-align: center; }",
+   "js": "// TODO: wire up #inc, #dec and #reset\n"
+  },
+  "solution": {
+   "html": "<div class=\"counter\">\n  <button id=\"dec\">-</button>\n  <span id=\"count\">0</span>\n  <button id=\"inc\">+</button>\n  <button id=\"reset\">Reset</button>\n</div>",
+   "css": ".counter { font-family: sans-serif; display: flex; gap: 12px; align-items: center; font-size: 1.5rem; }\nbutton { font-size: 1.2rem; padding: 4px 12px; cursor: pointer; }\n#count { min-width: 40px; text-align: center; }",
+   "js": "let value = 0;\nconst display = document.getElementById(\"count\");\n\nfunction render() {\n  display.textContent = value;\n  display.style.color = value > 0 ? \"green\" : value < 0 ? \"crimson\" : \"gray\";\n}\n\ndocument.getElementById(\"inc\").addEventListener(\"click\", function () { value++; render(); });\ndocument.getElementById(\"dec\").addEventListener(\"click\", function () { value--; render(); });\ndocument.getElementById(\"reset\").addEventListener(\"click\", function () { value = 0; render(); });\nrender();\n"
+  },
+  "solutionExplanation": "State lives in a variable; every handler changes it and calls one `render()` function that syncs the DOM. This \"state -> render\" pattern is what frameworks automate.",
+  "hints": [
+   "Keep the value in a variable and write a `render()` function.",
+   "Use `addEventListener(\"click\", ...)` for each button.",
+   "Set `element.style.color` inside `render`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-dom-todo-list",
+  "title": "DOM Todo List",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "dom",
+   "events",
+   "javascript",
+   "todo"
+  ],
+  "statement": "Build a todo list with plain JavaScript.\n\n* Text input `#todo-input`, button `#add-btn`, list `#todo-list`.\n* Clicking **Add** (or pressing Enter) appends a `li` with the text; empty or whitespace-only input is ignored; the input is cleared afterwards.\n* Clicking the text of an item toggles a `done` class (line-through).\n* Each item has a **Delete** button (`.delete`) that removes it.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"todo\">\n  <input id=\"todo-input\" placeholder=\"New task...\">\n  <button id=\"add-btn\">Add</button>\n  <ul id=\"todo-list\"></ul>\n</div>",
+   "css": ".todo { font-family: sans-serif; max-width: 360px; margin: 20px auto; }\n#todo-list { padding: 0; list-style: none; }\n#todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0; cursor: pointer; }\n.done span { text-decoration: line-through; color: #94a3b8; }",
+   "js": "// TODO: add, toggle and delete todos\n"
+  },
+  "solution": {
+   "html": "<div class=\"todo\">\n  <input id=\"todo-input\" placeholder=\"New task...\">\n  <button id=\"add-btn\">Add</button>\n  <ul id=\"todo-list\"></ul>\n</div>",
+   "css": ".todo { font-family: sans-serif; max-width: 360px; margin: 20px auto; }\n#todo-list { padding: 0; list-style: none; }\n#todo-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #e2e8f0; cursor: pointer; }\n.done span { text-decoration: line-through; color: #94a3b8; }",
+   "js": "const input = document.getElementById(\"todo-input\");\nconst list = document.getElementById(\"todo-list\");\n\nfunction addTodo() {\n  const text = input.value.trim();\n  if (!text) return;\n  const li = document.createElement(\"li\");\n  const span = document.createElement(\"span\");\n  span.textContent = text;\n  const del = document.createElement(\"button\");\n  del.textContent = \"Delete\";\n  del.className = \"delete\";\n  li.appendChild(span);\n  li.appendChild(del);\n  list.appendChild(li);\n  input.value = \"\";\n  input.focus();\n}\n\ndocument.getElementById(\"add-btn\").addEventListener(\"click\", addTodo);\ninput.addEventListener(\"keydown\", function (e) {\n  if (e.key === \"Enter\") addTodo();\n});\n\nlist.addEventListener(\"click\", function (e) {\n  const li = e.target.closest(\"li\");\n  if (!li) return;\n  if (e.target.classList.contains(\"delete\")) li.remove();\n  else li.classList.toggle(\"done\");\n});\n"
+  },
+  "solutionExplanation": "One listener on the list handles all current and future items (**event delegation**). `closest(\"li\")` finds the item from any click inside it. Using `textContent` avoids HTML injection.",
+  "hints": [
+   "Create elements with `document.createElement(\"li\")`.",
+   "Use **event delegation**: one click listener on the `ul` and check `event.target`.",
+   "Use `textContent` instead of `innerHTML` for user text."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-js-tabs",
+  "title": "Tabs Component",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "dom",
+   "events",
+   "tabs",
+   "javascript"
+  ],
+  "statement": "Make the three tab buttons switch panels. Each `.tab-btn` has a `data-tab` value that matches the `id` of a `.panel`. Clicking a button shows only its panel (add class `active` to the panel and the button, remove it from the others). The first tab is active at start. Panels without `.active` are hidden.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<div class=\"tabs\">\n  <button class=\"tab-btn active\" data-tab=\"html\">HTML</button>\n  <button class=\"tab-btn\" data-tab=\"css\">CSS</button>\n  <button class=\"tab-btn\" data-tab=\"js\">JS</button>\n</div>\n<div id=\"html\" class=\"panel active\">HTML gives structure.</div>\n<div id=\"css\" class=\"panel\">CSS gives style.</div>\n<div id=\"js\" class=\"panel\">JS gives behaviour.</div>",
+   "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.tab-btn { padding: 8px 16px; border: 0; background: #e2e8f0; cursor: pointer; }\n.tab-btn.active { background: #6366f1; color: #fff; }\n.panel { padding: 16px; border: 1px solid #e2e8f0; }\n/* TODO: hide inactive panels */",
+   "js": "// TODO: switch tabs\n"
+  },
+  "solution": {
+   "html": "<div class=\"tabs\">\n  <button class=\"tab-btn active\" data-tab=\"html\">HTML</button>\n  <button class=\"tab-btn\" data-tab=\"css\">CSS</button>\n  <button class=\"tab-btn\" data-tab=\"js\">JS</button>\n</div>\n<div id=\"html\" class=\"panel active\">HTML gives structure.</div>\n<div id=\"css\" class=\"panel\">CSS gives style.</div>\n<div id=\"js\" class=\"panel\">JS gives behaviour.</div>",
+   "css": "body { font-family: sans-serif; max-width: 420px; margin: 20px auto; }\n.tab-btn { padding: 8px 16px; border: 0; background: #e2e8f0; cursor: pointer; }\n.tab-btn.active { background: #6366f1; color: #fff; }\n.panel { display: none; padding: 16px; border: 1px solid #e2e8f0; }\n.panel.active { display: block; }",
+   "js": "const buttons = document.querySelectorAll(\".tab-btn\");\nconst panels = document.querySelectorAll(\".panel\");\n\nbuttons.forEach(function (btn) {\n  btn.addEventListener(\"click\", function () {\n    buttons.forEach(function (b) { b.classList.remove(\"active\"); });\n    panels.forEach(function (p) { p.classList.remove(\"active\"); });\n    btn.classList.add(\"active\");\n    document.getElementById(btn.dataset.tab).classList.add(\"active\");\n  });\n});\n"
+  },
+  "solutionExplanation": "Data attributes link buttons to panels without hard-coding IDs in JS. Switching is just removing and adding the `active` class; CSS decides what is visible.",
+  "hints": [
+   "Hide panels with `.panel { display: none }` and show `.panel.active { display: block }`.",
+   "Loop over all buttons and add a click listener.",
+   "Use `dataset.tab` to read the target id."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-js-modal",
+  "title": "Modal Dialog",
+  "difficulty": "medium",
+  "track": "javascript",
+  "tags": [
+   "dom",
+   "events",
+   "modal",
+   "accessibility"
+  ],
+  "statement": "Build a modal dialog.\n\n* Button `#open-modal` opens the overlay `#overlay` (add class `show`).\n* The overlay can be closed by the **X button** (`#close-modal`), by clicking the **dark backdrop** (but not the white box) or by pressing **Escape**.\n* The overlay is hidden by default; the white box is centered.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<button id=\"open-modal\">Open modal</button>\n<div id=\"overlay\">\n  <div class=\"modal\">\n    <button id=\"close-modal\" aria-label=\"Close\">X</button>\n    <h2>Hello!</h2>\n    <p>This is a modal dialog.</p>\n  </div>\n</div>",
+   "css": "body { font-family: sans-serif; padding: 20px; }\n.modal { position: relative; background: #fff; padding: 24px; border-radius: 10px; width: 280px; }\n#close-modal { position: absolute; top: 8px; right: 8px; cursor: pointer; }\n/* TODO: style #overlay and .show */",
+   "js": "// TODO: open and close the modal\n"
+  },
+  "solution": {
+   "html": "<button id=\"open-modal\">Open modal</button>\n<div id=\"overlay\">\n  <div class=\"modal\">\n    <button id=\"close-modal\" aria-label=\"Close\">X</button>\n    <h2>Hello!</h2>\n    <p>This is a modal dialog.</p>\n  </div>\n</div>",
+   "css": "body { font-family: sans-serif; padding: 20px; }\n.modal { position: relative; background: #fff; padding: 24px; border-radius: 10px; width: 280px; }\n#close-modal { position: absolute; top: 8px; right: 8px; cursor: pointer; }\n#overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: none; align-items: center; justify-content: center; }\n#overlay.show { display: flex; }",
+   "js": "const overlay = document.getElementById(\"overlay\");\n\nfunction openModal() { overlay.classList.add(\"show\"); }\nfunction closeModal() { overlay.classList.remove(\"show\"); }\n\ndocument.getElementById(\"open-modal\").addEventListener(\"click\", openModal);\ndocument.getElementById(\"close-modal\").addEventListener(\"click\", closeModal);\noverlay.addEventListener(\"click\", function (e) {\n  if (e.target === overlay) closeModal();\n});\ndocument.addEventListener(\"keydown\", function (e) {\n  if (e.key === \"Escape\") closeModal();\n});\n"
+  },
+  "solutionExplanation": "A fixed full-screen overlay centers the box with flexbox. Clicks inside the box bubble to the overlay, so `e.target === overlay` distinguishes backdrop clicks. A real dialog should also trap focus - the native `<dialog>` element does this for you.",
+  "hints": [
+   "The overlay is `position: fixed; inset: 0` with a semi-transparent background.",
+   "To detect a backdrop click compare `event.target === overlay`.",
+   "Listen for `keydown` on `document` and check `event.key === \"Escape\"`."
+  ],
+  "tests": []
+ },
+ {
+  "id": "q-web-form-validation",
+  "title": "Sign-up Form Validation",
+  "difficulty": "hard",
+  "track": "html",
+  "tags": [
+   "forms",
+   "validation",
+   "dom",
+   "regex"
+  ],
+  "statement": "Validate the sign-up form on **submit** (use `novalidate` so the browser does not interfere).\n\n| field | rule |\n|---|---|\n| `#name` | at least 2 characters |\n| `#email` | looks like `something@domain.tld` |\n| `#password` | at least 8 characters and contains a digit |\n| `#confirm` | equals the password |\n\n* Show the message inside the matching `.error` element and give the invalid input the class `invalid`.\n* If all fields are valid show **\"Account created!\"** in `#success` and clear the form.\n* Always call `event.preventDefault()`.",
+  "language": "web",
+  "functionName": "",
+  "starter": {
+   "html": "<form id=\"signup\" novalidate>\n  <label>Name <input id=\"name\"><span class=\"error\" data-for=\"name\"></span></label>\n  <label>Email <input id=\"email\" type=\"email\"><span class=\"error\" data-for=\"email\"></span></label>\n  <label>Password <input id=\"password\" type=\"password\"><span class=\"error\" data-for=\"password\"></span></label>\n  <label>Confirm <input id=\"confirm\" type=\"password\"><span class=\"error\" data-for=\"confirm\"></span></label>\n  <button type=\"submit\">Create account</button>\n  <p id=\"success\"></p>\n</form>",
+   "css": "body { font-family: sans-serif; }\nform { max-width: 320px; margin: 20px auto; display: grid; gap: 12px; }\nlabel { display: grid; gap: 4px; }\ninput { padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }\ninput.invalid { border-color: crimson; }\n.error { color: crimson; font-size: 0.8rem; min-height: 1em; }\n#success { color: green; font-weight: bold; }",
+   "js": "// TODO: validate on submit\n"
+  },
+  "solution": {
+   "html": "<form id=\"signup\" novalidate>\n  <label>Name <input id=\"name\"><span class=\"error\" data-for=\"name\"></span></label>\n  <label>Email <input id=\"email\" type=\"email\"><span class=\"error\" data-for=\"email\"></span></label>\n  <label>Password <input id=\"password\" type=\"password\"><span class=\"error\" data-for=\"password\"></span></label>\n  <label>Confirm <input id=\"confirm\" type=\"password\"><span class=\"error\" data-for=\"confirm\"></span></label>\n  <button type=\"submit\">Create account</button>\n  <p id=\"success\"></p>\n</form>",
+   "css": "body { font-family: sans-serif; }\nform { max-width: 320px; margin: 20px auto; display: grid; gap: 12px; }\nlabel { display: grid; gap: 4px; }\ninput { padding: 8px; border: 1px solid #94a3b8; border-radius: 6px; }\ninput.invalid { border-color: crimson; }\n.error { color: crimson; font-size: 0.8rem; min-height: 1em; }\n#success { color: green; font-weight: bold; }",
+   "js": "const form = document.getElementById(\"signup\");\nconst success = document.getElementById(\"success\");\n\nfunction validate(values) {\n  const errors = {};\n  if (values.name.trim().length < 2) errors.name = \"Name must be at least 2 characters\";\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(values.email)) errors.email = \"Enter a valid email\";\n  if (values.password.length < 8 || !/\\d/.test(values.password)) errors.password = \"Min 8 characters and a number\";\n  if (values.confirm !== values.password || values.confirm === \"\") errors.confirm = \"Passwords do not match\";\n  return errors;\n}\n\nform.addEventListener(\"submit\", function (e) {\n  e.preventDefault();\n  const ids = [\"name\", \"email\", \"password\", \"confirm\"];\n  const values = {};\n  ids.forEach(function (id) { values[id] = document.getElementById(id).value; });\n  const errors = validate(values);\n  success.textContent = \"\";\n  ids.forEach(function (id) {\n    const input = document.getElementById(id);\n    const slot = form.querySelector('.error[data-for=\"' + id + '\"]');\n    slot.textContent = errors[id] || \"\";\n    input.classList.toggle(\"invalid\", Boolean(errors[id]));\n  });\n  if (Object.keys(errors).length === 0) {\n    success.textContent = \"Account created!\";\n    form.reset();\n  }\n});\n"
+  },
+  "solutionExplanation": "Validation is a pure function from values to an errors object, which keeps DOM code simple: render the errors, toggle the `invalid` class, and show success only when the object is empty. Always repeat validation on the server - client checks are only for UX.",
+  "hints": [
+   "Write one small function per rule or a single `validate()` returning an errors object.",
+   "A simple email regex: `/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/`.",
+   "Clear old errors at the start of every submit."
+  ],
+  "tests": []
+ }
+]

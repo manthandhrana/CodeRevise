@@ -1,0 +1,7 @@
+{
+ "id": "css",
+ "title": "CSS",
+ "tagline": "Style the web: from selectors and the box model to Grid, animations and modern CSS.",
+ "description": "A complete CSS revision track that goes from the very basics (selectors, colors, box model) through layout (Flexbox, Grid, positioning) and responsive design, to animations, modern CSS features (custom properties, cascade layers, container queries) and architecture. Every topic has runnable examples, key points, pitfalls and interview questions.",
+ "color": "#2965f1"
+}

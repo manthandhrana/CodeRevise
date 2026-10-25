@@ -1,0 +1,338 @@
+{
+ "id": "node-tooling",
+ "title": "Project Structure and Tooling",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-project-structure",
+   "title": "Project Structure, MVC and Layered Architecture",
+   "level": "intermediate",
+   "summary": "Organise code into routes, controllers, services and data access so it stays testable and easy to change.",
+   "description": "One 800-line `index.js` works for a demo and becomes painful quickly. Splitting by **responsibility** keeps code readable and testable.\n\n### Layered architecture\n| Layer | Responsibility | Knows about |\n|---|---|---|\n| **Routes** | Map URLs and methods to controllers, attach middleware | Controllers |\n| **Controllers** | Read the request, call a service, shape the HTTP response | Services |\n| **Services** | Business rules (\"an order needs stock\"), orchestration, transactions | Repositories/models |\n| **Repositories / Models** | Database access only | The database |\n| **Utils / lib** | Pure helpers (hashing, dates) | Nothing |\n| **Middleware** | Auth, validation, logging, errors | `req`/`res` |\n\nThe rule: dependencies point **downward**. A service never touches `req` or `res`, so it can be reused by a CLI, a queue worker or tests.\n\n### MVC\n**Model** (data), **View** (HTML templates or the JSON representation), **Controller** (glue). For APIs the \"view\" is the JSON response.\n\n### Recommended tree\nSeparate `app.js` (builds the Express app, no `listen`) from `server.js` (starts it). Tests import `app` with supertest without opening a port.\n\n### Two ways to group files\n* **By layer**: `controllers/`, `services/`, `models/`\n* **By feature** (scales better): `modules/users/{routes,controller,service,schema}.js`\n\n### Config management\nOne `config.js` reads and validates environment variables and exports a frozen object. Other files import config; they never read `process.env` directly. Provide `.env.example`, and use `NODE_ENV` for behaviour changes (logging format, error detail).\n\n### Other habits\n* Dependency injection: pass collaborators in (`createUserService({ repo })`) so tests can swap them\n* Keep controllers thin and services fat\n* Name files consistently, use absolute-feeling imports (`#src/...` via `imports`)",
+   "keyPoints": [
+    "Separate routes, controllers, services and data access",
+    "Services must not depend on req/res",
+    "Split app.js (build) from server.js (listen) for easy testing",
+    "Group by feature as the project grows",
+    "Centralise configuration in one validated module"
+   ],
+   "pitfalls": [
+    "Business logic inside route handlers",
+    "Reading process.env all over the codebase",
+    "Circular imports between layers"
+   ],
+   "examples": [
+    {
+     "title": "A feature-based tree",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "shop-api/\n├─ package.json\n├─ .env.example\n├─ src/\n│  ├─ server.js            # starts the HTTP server, graceful shutdown\n│  ├─ app.js               # creates and configures the Express app\n│  ├─ config.js            # validated environment configuration\n│  ├─ middleware/\n│  │  ├─ auth.js\n│  │  ├─ validate.js\n│  │  └─ errorHandler.js\n│  ├─ modules/\n│  │  └─ users/\n│  │     ├─ users.routes.js\n│  │     ├─ users.controller.js\n│  │     ├─ users.service.js\n│  │     ├─ users.repository.js\n│  │     └─ users.schema.js\n│  └─ lib/\n│     ├─ db.js\n│     └─ logger.js\n└─ test/\n   └─ users.test.js",
+     "explanation": "Each feature owns its routes, rules and storage.",
+     "lang": "text"
+    },
+    {
+     "title": "Three layers for one endpoint",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// users.routes.js\nrouter.post('/', validate(createUserSchema), usersController.create);\n\n// users.controller.js  (HTTP only)\nexport async function create(req, res) {\n  const user = await usersService.register(req.body);\n  res.status(201).json(user);\n}\n\n// users.service.js  (business rules, no req/res)\nexport async function register({ email, password }) {\n  if (await usersRepository.findByEmail(email)) throw new AppError('Email taken', 409);\n  const passwordHash = await hash(password);\n  return usersRepository.insert({ email, passwordHash });\n}\n\n// users.repository.js  (database only)\nexport const findByEmail = (email) => pool.query('SELECT * FROM users WHERE email = $1', [email]).then((r) => r.rows[0]);",
+     "explanation": "Changing the database touches only the repository; changing HTTP details touches only the controller.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why separate app.js and server.js?",
+     "a": "app.js exports the configured application without listening on a port, so tests can import it (for example with supertest) and server.js is the only file that binds to a port and handles shutdown."
+    },
+    {
+     "q": "What belongs in a service layer?",
+     "a": "Business rules and use-case orchestration independent of HTTP and the database: validation of domain rules, calling several repositories, transactions and calling other services."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-logging",
+   "title": "Logging with pino and winston",
+   "level": "intermediate",
+   "summary": "Use structured JSON logs with levels, request ids and redaction instead of scattered console.log.",
+   "description": "`console.log` is fine for learning, but production needs **structured, leveled, searchable** logs.\n\n### Levels\n`fatal`, `error`, `warn`, `info`, `debug`, `trace`. Set the level by environment: `debug` in development, `info` in production. Logs below the level cost almost nothing.\n\n### Structured (JSON) logs\n`{\"level\":30,\"time\":1760000000000,\"msg\":\"user created\",\"userId\":42,\"reqId\":\"abc\"}`. Log aggregators (Loki, Elastic, Datadog, CloudWatch) can filter by field. Write logs to **stdout** and let the platform ship them; do not manage log files in containers.\n\n### Libraries\n| Library | Notes |\n|---|---|\n| **pino** | Very fast, JSON by default, tiny overhead; `pino-pretty` for readable dev output; `pino-http` for requests |\n| **winston** | Flexible transports (file, HTTP, console), formats |\n| **morgan** | HTTP access log middleware only |\n| `debug` | Namespaced debug output (`DEBUG=app:*`) |\n\n### What to log\n* Request: method, path, status, duration, request id, user id\n* Business events: signups, payments\n* Errors with stack and context (`logger.error({ err, orderId }, 'payment failed')`)\n* Start-up config summary without secrets\n\n### What NOT to log\nPasswords, tokens, card numbers, full personal data. Use pino's `redact` option: `redact: ['req.headers.authorization', 'password']`.\n\n### Correlation\nGenerate a request id (or use `x-request-id` from the proxy) and attach it to every log line with a **child logger**; combine with `AsyncLocalStorage` to avoid passing it everywhere.\n\n### Rotation and retention\nHandled by the platform (journald, Docker log driver, `logrotate`) rather than your app.",
+   "keyPoints": [
+    "Use leveled, structured JSON logs written to stdout",
+    "pino is fast and popular; winston is flexible",
+    "Attach request ids with child loggers",
+    "Redact secrets and personal data",
+    "Let infrastructure collect and rotate logs"
+   ],
+   "pitfalls": [
+    "Logging passwords, tokens or full request bodies",
+    "Synchronous console logging in hot paths",
+    "Logging errors as strings without stack traces or context"
+   ],
+   "examples": [
+    {
+     "title": "pino with request logging",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i pino pino-http pino-pretty\nimport pino from 'pino';\nimport pinoHttp from 'pino-http';\nimport express from 'express';\n\nexport const logger = pino({\n  level: process.env.LOG_LEVEL ?? 'info',\n  redact: ['req.headers.authorization', 'req.headers.cookie', '*.password'],\n  transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },\n});\n\nconst app = express();\napp.use(pinoHttp({ logger }));\n\napp.get('/boom', (req, res) => {\n  req.log.info({ userId: 42 }, 'handling request');       // includes the request id automatically\n  try {\n    throw new Error('payment declined');\n  } catch (err) {\n    req.log.error({ err, orderId: 7 }, 'checkout failed');\n    res.status(500).json({ error: 'Internal error' });\n  }\n});\n\nconst child = logger.child({ component: 'billing' });\nchild.warn('invoice overdue');",
+     "explanation": "In production each line is one JSON object, ready for log search tools.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why log in JSON?",
+     "a": "Machines can parse and index it: you can search by field (userId, status, duration), build dashboards and alerts, which is impossible with free-form text lines."
+    },
+    {
+     "q": "Where should a containerised app write logs?",
+     "a": "To stdout/stderr. The container runtime or platform collects, stores and rotates them, so the app does not manage log files."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-error-handling-patterns",
+   "title": "Error Handling Patterns for Servers",
+   "level": "intermediate",
+   "summary": "Custom error classes, one central error handler, consistent JSON errors and safe 404/500 behaviour.",
+   "description": "A robust server answers every failure with a **consistent, safe response** and logs what developers need.\n\n### The pattern\n1. Define an `AppError` hierarchy carrying `status`, `code` and `isOperational`\n2. Throw errors from services (`throw new NotFoundError('User')`)\n3. Controllers do not catch; they let errors propagate\n4. One **central error middleware** logs, maps the error to a status and sends JSON\n5. A 404 handler turns unmatched routes into `NotFoundError`\n6. Process-level handlers catch what slipped through and exit safely\n\n### Response shape\n`{ \"error\": { \"code\": \"VALIDATION_ERROR\", \"message\": \"Email is invalid\", \"details\": [...], \"requestId\": \"abc\" } }`\nPick one shape and use it everywhere so clients can rely on it.\n\n### Mapping known library errors\nTranslate `ZodError`/`ValidationError` → 422, Mongoose `CastError` → 400, duplicate key → 409, `JsonWebTokenError` → 401, `SyntaxError` from the body parser → 400, `PayloadTooLargeError` → 413.\n\n### Unknown errors\nReturn `500` with a generic message, **log the full error** (with stack and request id), and never expose internals (SQL text, file paths, stack traces) in production.\n\n### Async handlers\nExpress 5 forwards rejected promises. In Express 4 use a wrapper: `const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)` or the `express-async-errors` package.\n\n### Do not\n* Use errors for normal control flow\n* Swallow errors in empty catch blocks\n* Send the response twice (check `res.headersSent` in the error handler and delegate to `next(err)`)",
+   "keyPoints": [
+    "Create AppError subclasses with HTTP status codes",
+    "Services throw, one central middleware responds",
+    "Return a single consistent JSON error format",
+    "Hide internals for 500s and log full details",
+    "Handle 404 and process-level failures too"
+   ],
+   "pitfalls": [
+    "Different error shapes from different routes",
+    "Leaking stack traces to clients",
+    "try/catch in every controller instead of central handling"
+   ],
+   "examples": [
+    {
+     "title": "Error classes and central handler",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// errors.js\nexport class AppError extends Error {\n  constructor(message, status = 500, code = 'INTERNAL_ERROR', details) {\n    super(message);\n    Object.assign(this, { name: this.constructor.name, status, code, details, isOperational: true });\n  }\n}\nexport class NotFoundError extends AppError {\n  constructor(what = 'Resource') { super(`${what} not found`, 404, 'NOT_FOUND'); }\n}\nexport class ValidationError extends AppError {\n  constructor(details) { super('Validation failed', 422, 'VALIDATION_ERROR', details); }\n}\n\n// errorHandler.js\nexport function notFound(req, res, next) { next(new NotFoundError('Route')); }\n\nexport function errorHandler(err, req, res, next) {\n  if (res.headersSent) return next(err);\n  const known = err instanceof AppError;\n  const status = known ? err.status : err.type === 'entity.too.large' ? 413 : err.status ?? 500;\n  if (status >= 500) req.log?.error({ err }, 'unhandled error');\n  res.status(status).json({\n    error: {\n      code: known ? err.code : 'INTERNAL_ERROR',\n      message: status >= 500 && process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message,\n      details: known ? err.details : undefined,\n      requestId: req.id,\n    },\n  });\n}\n\n// app.js  (register last)\n// app.use(notFound);\n// app.use(errorHandler);",
+     "explanation": "Controllers simply throw new NotFoundError('User') and the response is built in one place.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a central error handler?",
+     "a": "It keeps responses consistent, avoids repeating try/catch in every route, centralises logging and guarantees internal details are never leaked."
+    },
+    {
+     "q": "Operational vs programmer errors in a server?",
+     "a": "Operational errors (invalid input, missing record, timeout) get a proper 4xx/5xx response and the server keeps running. Programmer errors (bugs) are logged and typically cause a safe restart via the process manager."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-watch-nodemon",
+   "title": "Auto-Restart: node --watch and nodemon",
+   "level": "beginner",
+   "summary": "Restart your server automatically on file changes with node --watch, nodemon or tsx watch.",
+   "description": "Restarting by hand after each edit wastes time. Use a watcher.\n\n### node --watch (built in)\n`node --watch server.js` restarts when the entry file **or any module it imports** changes. Extras:\n* `--watch-path=./src` watch specific folders\n* `--watch-preserve-output` keep the old console output\n* Combine with env files: `node --watch --env-file=.env server.js`\nIt works with ES modules, CommonJS and TypeScript type stripping.\n\n### nodemon (the classic)\n`npm i -D nodemon`, then `nodemon server.js`. Configure with `nodemon.json`:\n`{ \"watch\": [\"src\"], \"ext\": \"js,json\", \"ignore\": [\"tests\"], \"exec\": \"node --env-file=.env src/server.js\", \"delay\": 200 }`\nType `rs` in the terminal to restart manually.\n\n### Other options\n| Tool | Use |\n|---|---|\n| `tsx watch src/server.ts` | TypeScript with instant restarts |\n| `ts-node-dev`, `bun --watch` | Alternatives |\n| `vite-node`, `vitest --watch` | Test and dev tooling |\n| Docker `compose watch` | Sync and restart inside containers |\n\n### Notes\n* A watcher restarts the **process**, losing in-memory state (sessions, caches). That is fine for development; not for production.\n* `node --watch` is for development. Production uses `node server.js` under a process manager.\n* This is not hot module replacement; for browsers use Vite.\n* Ignore noisy folders (`node_modules`, `logs`, `uploads`) to avoid restart loops when your app writes files.\n\n### Add a dev script\n`\"dev\": \"node --watch --env-file=.env src/server.js\"` and `\"start\": \"node src/server.js\"`.",
+   "keyPoints": [
+    "node --watch restarts on changes without extra packages",
+    "nodemon offers config files, ignore rules and manual restarts",
+    "tsx watch is the TypeScript equivalent",
+    "Watchers are for development only",
+    "Ignore folders the app writes into to avoid restart loops"
+   ],
+   "pitfalls": [
+    "Running nodemon in production",
+    "Watching a folder the app itself writes to (infinite restarts)"
+   ],
+   "examples": [
+    {
+     "title": "dev scripts",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "{\n  \"scripts\": {\n    \"dev\": \"node --watch --env-file=.env src/server.js\",\n    \"dev:ts\": \"tsx watch src/server.ts\",\n    \"dev:nodemon\": \"nodemon --watch src --ext js,json --exec \\\"node --env-file=.env src/server.js\\\"\",\n    \"start\": \"node src/server.js\"\n  }\n}",
+     "explanation": "Pick one; node --watch needs no extra dependency.",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between nodemon and node --watch?",
+     "a": "Both restart the process on file changes. node --watch is built into Node (20+), while nodemon is an external tool with richer configuration (ignore patterns, extensions, delay, custom exec)."
+    },
+    {
+     "q": "Why not use a watcher in production?",
+     "a": "It adds overhead and unnecessary restarts; production should run a stable process under a supervisor, deployed through a controlled release."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-eslint-prettier",
+   "title": "ESLint and Prettier",
+   "level": "beginner",
+   "summary": "ESLint finds bugs and bad patterns; Prettier formats code; run both in your editor, git hooks and CI.",
+   "description": "### ESLint: finds problems\nIt parses your code and reports mistakes: unused variables, undefined names, missing `await`, unreachable code, suspicious comparisons. Current versions use the **flat config** file `eslint.config.js`.\n\nSetup:\n`npm i -D eslint @eslint/js globals` then `npx eslint .`. Add `\"lint\": \"eslint .\"` to scripts. `eslint --fix` repairs automatically fixable issues.\n\nUseful rules for Node: `no-unused-vars`, `no-undef`, `eqeqeq`, `no-await-in-loop` (optional), `@typescript-eslint/no-floating-promises` (catches missing await), `n/no-missing-import` from `eslint-plugin-n`, `eslint-plugin-security`.\n\n### Prettier: formats code\nOpinionated formatter: line width, quotes, semicolons, trailing commas. It ends style debates. `npx prettier --write .` and `prettier --check .` in CI. Configure with `.prettierrc` (for example `{ \"singleQuote\": true, \"semi\": true }`).\n\n### Together\n* ESLint owns **code quality**, Prettier owns **formatting**\n* Use `eslint-config-prettier` to turn off ESLint rules that clash with Prettier\n* (Alternative: Biome, one fast tool that lints and formats)\n\n### Automate\n1. Editor: install the ESLint and Prettier extensions, enable format on save\n2. **Git hooks**: `husky` + `lint-staged` run the tools on staged files before each commit\n3. **CI**: run `npm run lint` and `prettier --check .` and fail the build on errors\n4. Add `.editorconfig` for indentation and line endings\n\n### Type checking\nFor JS projects, `// @ts-check` plus JSDoc types gives editor type safety without TypeScript compilation.",
+   "keyPoints": [
+    "ESLint = bugs and quality; Prettier = formatting",
+    "Modern ESLint uses eslint.config.js (flat config)",
+    "eslint-config-prettier prevents rule conflicts",
+    "Automate with editor save, husky + lint-staged and CI"
+   ],
+   "pitfalls": [
+    "Letting ESLint and Prettier fight over the same rules",
+    "Disabling rules instead of fixing the code",
+    "Running linters only locally, not in CI"
+   ],
+   "examples": [
+    {
+     "title": "Flat config for Node",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// eslint.config.js\nimport js from '@eslint/js';\nimport globals from 'globals';\n\nexport default [\n  { ignores: ['dist/', 'coverage/'] },\n  js.configs.recommended,\n  {\n    files: ['**/*.js'],\n    languageOptions: { ecmaVersion: 2024, sourceType: 'module', globals: globals.node },\n    rules: {\n      eqeqeq: 'error',\n      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],\n      'prefer-const': 'error',\n    },\n  },\n];",
+     "explanation": "globals.node declares process, Buffer and the other Node globals so no-undef does not complain.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Hooks with husky and lint-staged",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "{\n  \"scripts\": {\n    \"lint\": \"eslint .\",\n    \"format\": \"prettier --write .\",\n    \"prepare\": \"husky\"\n  },\n  \"lint-staged\": {\n    \"*.js\": [\"eslint --fix\", \"prettier --write\"],\n    \"*.{json,md}\": \"prettier --write\"\n  }\n}",
+     "explanation": "The .husky/pre-commit file contains: npx lint-staged",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "ESLint vs Prettier?",
+     "a": "ESLint analyses code for bugs and bad practices and can enforce rules; Prettier only reformats code (spacing, quotes, wrapping). They complement each other."
+    },
+    {
+     "q": "How do you enforce code style across a team?",
+     "a": "Shared config files in the repo, editor format-on-save, pre-commit hooks (husky + lint-staged) and a CI job that runs lint and format checks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-debugging",
+   "title": "Debugging Node.js",
+   "level": "intermediate",
+   "summary": "Use the inspector, VS Code breakpoints, Chrome DevTools, debugger statements and better logging to find bugs.",
+   "description": "`console.log` is quick but limited. Node ships with a full debugger based on the V8 **Inspector protocol**.\n\n### Start the inspector\n* `node --inspect app.js` opens a debug port (9229) and runs normally\n* `node --inspect-brk app.js` pauses on the first line\n* Open `chrome://inspect` in Chrome and click your process, or use **VS Code**\n\n### VS Code\n1. Click left of a line number to add a **breakpoint**\n2. Use *Run and Debug*, or open a **JavaScript Debug Terminal** and run `npm run dev` normally; it attaches automatically\n3. `launch.json` for custom setups: `{ \"type\": \"node\", \"request\": \"launch\", \"program\": \"${workspaceFolder}/src/server.js\", \"envFile\": \"${workspaceFolder}/.env\" }`\n4. Features: step over/into/out, call stack, watch expressions, **conditional breakpoints**, **logpoints** (log without editing code), exception breakpoints\n\n### In the code\n* `debugger;` statement pauses when an inspector is attached\n* `console.table`, `console.dir(obj, { depth: null })`, `console.trace()`, `console.time()`\n* The `debug` package: `DEBUG=app:* node app.js`\n\n### Async stack traces\nModern Node keeps async stack traces for `await` chains. Add `Error.stackTraceLimit = 50` when you need more frames. Use `new Error('x', { cause })`.\n\n### Other tools\n| Need | Tool |\n|---|---|\n| CPU hot spots | `node --cpu-prof`, Chrome DevTools profiler, `0x`, `clinic flame` |\n| Memory leaks | Heap snapshots (DevTools, `--heapsnapshot-signal=SIGUSR2`) |\n| Crashes in production | `--report-on-fatalerror`, `process.report.writeReport()` |\n| HTTP requests | `curl -v`, Postman, `NODE_DEBUG=http` |\n\n### Remote debugging\nNever expose port 9229 publicly. Tunnel with SSH (`ssh -L 9229:127.0.0.1:9229 server`).",
+   "keyPoints": [
+    "node --inspect opens the V8 inspector; attach with VS Code or chrome://inspect",
+    "Breakpoints, conditional breakpoints and logpoints beat scattered console.log",
+    "debugger; pauses execution when attached",
+    "Use profilers and heap snapshots for performance and memory issues",
+    "Never expose the inspector port to the internet"
+   ],
+   "pitfalls": [
+    "Leaving --inspect=0.0.0.0 open on a server (remote code execution)",
+    "Debugging by guessing instead of reproducing and inspecting"
+   ],
+   "examples": [
+    {
+     "title": "Debug commands",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "node --inspect-brk src/server.js        # pause at first line, then attach\nnode --inspect=127.0.0.1:9230 src/server.js\nNODE_DEBUG=http,net node src/server.js  # internal core debug output\nDEBUG=app:* node src/server.js          # debug package namespaces\nnode --cpu-prof src/server.js           # writes a .cpuprofile file on exit",
+     "explanation": "Open the .cpuprofile in Chrome DevTools (Performance or Profiler) to see where time is spent.",
+     "lang": "bash"
+    },
+    {
+     "title": "Conditional logging with debug",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import createDebug from 'debug';\nconst debug = createDebug('app:orders');\n\nexport function placeOrder(order) {\n  debug('placing order %o', order);      // visible only with DEBUG=app:orders\n  // ...\n}",
+     "explanation": "Library authors rely on this so users can enable internal logs without code changes.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you debug a Node app in VS Code?",
+     "a": "Set breakpoints and press F5 (or use the JavaScript Debug Terminal), which launches Node with --inspect and attaches the debugger. You can step through code, inspect variables and add conditional breakpoints."
+    },
+    {
+     "q": "Why is exposing the inspector port dangerous?",
+     "a": "Anyone who can connect to it can execute arbitrary code in your process. Bind it to localhost and tunnel via SSH when needed."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-typescript",
+   "title": "TypeScript with Node.js",
+   "level": "intermediate",
+   "summary": "Add static types: run .ts directly with Node type stripping or tsx, compile with tsc, and configure tsconfig for Node.",
+   "description": "**TypeScript** adds static types to JavaScript. It catches mistakes while you type, documents your data shapes and powers editor autocomplete. TypeScript code must be turned into JavaScript before (or while) it runs.\n\n### Ways to run TypeScript\n| Approach | Command | Notes |\n|---|---|---|\n| **Node type stripping** | `node app.ts` | Node 22.18+ / 24: removes type annotations only; no type checking. Supports \"erasable syntax\" (no `enum`, `namespace`, parameter properties). Use `import type` and `.ts` extensions in imports |\n| **tsx** | `npx tsx app.ts`, `tsx watch` | Fast esbuild-based runner, great for dev |\n| **tsc** | `tsc` then `node dist/app.js` | Official compiler, does type checking, outputs JS |\n| Build tools | tsup, esbuild, swc | Bundle libraries and services |\n\nRemember: running with `node`/`tsx` does **not** check types. Run `tsc --noEmit` in CI (the `typecheck` script).\n\n### Setup\n`npm i -D typescript @types/node tsx`, then `npx tsc --init`.\n\n### tsconfig essentials for Node\n`\"module\": \"nodenext\"`, `\"moduleResolution\": \"nodenext\"`, `\"target\": \"es2022\"`, `\"strict\": true`, `\"outDir\": \"dist\"`, `\"rootDir\": \"src\"`, `\"esModuleInterop\": true`, `\"skipLibCheck\": true`. For direct `.ts` execution add `\"erasableSyntaxOnly\": true` and `\"allowImportingTsExtensions\": true`.\n\n### Types for libraries\nInstall `@types/express`, `@types/node`, etc. Many modern libraries ship their own types. Validation libraries like zod infer types from schemas (`z.infer<typeof schema>`).\n\n### Typical scripts\n`\"dev\": \"tsx watch src/server.ts\"`, `\"build\": \"tsc\"`, `\"start\": \"node dist/server.js\"`, `\"typecheck\": \"tsc --noEmit\"`.\n\n### Tips\n* Use `unknown` instead of `any` for external data and narrow it with validation\n* Types disappear at runtime: validate request bodies; types do not protect you from bad input\n* Keep `strict: true`",
+   "keyPoints": [
+    "Node 22.18+/24 can run .ts files by stripping types (no type checking)",
+    "tsx is the convenient dev runner; tsc compiles and type checks",
+    "Use module nodenext and strict in tsconfig",
+    "Run tsc --noEmit in CI",
+    "Types vanish at runtime, so still validate input"
+   ],
+   "pitfalls": [
+    "Assuming node app.ts type-checks your code",
+    "Using enum or namespaces with plain Node type stripping",
+    "Trusting types for external data (use zod)"
+   ],
+   "examples": [
+    {
+     "title": "Typed Express app",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// src/server.ts   ->   npx tsx watch src/server.ts\nimport express, { type Request, type Response } from 'express';\nimport { z } from 'zod';\n\nconst createTodo = z.object({ title: z.string().min(1) });\ntype Todo = { id: number; title: string; done: boolean };\n\nconst todos: Todo[] = [];\nconst app = express();\napp.use(express.json());\n\napp.post('/todos', (req: Request, res: Response) => {\n  const parsed = createTodo.safeParse(req.body);\n  if (!parsed.success) return res.status(422).json(parsed.error.flatten());\n  const todo: Todo = { id: todos.length + 1, title: parsed.data.title, done: false };\n  todos.push(todo);\n  res.status(201).json(todo);\n});\n\napp.listen(3000);",
+     "explanation": "The type annotations are erased at runtime; zod provides the real runtime validation.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Minimal tsconfig.json",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "{\n  \"compilerOptions\": {\n    \"target\": \"es2022\",\n    \"module\": \"nodenext\",\n    \"moduleResolution\": \"nodenext\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"outDir\": \"dist\",\n    \"rootDir\": \"src\",\n    \"sourceMap\": true\n  },\n  \"include\": [\"src\"]\n}",
+     "explanation": "Compile with npx tsc and run with node dist/server.js.",
+     "lang": "json"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Does Node check TypeScript types when running a .ts file?",
+     "a": "No. Node only strips the type annotations (erasable syntax). Type checking is done by tsc (usually tsc --noEmit in CI and editors)."
+    },
+    {
+     "q": "Why still validate input if you use TypeScript?",
+     "a": "Types exist only at compile time. Data arriving at runtime (JSON bodies, env vars, API responses) is not checked by TypeScript, so you need runtime validation such as zod."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

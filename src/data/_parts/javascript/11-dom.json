@@ -1,0 +1,403 @@
+{
+  "id": "js-dom",
+  "title": "The DOM and Events",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-dom-tree-navigation",
+      "title": "DOM Tree and Navigation",
+      "level": "beginner",
+      "summary": "The DOM is a tree of nodes that JavaScript can walk through using parent, child and sibling properties.",
+      "description": "When a browser loads an HTML page it parses it and builds the **DOM (Document Object Model)** - a tree of objects representing the document. JavaScript uses this tree to read and change the page. The DOM is an **API**, not part of the JavaScript language itself.\n\n### Node types\n- **Document** node (`document`) - the root.\n- **Element** nodes - HTML tags (`div`, `p`...).\n- **Text** nodes - text content (including whitespace and new lines).\n- **Comment** nodes, **Attribute** nodes, DocumentType.\n\n### Key entry points\n`document`, `document.documentElement` (`<html>`), `document.head`, `document.body`.\n\n### Navigating the tree\n| Need | Elements only | All nodes (incl. text) |\n|---|---|---|\n| parent | `parentElement` | `parentNode` |\n| children | `children` | `childNodes` |\n| first / last child | `firstElementChild`, `lastElementChild` | `firstChild`, `lastChild` |\n| siblings | `nextElementSibling`, `previousElementSibling` | `nextSibling`, `previousSibling` |\n\nUse the **Element** versions in most cases; the others also return whitespace text nodes.\n\n### closest()\n`el.closest(\".card\")` walks **up** from the element (including itself) and returns the first ancestor matching the selector, or `null`. Very useful in event delegation.\n\n### Live vs static\n`children`, `childNodes` and `getElementsBy*` return **live** collections that update automatically; `querySelectorAll` returns a **static** NodeList.\n\n### Changes are temporary\nEdits you make to the DOM exist only in memory; reloading the page rebuilds the DOM from the HTML.",
+      "keyPoints": [
+        "DOM is a tree of nodes built from HTML",
+        "Element nodes vs text/comment nodes",
+        "Use children / firstElementChild / nextElementSibling to skip text nodes",
+        "closest() searches ancestors",
+        "DOM changes are lost on reload"
+      ],
+      "pitfalls": [
+        "childNodes and firstChild include whitespace text nodes",
+        "Scripts in the head run before the body exists",
+        "HTMLCollection is live and is not an array"
+      ],
+      "examples": [
+        {
+          "title": "Navigating the tree",
+          "language": "web",
+          "explanation": "",
+          "html": "<h1 id=\"title\">Best JS Course</h1>\n<ul id=\"list\">\n  <li>One</li>\n  <li class=\"target\">Two</li>\n  <li>Three</li>\n</ul>\n<pre id=\"out\"></pre>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\npre { background: #f4f4f4; padding: 10px; border-radius: 6px; }\n.target { color: crimson; }",
+          "js": "const list = document.getElementById(\"list\");\nconst target = list.querySelector(\".target\");\nconst lines = [];\nlines.push(\"children: \" + list.children.length);\nlines.push(\"childNodes (with text nodes): \" + list.childNodes.length);\nlines.push(\"first element child: \" + list.firstElementChild.textContent);\nlines.push(\"target previous: \" + target.previousElementSibling.textContent);\nlines.push(\"target next: \" + target.nextElementSibling.textContent);\nlines.push(\"target parent: \" + target.parentElement.id);\nlines.push(\"closest ul: \" + target.closest(\"ul\").id);\ndocument.getElementById(\"out\").textContent = lines.join(\"\\n\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the DOM?",
+          "a": "The Document Object Model is a tree-like in-memory representation of the HTML document that exposes an API for JavaScript to read and change the structure, content and styles."
+        },
+        {
+          "q": "Difference between childNodes and children?",
+          "a": "childNodes returns all child nodes including text and comment nodes; children returns only element nodes."
+        },
+        {
+          "q": "What does closest() do?",
+          "a": "It travels up the tree starting from the element itself and returns the nearest ancestor that matches the given selector, or null."
+        }
+      ],
+      "source": "JS-one-shot/windows/dom/index.js, JS-one-shot/windows/dom/index.html"
+    },
+    {
+      "id": "js-dom-selecting",
+      "title": "Selecting Elements",
+      "level": "beginner",
+      "summary": "Find elements with getElementById, querySelector and querySelectorAll.",
+      "description": "Before changing an element you must **select** it.\n\n### Methods\n| Method | Returns | Live? |\n|---|---|---|\n| `getElementById(\"id\")` | one element or `null` | - |\n| `getElementsByClassName(\"c\")` | HTMLCollection | live |\n| `getElementsByTagName(\"li\")` | HTMLCollection | live |\n| `querySelector(css)` | first match or `null` | - |\n| `querySelectorAll(css)` | NodeList | static |\n\n`querySelector` and `querySelectorAll` accept **any CSS selector** (`#id`, `.class`, `ul > li:nth-child(2)`, `[data-id=\"3\"]`). They can also be called on an element to search only inside it.\n\n### Iterating\n- NodeList supports `forEach` and `for...of`.\n- HTMLCollection does not have `forEach`; convert with `[...collection]` or `Array.from(collection)`.\n\n### Reading content\n| Property | What you get |\n|---|---|\n| `innerHTML` | markup inside the element (as a string) |\n| `innerText` | rendered text; respects CSS, ignores hidden elements |\n| `textContent` | all raw text, including hidden, faster |\n\n### Tips\n- Do **not** include `#` in `getElementById(\"heading\")`.\n- Cache selections in variables instead of querying repeatedly.\n- Make sure the script runs after the DOM exists: place it at the end of body, use `defer`, or `DOMContentLoaded`.\n- Prefer `data-*` attributes and classes for JS hooks.",
+      "keyPoints": [
+        "getElementById is fastest for a single id",
+        "querySelector takes any CSS selector and returns the first match",
+        "querySelectorAll returns a static NodeList with forEach",
+        "getElementsBy* return live HTMLCollections",
+        "textContent vs innerText vs innerHTML"
+      ],
+      "pitfalls": [
+        "getElementById(\"#id\") returns null - no # allowed",
+        "Selecting before the element exists returns null",
+        "Calling forEach directly on an HTMLCollection throws"
+      ],
+      "examples": [
+        {
+          "title": "Different selectors",
+          "language": "web",
+          "explanation": "",
+          "html": "<h1 id=\"heading\">DOM API</h1>\n<ul class=\"list\">\n  <li>1 node</li>\n  <li>2 node</li>\n  <li>3 node</li>\n  <li style=\"display:none\">hidden node</li>\n</ul>\n<button id=\"run\">Select and highlight</button>\n<pre id=\"out\"></pre>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nli.hl { background: gold; }\npre { background: #f4f4f4; padding: 10px; border-radius: 6px; white-space: pre-wrap; }",
+          "js": "const out = document.getElementById(\"out\");\ndocument.getElementById(\"run\").addEventListener(\"click\", () => {\n  const heading = document.getElementById(\"heading\");\n  const list = document.querySelector(\".list\");\n  const items = document.querySelectorAll(\".list li\");\n  items.forEach((li, i) => { if (i % 2 === 0) li.classList.add(\"hl\"); });\n  out.textContent = [\n    \"getElementById: \" + heading.textContent,\n    \"querySelectorAll count: \" + items.length,\n    \"getElementsByTagName is live: \" + document.getElementsByTagName(\"li\").length,\n    \"innerText: \" + JSON.stringify(list.innerText),\n    \"textContent: \" + JSON.stringify(list.textContent.trim().replace(/\\s+/g, \" \")),\n  ].join(\"\\n\");\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between querySelector and getElementById?",
+          "a": "getElementById finds an element by id only and is slightly faster; querySelector accepts any CSS selector and returns the first match."
+        },
+        {
+          "q": "What is the difference between a NodeList and an HTMLCollection?",
+          "a": "HTMLCollection (from getElementsBy*) is live and has no forEach; NodeList from querySelectorAll is static and supports forEach. Both are array-like but not arrays."
+        },
+        {
+          "q": "Difference between innerText, textContent and innerHTML?",
+          "a": "innerText returns rendered visible text, textContent returns all text including hidden elements, innerHTML returns the HTML markup as a string."
+        }
+      ],
+      "source": "JS-one-shot/windows/dom/domSearching.html"
+    },
+    {
+      "id": "js-dom-manipulation",
+      "title": "Creating and Changing Elements (DOM CRUD)",
+      "level": "beginner",
+      "summary": "Create elements, change text, attributes, classes and styles, and remove them from the page.",
+      "description": "### Create and insert\n```js\nconst li = document.createElement(\"li\");\nli.textContent = \"New item\";\nlist.append(li);          // end   (also prepend, before, after)\nlist.insertAdjacentHTML(\"beforeend\", \"<li>HTML</li>\");\n```\n- `append()` and `prepend()` accept nodes and strings. `appendChild` takes only one node.\n- Create many elements with a `DocumentFragment` to touch the DOM once.\n- `cloneNode(true)` makes a deep copy.\n\n### Update\n| Task | Code |\n|---|---|\n| text | `el.textContent = \"Hi\"` |\n| HTML | `el.innerHTML = \"<b>Hi</b>\"` |\n| attribute | `el.setAttribute(\"href\", \"#\")`, `getAttribute`, `removeAttribute` |\n| properties | `input.value`, `img.src`, `el.id` |\n| classes | `el.classList.add/remove/toggle/contains` |\n| inline style | `el.style.backgroundColor = \"tomato\"` |\n| data attributes | `el.dataset.userId = \"5\"` (`data-user-id`) |\n\n### Delete / replace\n`el.remove()`, `parent.removeChild(el)`, `el.replaceWith(newEl)`, `el.innerHTML = \"\"`.\n\n### Security\nDo not put untrusted user text into `innerHTML` - it can run scripts (XSS). Use `textContent` for plain text.\n\n### Performance\nEvery change can trigger layout. Batch updates, use fragments, and change classes rather than many inline styles.\n\n### CRUD pattern\nCreate (createElement + append), Read (select / textContent), Update (assign), Delete (remove).",
+      "keyPoints": [
+        "createElement + append adds new nodes",
+        "textContent for text, innerHTML only for trusted HTML",
+        "classList is the best way to change styles",
+        "dataset reads and writes data-* attributes",
+        "remove() deletes an element"
+      ],
+      "pitfalls": [
+        "innerHTML with user input is an XSS risk",
+        "Re-assigning innerHTML destroys child elements and their event listeners",
+        "Setting style properties in kebab-case (use camelCase)"
+      ],
+      "examples": [
+        {
+          "title": "Add, update and remove list items",
+          "language": "web",
+          "explanation": "",
+          "html": "<input id=\"name\" placeholder=\"Add a fruit\" />\n<button id=\"add\">Add</button>\n<ul id=\"fruits\">\n  <li data-id=\"1\">Apple</li>\n  <li data-id=\"2\">Mango</li>\n</ul>\n<button id=\"style\">Toggle highlight on first</button>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nli { padding: 6px 10px; margin: 4px 0; background: #eef; border-radius: 4px; cursor: pointer; }\nli.hot { background: orange; font-weight: bold; }",
+          "js": "const list = document.getElementById(\"fruits\");\nconst input = document.getElementById(\"name\");\nlet nextId = 3;\n\ndocument.getElementById(\"add\").addEventListener(\"click\", () => {\n  const text = input.value.trim();\n  if (!text) return;\n  const li = document.createElement(\"li\");\n  li.textContent = text;              // safe: no HTML parsing\n  li.dataset.id = nextId++;\n  list.append(li);\n  input.value = \"\";\n});\nlist.addEventListener(\"click\", (e) => {\n  if (e.target.matches(\"li\")) e.target.remove();     // click an item to delete it\n});\ndocument.getElementById(\"style\").addEventListener(\"click\", () => {\n  list.firstElementChild?.classList.toggle(\"hot\");\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between innerHTML and textContent?",
+          "a": "innerHTML parses a string as HTML (risky with untrusted input); textContent treats it as plain text and is faster and safe."
+        },
+        {
+          "q": "How do you add a CSS class to an element?",
+          "a": "element.classList.add(\"name\"). Also remove, toggle and contains are available."
+        },
+        {
+          "q": "How can you add many elements efficiently?",
+          "a": "Build them inside a DocumentFragment (or a single HTML string) and insert once, to avoid repeated reflows."
+        }
+      ],
+      "source": "JS-one-shot/windows/dom/domCrud.html, JS-one-shot/windows/dom/index.js"
+    },
+    {
+      "id": "js-events",
+      "title": "Events and addEventListener",
+      "level": "beginner",
+      "summary": "React to user actions by attaching listeners and reading the event object.",
+      "description": "An **event** is a signal that something happened: a click, key press, form submit, page load, resize.\n\n### addEventListener\n```js\nbutton.addEventListener(\"click\", function (event) {\n  console.log(event.type, event.target);\n}, { once: false });\nbutton.removeEventListener(\"click\", handler);   // needs the same function reference\n```\nPrefer `addEventListener` to `onclick=\"...\"` attributes or `el.onclick = fn`, because you can attach **many** listeners and control options.\n\n### The event object\n| Property / method | Meaning |\n|---|---|\n| `type` | event name |\n| `target` | element that triggered the event (deepest) |\n| `currentTarget` | element the listener is attached to |\n| `preventDefault()` | stop the default action (link, submit) |\n| `stopPropagation()` | stop bubbling |\n| `key`, `code` | keyboard events |\n| `clientX`, `clientY` | mouse position |\n\n### Common events\n- Mouse: `click`, `dblclick`, `mouseover`, `mousemove`, `contextmenu`\n- Keyboard: `keydown`, `keyup`\n- Form: `submit`, `input`, `change`, `focus`, `blur`\n- Document: `DOMContentLoaded`, `load`, `scroll`, `resize`\n- Touch / pointer: `pointerdown`, `touchstart`\n\n### Listener options\n`{ once: true }` (auto remove), `{ passive: true }` (better scroll performance), `{ capture: true }`, `{ signal }` (remove via AbortController).\n\n### this in listeners\nIn a normal function, `this` is the element (`currentTarget`). In an arrow function it is not - use `event.currentTarget`.\n\n### Cleanup\nRemove listeners for elements or components that disappear to avoid memory leaks.",
+      "keyPoints": [
+        "addEventListener supports multiple listeners and options",
+        "event.target vs event.currentTarget",
+        "preventDefault stops default browser behaviour",
+        "Use once, passive and signal options when needed",
+        "removeEventListener needs the same function reference"
+      ],
+      "pitfalls": [
+        "Passing an anonymous function makes removal impossible",
+        "Using onclick property overwrites earlier handlers",
+        "Heavy work in scroll/mousemove handlers without throttling"
+      ],
+      "examples": [
+        {
+          "title": "Click, key and once",
+          "language": "web",
+          "explanation": "",
+          "html": "<button id=\"btn\">Click me</button>\n<button id=\"once\">Only works once</button>\n<input id=\"box\" placeholder=\"type here\" />\n<p id=\"msg\">Waiting for events...</p>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nbutton, input { padding: 8px; margin: 4px; }\n#msg { background: #eef; padding: 10px; border-radius: 6px; }",
+          "js": "const msg = document.getElementById(\"msg\");\nconst show = (t) => (msg.textContent = t);\nlet clicks = 0;\n\ndocument.getElementById(\"btn\").addEventListener(\"click\", (e) => {\n  clicks++;\n  show(`type=${e.type}, target=${e.target.id}, clicks=${clicks}, x=${e.clientX}`);\n});\ndocument.getElementById(\"once\").addEventListener(\"click\", () => show(\"once handler fired\"), { once: true });\ndocument.getElementById(\"box\").addEventListener(\"keydown\", (e) => {\n  show(`key=${e.key} code=${e.code}`);\n});\ndocument.getElementById(\"box\").addEventListener(\"input\", (e) => {\n  document.title = e.target.value;\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between event.target and event.currentTarget?",
+          "a": "target is the element that actually triggered the event (the innermost one); currentTarget is the element the handler is attached to."
+        },
+        {
+          "q": "Why prefer addEventListener over onclick?",
+          "a": "It allows multiple handlers for the same event, supports options (capture, once, passive) and can be removed with removeEventListener."
+        },
+        {
+          "q": "What does preventDefault do?",
+          "a": "It cancels the browser's default action for the event, such as following a link or submitting a form, without stopping propagation."
+        }
+      ],
+      "source": "JS-one-shot/windows/dom/domCrud.html"
+    },
+    {
+      "id": "js-event-propagation",
+      "title": "Event Propagation: Capturing and Bubbling",
+      "level": "intermediate",
+      "summary": "Events travel down (capture), hit the target and bubble back up, and you can stop them anywhere on the way.",
+      "description": "When you click an element inside other elements, the event does not only run on that element. It travels through the DOM in **three phases**:\n\n1. **Capturing phase** - from `window` down to the target's parent.\n2. **Target phase** - the element that was clicked.\n3. **Bubbling phase** - from the target back up to `window`.\n\nBy default listeners run in the **bubbling** phase. Pass `true` or `{ capture: true }` as the third argument to listen during capturing.\n\n```js\nouter.addEventListener(\"click\", handler, true); // capturing\n```\n\n### Stopping propagation\n- `event.stopPropagation()` - stops the event from moving on to other elements.\n- `event.stopImmediatePropagation()` - also stops other listeners on the same element.\n- `event.preventDefault()` - different: cancels the default action only.\n\n### Which events bubble?\nMost do (`click`, `input`, `keydown`). Some do **not**: `focus`, `blur`, `mouseenter`, `mouseleave`, `load`. Use `focusin`/`focusout` for bubbling focus events.\n\n### target vs currentTarget\nWhile the event travels, `target` stays the same (original element) and `currentTarget` changes to the element whose listener is running.\n\n### Order example\nWith three nested divs and bubbling listeners, a click on the inner one logs: inner, middle, outer. With capture listeners the order is reversed: outer, middle, inner.\n\n### Practical tips\n- Avoid `stopPropagation` unless needed; it can break analytics and other widgets.\n- Bubbling is what makes **event delegation** possible.",
+      "keyPoints": [
+        "Phases: capturing, target, bubbling",
+        "Default listeners run on bubbling",
+        "capture: true listens on the way down",
+        "stopPropagation stops travel, preventDefault stops the default action",
+        "focus and mouseenter do not bubble"
+      ],
+      "pitfalls": [
+        "Confusing stopPropagation with preventDefault",
+        "Overusing stopPropagation breaks other listeners",
+        "Assuming all events bubble"
+      ],
+      "examples": [
+        {
+          "title": "Bubbling order with nested divs",
+          "language": "web",
+          "explanation": "",
+          "html": "<div id=\"outer\" class=\"box\">Outer\n  <div id=\"middle\" class=\"box\">Middle\n    <div id=\"inner\" class=\"box\">Inner</div>\n  </div>\n</div>\n<label><input type=\"checkbox\" id=\"capture\" /> use capturing phase</label>\n<label><input type=\"checkbox\" id=\"stop\" /> stop at inner</label>\n<p>Click a box, then see the order:</p>\n<ol id=\"log\"></ol>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\n.box { padding: 18px; border: 2px solid #345; margin: 6px; background: #dde; cursor: pointer; }\n#middle { background: #cdf; }\n#inner { background: #bef; }\nlabel { display: block; margin: 6px 0; }",
+          "js": "const log = document.getElementById(\"log\");\nlet useCapture = false, stopAtInner = false;\n\nfunction handler(e) {\n  const li = document.createElement(\"li\");\n  li.textContent = `${e.currentTarget.id} (target: ${e.target.id})`;\n  log.append(li);\n  if (stopAtInner && e.currentTarget.id === \"inner\") e.stopPropagation();\n}\nfunction attach() {\n  [\"outer\", \"middle\", \"inner\"].forEach((id) => {\n    const el = document.getElementById(id);\n    el.removeEventListener(\"click\", handler, true);\n    el.removeEventListener(\"click\", handler, false);\n    el.addEventListener(\"click\", handler, useCapture);\n  });\n}\nattach();\ndocument.getElementById(\"capture\").addEventListener(\"change\", (e) => {\n  useCapture = e.target.checked; attach(); log.innerHTML = \"\";\n});\ndocument.getElementById(\"stop\").addEventListener(\"change\", (e) => {\n  stopAtInner = e.target.checked; log.innerHTML = \"\";\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What are event bubbling and capturing?",
+          "a": "Bubbling means an event fires on the target and then travels up through its ancestors; capturing means it travels from the root down to the target first. Listeners run in bubbling by default."
+        },
+        {
+          "q": "How do you stop an event from bubbling?",
+          "a": "Call event.stopPropagation() inside the handler."
+        },
+        {
+          "q": "Which common events do not bubble?",
+          "a": "focus, blur, mouseenter, mouseleave and load (use focusin/focusout or mouseover/mouseout equivalents)."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/dom/event-propagation.html"
+    },
+    {
+      "id": "js-event-delegation",
+      "title": "Event Delegation",
+      "level": "intermediate",
+      "summary": "Attach one listener to a parent and use event.target to handle many children, even ones added later.",
+      "description": "**Event delegation** uses bubbling: instead of adding a listener to every child, add **one listener to a common ancestor** and find out which child was clicked with `event.target`.\n\n```js\nlist.addEventListener(\"click\", (event) => {\n  const item = event.target.closest(\"li\");   // robust against inner elements\n  if (!item || !list.contains(item)) return;\n  console.log(item.dataset.id);\n});\n```\n\n### Why use it\n- **Less memory**: one listener instead of hundreds.\n- **Dynamic content**: elements added later work automatically, no re-attaching.\n- **Simpler cleanup**: a single `removeEventListener`.\n\n### How to match the right element\n- `event.target.matches(\"li.item\")` - when the target is exactly the element.\n- `event.target.closest(\"li\")` - when the clicked element can be a child (an icon inside a button). Prefer `closest`.\n- Use `data-action=\"delete\"` attributes and branch on `target.dataset.action` for menus and toolbars.\n\n### Limits\n- Only works for events that **bubble** (not `focus`, `blur`; use `focusin`/`focusout`).\n- If a child calls `stopPropagation`, the parent never hears about it.\n- Very high-frequency events (`mousemove`) still need throttling.\n\n### Typical uses\nTodo lists, tables with row buttons, dropdown menus, grids of cards or tiles, comment threads.",
+      "keyPoints": [
+        "One listener on the parent handles many children",
+        "Uses event bubbling and event.target",
+        "Works for elements created later",
+        "closest() handles clicks on nested children",
+        "Does not work for non-bubbling events"
+      ],
+      "pitfalls": [
+        "Clicking the container itself triggers the handler too - check the target",
+        "stopPropagation on children breaks delegation",
+        "Using target directly when the element contains inner tags"
+      ],
+      "examples": [
+        {
+          "title": "Clickable list with delegation",
+          "language": "web",
+          "explanation": "",
+          "html": "<p>Which programming language do you like the most?</p>\n<ul id=\"myList\">\n  <li>JavaScript</li>\n  <li>React</li>\n  <li>Next</li>\n  <li>HTML/CSS</li>\n</ul>\n<button id=\"add\">Add a new item</button>\n<p id=\"listValue\"></p>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\n#myList { list-style: none; padding: 0; max-width: 260px; }\n#myList li { padding: 10px; border: 1px solid #ccc; margin: 5px 0; cursor: pointer; transition: transform .3s; }\n#myList li:hover { background: #f0f0f0; transform: scale(1.04); }\n#listValue { color: #b0245a; font-weight: bold; }",
+          "js": "const list = document.getElementById(\"myList\");\nconst output = document.getElementById(\"listValue\");\nlet count = 0;\n\nlist.addEventListener(\"click\", (event) => {\n  const item = event.target.closest(\"li\");\n  if (!item) return;\n  item.style.transform = \"rotateY(360deg)\";\n  setTimeout(() => (item.style.transform = \"\"), 400);\n  output.textContent = \"Your favourite is: \" + item.textContent;\n});\n\ndocument.getElementById(\"add\").addEventListener(\"click\", () => {\n  const li = document.createElement(\"li\");\n  li.textContent = \"New item \" + ++count;      // works without a new listener\n  list.append(li);\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is event delegation?",
+          "a": "A pattern where a single event listener is attached to a parent element to handle events of its children, using bubbling and event.target to identify the source."
+        },
+        {
+          "q": "What are the benefits of event delegation?",
+          "a": "Better performance and lower memory usage, automatic support for dynamically added elements, and less code to manage."
+        },
+        {
+          "q": "Why use closest() in a delegated handler?",
+          "a": "The event target can be a nested child (like an icon or span). closest() finds the intended ancestor element reliably."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/dom/event-delegation.html, JS-one-shot/advancedJS/dom/project.html"
+    },
+    {
+      "id": "js-forms",
+      "title": "Forms and Form Events",
+      "level": "beginner",
+      "summary": "Handle form submission, read input values, validate and prevent the default page reload.",
+      "description": "Forms collect user input. JavaScript lets you intercept submission, validate and send data without reloading the page.\n\n### Submit handling\n```js\nform.addEventListener(\"submit\", (event) => {\n  event.preventDefault();                 // stop page reload\n  const data = Object.fromEntries(new FormData(form));\n});\n```\nListen to **`submit` on the form**, not `click` on the button - it also fires when the user presses Enter.\n\n### Reading values\n- `input.value` (always a **string**; convert numbers with `Number()`).\n- `checkbox.checked`, `radio` (`form.elements.gender.value`), `select.value`, `textarea.value`.\n- `new FormData(form)` collects everything with a `name`.\n\n### Events\n| Event | Fires |\n|---|---|\n| `input` | on every change while typing |\n| `change` | when value is committed (blur / select) |\n| `focus`, `blur` | gaining / losing focus |\n| `reset` | form reset |\n\n### Validation\n- HTML attributes: `required`, `minlength`, `pattern`, `type=\"email\"`.\n- Constraint API: `form.checkValidity()`, `input.validity.valueMissing`, `input.setCustomValidity(\"msg\")`, `form.reportValidity()`.\n- Always **re-validate on the server** - client checks can be bypassed.\n\n### Good practice\n- Disable the submit button while sending.\n- Show errors next to the field with `aria-live` or `role=\"alert\"`.\n- Clear the form with `form.reset()`.",
+      "keyPoints": [
+        "Listen to submit and call preventDefault",
+        "input.value is always a string",
+        "FormData collects named fields",
+        "Use built-in validation attributes and the Constraint API",
+        "Always validate again on the server"
+      ],
+      "pitfalls": [
+        "Listening to the button click misses Enter key submissions",
+        "Forgetting to convert string values to numbers",
+        "Trusting client-side validation only"
+      ],
+      "examples": [
+        {
+          "title": "Submit with validation",
+          "language": "web",
+          "explanation": "",
+          "html": "<form id=\"signup\" novalidate>\n  <label>Name <input name=\"name\" required minlength=\"3\" /></label>\n  <label>Age <input name=\"age\" type=\"number\" min=\"1\" /></label>\n  <label><input name=\"agree\" type=\"checkbox\" /> I agree</label>\n  <button type=\"submit\">Register</button>\n  <p id=\"error\" role=\"alert\"></p>\n</form>\n<pre id=\"result\"></pre>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nlabel { display: block; margin: 8px 0; }\ninput { padding: 6px; }\n#error { color: crimson; min-height: 1.2em; }\npre { background: #f4f4f4; padding: 10px; border-radius: 6px; }",
+          "js": "const form = document.getElementById(\"signup\");\nconst error = document.getElementById(\"error\");\nconst result = document.getElementById(\"result\");\n\nform.addEventListener(\"submit\", (event) => {\n  event.preventDefault();\n  const data = Object.fromEntries(new FormData(form));\n  data.agree = form.elements.agree.checked;\n  data.age = Number(data.age);\n\n  if (!data.name || data.name.trim().length < 3) {\n    error.textContent = \"Name must have at least 3 characters.\";\n    return;\n  }\n  if (!data.agree) {\n    error.textContent = \"You must accept the terms.\";\n    return;\n  }\n  error.textContent = \"\";\n  result.textContent = JSON.stringify(data, null, 2);\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you stop a form from reloading the page?",
+          "a": "Call event.preventDefault() in the form's submit event handler."
+        },
+        {
+          "q": "Why use the submit event on the form rather than click on the button?",
+          "a": "submit also runs when the user presses Enter in a field and when the form is submitted programmatically with requestSubmit, so it is more reliable."
+        },
+        {
+          "q": "What type is input.value?",
+          "a": "Always a string, even for type=\"number\". Convert with Number() or valueAsNumber."
+        }
+      ],
+      "source": "JS-one-shot/API/index.js"
+    },
+    {
+      "id": "js-observers",
+      "title": "IntersectionObserver and MutationObserver",
+      "level": "advanced",
+      "summary": "Observe element visibility and DOM changes efficiently instead of polling or listening to scroll.",
+      "description": "Observer APIs notify you **asynchronously** when something changes, without expensive polling.\n\n### IntersectionObserver\nTells you when an element enters or leaves the viewport (or another container).\n\n```js\nconst observer = new IntersectionObserver((entries, obs) => {\n  entries.forEach((entry) => {\n    if (entry.isIntersecting) {\n      entry.target.classList.add(\"visible\");\n      obs.unobserve(entry.target);        // stop watching once done\n    }\n  });\n}, { threshold: 0.3, rootMargin: \"0px\" });\nobserver.observe(element);\n```\nUse cases: **lazy-loading images**, **infinite scroll**, scroll-reveal animations, ad impressions, active menu highlighting. It replaces scroll handlers with `getBoundingClientRect`, which cause layout thrashing.\n\nOptions: `root`, `rootMargin`, `threshold` (0 to 1 or an array).\n\n### MutationObserver\nWatches **changes to the DOM tree**: children added/removed, attribute or text changes.\n\n```js\nconst mo = new MutationObserver((mutations) => {\n  mutations.forEach((m) => console.log(m.type, m.addedNodes));\n});\nmo.observe(target, { childList: true, attributes: true, subtree: true });\nmo.disconnect();\n```\nUse cases: reacting to third-party widgets, detecting dynamically inserted elements, building extensions, auto-resizing.\n\n### Related observers\n`ResizeObserver` (element size changes) and `PerformanceObserver`.\n\n### Notes\n- Callbacks are batched and run asynchronously (MutationObserver as a microtask).\n- Call `disconnect()` / `unobserve()` to avoid leaks.",
+      "keyPoints": [
+        "IntersectionObserver detects visibility changes without scroll handlers",
+        "Options: root, rootMargin, threshold",
+        "MutationObserver reports DOM changes (childList, attributes, subtree)",
+        "Both deliver batches of records asynchronously",
+        "Disconnect when finished"
+      ],
+      "pitfalls": [
+        "Changing the DOM inside a MutationObserver callback can cause infinite loops",
+        "Forgetting to unobserve or disconnect",
+        "threshold 0 only fires when the first pixel appears"
+      ],
+      "examples": [
+        {
+          "title": "Reveal on scroll and watch DOM changes",
+          "language": "web",
+          "explanation": "",
+          "html": "<div id=\"status\">Scroll down inside the box. Items fade in when visible.</div>\n<div id=\"scroller\">\n  <div class=\"spacer\">scroll</div>\n  <div class=\"card\">Card 1</div>\n  <div class=\"spacer\">scroll</div>\n  <div class=\"card\">Card 2</div>\n  <div class=\"spacer\">scroll</div>\n  <div class=\"card\">Card 3</div>\n</div>\n<button id=\"add\">Add an element (MutationObserver)</button>\n<pre id=\"mlog\"></pre>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\n#scroller { height: 160px; overflow: auto; border: 2px solid #345; }\n.spacer { height: 140px; display: grid; place-items: center; color: #888; }\n.card { padding: 24px; margin: 8px; background: #ddd; opacity: .2; transform: translateY(20px); transition: all .5s; }\n.card.visible { opacity: 1; transform: none; background: #9fe0a8; }\npre { background: #f4f4f4; padding: 8px; border-radius: 6px; }",
+          "js": "const scroller = document.getElementById(\"scroller\");\nconst statusEl = document.getElementById(\"status\");\n\nconst io = new IntersectionObserver((entries) => {\n  entries.forEach((entry) => {\n    if (entry.isIntersecting) {\n      entry.target.classList.add(\"visible\");\n      statusEl.textContent = entry.target.textContent + \" is visible (\" + Math.round(entry.intersectionRatio * 100) + \"%)\";\n    }\n  });\n}, { root: scroller, threshold: 0.5 });\ndocument.querySelectorAll(\".card\").forEach((c) => io.observe(c));\n\nconst mlog = document.getElementById(\"mlog\");\nconst mo = new MutationObserver((records) => {\n  records.forEach((r) => (mlog.textContent += `${r.type}: +${r.addedNodes.length} node(s)\\n`));\n});\nmo.observe(scroller, { childList: true });\ndocument.getElementById(\"add\").addEventListener(\"click\", () => {\n  const d = document.createElement(\"div\");\n  d.className = \"card visible\";\n  d.textContent = \"Dynamic card\";\n  scroller.append(d);\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is IntersectionObserver used for?",
+          "a": "To run code when an element enters or leaves the viewport (or another element), for lazy loading images, infinite scroll and reveal animations, without scroll event handlers."
+        },
+        {
+          "q": "What does MutationObserver do?",
+          "a": "It watches for changes in the DOM (added/removed nodes, attribute and text changes) and calls a callback with a list of mutation records."
+        },
+        {
+          "q": "Why are observers better than scroll listeners?",
+          "a": "They are asynchronous and batched by the browser, avoid forced layout calculations on every scroll event, and so perform much better."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-project-todo",
+      "title": "Mini Project: Todo List",
+      "level": "intermediate",
+      "summary": "Combine DOM creation, events, delegation and localStorage into a working todo app.",
+      "description": "A todo app is the classic first DOM project because it uses everything in this section.\n\n### Features\n- Add a task from an input (button or Enter key).\n- Mark a task complete by clicking it (toggle a class).\n- Delete a task with a button.\n- Save tasks to `localStorage` so they survive a refresh.\n\n### Design\n1. **State** - keep an array of objects `{ id, text, done }` as the single source of truth.\n2. **render()** - rebuild the list from the state.\n3. **Events** - a form `submit` handler adds a task; a **delegated** click handler on the `<ul>` handles toggle and delete using `data-action` attributes.\n4. **Persistence** - `save()` after every change with `JSON.stringify`, and load with `JSON.parse` on startup.\n\n### Why this structure\nUpdating the **state first**, then rendering, avoids bugs where the DOM and data drift apart. This is the same idea that React and other frameworks automate.\n\n### Extensions\nFilter (all/active/done), edit in place, drag and drop ordering, counters, and keyboard shortcuts.\n\n### Escaping\nUse `textContent` for task text so a user cannot inject HTML.",
+      "keyPoints": [
+        "Keep state in an array and render from it",
+        "Use a delegated listener for toggle and delete",
+        "Persist with JSON and localStorage",
+        "Use textContent for user-provided text",
+        "Form submit handles Enter and button click"
+      ],
+      "pitfalls": [
+        "Updating the DOM without updating the state",
+        "Using array index as id after deleting items",
+        "Not catching JSON.parse errors for corrupted storage"
+      ],
+      "examples": [
+        {
+          "title": "Todo app with persistence",
+          "language": "web",
+          "explanation": "",
+          "html": "<div class=\"app\">\n  <h2>Todo</h2>\n  <form id=\"form\">\n    <input id=\"text\" placeholder=\"What needs doing?\" autocomplete=\"off\" />\n    <button>Add</button>\n  </form>\n  <ul id=\"list\"></ul>\n  <p id=\"count\"></p>\n</div>",
+          "css": "body { font-family: system-ui, sans-serif; display: flex; justify-content: center; padding: 20px; }\n.app { width: 320px; }\nform { display: flex; gap: 6px; }\ninput { flex: 1; padding: 8px; }\nbutton { cursor: pointer; padding: 6px 10px; }\nul { list-style: none; padding: 0; }\nli { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #ddd; }\nli span { cursor: pointer; flex: 1; }\nli.done span { text-decoration: line-through; color: #888; }",
+          "js": "const KEY = \"todos-demo\";\nlet todos = [];\ntry { todos = JSON.parse(localStorage.getItem(KEY)) || []; } catch { todos = []; }\n\nconst list = document.getElementById(\"list\");\nconst count = document.getElementById(\"count\");\n\nfunction save() {\n  try { localStorage.setItem(KEY, JSON.stringify(todos)); } catch {}\n}\nfunction render() {\n  list.innerHTML = \"\";\n  todos.forEach((t) => {\n    const li = document.createElement(\"li\");\n    li.dataset.id = t.id;\n    li.className = t.done ? \"done\" : \"\";\n    const span = document.createElement(\"span\");\n    span.textContent = t.text;\n    span.dataset.action = \"toggle\";\n    const del = document.createElement(\"button\");\n    del.textContent = \"x\";\n    del.dataset.action = \"delete\";\n    li.append(span, del);\n    list.append(li);\n  });\n  count.textContent = todos.filter((t) => !t.done).length + \" left\";\n}\ndocument.getElementById(\"form\").addEventListener(\"submit\", (e) => {\n  e.preventDefault();\n  const input = document.getElementById(\"text\");\n  const text = input.value.trim();\n  if (!text) return;\n  todos.push({ id: Date.now(), text, done: false });\n  input.value = \"\";\n  save(); render();\n});\nlist.addEventListener(\"click\", (e) => {\n  const action = e.target.dataset.action;\n  const id = Number(e.target.closest(\"li\")?.dataset.id);\n  if (action === \"toggle\") todos = todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t));\n  if (action === \"delete\") todos = todos.filter((t) => t.id !== id);\n  if (action) { save(); render(); }\n});\nrender();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you keep the UI in sync with data in a vanilla JS app?",
+          "a": "Treat an array/object as the single source of truth, change that state, then re-render the DOM from it."
+        },
+        {
+          "q": "Why use event delegation in a todo list?",
+          "a": "One listener on the list handles toggle/delete for all current and future items without re-attaching listeners."
+        },
+        {
+          "q": "How do you persist todos across page reloads?",
+          "a": "Serialize the array with JSON.stringify into localStorage and read it back with JSON.parse on startup."
+        }
+      ],
+      "source": "JS-one-shot/windows/dom/domCrud.html"
+    }
+  ]
+}

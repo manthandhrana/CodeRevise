@@ -1,0 +1,192 @@
+{
+ "id": "express-mern",
+ "title": "Connecting with React (MERN)",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-mern-cors-proxy-fetch",
+   "title": "React to Express: CORS, Vite Proxy, fetch and axios",
+   "level": "intermediate",
+   "summary": "Call your Express API from a Vite React app either through a dev proxy or CORS, using fetch or an axios instance.",
+   "description": "In development you run two servers: Express on `http://localhost:3000` and Vite on `http://localhost:5173`. Different ports mean different **origins**, so the browser applies CORS rules. There are two clean solutions.\n\n### Option A: Vite dev proxy (recommended in development)\nVite forwards `/api/*` calls to Express, so the browser thinks everything is same-origin: no CORS, and cookies just work.\n\n```js\n// vite.config.js\nserver: { proxy: { '/api': { target: 'http://localhost:3000', changeOrigin: true } } }\n```\nReact then calls `fetch('/api/products')`. In production the same relative URL works if Express serves the build or nginx routes `/api` to Node.\n\n### Option B: CORS\nAllow the Vite origin in Express (`cors({ origin: 'http://localhost:5173', credentials: true })`) and call the absolute URL from React. Needed when the front end and API live on different domains in production (for example Vercel + Render).\n\n### fetch\nBuilt in; does not reject on 4xx/5xx - check `res.ok` yourself. Send JSON with the header `Content-Type: application/json` and `JSON.stringify`. Add `credentials: 'include'` when using cookies across origins.\n\n### axios\nCreate one **instance** with `baseURL` and `withCredentials: true`; axios rejects on non-2xx, parses JSON automatically and supports interceptors (attach tokens, handle 401 globally).\n\n### Data fetching in React\nFetch inside `useEffect` (with `AbortController` cleanup) or use **TanStack Query** for caching, retries and loading/error states.\n\n### Error shape\nBecause the API returns a consistent `{ message }` error, the front end can show `err.response.data.message` anywhere.",
+   "keyPoints": [
+    "Dev: Vite `server.proxy` avoids CORS entirely",
+    "Cross-domain production: configure `cors` with `credentials: true`",
+    "fetch needs a manual `res.ok` check; axios throws on non-2xx",
+    "Cookies across origins need `credentials: 'include'` / `withCredentials`",
+    "One axios instance with `baseURL` keeps API code tidy"
+   ],
+   "pitfalls": [
+    "Hard-coding `http://localhost:3000` in components (breaks in production)",
+    "Forgetting `credentials: 'include'` so the auth cookie is not sent",
+    "Proxying in `vite.config.js` but expecting it to work in `vite build` output (proxy is dev only)"
+   ],
+   "examples": [
+    {
+     "title": "vite.config.js and API client",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// ## vite.config.js\nimport { defineConfig } from 'vite'\nimport react from '@vitejs/plugin-react'\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 5173,\n    proxy: {\n      '/api': { target: 'http://localhost:3000', changeOrigin: true },\n    },\n  },\n})\n\n// ## src/api/client.js\nimport axios from 'axios'\n\nexport const api = axios.create({\n  baseURL: import.meta.env.VITE_API_URL ?? '/api',   // '/api' uses the proxy / same origin\n  withCredentials: true,\n  timeout: 10_000,\n})\n\n// ## src/pages/Products.jsx\nimport { useEffect, useState } from 'react'\nimport { api } from '../api/client.js'\n\nexport default function Products() {\n  const [products, setProducts] = useState([])\n  const [error, setError] = useState('')\n  const [loading, setLoading] = useState(true)\n\n  useEffect(() => {\n    const controller = new AbortController()\n    api.get('/products', { signal: controller.signal })\n      .then((res) => setProducts(res.data.data ?? res.data))\n      .catch((err) => {\n        if (err.name !== 'CanceledError') setError(err.response?.data?.message ?? 'Something went wrong')\n      })\n      .finally(() => setLoading(false))\n    return () => controller.abort()\n  }, [])\n\n  if (loading) return <p>Loading...</p>\n  if (error) return <p role=\"alert\">{error}</p>\n  return <ul>{products.map((p) => <li key={p._id}>{p.name} - Rs {p.price}</li>)}</ul>\n}",
+     "explanation": ""
+    },
+    {
+     "title": "Same call with fetch",
+     "language": "text",
+     "lang": "jsx",
+     "code": "async function createProduct(data) {\n  const res = await fetch('/api/products', {\n    method: 'POST',\n    headers: { 'Content-Type': 'application/json' },\n    credentials: 'include',\n    body: JSON.stringify(data),\n  })\n  const body = await res.json()\n  if (!res.ok) throw new Error(body.message ?? 'Request failed')   // fetch does not throw on 4xx/5xx\n  return body\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a Vite proxy during development?",
+     "a": "It makes requests same-origin from the browser's perspective, so no CORS configuration is needed and cookies work without extra flags."
+    },
+    {
+     "q": "Does fetch reject on a 404 response?",
+     "a": "No. fetch only rejects on network failures; you must check response.ok (or status) and handle HTTP errors yourself."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-mern-auth-flow",
+   "title": "Auth Flow End to End (Cookies + JWT)",
+   "level": "advanced",
+   "summary": "Keep the access token in memory and the refresh token in an httpOnly cookie, with an axios interceptor that refreshes on 401.",
+   "description": "A secure and popular SPA pattern:\n\n| Token | Where it lives | Why |\n|---|---|---|\n| Access token (15 min) | React **memory** (state / module variable) | not readable from storage by XSS; sent as `Authorization: Bearer` |\n| Refresh token (7 days) | **httpOnly, secure, sameSite cookie** scoped to `/api/auth` | JavaScript cannot read it; browser sends it only to the refresh endpoint |\n\n### The flow\n1. **Login**: `POST /api/auth/login` -> server sets the refresh cookie, returns `{ accessToken, user }`. React stores the token in memory.\n2. **API calls**: an axios request interceptor adds `Authorization: Bearer <token>`.\n3. **Expiry**: the API answers `401`. A response interceptor calls `POST /api/auth/refresh` (cookie sent automatically), saves the new token and **retries** the original request once. Several parallel 401s should share one refresh call.\n4. **Page reload**: memory is lost, so on startup the app calls `/auth/refresh` to restore the session (show a loading screen meanwhile).\n5. **Logout**: `POST /api/auth/logout` clears the cookie server-side; React clears memory.\n\n### Protecting routes\nAn `AuthContext` exposes `user`, `login`, `logout`, `loading`. A `ProtectedRoute` component redirects to `/login` when there is no user (and waits while `loading`). Remember this is only UX: the **server** must enforce access.\n\n### Cross-site cookies\nIf front end and API are on different sites in production, the cookie needs `sameSite: 'none'` + `secure: true`, `cors({ credentials: true, origin })`, and `withCredentials: true` in axios. Using the same parent domain (`app.example.com` + `api.example.com`) or serving both from one origin avoids most problems.",
+   "keyPoints": [
+    "Access token in memory, refresh token in httpOnly cookie",
+    "Interceptor: attach Bearer token; on 401 refresh once and retry",
+    "Restore the session on page load via the refresh endpoint",
+    "AuthContext + ProtectedRoute for UX; server enforces real security",
+    "Cross-site cookies need `sameSite: 'none'`, `secure`, CORS credentials"
+   ],
+   "pitfalls": [
+    "Storing tokens in `localStorage` (readable by any XSS)",
+    "Infinite refresh loops when the refresh endpoint itself returns 401",
+    "Race conditions: several requests refreshing at once",
+    "Forgetting `withCredentials`, so the refresh cookie is never sent"
+   ],
+   "examples": [
+    {
+     "title": "Backend routes (summary)",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/routes/auth.js\nimport { Router } from 'express'\nimport { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens.js'\nimport User from '../models/User.js'\n\nconst router = Router()\nconst cookieOptions = {\n  httpOnly: true,\n  secure: process.env.NODE_ENV === 'production',\n  sameSite: process.env.CROSS_SITE === 'true' ? 'none' : 'lax',\n  path: '/api/auth',\n  maxAge: 7 * 24 * 60 * 60 * 1000,\n}\n\nrouter.post('/login', async (req, res) => {\n  const user = await User.findOne({ email: req.body.email }).select('+password')\n  if (!user || !(await user.matchPassword(req.body.password))) {\n    return res.status(401).json({ message: 'Invalid credentials' })\n  }\n  res.cookie('refreshToken', signRefreshToken(user), cookieOptions)\n  res.json({ accessToken: signAccessToken(user), user: { id: user.id, name: user.name, email: user.email } })\n})\n\nrouter.post('/refresh', async (req, res) => {\n  try {\n    const { sub } = verifyRefreshToken(req.cookies.refreshToken)\n    const user = await User.findById(sub)\n    if (!user) throw new Error('no user')\n    res.json({ accessToken: signAccessToken(user), user: { id: user.id, name: user.name, email: user.email } })\n  } catch {\n    res.status(401).json({ message: 'Session expired' })\n  }\n})\n\nrouter.post('/logout', (req, res) => {\n  res.clearCookie('refreshToken', { ...cookieOptions, maxAge: undefined })\n  res.status(204).end()\n})\n\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "React: axios interceptors and AuthContext",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// ## src/api/client.js\nimport axios from 'axios'\n\nexport const api = axios.create({ baseURL: '/api', withCredentials: true })\n\nlet accessToken = null\nlet refreshPromise = null\nexport const setAccessToken = (t) => { accessToken = t }\n\napi.interceptors.request.use((config) => {\n  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`\n  return config\n})\n\napi.interceptors.response.use(\n  (res) => res,\n  async (error) => {\n    const original = error.config\n    const isAuthCall = original.url?.includes('/auth/')\n    if (error.response?.status === 401 && !original._retried && !isAuthCall) {\n      original._retried = true\n      refreshPromise ??= api.post('/auth/refresh').finally(() => { refreshPromise = null })\n      try {\n        const { data } = await refreshPromise\n        setAccessToken(data.accessToken)\n        original.headers.Authorization = `Bearer ${data.accessToken}`\n        return api(original)                           // retry once\n      } catch (e) {\n        setAccessToken(null)\n        window.dispatchEvent(new Event('auth:logout'))\n      }\n    }\n    return Promise.reject(error)\n  }\n)\n\n// ## src/context/AuthContext.jsx\nimport { createContext, useContext, useEffect, useState } from 'react'\nimport { api, setAccessToken } from '../api/client.js'\n\nconst AuthContext = createContext(null)\nexport const useAuth = () => useContext(AuthContext)\n\nexport function AuthProvider({ children }) {\n  const [user, setUser] = useState(null)\n  const [loading, setLoading] = useState(true)\n\n  // restore session after page reload\n  useEffect(() => {\n    api.post('/auth/refresh')\n      .then(({ data }) => { setAccessToken(data.accessToken); setUser(data.user) })\n      .catch(() => setUser(null))\n      .finally(() => setLoading(false))\n    const onLogout = () => setUser(null)\n    window.addEventListener('auth:logout', onLogout)\n    return () => window.removeEventListener('auth:logout', onLogout)\n  }, [])\n\n  const login = async (email, password) => {\n    const { data } = await api.post('/auth/login', { email, password })\n    setAccessToken(data.accessToken)\n    setUser(data.user)\n  }\n\n  const logout = async () => {\n    await api.post('/auth/logout')\n    setAccessToken(null)\n    setUser(null)\n  }\n\n  return (\n    <AuthContext.Provider value={{ user, loading, login, logout }}>\n      {children}\n    </AuthContext.Provider>\n  )\n}\n\n// ## src/components/ProtectedRoute.jsx\nimport { Navigate, Outlet } from 'react-router-dom'\nimport { useAuth } from '../context/AuthContext.jsx'\n\nexport default function ProtectedRoute() {\n  const { user, loading } = useAuth()\n  if (loading) return <p>Loading...</p>\n  return user ? <Outlet /> : <Navigate to=\"/login\" replace />\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why not store the JWT in localStorage?",
+     "a": "Any XSS vulnerability can read localStorage and steal the token; keeping the access token in memory and the refresh token in an httpOnly cookie greatly reduces that risk."
+    },
+    {
+     "q": "How does the app stay logged in after a page refresh?",
+     "a": "On startup it calls the refresh endpoint; the browser sends the httpOnly cookie, and if it is valid the server returns a new access token and user data."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-mern-serve-deploy",
+   "title": "Serving the React Build from Express and Deploying MERN",
+   "level": "advanced",
+   "summary": "Serve Vite's dist folder from Express with an SPA fallback, or deploy front end and API separately.",
+   "description": "### Option 1: one server (Express serves React)\nRun `npm run build` in the React app, which creates `dist/` (static HTML, JS and CSS). Express serves it:\n1. `express.static(distPath)` for assets.\n2. API routes under `/api` **before** the fallback.\n3. A catch-all `GET` that returns `index.html`, so client-side routes like `/dashboard` work on refresh (**SPA fallback**).\n\nAdvantages: same origin (no CORS, simple cookies), one deployment. Disadvantages: front end and API scale and deploy together.\n\nIn Express 5 the catch-all syntax is `/{*splat}` (the v4 `'*'` throws). Also return a JSON 404 for unknown `/api/*` routes instead of the HTML page.\n\n### Option 2: separate deployments\n- Front end: Vercel, Netlify or Cloudflare Pages (static hosting + CDN). Add a rewrite rule `/* -> /index.html` for SPA routing.\n- API: Render, Railway, Fly.io, a VPS or AWS. Database: MongoDB Atlas.\n- Configure CORS with the front end origin, cookies with `sameSite: 'none'; secure`, and set `VITE_API_URL` to the API URL at **build time**.\n\n### Deployment checklist\n1. `NODE_ENV=production`, strong secrets, `trust proxy` set.\n2. Atlas network access allows the host; use a dedicated database user.\n3. Build command (`npm run build`) and start command (`node src/server.js`) set on the host.\n4. HTTPS enabled; health check endpoint configured.\n5. Remember free tiers sleep: first request can be slow.",
+   "keyPoints": [
+    "Build React, then `express.static('dist')` + SPA fallback to `index.html`",
+    "Register `/api` routes before the catch-all; JSON 404 for unknown API paths",
+    "v5 catch-all is `/{*splat}`",
+    "Separate hosting needs CORS, cross-site cookies and a build-time API URL",
+    "Use Atlas for the database and set env vars on the host"
+   ],
+   "pitfalls": [
+    "Catch-all registered before API routes (API calls return HTML)",
+    "Using `'*'` as a path in Express 5 (throws on startup)",
+    "Forgetting a rewrite rule on static hosts (404 on page refresh)"
+   ],
+   "examples": [
+    {
+     "title": "Express serving the Vite build",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## server/src/app.js\nimport express from 'express'\nimport path from 'node:path'\nimport helmet from 'helmet'\nimport productRoutes from './routes/products.js'\nimport authRoutes from './routes/auth.js'\n\nconst app = express()\napp.set('trust proxy', 1)\napp.use(helmet())\napp.use(express.json())\n\n// 1. API\napp.use('/api/auth', authRoutes)\napp.use('/api/products', productRoutes)\napp.use('/api', (req, res) => res.status(404).json({ message: 'API route not found' }))\n\n// 2. React build (only in production)\nif (process.env.NODE_ENV === 'production') {\n  const dist = path.join(import.meta.dirname, '../../client/dist')\n\n  app.use(express.static(dist, { maxAge: '1y', index: false }))\n\n  // 3. SPA fallback: every other GET returns index.html\n  app.get('/{*splat}', (req, res) => {\n    res.set('Cache-Control', 'no-cache')              // never cache index.html\n    res.sendFile(path.join(dist, 'index.html'))\n  })\n}\n\nexport default app",
+     "explanation": ""
+    },
+    {
+     "title": "Project layout and scripts",
+     "language": "text",
+     "lang": "bash",
+     "code": "mern-app/\n├── client/          # Vite + React\n│   └── dist/        # created by \"npm run build\"\n├── server/          # Express API\n│   └── src/\n└── package.json     # root scripts\n\n# root package.json scripts\n\"build\":  \"npm --prefix client install && npm --prefix client run build && npm --prefix server install\",\n\"start\":  \"NODE_ENV=production node server/src/server.js\",\n\"dev\":    \"concurrently \\\"npm --prefix server run dev\\\" \\\"npm --prefix client run dev\\\"\"",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does refreshing /dashboard give 404 on a static host?",
+     "a": "The server looks for a real /dashboard file, but SPA routes exist only in the JavaScript bundle; add a rewrite to index.html so the React router can handle it."
+    },
+    {
+     "q": "Where must the SPA catch-all route be placed?",
+     "a": "After all API routes and static middleware, as the last GET handler, so API calls and assets are matched first."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-mern-env-vars",
+   "title": "Environment Variables on Both Sides",
+   "level": "intermediate",
+   "summary": "Understand which variables are secret server runtime values and which are public build-time values in Vite.",
+   "description": "A MERN project has **two** environments with very different rules.\n\n### Backend (Node/Express)\nVariables live on the server and are read at **runtime** from `process.env`: `MONGO_URI`, `JWT_ACCESS_SECRET`, `STRIPE_SECRET_KEY`, `CLIENT_URL`. They are secret and never reach the browser. Load from `.env` in development (`node --env-file=.env` or dotenv) and from the host's settings in production.\n\n### Frontend (Vite/React)\nVite reads `.env` files at **build time** and only exposes variables that start with `VITE_`, through `import.meta.env.VITE_API_URL` (not `process.env`). Everything you expose is **public**: it is baked into the JavaScript bundle and visible to every visitor. Therefore:\n- Never put secrets in `VITE_` variables (no database URLs, JWT secrets, Stripe *secret* keys).\n- Public values are fine: API base URL, Stripe *publishable* key, Google client id, feature flags.\n- Changing a value requires **rebuilding** the front end.\n\n### Files\n`.env` (shared defaults), `.env.development`, `.env.production`, plus `.env.local` for personal overrides (git-ignored). `import.meta.env.MODE`, `DEV` and `PROD` tell you the mode.\n\n### Keeping both sides in sync\n- `CLIENT_URL` (server) must equal the front end origin for CORS.\n- `VITE_API_URL` (client) must point to the API (or be empty when using a proxy/same origin).\n- Provide `.env.example` in both folders; add real `.env` files to `.gitignore`.\n\n### Deployment\nSet server variables in the API host's dashboard and `VITE_*` variables in the front end host's **build** settings.",
+   "keyPoints": [
+    "Server: `process.env.X`, secret, runtime",
+    "Client: `import.meta.env.VITE_X`, public, build-time",
+    "Only `VITE_`-prefixed variables reach the browser",
+    "Never expose secrets through `VITE_` variables",
+    "Keep `CLIENT_URL` and `VITE_API_URL` consistent; commit `.env.example`"
+   ],
+   "pitfalls": [
+    "Putting `VITE_JWT_SECRET` or similar in the client (it becomes public)",
+    "Changing a `VITE_` variable on the host without rebuilding",
+    "Using `process.env` in React code under Vite (it is `undefined`)"
+   ],
+   "examples": [
+    {
+     "title": "Both sides",
+     "language": "text",
+     "lang": "bash",
+     "code": "# server/.env  (never committed)\nNODE_ENV=development\nPORT=3000\nMONGO_URI=mongodb://localhost:27017/mern\nJWT_ACCESS_SECRET=replace-with-long-random-string\nJWT_REFRESH_SECRET=replace-with-another-long-random-string\nCLIENT_URL=http://localhost:5173\n\n# client/.env.development\nVITE_API_URL=/api\n\n# client/.env.production  (public values only!)\nVITE_API_URL=https://api.example.com/api\nVITE_STRIPE_PUBLISHABLE_KEY=pk_live_xxx",
+     "explanation": ""
+    },
+    {
+     "title": "Reading them",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## server/src/config/index.js\nexport const config = {\n  port: Number(process.env.PORT ?? 3000),\n  mongoUri: process.env.MONGO_URI,\n  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',\n}\n\n// ## client/src/config.js\nexport const API_URL = import.meta.env.VITE_API_URL ?? '/api'\nexport const IS_DEV = import.meta.env.DEV",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why can't you keep secrets in VITE_ variables?",
+     "a": "Vite embeds them into the public JavaScript bundle at build time, so anyone can read them in the browser; secrets must stay on the server."
+    },
+    {
+     "q": "Do you need to rebuild the front end after changing a VITE_ variable?",
+     "a": "Yes, because values are replaced at build time, not read at runtime."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,204 @@
+{
+ "id": "express-interview",
+ "title": "Interview Prep, Comparisons and Best Practices",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-interview-qa",
+   "title": "Express Interview Questions: Rapid-Fire Round",
+   "level": "intermediate",
+   "summary": "A compact set of the most common Express and Node backend interview questions with crisp answers and a coding exercise.",
+   "description": "Use this page as a last-minute revision sheet. Say the short answer first, then add one detail or example.\n\n| Question | Short answer |\n|---|---|\n| What is middleware? | A function `(req, res, next)` in the request pipeline; it can change req/res, end the request or call `next()`. |\n| Order of middleware? | Registration order; parsers and security first, routes, 404, error handler last. |\n| `app.use` vs `app.get`? | `use` matches every method and any path prefix; `get` matches only GET on the exact route. |\n| `req.params` vs `req.query` vs `req.body`? | Path segments, the part after `?`, and the parsed payload. |\n| How do you handle errors? | Throw or `next(err)`; one 4-argument error handler at the end; Express 5 forwards rejected promises. |\n| 401 vs 403? | Not authenticated vs authenticated but not allowed. |\n| What is CORS? | A browser rule; the server sends `Access-Control-*` headers to allow other origins. |\n| JWT vs sessions? | JWT is stateless and hard to revoke; sessions are server-side and easy to revoke. |\n| How to store passwords? | Hash with bcrypt/argon2 (salted, slow); never encrypt or use SHA-256 alone. |\n| How to prevent NoSQL injection? | Validate types (strings only), whitelist fields, `sanitizeFilter`, never pass raw `req.body` to queries. |\n| Why is Node fast for I/O? | Non-blocking event loop; but CPU-heavy work blocks all requests. |\n| How do you scale Express? | Stateless app, multiple processes (PM2/containers), load balancer, Redis for shared state, caching. |\n| What is `next('route')`? | Skip the remaining handlers of the current route. |\n| How do you structure a project? | Routes -> controllers -> services -> models, config module, central errors. |\n\n### How to answer scenario questions\nState the **problem**, the **approach**, the **trade-off** and how you would **test** it. For example: \"To protect login from brute force I add a strict rate limit per IP and account, return a generic error, hash with bcrypt, and log failures.\"\n\n### Coding exercise\nInterviewers love asking for a hand-written middleware such as a rate limiter, a logger, or `asyncHandler`. Practise the one in the example: it keeps per-key counters in a Map and answers 429 after the limit.",
+   "keyPoints": [
+    "Explain middleware, order, error handling and the req/res cycle fluently",
+    "Know status codes: 201, 204, 400, 401, 403, 404, 409, 422, 429, 500",
+    "Security basics: bcrypt, JWT/sessions, CORS, helmet, validation, rate limiting",
+    "Be ready to write a small middleware (logger, auth, rate limiter) live",
+    "Discuss scaling: stateless design, PM2/containers, Redis, caching"
+   ],
+   "pitfalls": [
+    "Memorising definitions without being able to show code",
+    "Saying \"JWT is encrypted\" or \"CORS protects the server\"",
+    "Ignoring error paths when writing live code"
+   ],
+   "examples": [
+    {
+     "title": "Fixed-window rate limiter (runnable simulation)",
+     "language": "javascript",
+     "code": "function rateLimiter({ windowMs, max, now = Date.now }) {\n  const hits = new Map()                            // key -> { start, count }\n\n  return function limiter(req, res, next) {\n    const key = req.ip\n    const t = now()\n    const entry = hits.get(key)\n\n    if (!entry || t - entry.start >= windowMs) {    // new window\n      hits.set(key, { start: t, count: 1 })\n      return next()\n    }\n    entry.count++\n    if (entry.count > max) {\n      const retryAfter = Math.ceil((entry.start + windowMs - t) / 1000)\n      return res.status(429).json({ error: 'Too many requests', retryAfter })\n    }\n    next()\n  }\n}\n\n// --- simulate requests with a fake clock ---\nlet clock = 0\nconst limiter = rateLimiter({ windowMs: 10_000, max: 3, now: () => clock })\n\nfunction fakeRes() {\n  return {\n    status(code) { this.code = code; return this },\n    json(body) { console.log(`  -> ${this.code}`, JSON.stringify(body)) },\n  }\n}\n\nfunction hit(label, ip = '1.1.1.1') {\n  console.log(`t=${clock}ms ${label}`)\n  limiter({ ip }, fakeRes(), () => console.log('  -> allowed'))\n}\n\nhit('request 1')\nhit('request 2')\nhit('request 3')\nhit('request 4 (over the limit)')\nhit('other client', '2.2.2.2')\nclock = 4000\nhit('request 5 (still same window)')\nclock = 10000\nhit('request 6 (new window)')",
+     "explanation": "A middleware factory with a fake clock so the output is deterministic. The same function works in real Express."
+    },
+    {
+     "title": "Express in one line: asyncHandler and compose",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// asyncHandler (needed in Express 4, harmless in 5)\nexport const asyncHandler = (fn) => (req, res, next) =>\n  Promise.resolve(fn(req, res, next)).catch(next)\n\n// compose: run middleware one after another (the idea behind app.use)\nexport function compose(middlewares) {\n  return function run(req, res, done = () => {}) {\n    let index = -1\n    function dispatch(i, err) {\n      if (err) return done(err)                       // next(err) skips everything left\n      if (i <= index) throw new Error('next() called multiple times')\n      index = i\n      const fn = middlewares[i]\n      if (!fn) return done()\n      try {\n        fn(req, res, (e) => dispatch(i + 1, e))\n      } catch (e) {\n        done(e)                                       // thrown errors become next(err)\n      }\n    }\n    dispatch(0)\n  }\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the Express request lifecycle in an interview-ready way.",
+     "a": "A request enters Express, passes through global middleware in order (security, logging, parsers), reaches the first matching route and its handlers, and ends with a res method; if nothing matches the 404 handler responds, and any thrown or next(err) error is sent to the error-handling middleware."
+    },
+    {
+     "q": "How would you design login security for an Express API?",
+     "a": "Validate input, hash passwords with bcrypt, return generic errors, rate-limit by IP and account, issue short-lived access tokens with refresh tokens in httpOnly cookies, use HTTPS, and log failed attempts."
+    },
+    {
+     "q": "Why is blocking the event loop dangerous?",
+     "a": "Node runs JavaScript on one thread, so a long synchronous task (huge loops, sync crypto, large JSON parsing) delays every other request; move CPU-heavy work to workers or queues."
+    },
+    {
+     "q": "What is the difference between process.nextTick, setImmediate and a promise callback?",
+     "a": "nextTick runs before the event loop continues (highest priority), promise callbacks run in the microtask queue right after, and setImmediate runs in the check phase after I/O callbacks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-vs-others",
+   "title": "Express vs Fastify vs Koa vs NestJS",
+   "level": "intermediate",
+   "summary": "Compare the main Node web frameworks by philosophy, speed, features and when each is the right choice.",
+   "description": "All four run on Node's `http` module, but they make different trade-offs.\n\n| | Express | Fastify | Koa | NestJS |\n|---|---|---|---|---|\n| Style | minimal, callbacks/async | plugin-based, schema-first | minimal, async/await \"onion\" | opinionated, TypeScript, DI |\n| Built-ins | routing, static, few helpers | validation + serialization via JSON Schema, logging (pino) | almost nothing (needs router/body modules) | modules, controllers, guards, pipes, ORM integrations |\n| Performance | good | very high (often 2-3x Express in benchmarks) | good | depends on adapter (Express or Fastify) |\n| Ecosystem | largest, most tutorials | large and growing | smaller | large, enterprise |\n| Learning curve | easiest | easy-moderate | easy | steepest |\n\n### Express\nMost popular, huge middleware ecosystem, perfect for learning, MERN and small to mid-size APIs. You design the architecture yourself. Express 5 modernised async handling.\n\n### Fastify\nChoose it when throughput and low overhead matter, or when you want built-in validation and fast JSON serialisation from schemas. Plugins are encapsulated, which keeps large codebases tidy. Many Express ideas map directly (routes, hooks instead of middleware).\n\n### Koa\nBy the Express authors: tiny core, `ctx` object, middleware that can `await next()` and run code before **and** after downstream handlers. Great for those who want a bare toolkit.\n\n### NestJS\nAngular-style architecture (modules, decorators, dependency injection) on top of Express or Fastify. Best for large teams and long-lived enterprise apps that need strong conventions and testability. More boilerplate.\n\n### Rule of thumb\nLearning, startups, quick APIs: **Express**. Performance-critical or schema-driven services: **Fastify**. Large TypeScript teams: **NestJS**. Minimal custom stacks: **Koa**.",
+   "keyPoints": [
+    "Express: biggest ecosystem and easiest to learn; you choose the architecture",
+    "Fastify: fastest, schema validation/serialization built in, plugin encapsulation",
+    "Koa: tiny async/await core with an onion middleware model",
+    "NestJS: opinionated TypeScript framework with DI that can run on Express or Fastify",
+    "Pick by team size, performance needs and need for structure"
+   ],
+   "pitfalls": [
+    "Choosing a framework only from micro-benchmarks (database and network dominate real latency)",
+    "Expecting NestJS to replace Express knowledge (it sits on top of it)"
+   ],
+   "examples": [
+    {
+     "title": "Same endpoint in Express, Fastify and Koa",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## express.js\nimport express from 'express'\nconst app = express()\napp.get('/users/:id', (req, res) => res.json({ id: req.params.id, q: req.query }))\napp.listen(3000)\n\n// ## fastify.js\nimport Fastify from 'fastify'\nconst app = Fastify()\napp.get('/users/:id', async (request) => ({ id: request.params.id, q: request.query }))\napp.post('/users', {\n  schema: { body: { type: 'object', required: ['name'], properties: { name: { type: 'string', minLength: 2 } } } },\n}, async (request, reply) => reply.code(201).send({ created: request.body.name }))   // invalid body -> automatic 400\nawait app.listen({ port: 3000 })\n\n// ## koa.js\nimport Koa from 'koa'\nimport Router from '@koa/router'\nconst app = new Koa()\nconst router = new Router()\nrouter.get('/users/:id', (ctx) => { ctx.body = { id: ctx.params.id, q: ctx.query } })\n\napp.use(async (ctx, next) => {          // onion: code before AND after next()\n  const start = Date.now()\n  await next()\n  ctx.set('X-Response-Time', `${Date.now() - start}ms`)\n})\napp.use(router.routes())\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "NestJS controller",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// users.controller.ts (TypeScript, shown with JS highlighting)\nimport { Controller, Get, Post, Param, Body, HttpCode } from '@nestjs/common'\nimport { UsersService } from './users.service'\nimport { CreateUserDto } from './dto/create-user.dto'\n\n@Controller('users')\nexport class UsersController {\n  constructor(private readonly users: UsersService) {}      // dependency injection\n\n  @Get(':id')\n  findOne(@Param('id') id: string) {\n    return this.users.findOne(id)\n  }\n\n  @Post()\n  @HttpCode(201)\n  create(@Body() dto: CreateUserDto) {                      // validated by a ValidationPipe\n    return this.users.create(dto)\n  }\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you choose Fastify over Express?",
+     "a": "When performance and low overhead matter or you want schema-based validation and serialization out of the box; the trade-off is a smaller ecosystem of drop-in middleware."
+    },
+    {
+     "q": "What is the main difference between Express and Koa middleware?",
+     "a": "Koa middleware are async functions using await next() so they can run code both before and after downstream handlers (an onion model) and share a ctx object, whereas Express uses (req, res, next) callbacks."
+    },
+    {
+     "q": "Is NestJS a replacement for Express?",
+     "a": "No. NestJS is a higher-level framework that uses Express (or Fastify) underneath and adds structure such as modules, decorators and dependency injection."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-migrating-v4-v5",
+   "title": "Migrating from Express 4 to 5",
+   "level": "intermediate",
+   "summary": "A checklist of the breaking changes in Express 5 with before/after code and the tools that help.",
+   "description": "Express 5 is mostly compatible, but a few changes will break old code. Upgrade steps: use Node 18+, `npm install express@5`, run the codemod, then fix the items below and run your tests.\n\n### Breaking changes checklist\n| Area | Express 4 | Express 5 |\n|---|---|---|\n| Wildcards | `app.get('*', ...)` | `app.get('/*splat', ...)` or `/{*splat}` |\n| Optional params | `/:id?` | braces: `/books{/:id}` |\n| Inline param regex | `/:id(\\d+)` | removed - validate in code |\n| Async errors | need `try/catch` + `next(err)` | rejected promises are forwarded automatically |\n| `req.query` | writable, parsed with `qs` | getter, parsed by the `simple` parser |\n| `req.body` | `{}` when not parsed | `undefined` when not parsed |\n| `express.urlencoded` | `extended: true` default | `extended: false` default |\n| Removed methods | `app.del()`, `req.param()`, `res.sendfile()` | use `app.delete()`, `req.params/query/body`, `res.sendFile()` |\n| `res.json(status, obj)` / `res.send(status)` | worked | **silently sends the number as the body** - use `res.status(n).json(obj)` |\n| `res.redirect('back')` | back to referrer | no longer special - use `req.get('Referer') ?? '/'` |\n| `res.status(x)` | any value | must be an integer 100-999 |\n| `req.host` | hostname only | includes the port (`req.hostname` has none) |\n| `app.listen(cb)` | cb ignored errors | cb receives the error (e.g. `EADDRINUSE`) |\n\n### Tooling\n`npx @expressjs/codemod upgrade` automates many mechanical edits (check the official migration guide for the current list). Also update middleware packages (`body-parser`, `cookie-parser`, `express-session`, `cors`, `multer`, `express-mongo-sanitize`/`hpp` compatibility) and check each package's changelog for Express 5 support.\n\n### Strategy\nUpgrade on a branch, search the code for the patterns above (`'*'`, `.del(`, `res.json(` with two arguments, `req.param(`), run your test suite, then deploy gradually.",
+   "keyPoints": [
+    "Requires Node 18+; run `npx @expressjs/codemod upgrade`",
+    "Rename wildcards (`*splat`) and optional params (braces); drop inline regex",
+    "Remove v4-only helpers: `app.del`, `req.param`, `res.sendfile`, `res.json(status, body)`",
+    "Check body parsing (`req.body` undefined) and `req.query` assumptions",
+    "Async handlers no longer need wrappers"
+   ],
+   "pitfalls": [
+    "`res.send(404)` or `res.json(200, obj)` do NOT fail in v5: they respond 200 with the number as the body",
+    "Server crashes at startup with `PathError` because of an old route string",
+    "Third-party middleware that mutates `req.query` fails (read-only)"
+   ],
+   "examples": [
+    {
+     "title": "Before and after",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ---------- Express 4 ----------\napp.get('*', (req, res) => res.status(404).send('Not found'))\napp.get('/users/:id?', handler)\napp.get('/orders/:id(\\\\d+)', handler)\napp.del('/posts/:id', removePost)\napp.get('/old', (req, res) => res.json(200, { ok: true }))\napp.get('/err', (req, res) => res.send(404))\n\n// ---------- Express 5 ----------\napp.use((req, res) => res.status(404).send('Not found'))        // or app.get('/{*splat}', ...)\napp.get('/users{/:id}', handler)\napp.get('/orders/:id', (req, res, next) => {\n  if (!/^\\d+$/.test(req.params.id)) return next('route')        // validate in code\n  handler(req, res, next)\n})\napp.delete('/posts/:id', removePost)\napp.get('/old', (req, res) => res.status(200).json({ ok: true }))\napp.get('/err', (req, res) => res.sendStatus(404))",
+     "explanation": ""
+    },
+    {
+     "title": "What silently changes (verified behaviour)",
+     "language": "text",
+     "lang": "bash",
+     "code": "# Express 5 server still running v4-style code:\ncurl -i localhost:3000/old\n# HTTP/1.1 200 OK\n# 200                      <-- the NUMBER 200 was sent as the body, your object vanished\n\ncurl -i localhost:3000/err\n# HTTP/1.1 200 OK          <-- not 404!\n# 404\n\n# crash on startup for an old wildcard:\n# PathError [TypeError]: Missing parameter name at index 5: /old*",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the biggest benefit of Express 5 for developers?",
+     "a": "Native promise support: rejected promises and thrown errors in async handlers reach the error middleware without wrappers, which removes a common source of hanging requests."
+    },
+    {
+     "q": "How do you write a catch-all route in Express 5?",
+     "a": "Use a named wildcard like /{*splat} (or /*splat for non-root), or simply a final app.use middleware; the bare '*' pattern is invalid."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-common-mistakes",
+   "title": "Common Mistakes and Best Practices",
+   "level": "intermediate",
+   "summary": "The recurring bugs seen in Express code reviews and the habits that prevent them.",
+   "description": "Most production incidents come from a short list of mistakes. Learn them once and review your code against them.\n\n### Top mistakes\n1. **Forgetting `next()` or a response** - request hangs.\n2. **Sending two responses** - missing `return` after an early reply.\n3. **Registering things in the wrong order** - routes before `express.json()`, 404 before routes, error handler not last.\n4. **No central error handling** - try/catch repeated everywhere, leaking stack traces.\n5. **Trusting input** - passing `req.body`/`req.query` directly into the database or `new Model(req.body)`.\n6. **Weak auth** - plain or fast-hashed passwords, JWTs in `localStorage`, `alg` not pinned, secrets committed to git.\n7. **Missing authorization** - checking only that the user is logged in, not that the resource is theirs (IDOR).\n8. **Blocking the event loop** - sync file/crypto calls, huge loops in handlers.\n9. **Connecting to the DB per request** instead of once at startup.\n10. **CORS misuse** - `origin: '*'` with credentials, or enabling CORS \"to fix\" an error without understanding it.\n11. **Unbounded responses** - lists without pagination; no body size limit.\n12. **No `NODE_ENV=production`, no graceful shutdown, no health check.**\n\n### Best-practice summary\n- Layered structure; thin controllers; services for business rules.\n- Validate everything with schemas; return consistent JSON errors with correct codes.\n- Use helmet, rate limiting, HTTPS, httpOnly cookies, bcrypt, short-lived tokens.\n- Keep secrets in env vars; validate config at startup.\n- Log structured JSON with request ids; never log secrets.\n- Write integration tests with supertest; run them in CI.\n- Handle SIGTERM, close connections, and let a process manager restart crashes.\n- Document the API (OpenAPI) and version it.",
+   "keyPoints": [
+    "Always end the request exactly once; `return` after early responses",
+    "Middleware order: security, parsers, routes, 404, error handler",
+    "Validate input, authorize per resource, use a central error handler",
+    "Connect to the DB once; never block the event loop",
+    "Production: env vars, logging, health checks, tests, graceful shutdown"
+   ],
+   "pitfalls": [
+    "Fixing a failing request by disabling security (CORS `*`, removing auth) instead of finding the cause",
+    "Copy-pasting tutorial code that stores secrets or tokens insecurely"
+   ],
+   "examples": [
+    {
+     "title": "Bad vs good handler",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ---------- BAD ----------\napp.post('/api/users', async (req, res) => {\n  try {\n    const user = await User.create(req.body)          // mass assignment: client can send role: \"admin\"\n    res.json(user)                                    // returns password hash too, status 200 instead of 201\n    sendWelcomeEmail(user.email)                      // no .catch -> a failed email becomes an unhandled rejection that can crash the process\n  } catch (err) {\n    res.status(500).send(err.stack)                   // leaks internals, wrong status for validation errors\n  }\n})\n\napp.get('/api/orders/:id', auth, async (req, res) => {\n  res.json(await Order.findById(req.params.id))       // IDOR: any logged-in user can read any order\n})\n\n// ---------- GOOD ----------\napp.post('/api/users', validate({ body: createUserSchema }), async (req, res) => {\n  const { name, email, password } = req.validated.body           // only allowed, typed fields\n  const user = await userService.register({ name, email, password })\n  res.status(201).json({ id: user.id, name: user.name, email: user.email })\n  sendWelcomeEmail(user.email).catch((e) => logger.error(e))     // background, failure logged\n})\n\napp.get('/api/orders/:id', auth, async (req, res) => {\n  const order = await Order.findOne({ _id: req.params.id, user: req.user.id })   // owner filter\n  if (!order) throw new NotFoundError('Order')\n  res.json(order)\n})\n// errors thrown above are formatted by ONE central error handler",
+     "explanation": ""
+    },
+    {
+     "title": "Pre-launch checklist",
+     "language": "text",
+     "lang": "bash",
+     "code": "[ ] NODE_ENV=production, trust proxy set behind nginx/load balancer\n[ ] helmet, CORS allow-list, rate limit on /auth/*, body size limits\n[ ] All input validated; ownership checks on every resource route\n[ ] Passwords hashed (bcrypt cost 12+), secrets in env, .env not in git\n[ ] Central error handler: no stack traces in responses\n[ ] Structured logs with request id; /health and /ready endpoints\n[ ] DB indexes for filters/sorts; pagination on every list\n[ ] Graceful shutdown on SIGTERM; process manager or container restart policy\n[ ] npm audit clean; dependencies pinned with a lockfile\n[ ] Tests (supertest) pass in CI; API docs published",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the three most common Express bugs you have seen?",
+     "a": "Requests that hang because next() or a response is missing, double responses from a missing return, and trusting req.body/req.params without validation or ownership checks."
+    },
+    {
+     "q": "What goes wrong if you register express.json() after your routes?",
+     "a": "The routes run before the body is parsed, so req.body is undefined (in Express 5) and handlers fail or validate nothing."
+    },
+    {
+     "q": "Why should every list endpoint be paginated?",
+     "a": "Without limits a single request can load an entire collection, exhausting memory and bandwidth and creating an easy denial-of-service vector."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

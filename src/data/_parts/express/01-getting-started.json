@@ -1,0 +1,227 @@
+{
+ "id": "express-getting-started",
+ "title": "Getting Started",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "express-what-is",
+   "title": "What is Express?",
+   "level": "beginner",
+   "summary": "Express is a small, unopinionated web framework for Node.js that makes building servers and REST APIs fast and readable.",
+   "description": "**Express.js** is a minimal web framework that sits on top of Node's built-in `http` module. Node alone can already create a server, but you would have to parse URLs, read request bodies, set headers and pick the right handler by hand. Express wraps all of this in a clean API so you write *what* should happen, not *how* to plumb it.\n\n### What Express gives you\n- **Routing**: map `METHOD + URL` to a function (`app.get('/users', ...)`).\n- **Middleware**: small functions that run in a pipeline (parse JSON, log, authenticate, handle errors).\n- **Helpers**: `res.json()`, `res.status()`, `res.redirect()`, `req.params`, `req.query` and more.\n- **Template engines and static files** if you need server-rendered pages.\n\n### Why people choose it\nExpress is *unopinionated*: it does not force a folder structure, database or ORM. That is both its strength (freedom, tiny learning curve) and its weakness (you must make your own architecture decisions). It is the \"E\" in the **MERN** stack (MongoDB, Express, React, Node) and the base that many other frameworks (NestJS by default, Sails, LoopBack) are built on.\n\n### Versions\nExpress **5** is the current major version (Node 18+ required). It adds native promise support in handlers, a stricter routing syntax and removes some deprecated v4 APIs. This track teaches Express 5 and calls out v4 differences.\n\n### What Express is not\nIt is not a database layer, an auth system or a full-stack framework. You add those with packages such as Mongoose, Passport, JWT libraries and so on.",
+   "keyPoints": [
+    "Express = thin layer over Node's `http` module: routing + middleware + helpers",
+    "Unopinionated: you choose structure, database, validation and auth libraries",
+    "It is the \"E\" in MERN and the base for many other Node frameworks",
+    "Express 5 is the current version and needs Node 18 or newer"
+   ],
+   "pitfalls": [
+    "Expecting Express to include an ORM, auth or validation - it does not",
+    "Following old v4 tutorials blindly: some syntax (wildcards, async handling) changed in v5"
+   ],
+   "examples": [
+    {
+     "title": "Express vs plain Node http",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## plain-node.js\nimport http from 'node:http'\n\nhttp.createServer((req, res) => {\n  if (req.method === 'GET' && req.url === '/hello') {\n    res.writeHead(200, { 'Content-Type': 'application/json' })\n    res.end(JSON.stringify({ message: 'Hello' }))\n  } else {\n    res.writeHead(404)\n    res.end('Not found')\n  }\n}).listen(3000)\n\n// ## express-version.js\nimport express from 'express'\nconst app = express()\napp.get('/hello', (req, res) => res.json({ message: 'Hello' }))\napp.listen(3001)",
+     "explanation": "Same \"hello\" server: plain Node needs manual routing, Express gives a readable API."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is Express a framework or a library?",
+     "a": "It is a minimal web framework: it provides routing and middleware conventions but leaves architecture, database and auth choices to you."
+    },
+    {
+     "q": "What does \"unopinionated\" mean?",
+     "a": "Express does not enforce a project structure or tools. You decide how to organise code and which packages to use."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-install-hello-world",
+   "title": "Install and Hello World",
+   "level": "beginner",
+   "summary": "Create a project with npm, install Express and start a first server that answers a request.",
+   "description": "Getting a server running takes four steps: create a folder, initialise `package.json`, install Express, write one file.\n\n### Steps\n1. `mkdir my-api && cd my-api`\n2. `npm init -y` creates `package.json`.\n3. `npm install express` downloads Express and adds it to `dependencies`.\n4. Create `index.js` and run `node index.js`.\n\n### The anatomy of the first server\n- `express()` creates an **application** object (`app`).\n- `app.get(path, handler)` registers a route. The handler receives `req` (request) and `res` (response).\n- `res.send()` ends the request with a response body. Every request **must** be answered (or passed to the next handler), otherwise the client hangs until timeout.\n- `app.listen(port, callback)` binds the port and starts accepting connections. In Express 5 the callback receives an error argument if binding fails (for example `EADDRINUSE`).\n\n### Test it\nOpen `http://localhost:3000` in the browser or use `curl`. Browsers only send **GET** by default, so for POST/PUT/DELETE use `curl`, Postman, Thunder Client or the VS Code REST Client.\n\n### Reading the port from the environment\nHosting platforms inject the port as `process.env.PORT`. Always write `process.env.PORT || 3000` so the same code runs locally and in production.\n\nStop the server with `Ctrl + C`. Any change to the file needs a restart unless you use `nodemon` (next topic).",
+   "keyPoints": [
+    "`npm init -y` then `npm install express`",
+    "`const app = express()` creates the app; `app.listen()` starts it",
+    "Handlers get `(req, res)` and must end the response",
+    "Use `process.env.PORT || 3000` for deploy-friendly code"
+   ],
+   "pitfalls": [
+    "Forgetting to send a response: the request hangs forever",
+    "Hard-coding the port, which breaks on hosts that assign one",
+    "Trying to test POST routes by typing the URL in the browser (that sends GET)"
+   ],
+   "examples": [
+    {
+     "title": "index.js (CommonJS)",
+     "language": "text",
+     "lang": "javascript",
+     "code": "const express = require('express')\nconst app = express()\nconst PORT = process.env.PORT || 3000\n\napp.get('/', (req, res) => {\n  res.send('Hello, Express!')\n})\n\napp.listen(PORT, (err) => {\n  if (err) throw err\n  console.log(`Server running on http://localhost:${PORT}`)\n})",
+     "explanation": "The classic version using require. Works without any package.json \"type\" setting."
+    },
+    {
+     "title": "Run and test",
+     "language": "text",
+     "lang": "bash",
+     "code": "$ npm init -y\n$ npm install express\n$ node index.js\nServer running on http://localhost:3000\n\n# in another terminal\n$ curl -i http://localhost:3000\nHTTP/1.1 200 OK\nX-Powered-By: Express\nContent-Type: text/html; charset=utf-8\nETag: W/\"f-...\"\n\nHello, Express!",
+     "explanation": "Typical terminal session (Express 5)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What happens if a route handler never calls res.send or next?",
+     "a": "The request stays open until the client or server times out, because Express never sends a response."
+    },
+    {
+     "q": "Why use process.env.PORT?",
+     "a": "Cloud platforms assign the port at runtime; reading it from the environment makes the same code work locally and in production."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-project-setup",
+   "title": "Project Setup: ESM, Scripts and nodemon",
+   "level": "beginner",
+   "summary": "Configure ES modules, npm scripts, nodemon and a sane starting structure for an Express project.",
+   "description": "A tidy setup saves time later. Modern Node supports **ES modules** (`import`/`export`), the same syntax React uses, so the whole MERN stack can share one style.\n\n### Enable ESM\nAdd `\"type\": \"module\"` to `package.json`. Then `.js` files use `import express from 'express'`. Remember to include the file extension in relative imports: `import routes from './routes/user.js'`. There are no `__dirname` or `__filename` in ESM; use `import.meta.dirname` (Node 20.11+) or build it from `import.meta.url`.\n\n### npm scripts\n- `\"start\": \"node src/server.js\"` for production.\n- `\"dev\": \"nodemon src/server.js\"` for development. **nodemon** watches your files and restarts the server on every save. Install it as a dev dependency: `npm i -D nodemon`.\n- Node 18.11+ also has a built-in `node --watch src/server.js`, so nodemon is optional.\n\n### Environment variables\nNever hard-code secrets. Use a `.env` file and load it with `node --env-file=.env` (Node 20.6+) or the `dotenv` package. Add `.env` to `.gitignore`.\n\n### Separate app and server\nPut the Express app in `app.js` (export it) and the `listen()` call in `server.js`. This makes testing with supertest easy because tests can import the app without opening a port.\n\n### Starter layout\n`src/app.js`, `src/server.js`, `src/routes/`, `src/controllers/`, `src/middleware/`, `.env`, `.gitignore`.",
+   "keyPoints": [
+    "Set `\"type\": \"module\"` to use import/export",
+    "`npm run dev` with nodemon (or `node --watch`) restarts on change",
+    "Keep secrets in `.env` and ignore it in git",
+    "Split `app.js` (config) from `server.js` (listen) for testability"
+   ],
+   "pitfalls": [
+    "Missing `.js` extension in relative imports under ESM",
+    "Using `__dirname` in ESM without `import.meta.dirname`",
+    "Committing `.env` to git"
+   ],
+   "examples": [
+    {
+     "title": "package.json",
+     "language": "text",
+     "lang": "json",
+     "code": "{\n  \"name\": \"my-api\",\n  \"version\": \"1.0.0\",\n  \"type\": \"module\",\n  \"main\": \"src/server.js\",\n  \"scripts\": {\n    \"start\": \"node --env-file=.env src/server.js\",\n    \"dev\": \"nodemon --env-file=.env src/server.js\"\n  },\n  \"dependencies\": {\n    \"express\": \"^5.1.0\"\n  },\n  \"devDependencies\": {\n    \"nodemon\": \"^3.1.0\"\n  }\n}",
+     "explanation": ""
+    },
+    {
+     "title": "app.js and server.js",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/app.js\nimport express from 'express'\n\nconst app = express()\napp.use(express.json())\n\napp.get('/health', (req, res) => res.json({ status: 'ok' }))\n\nexport default app\n\n// ## src/server.js\nimport app from './app.js'\n\nconst PORT = process.env.PORT || 3000\napp.listen(PORT, () => console.log(`API on http://localhost:${PORT}`))",
+     "explanation": "Splitting app and server makes the app importable in tests."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you use import syntax in Node?",
+     "a": "Set \"type\": \"module\" in package.json (or use .mjs files) and use import/export with explicit file extensions."
+    },
+    {
+     "q": "Why separate app.js and server.js?",
+     "a": "So tests can import the app without starting a real server on a port, and so listen logic stays in one place."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-request-response-cycle",
+   "title": "The Request-Response Cycle and Core Objects",
+   "level": "beginner",
+   "summary": "Follow one HTTP request through Express and meet the four core objects: app, Router, req and res.",
+   "description": "Every interaction with your API follows the same loop: the client sends a **request**, your server does some work and returns a **response**. Express turns that into a predictable pipeline.\n\n### The journey of a request\n1. The client (browser, React app, mobile app, curl) sends `METHOD /path` plus headers and an optional body.\n2. Node accepts the connection and Express creates `req` and `res` objects.\n3. The request passes through **middleware** in the order they were registered (`app.use`).\n4. Express finds the first **route** matching method and path and runs its handler.\n5. The handler calls a `res` method (`json`, `send`, `redirect`...) which ends the cycle.\n6. If nothing matches, the final 404 handler answers; if something throws, the error handler answers.\n\n### The four core objects\n| Object | What it is |\n|---|---|\n| `app` | The application: `express()`. Holds settings, routes and middleware. |\n| `Router` | A mini-app: `express.Router()`. Groups related routes and mounts under a prefix. |\n| `req` | Incoming request: `params`, `query`, `body`, `headers`, `cookies`, `ip`, `method`, `path`. |\n| `res` | Outgoing response: `status()`, `json()`, `send()`, `set()`, `cookie()`, `redirect()`. |\n\nBoth `req` and `res` extend Node's own `IncomingMessage` and `ServerResponse`, so every native method still works.\n\n### Rule of thumb\nA request must end exactly once: either with a `res.*` method or by being passed along with `next()`. Calling `res.send()` twice throws \"Cannot set headers after they are sent\".",
+   "keyPoints": [
+    "Request flows: middleware (in order) -> matching route -> response or error handler",
+    "Core objects: `app`, `Router`, `req`, `res`",
+    "`req`/`res` extend Node's `IncomingMessage` / `ServerResponse`",
+    "A request must be ended exactly once"
+   ],
+   "pitfalls": [
+    "Sending two responses in one handler (missing `return` after an early `res.send`)",
+    "Mixing up `req.params` (path), `req.query` (after `?`) and `req.body` (payload)"
+   ],
+   "examples": [
+    {
+     "title": "Seeing the cycle in logs",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\napp.use((req, res, next) => {\n  console.log('1. middleware sees', req.method, req.url)\n  next()\n})\n\napp.get('/hello', (req, res) => {\n  console.log('2. route handler runs')\n  res.json({ ok: true })\n})\n\napp.use((req, res) => {\n  console.log('3. only reached if nothing matched')\n  res.status(404).json({ error: 'Not found' })\n})\n\napp.listen(3000)",
+     "explanation": "Each stage logs when it runs. Note the order of the output."
+    },
+    {
+     "title": "Terminal output",
+     "language": "text",
+     "lang": "bash",
+     "code": "$ curl localhost:3000/hello\n{\"ok\":true}\n\n# server console\n1. middleware sees GET /hello\n2. route handler runs",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Describe what happens when a request hits an Express server.",
+     "a": "It passes through registered middleware in order, then the first matching route handler runs and ends the response with res.*; unmatched requests hit the 404 handler and thrown errors reach the error handler."
+    },
+    {
+     "q": "What is the difference between app and Router?",
+     "a": "app is the top-level application; Router is a modular mini-app for grouping routes that you mount on the app with a path prefix."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-rest-http-basics",
+   "title": "REST, HTTP Methods and Status Codes",
+   "level": "beginner",
+   "summary": "Design APIs around resources using the right HTTP verb and a meaningful status code.",
+   "description": "**REST** (Representational State Transfer) is a convention for designing web APIs around **resources** (nouns) and standard **HTTP methods** (verbs). Clients use URLs to identify things and methods to act on them.\n\n### Resources and URLs\nUse plural nouns, not verbs: `/users`, `/users/42`, `/users/42/posts`. Avoid `/getUser` or `/deleteUser`.\n\n### Methods\n| Method | Meaning | Typical status | Idempotent |\n|---|---|---|---|\n| GET | read | 200 | yes |\n| POST | create | 201 | no |\n| PUT | replace whole resource | 200 | yes |\n| PATCH | partial update | 200 | not guaranteed |\n| DELETE | remove | 204 or 200 | yes |\n\n*Idempotent* means calling it many times has the same effect as once. GET never changes data.\n\n### Status code families\n- **2xx success**: 200 OK, 201 Created, 204 No Content.\n- **3xx redirect**: 301 permanent, 302 temporary, 304 Not Modified.\n- **4xx client error**: 400 Bad Request, 401 Unauthorized (not logged in), 403 Forbidden (logged in but not allowed), 404 Not Found, 409 Conflict, 422 Unprocessable Entity, 429 Too Many Requests.\n- **5xx server error**: 500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable.\n\n### REST principles in short\nStateless requests (each carries all it needs), uniform interface, JSON as the common format, and correct codes so clients can react without parsing messages.",
+   "keyPoints": [
+    "URLs are plural nouns; HTTP method is the verb",
+    "GET reads, POST creates (201), PUT replaces, PATCH updates partly, DELETE removes (204)",
+    "401 = not authenticated, 403 = authenticated but forbidden",
+    "Stateless: the server keeps no per-client memory between requests (tokens carry identity)"
+   ],
+   "pitfalls": [
+    "Verbs in URLs (`/createUser`) and using 200 for everything including errors",
+    "Mixing up 401 and 403",
+    "Using GET for actions that change data"
+   ],
+   "examples": [
+    {
+     "title": "Resource-style route table",
+     "language": "text",
+     "lang": "javascript",
+     "code": "app.get('/api/tasks', listTasks)          // 200 + array\napp.post('/api/tasks', createTask)        // 201 + created task\napp.get('/api/tasks/:id', getTask)        // 200 or 404\napp.put('/api/tasks/:id', replaceTask)    // 200\napp.patch('/api/tasks/:id', updateTask)   // 200\napp.delete('/api/tasks/:id', removeTask)  // 204 (no body)",
+     "explanation": ""
+    },
+    {
+     "title": "Trying it with curl",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST http://localhost:3000/api/tasks \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"Learn Express\"}'\n# HTTP/1.1 201 Created\n# {\"id\":1,\"title\":\"Learn Express\",\"done\":false}\n\ncurl -i -X DELETE http://localhost:3000/api/tasks/1\n# HTTP/1.1 204 No Content",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "PUT vs PATCH?",
+     "a": "PUT replaces the whole resource with the sent body; PATCH changes only the supplied fields."
+    },
+    {
+     "q": "401 vs 403?",
+     "a": "401 means the user is not authenticated (missing/invalid credentials); 403 means they are authenticated but not permitted."
+    },
+    {
+     "q": "What does stateless mean?",
+     "a": "The server does not remember previous requests; every request carries the information (e.g. a token) needed to process it."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

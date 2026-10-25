@@ -1,0 +1,348 @@
+{
+ "id": "react-18-19",
+ "title": "React 18 and 19 Features",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "react-concurrent-batching",
+   "title": "Concurrent Rendering and Automatic Batching",
+   "level": "advanced",
+   "summary": "React 18 can prepare renders in the background and interrupt them, and it batches all state updates automatically.",
+   "description": "React 18 introduced **concurrent rendering**. It is not a feature you switch on; it is a new engine capability that powers `useTransition`, `useDeferredValue` and Suspense improvements. You opt in simply by using `createRoot` instead of the old `ReactDOM.render`.\n\n### What \"concurrent\" means\n\nIn legacy React, once rendering began it could not be stopped, so a long render blocked the main thread (typing froze). In concurrent mode React can **start rendering, pause, handle something urgent, and resume or discard** the old work. Rendering becomes interruptible, but is still **single-threaded** (it is time slicing, not multi-threading).\n\n### Update priorities\n\n- **Urgent**: typing, clicking, pressing - must feel instant.\n- **Transition**: view changes and filtering - may be delayed (`startTransition`).\n- React always keeps the urgent updates responsive.\n\n### Automatic batching\n\nBefore React 18, only updates inside React event handlers were batched. Updates in `setTimeout`, promises or native event handlers caused one render **per** `setState`. In React 18+ **all** updates are batched, wherever they happen:\n\n```js\nsetTimeout(() => {\n  setCount(c => c + 1);\n  setFlag(f => !f);\n  // one re-render, not two\n}, 1000);\n```\n\nIf you truly need immediate DOM updates between calls, wrap one in `flushSync(() => setState(...))` from `react-dom` (rare).\n\n### Other React 18 additions\n\n`useId`, `useSyncExternalStore`, `useInsertionEffect`, streaming SSR with `<Suspense>`, selective hydration, StrictMode double-effects.\n\n### Migration note\n\nUse `createRoot(container).render(<App />)`. Code must be pure and effects must clean up, because concurrent rendering can call render more than once.",
+   "keyPoints": [
+    "createRoot enables concurrent features",
+    "Rendering can be paused, resumed or discarded",
+    "Transitions mark low-priority updates",
+    "All updates are automatically batched in 18+",
+    "flushSync forces a synchronous update when needed"
+   ],
+   "pitfalls": [
+    "Assuming a component renders exactly once per update; keep render pure.",
+    "Calling setState in several places expecting separate renders."
+   ],
+   "examples": [
+    {
+     "title": "Automatic batching in a timeout",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [a, setA] = useState(0);\n  const [b, setB] = useState(0);\n  const renders = useRef(0);\n  renders.current += 1;\n\n  function updateLater() {\n    setTimeout(() => {\n      setA((x) => x + 1);\n      setB((x) => x + 1); // batched with the line above in React 18+\n    }, 600);\n  }\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>a = {a}, b = {b}</p>\n      <p>Render count: {renders.current}</p>\n      <button onClick={updateLater}>Update both after 600ms</button>\n    </div>\n  );\n}",
+     "explanation": "Click: both states update after 600ms with a single render (see render count)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is concurrent rendering?",
+     "a": "The ability for React to prepare multiple versions of the UI, pausing or discarding low-priority renders so urgent interactions stay responsive."
+    },
+    {
+     "q": "What is automatic batching?",
+     "a": "React 18 groups all state updates into one re-render, including those inside timeouts, promises and native events, not only React event handlers."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-suspense-data",
+   "title": "Suspense for Data Fetching",
+   "level": "advanced",
+   "summary": "Components can \"suspend\" while waiting for data; Suspense boundaries show fallbacks and coordinate loading UI.",
+   "description": "Suspense began with lazy code loading. In React 18/19 it also works for **data**: a component that is not ready can **suspend**, and the nearest `<Suspense fallback>` displays a loading UI until it is ready.\n\n### How it works\n\nA Suspense-enabled data source *throws a promise* during render when the data is missing. React catches it, shows the fallback, and re-renders when the promise resolves. You normally never throw promises yourself; you use:\n\n- **TanStack Query** `useSuspenseQuery`\n- **Relay**, **SWR** (suspense mode)\n- Framework loaders (Next.js, React Router, Remix)\n- React 19's **`use(promise)`** hook\n- Server Components with `async`/`await`\n\n### Benefits\n\n- No `isLoading` checks in every component: write the happy path.\n- **Declarative loading states**: decide at the boundary where spinners appear.\n- Avoids waterfalls when siblings fetch in parallel.\n- **Streaming SSR**: the server sends HTML in chunks as Suspense boundaries resolve.\n\n### Design tips\n\n- Several small boundaries beat one global spinner: parts of the page can appear independently.\n- Nest boundaries to define a loading hierarchy (page skeleton, then widgets).\n- Pair with an **error boundary** for failures.\n- Use `startTransition`/`useDeferredValue` so existing content stays visible instead of flipping back to a fallback.\n- **Create the promise outside render** (in a cache or loader) to avoid refetching every render.",
+   "keyPoints": [
+    "Components suspend while waiting for data",
+    "<Suspense fallback> shows loading UI declaratively",
+    "Use libraries or use(promise); don't throw promises by hand",
+    "Combine with error boundaries and transitions",
+    "Cache the promise; do not create it during render"
+   ],
+   "pitfalls": [
+    "Creating a new promise inside the component on every render, causing an infinite loop.",
+    "One huge Suspense boundary replacing the whole page with a spinner."
+   ],
+   "examples": [
+    {
+     "title": "Suspense with a tiny resource cache (educational)",
+     "language": "react",
+     "css": "",
+     "code": "// A minimal \"resource\": read() throws a promise until data is ready\nfunction createResource(fetcher) {\n  let status = \"pending\";\n  let result;\n  const promise = fetcher().then(\n    (v) => { status = \"done\"; result = v; },\n    (e) => { status = \"error\"; result = e; }\n  );\n  return {\n    read() {\n      if (status === \"pending\") throw promise;\n      if (status === \"error\") throw result;\n      return result;\n    },\n  };\n}\n\nconst fetchUser = (id) => () =>\n  new Promise((resolve) => setTimeout(() => resolve({ id, name: \"User \" + id }), 700));\n\nfunction Profile({ resource }) {\n  const user = resource.read();   // suspends until ready\n  return <p>Hello, <b>{user.name}</b>!</p>;\n}\n\nfunction App() {\n  const [id, setId] = useState(1);\n  const [resource, setResource] = useState(() => createResource(fetchUser(1)));\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => { const next = id + 1; setId(next); setResource(createResource(fetchUser(next))); }}>\n        Load next user\n      </button>\n      <Suspense fallback={<p>Loading user...</p>}>\n        <Profile resource={resource} />\n      </Suspense>\n    </div>\n  );\n}",
+     "explanation": "Production code should use a library; this shows the mechanism behind it."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does Suspense do?",
+     "a": "It shows a fallback UI while a child component is waiting (for lazy code or data) and switches to the real UI when it is ready."
+    },
+    {
+     "q": "Why should you not create the promise inside the component render?",
+     "a": "Each render would create a new promise and suspend again, causing an endless loop; promises must come from a cache or loader."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-use-hook",
+   "title": "The use Hook (React 19)",
+   "level": "advanced",
+   "summary": "use reads a promise or context during render and can be called conditionally.",
+   "description": "React 19 adds **`use`**, an API (not a regular hook) to read a resource inside render.\n\n### Reading a promise\n\n```jsx\nimport { use, Suspense } from \"react\";\n\nfunction Comments({ commentsPromise }) {\n  const comments = use(commentsPromise);   // suspends until resolved\n  return comments.map(c => <p key={c.id}>{c.text}</p>);\n}\n\n<Suspense fallback={<Spinner />}>\n  <Comments commentsPromise={commentsPromise} />\n</Suspense>\n```\n\nWhile the promise is pending, the component suspends and the nearest Suspense fallback is shown. If it rejects, the nearest error boundary catches it.\n\n### Reading context\n\n`use(ThemeContext)` works like `useContext`, but **can be called after early returns or inside conditions and loops** - a first for a hook-like API.\n\n```jsx\nfunction Button({ show }) {\n  if (!show) return null;\n  const theme = use(ThemeContext);   // allowed\n}\n```\n\n### Promise rules\n\n- Pass the promise **from a parent / Server Component / cache**. Creating `use(fetch(...))` directly in a Client Component render creates a new promise each time and React warns.\n- In Server Components prefer `async/await`; for Client Components pass the promise as a prop (streamed from the server).\n- `use` can't be used in try/catch for the promise; use an error boundary or `.catch` on the promise.\n\n### Why it matters\n\nIt simplifies data loading (no `useEffect` + state), unlocks streaming from server to client and replaces `useContext` in conditional code.",
+   "keyPoints": [
+    "use(promise) suspends until resolved",
+    "use(context) can be called conditionally",
+    "Promise must be stable: from props, cache or server",
+    "Errors go to the nearest error boundary",
+    "Not available in React 18"
+   ],
+   "pitfalls": [
+    "Calling use(fetch()) inside a client component's render.",
+    "Wrapping use(promise) in try/catch instead of an error boundary."
+   ],
+   "examples": [
+    {
+     "title": "use with a promise prop and Suspense",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { use, Suspense } from \"react\";\n\n// Server Component (or a parent) creates the promise once\nexport default function Page() {\n  const postsPromise = fetch(\"https://api.example.com/posts\").then((r) => r.json());\n  return (\n    <Suspense fallback={<p>Loading posts...</p>}>\n      <Posts postsPromise={postsPromise} />\n    </Suspense>\n  );\n}\n\n\"use client\";\nfunction Posts({ postsPromise }) {\n  const posts = use(postsPromise);\n  return (\n    <ul>\n      {posts.map((p) => <li key={p.id}>{p.title}</li>)}\n    </ul>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How is use different from other hooks?",
+     "a": "It can be called conditionally and in loops, and it can read promises (suspending) as well as context."
+    },
+    {
+     "q": "Where should the promise passed to use come from?",
+     "a": "From a parent, a cache or a Server Component so it is stable across renders, not created inside the component that calls use."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-actions",
+   "title": "Actions and Form Actions (React 19)",
+   "level": "advanced",
+   "summary": "Pass a function to a form's action prop; React manages pending state, errors and form reset for async submissions.",
+   "description": "React 19 introduces **Actions**: functions (often async) that perform a mutation and are run inside a **transition**. They give you automatic **pending states**, **error handling**, **optimistic updates** and **sequenced requests**.\n\n### Form actions\n\n`<form action={fn}>` accepts a function. React calls it with `FormData` when the form is submitted, handles `preventDefault` for you, and **resets uncontrolled fields** when the action succeeds.\n\n```jsx\nasync function addTodo(formData) {\n  const title = formData.get(\"title\");\n  await api.createTodo(title);\n}\n<form action={addTodo}>\n  <input name=\"title\" />\n  <button>Add</button>\n</form>\n```\n\nButtons can have their own `formAction`.\n\n### Transitions with async functions\n\n```jsx\nconst [isPending, startTransition] = useTransition();\nstartTransition(async () => {\n  const error = await updateName(name);\n  if (error) setError(error);\n});\n```\n\nReact 19 allows async functions in `startTransition`; `isPending` stays true until the action completes, and the UI stays interactive.\n\n### The related hooks\n\n| Hook | Role |\n| --- | --- |\n| `useActionState` | state + pending for an action (next topic) |\n| `useFormStatus` | read pending state of the parent form from a child |\n| `useOptimistic` | show a temporary value during the action |\n\n### Server Actions\n\nIn frameworks with Server Components, mark a function with `\"use server\"` and pass it to `action`. The form works even **before JavaScript loads** (progressive enhancement).\n\n### Why\n\nIt replaces the repetitive `onSubmit` + `preventDefault` + `isLoading` + `error` + reset boilerplate with a convention that composes with Suspense and error boundaries.",
+   "keyPoints": [
+    "<form action={fn}> receives FormData",
+    "Async actions run in transitions with automatic pending state",
+    "Uncontrolled inputs reset after success",
+    "Server Actions enable progressive enhancement",
+    "Replaces manual submit boilerplate"
+   ],
+   "pitfalls": [
+    "Using controlled inputs and expecting the automatic form reset to clear them.",
+    "Forgetting names on inputs, so formData.get returns null."
+   ],
+   "examples": [
+    {
+     "title": "Form with an action",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// React 19\nfunction AddTodo({ onAdd }) {\n  async function action(formData) {\n    const title = formData.get(\"title\");\n    await onAdd(title);          // async work\n  }\n  return (\n    <form action={action}>\n      <input name=\"title\" placeholder=\"New todo\" required />\n      <button type=\"submit\">Add</button>\n    </form>\n  );\n}\n\n// Equivalent React 18 code needs onSubmit, preventDefault, FormData,\n// loading state, error state and manual reset."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an Action in React 19?",
+     "a": "An async function used for mutations (like a form submit) that runs in a transition, with built-in pending, error and optimistic state handling."
+    },
+    {
+     "q": "What does <form action={fn}> do automatically?",
+     "a": "It calls fn with FormData on submit, prevents the default page reload and resets uncontrolled fields after a successful action."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-useactionstate-formstatus",
+   "title": "useActionState and useFormStatus",
+   "level": "advanced",
+   "summary": "useActionState tracks an action's result and pending state; useFormStatus lets child components read the parent form's pending state.",
+   "description": "### useActionState\n\n```jsx\nconst [state, formAction, isPending] = useActionState(actionFn, initialState);\n```\n\n- `actionFn(previousState, formData)` runs on submit and **returns the new state** (like a reducer with async support).\n- `state` is the latest returned value (an error message, a success flag, validated data).\n- `formAction` is what you pass to `<form action>`.\n- `isPending` is true while running.\n\n```jsx\nasync function subscribe(prev, formData) {\n  const email = formData.get(\"email\");\n  if (!email.includes(\"@\")) return { error: \"Invalid email\" };\n  await api.subscribe(email);\n  return { ok: true };\n}\nconst [state, action, pending] = useActionState(subscribe, { ok: false });\n```\n\nIt was called `useFormState` in canary and lives in `react` (not `react-dom`).\n\n### useFormStatus\n\nFrom `react-dom`. A component **inside** a `<form>` can read the form's status without props:\n\n```jsx\nfunction SubmitButton() {\n  const { pending, data, method } = useFormStatus();\n  return <button disabled={pending}>{pending ? \"Saving...\" : \"Save\"}</button>;\n}\n```\n\nIt must be rendered **inside** the form (a child), not in the same component that renders the `<form>`.\n\n### Design system use\n\nReusable `<SubmitButton />` and `<Input />` components that know about pending state without prop drilling.\n\n### Combining\n\n`useActionState` for the result and validation messages, `useFormStatus` for deep child components, and `useOptimistic` for instant feedback.\n\n### Tips\n\nReturn serializable state from actions; keep the initial state shape the same as returned shapes; return field values to repopulate inputs on error since uncontrolled forms reset.",
+   "keyPoints": [
+    "useActionState(action, init) -> [state, formAction, isPending]",
+    "The action receives (prevState, formData)",
+    "useFormStatus is read inside a child of the form",
+    "Great for validation messages and submit buttons",
+    "Both are React 19; useFormStatus from react-dom"
+   ],
+   "pitfalls": [
+    "Calling useFormStatus in the same component that renders the form (it reads the parent form).",
+    "Returning non-serializable values from server actions."
+   ],
+   "examples": [
+    {
+     "title": "Subscribe form with validation",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useActionState } from \"react\";\nimport { useFormStatus } from \"react-dom\";\n\nasync function subscribeAction(prevState, formData) {\n  const email = String(formData.get(\"email\") ?? \"\");\n  if (!email.includes(\"@\")) {\n    return { ok: false, error: \"Please enter a valid email\", email };\n  }\n  await new Promise((r) => setTimeout(r, 800));   // pretend API\n  return { ok: true, error: null, email: \"\" };\n}\n\nfunction SubmitButton() {\n  const { pending } = useFormStatus();\n  return <button disabled={pending}>{pending ? \"Subscribing...\" : \"Subscribe\"}</button>;\n}\n\nexport default function Newsletter() {\n  const [state, formAction, isPending] = useActionState(subscribeAction, { ok: false, error: null, email: \"\" });\n  return (\n    <form action={formAction}>\n      <input name=\"email\" defaultValue={state.email} aria-invalid={!!state.error} />\n      <SubmitButton />\n      {state.error && <p role=\"alert\">{state.error}</p>}\n      {state.ok && <p>Thanks for subscribing!</p>}\n    </form>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does useActionState return?",
+     "a": "A tuple [state, formAction, isPending]: the latest result of the action, the function to pass to the form, and a pending flag."
+    },
+    {
+     "q": "Why must useFormStatus be in a child of the form?",
+     "a": "It reads the status of the nearest parent form, so it must be rendered inside it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-useoptimistic",
+   "title": "useOptimistic (React 19)",
+   "level": "advanced",
+   "summary": "useOptimistic shows a temporary value while an async action runs and automatically reverts if it fails.",
+   "description": "`useOptimistic` implements the optimistic update pattern with almost no code.\n\n```jsx\nconst [optimisticState, addOptimistic] = useOptimistic(state, updateFn?);\n```\n\n- `state` is the real, confirmed value (from props, server or state).\n- `addOptimistic(value)` immediately produces a temporary value shown while an Action is in progress.\n- Once the Action completes (success or failure) React **discards the optimistic value** and renders the real `state` again. On success the real state has already been updated, on failure the UI reverts automatically.\n\n### Example flow (chat)\n\n```jsx\nfunction Thread({ messages, sendMessage }) {\n  const [optimistic, addOptimistic] = useOptimistic(\n    messages,\n    (current, text) => [...current, { id: crypto.randomUUID(), text, sending: true }]\n  );\n\n  async function action(formData) {\n    const text = formData.get(\"text\");\n    addOptimistic(text);              // shows instantly\n    await sendMessage(text);          // updates real `messages` when done\n  }\n  ...\n}\n```\n\n### Rules\n\n- `addOptimistic` must be called **inside an Action** (a form action or `startTransition`).\n- The reducer function (2nd argument) must be pure.\n- Mark optimistic items (`sending: true`) so you can style them (gray, spinner).\n- The real state must be updated by your action; `useOptimistic` only layers a temporary view above it.\n\n### Compared with manual rollback\n\nNo snapshots, no try/catch to restore. React handles reverting. For cache-based apps TanStack Query's `onMutate` pattern is still common.",
+   "keyPoints": [
+    "Temporary state layered over real state",
+    "Auto-reverts when the action finishes",
+    "Call addOptimistic inside an Action",
+    "Update real state in the action itself",
+    "Mark optimistic items visually"
+   ],
+   "pitfalls": [
+    "Calling addOptimistic outside of a transition/action.",
+    "Not updating the real state, so the item disappears after the action."
+   ],
+   "examples": [
+    {
+     "title": "Optimistic todo list",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useOptimistic, useState, useRef } from \"react\";\n\nexport default function Todos() {\n  const [todos, setTodos] = useState([{ id: 1, text: \"Learn React 19\" }]);\n  const formRef = useRef(null);\n\n  const [optimisticTodos, addOptimistic] = useOptimistic(todos, (current, text) => [\n    ...current,\n    { id: \"temp-\" + text, text, pending: true },\n  ]);\n\n  async function add(formData) {\n    const text = formData.get(\"text\");\n    addOptimistic(text);\n    formRef.current?.reset();\n    const saved = await fakeSave(text);            // 1s later\n    setTodos((t) => [...t, saved]);                // real state\n  }\n\n  return (\n    <>\n      <ul>\n        {optimisticTodos.map((t) => (\n          <li key={t.id} style={{ opacity: t.pending ? 0.5 : 1 }}>{t.text}</li>\n        ))}\n      </ul>\n      <form ref={formRef} action={add}>\n        <input name=\"text\" />\n        <button>Add</button>\n      </form>\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What happens to the optimistic value when the action finishes?",
+     "a": "React discards it and shows the real state; if the action failed, the UI therefore reverts automatically."
+    },
+    {
+     "q": "Where must addOptimistic be called?",
+     "a": "Inside an Action, such as a form action or a startTransition callback."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-19-new-apis",
+   "title": "Other React 19 Changes: ref as Prop, Context, Metadata",
+   "level": "intermediate",
+   "summary": "React 19 simplifies refs and context, supports document metadata and improves error reporting and custom elements.",
+   "description": "Besides Actions, React 19 (December 2024) brings many quality-of-life changes.\n\n### `ref` as a regular prop\n\nFunction components receive `ref` like any prop - **no `forwardRef` needed**:\n\n```jsx\nfunction MyInput({ placeholder, ref }) {\n  return <input placeholder={placeholder} ref={ref} />;\n}\n```\n\n`forwardRef` still works but will be deprecated. **Ref callbacks can return a cleanup function**.\n\n### Context as a provider\n\n`<ThemeContext value=\"dark\">` replaces `<ThemeContext.Provider value=\"dark\">`.\n\n### Document metadata\n\nRender `<title>`, `<meta>` and `<link>` anywhere in your components; React hoists them to `<head>`. Stylesheets with `precedence` and `<script async>` are deduplicated.\n\n### Resource preloading APIs\n\n`preload`, `preinit`, `prefetchDNS`, `preconnect` from `react-dom` to hint the browser early.\n\n### Better errors and hydration\n\n- Errors are reported once (`onCaughtError`, `onUncaughtError` root options).\n- Clear **hydration mismatch diffs** and support for third-party scripts that edit `<head>`/`<body>`.\n\n### Other changes\n\n- **Custom Elements** (Web Components) fully supported.\n- **Cleanup of `defaultProps`** for function components (use default parameters) and removal of `propTypes`, `string refs`, legacy context and `ReactDOM.render` / `hydrate` (use `createRoot`/`hydrateRoot`).\n- `useDeferredValue` accepts an initial value.\n- `act` is exported from `react`.\n\n### Upgrade path\n\nUpgrade to 18.3 first (it logs deprecation warnings), then run the official codemods (`npx codemod react/19/migration-recipe`).",
+   "keyPoints": [
+    "ref is a normal prop for function components",
+    "<Context value> replaces <Context.Provider>",
+    "<title>/<meta>/<link> render into <head>",
+    "Removed: propTypes, defaultProps on functions, ReactDOM.render",
+    "Upgrade via 18.3 warnings and codemods"
+   ],
+   "pitfalls": [
+    "Upgrading without checking libraries for React 19 compatibility.",
+    "Still using ReactDOM.render, which is removed."
+   ],
+   "examples": [
+    {
+     "title": "React 19 style component",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { createContext, useContext } from \"react\";\n\nconst ThemeContext = createContext(\"light\");\n\nfunction FancyInput({ ref, ...props }) {      // ref is just a prop\n  return <input ref={ref} {...props} />;\n}\n\nfunction Page() {\n  return (\n    <ThemeContext value=\"dark\">                {/* no .Provider */}\n      <title>My Page</title>                   {/* hoisted to <head> */}\n      <meta name=\"description\" content=\"React 19 demo\" />\n      <Content />\n    </ThemeContext>\n  );\n}\n\nfunction Content() {\n  const theme = useContext(ThemeContext);\n  return <FancyInput ref={(node) => { node?.focus(); return () => console.log(\"cleanup\"); }} placeholder={theme} />;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What changed about refs in React 19?",
+     "a": "Function components accept ref as a normal prop, so forwardRef is no longer necessary, and ref callbacks may return cleanup functions."
+    },
+    {
+     "q": "How do you set the page title in React 19?",
+     "a": "Render a <title> element in any component; React hoists it into the document head."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-server-components",
+   "title": "React Server Components Overview",
+   "level": "advanced",
+   "summary": "Server Components render on the server and send results to the client without shipping their JavaScript.",
+   "description": "**React Server Components (RSC)** are components that run **only on the server** (at build time or per request). They can access databases, file systems and secrets directly, and send their rendered output to the browser as a special serialized stream, **without adding their code to the client bundle**.\n\n### Server vs Client components\n\n| | Server Component (default in Next.js App Router) | Client Component (`\"use client\"`) |\n| --- | --- | --- |\n| Runs | server only | server (SSR) + browser |\n| State/effects | no `useState`, `useEffect` | yes |\n| Event handlers | no | yes |\n| Async/await | **yes**, components can be `async` | no (use `use`) |\n| Browser APIs | no | yes |\n| Bundle size | zero | counted |\n\n### Example\n\n```jsx\n// app/page.jsx - Server Component\nexport default async function Page() {\n  const products = await db.product.findMany();   // direct DB access\n  return (\n    <>\n      <ProductList products={products} />\n      <AddToCartButton />      {/* a Client Component */}\n    </>\n  );\n}\n```\n\n### Key rules\n\n- `\"use client\"` at the top of a file marks a **boundary**; everything imported into it is client code.\n- Server Components can render Client Components, and pass **serializable props** (no functions).\n- Client Components can render Server Components only through `children` props.\n- Use `\"use server\"` for Server Actions.\n\n### Benefits\n\nSmaller bundles, no client waterfalls (fetch near the data), better security for secrets, and streaming UI with Suspense.\n\n### Not the same as SSR\n\nSSR renders HTML on the server for first load, but all components still ship and hydrate. RSC components never hydrate.",
+   "keyPoints": [
+    "Server Components run only on the server",
+    "No hooks for state/effects or event handlers in them",
+    "\"use client\" marks the client boundary",
+    "Props between boundaries must be serializable",
+    "Zero JS for server components; RSC is not the same as SSR"
+   ],
+   "pitfalls": [
+    "Adding \"use client\" to everything, losing the benefits.",
+    "Trying to use useState or onClick in a Server Component."
+   ],
+   "examples": [
+    {
+     "title": "Server component with a client island",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// app/products/page.jsx  (Server Component by default)\nimport AddToCart from \"./AddToCart\";\n\nexport default async function ProductsPage() {\n  const res = await fetch(\"https://api.example.com/products\", { next: { revalidate: 60 } });\n  const products = await res.json();\n  return (\n    <ul>\n      {products.map((p) => (\n        <li key={p.id}>\n          {p.name} - ${p.price}\n          <AddToCart productId={p.id} />\n        </li>\n      ))}\n    </ul>\n  );\n}\n\n// app/products/AddToCart.jsx\n\"use client\";\nimport { useState } from \"react\";\n\nexport default function AddToCart({ productId }) {\n  const [added, setAdded] = useState(false);\n  return <button onClick={() => setAdded(true)}>{added ? \"Added\" : \"Add\"}</button>;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between SSR and Server Components?",
+     "a": "SSR produces HTML for the first load but ships and hydrates all component code; Server Components never ship their code to the client and can access server resources directly."
+    },
+    {
+     "q": "Can a Server Component use useState?",
+     "a": "No. State, effects and event handlers need Client Components marked with \"use client\"."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-nextjs-overview",
+   "title": "Next.js Overview: App Router, SSR, SSG, ISR",
+   "level": "advanced",
+   "summary": "Next.js is the main React framework: routing, rendering strategies, data fetching, and deployment built in.",
+   "description": "**Next.js** (by Vercel) is a full-stack React framework. It adds what plain React lacks: file-based routing, server rendering, API routes, image and font optimization, caching and bundling.\n\n### App Router (`app/` directory)\n\n- **File-based routes:** `app/blog/[slug]/page.jsx` -> `/blog/hello`.\n- Special files: `layout.jsx` (shared, persistent UI), `loading.jsx` (Suspense fallback), `error.jsx` (error boundary), `not-found.jsx`, `route.js` (API endpoints), `middleware.js`.\n- Components are **Server Components** by default; add `\"use client\"` for interactivity.\n- **Server Actions** for mutations; **Route Handlers** for REST endpoints.\n\n### Rendering strategies\n\n| Strategy | When HTML is made | Use for |\n| --- | --- | --- |\n| **SSG** (static) | build time | marketing, docs, blogs |\n| **SSR** (dynamic) | each request | personalized or always-fresh pages |\n| **ISR** | build, then revalidated in the background after N seconds or on demand | catalogs, news |\n| **CSR** | in the browser | dashboards behind login |\n| **PPR / streaming** | static shell + dynamic holes | mixed pages |\n\nPages are static by default; using `cookies()`, `headers()`, or `cache: \"no-store\"` makes them dynamic. `generateStaticParams` pre-renders dynamic routes.\n\n### Data fetching & caching\n\nUse `async` Server Components with `fetch`. Control freshness with `next: { revalidate: 60 }`, tags (`revalidateTag`) or `revalidatePath`. Caching defaults changed in v15, so check the docs of your version.\n\n### Extras\n\n`next/image`, `next/font`, `next/link` (prefetching), metadata API for SEO, Turbopack, edge runtime, environment variables (`NEXT_PUBLIC_` prefix reaches the browser).\n\n### When to choose it\n\nSEO-critical, content-heavy or full-stack apps. For a pure client dashboard, Vite + React is simpler. Alternatives: React Router v7 framework mode, Remix, Astro, TanStack Start.",
+   "keyPoints": [
+    "App Router: file-based routes with layouts and loading/error files",
+    "Server Components by default; \"use client\" for interactivity",
+    "SSG at build, SSR per request, ISR with revalidate",
+    "fetch options and revalidate tags control caching",
+    "NEXT_PUBLIC_ prefix exposes env vars to the browser"
+   ],
+   "pitfalls": [
+    "Using browser-only APIs (window) in Server Components.",
+    "Making everything dynamic accidentally and losing static caching."
+   ],
+   "examples": [
+    {
+     "title": "A dynamic route with ISR and metadata",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// app/blog/[slug]/page.jsx\nexport const revalidate = 3600; // ISR: regenerate at most once per hour\n\nexport async function generateStaticParams() {\n  const posts = await fetch(\"https://api.example.com/posts\").then((r) => r.json());\n  return posts.map((p) => ({ slug: p.slug }));      // pre-render at build time\n}\n\nexport async function generateMetadata({ params }) {\n  const { slug } = await params;\n  return { title: `Post: ${slug}` };\n}\n\nexport default async function BlogPost({ params }) {\n  const { slug } = await params;\n  const post = await fetch(`https://api.example.com/posts/${slug}`).then((r) => r.json());\n  return (\n    <article>\n      <h1>{post.title}</h1>\n      <div dangerouslySetInnerHTML={{ __html: post.safeHtml }} />\n    </article>\n  );\n}"
+    },
+    {
+     "title": "Create and run a Next.js app",
+     "language": "text",
+     "lang": "bash",
+     "code": "npx create-next-app@latest my-next-app\ncd my-next-app\nnpm run dev      # http://localhost:3000\nnpm run build    # shows which routes are static (o) or dynamic (f)\nnpm run start"
+    }
+   ],
+   "interview": [
+    {
+     "q": "SSG vs SSR vs ISR?",
+     "a": "SSG builds HTML at build time, SSR builds it on every request, and ISR serves a static page but regenerates it in the background after a revalidation period."
+    },
+    {
+     "q": "Why choose Next.js over plain Vite React?",
+     "a": "For SEO, server rendering, file-based routing, built-in optimizations and full-stack features like server actions and route handlers."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

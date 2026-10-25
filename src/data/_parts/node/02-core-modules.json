@@ -1,0 +1,902 @@
+{
+ "id": "node-core-modules",
+ "title": "Core Modules",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "node-fs-files",
+   "title": "fs: Reading and Writing Files",
+   "level": "beginner",
+   "summary": "The fs module offers synchronous, callback and promise APIs; prefer fs/promises in application code.",
+   "description": "The **`fs`** module talks to the file system. Every operation comes in three styles.\n\n| Style | Example | Use when |\n|---|---|---|\n| Synchronous | `fs.readFileSync(p, 'utf8')` | Start-up scripts, CLIs, config loading |\n| Callback | `fs.readFile(p, 'utf8', cb)` | Legacy code |\n| Promise | `await fs.promises.readFile(p, 'utf8')` | Servers and everything modern |\n\nImport the promise version with `import fs from 'node:fs/promises'`.\n\n### Common operations\n* `readFile`, `writeFile` (overwrites), `appendFile`\n* `copyFile`, `rename`, `unlink` (delete a file), `rm` (delete files or folders)\n* `access`, `stat` to check existence, size and type\n* Without an encoding, `readFile` returns a **Buffer**; pass `'utf8'` to get a string\n\n### Why not sync in a server?\nSync calls block the event loop: while one request waits for the disk, every other request freezes. Use them only before the server starts listening.\n\n### Errors\nFailures throw errors with a `code` such as `ENOENT` (not found), `EACCES` (permission), `EEXIST` or `EISDIR`. Always handle them:\n`try { ... } catch (err) { if (err.code === 'ENOENT') ... }`\n\n### Checking existence\nAvoid `exists` followed by read (race condition). Just try the operation and handle `ENOENT`.\n\n### Large files\n`readFile` loads the whole file into memory. For big files use streams (see the streams topic) so memory stays flat.\n\n### Paths\nRelative paths are resolved against `process.cwd()`, not the file's location. Build absolute paths with `path.join(import.meta.dirname, 'file.txt')`.",
+   "keyPoints": [
+    "Three styles: sync, callback and promise; prefer node:fs/promises",
+    "Without an encoding you get a Buffer, with 'utf8' you get a string",
+    "Do not use sync methods inside request handlers",
+    "Handle error.code values such as ENOENT and EACCES",
+    "Use streams for large files"
+   ],
+   "pitfalls": [
+    "Relative paths that depend on where the process was started",
+    "Calling existsSync then reading (race condition) instead of handling ENOENT",
+    "Reading multi-GB files with readFile and running out of memory"
+   ],
+   "examples": [
+    {
+     "title": "Read, write, append with promises",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import fs from 'node:fs/promises';\n\nawait fs.writeFile('notes.txt', 'line 1\\n');\nawait fs.appendFile('notes.txt', 'line 2\\n');\n\nconst text = await fs.readFile('notes.txt', 'utf8');\nconsole.log(text.trim().split('\\n'));          // [ 'line 1', 'line 2' ]\n\ntry {\n  await fs.readFile('missing.txt', 'utf8');\n} catch (err) {\n  console.log(err.code);                       // ENOENT\n}\n\nconst info = await fs.stat('notes.txt');\nconsole.log(info.size, info.isFile());         // 14 true\nawait fs.rm('notes.txt');",
+     "explanation": "Save as .mjs. stat returns size in bytes and type checks.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Same thing in the three styles",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import fs from 'node:fs';\n\n// 1. sync\nconst a = fs.readFileSync('package.json', 'utf8');\n\n// 2. callback (error first)\nfs.readFile('package.json', 'utf8', (err, data) => {\n  if (err) return console.error(err);\n  console.log('callback', data.length);\n});\n\n// 3. promise\nconst b = await fs.promises.readFile('package.json', 'utf8');",
+     "explanation": "Always check the err argument first in the callback style.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why should you avoid fs.readFileSync in a web server?",
+     "a": "It blocks the single JavaScript thread until the disk read finishes, so no other request can be handled meanwhile. Use fs.promises (non-blocking) inside handlers; sync calls are fine at start-up."
+    },
+    {
+     "q": "How do you check whether a file exists?",
+     "a": "Prefer to try the operation and catch ENOENT, because checking first with exists/access can race with other processes. fs.access or fs.stat in a try/catch also works when you only need the check."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-fs-directories-watch",
+   "title": "fs: Directories, Streams and Watching",
+   "level": "intermediate",
+   "summary": "List and create folders, walk trees recursively, stream big files and react to changes with fs.watch.",
+   "description": "### Directories\n* `fs.mkdir(dir, { recursive: true })` creates nested folders and does not fail if they exist\n* `fs.readdir(dir)` returns names; `{ withFileTypes: true }` returns `Dirent` objects with `isFile()` and `isDirectory()`\n* `fs.readdir(dir, { recursive: true })` lists the whole tree (Node 20+)\n* `fs.rm(path, { recursive: true, force: true })` is `rm -rf`\n* `fs.mkdtemp(prefix)` makes a unique temporary folder\n* `fs.glob(pattern)` finds files by pattern in current Node versions\n\n### Metadata\n`fs.stat` gives `size`, `mtime`, `birthtime`, `mode`, `isFile()`, `isDirectory()`. `fs.lstat` does not follow symlinks.\n\n### Streams for big files\n`fs.createReadStream(file)` and `fs.createWriteStream(file)` move data in 64 KB chunks, so memory usage stays small. Combine with `pipeline` from `node:stream/promises` to copy or transform (compress, parse) safely.\n\n### Watching for changes\n`fs.watch(path)` emits events when a file or folder changes. It is the foundation of `node --watch`, nodemon and dev servers. Behaviour differs per OS (duplicate events are common), so debounce them. In ESM you can iterate: `for await (const e of fs.promises.watch(dir))`.\n\n### File handles\n`const fh = await fs.open(path, 'r+')` gives low-level control (read at an offset, write at a position). Always `await fh.close()` in a `finally` block, or use `await using` where available.\n\n### Permissions\n`fs.chmod`, `fs.access(path, fs.constants.R_OK)` check/set permission bits (mostly meaningful on Linux and macOS).",
+   "keyPoints": [
+    "mkdir recursive and rm recursive replace shell mkdir -p / rm -rf",
+    "readdir with withFileTypes avoids an extra stat per entry",
+    "createReadStream/createWriteStream keep memory flat for big files",
+    "fs.watch fires duplicate events: debounce them",
+    "Close file handles in finally"
+   ],
+   "pitfalls": [
+    "Deleting with rm recursive and force on an unvalidated user-supplied path",
+    "Assuming fs.watch events are one per change",
+    "Forgetting to close FileHandles (descriptor leaks)"
+   ],
+   "examples": [
+    {
+     "title": "Walk a directory tree",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import fs from 'node:fs/promises';\nimport path from 'node:path';\n\nasync function* walk(dir) {\n  for (const entry of await fs.readdir(dir, { withFileTypes: true })) {\n    const full = path.join(dir, entry.name);\n    if (entry.isDirectory()) yield* walk(full);\n    else yield full;\n  }\n}\n\nlet total = 0;\nfor await (const file of walk('.')) {\n  if (file.includes('node_modules')) continue;\n  total += (await fs.stat(file)).size;\n}\nconsole.log('bytes in project:', total);",
+     "explanation": "An async generator makes recursive traversal lazy and easy to consume.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Watch a folder",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { watch } from 'node:fs/promises';\n\nconst ac = new AbortController();\nsetTimeout(() => ac.abort(), 60_000);          // stop after a minute\n\ntry {\n  for await (const event of watch('./src', { signal: ac.signal, recursive: true })) {\n    console.log(event.eventType, event.filename);   // \"change app.js\"\n  }\n} catch (err) {\n  if (err.name !== 'AbortError') throw err;\n}",
+     "explanation": "The AbortController is the clean way to stop a watcher.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you copy a 5 GB file without exhausting memory?",
+     "a": "Use fs.createReadStream piped into fs.createWriteStream (via stream.pipeline), or fs.copyFile which delegates to the OS. Both avoid loading the whole file into memory."
+    },
+    {
+     "q": "Why does fs.watch sometimes fire twice?",
+     "a": "Editors and operating systems emit several low-level events (truncate then write, temp file then rename) for one save. Debounce events for a few milliseconds and compare file contents or mtime."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-path-module",
+   "title": "path Module",
+   "level": "beginner",
+   "summary": "Build, parse and normalise file paths in a cross-platform way with path.join, resolve, basename, extname and friends.",
+   "description": "Never build paths by string concatenation (`dir + '/' + file`). Windows uses `\\` and Linux/macOS use `/`. The **`path`** module handles the difference for you.\n\n### Most used functions\n| Function | Purpose |\n|---|---|\n| `path.join(...parts)` | Join and normalise segments |\n| `path.resolve(...parts)` | Produce an **absolute** path, processing right to left until one is absolute; starts from `process.cwd()` |\n| `path.basename(p, ext?)` | Last part (file name) |\n| `path.dirname(p)` | Folder part |\n| `path.extname(p)` | Extension including the dot |\n| `path.parse(p)` / `path.format(obj)` | Split into `{ root, dir, base, name, ext }` and back |\n| `path.normalize(p)` | Collapse `..`, `.` and double slashes |\n| `path.relative(from, to)` | Relative path between two places |\n| `path.isAbsolute(p)` | Boolean |\n| `path.sep`, `path.delimiter` | `/` or `\\`, and `:` or `;` |\n\n### join vs resolve\n* `join` simply glues and cleans: `join('a', 'b')` is `a/b`\n* `resolve` always returns an absolute path: `resolve('a', 'b')` is `<cwd>/a/b`\n\n### posix and win32\n`path.posix` and `path.win32` force one style regardless of the OS. Use `path.posix` for URLs and archive paths.\n\n### Security: path traversal\nWhen joining user input to a base folder, a value like `../../etc/passwd` can escape it. After resolving, check that the result still starts with the base folder.",
+   "keyPoints": [
+    "Use path.join/resolve instead of string concatenation",
+    "resolve returns an absolute path, join does not",
+    "path.parse splits a path into root, dir, base, name and ext",
+    "Validate that joined user input stays inside the intended base directory"
+   ],
+   "pitfalls": [
+    "Hard-coding / or \\ separators",
+    "Trusting user supplied file names (path traversal)",
+    "Using relative paths that depend on process.cwd()"
+   ],
+   "examples": [
+    {
+     "title": "Everyday path helpers (POSIX output)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import path from 'node:path';\n\nconsole.log(path.join('/users', 'ann', '..', 'bob', 'a.txt')); // /users/bob/a.txt\nconsole.log(path.resolve('/app', 'src', '../index.js'));       // /app/index.js\nconsole.log(path.basename('/a/b/report.final.pdf'));           // report.final.pdf\nconsole.log(path.basename('/a/b/report.final.pdf', '.pdf'));   // report.final\nconsole.log(path.extname('/a/b/report.final.pdf'));            // .pdf\nconsole.log(path.parse('/home/u/file.txt'));\n// { root: '/', dir: '/home/u', base: 'file.txt', ext: '.txt', name: 'file' }\nconsole.log(path.relative('/a/b/c', '/a/d'));                  // ../../d",
+     "explanation": "On Windows the separators in the output will be backslashes.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Prevent path traversal",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import path from 'node:path';\n\nconst BASE = path.resolve('uploads');\n\nexport function safePath(userInput) {\n  const full = path.resolve(BASE, userInput);\n  if (full !== BASE && !full.startsWith(BASE + path.sep)) {\n    throw new Error('Path traversal blocked');\n  }\n  return full;\n}\n\nsafePath('avatar.png');          // ok\nsafePath('../../etc/passwd');    // throws",
+     "explanation": "Always compare against the resolved base plus a separator.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between path.join and path.resolve?",
+     "a": "join concatenates segments with the platform separator and normalises the result (may stay relative). resolve builds an absolute path, working from right to left and falling back to the current working directory."
+    },
+    {
+     "q": "What is path traversal and how do you stop it?",
+     "a": "An attack that uses ../ sequences in user input to read files outside the intended directory. Resolve the final path and verify it starts with the allowed base directory, or use an allow-list of file names."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-os-module",
+   "title": "os Module",
+   "level": "beginner",
+   "summary": "Read information about the machine: CPUs, memory, platform, hostname, home and temp directories.",
+   "description": "The **`os`** module exposes details about the operating system and hardware. It is useful for diagnostics, choosing worker counts and writing cross-platform tools.\n\n### Frequent members\n| Member | Returns |\n|---|---|\n| `os.platform()` | `'linux'`, `'darwin'`, `'win32'` |\n| `os.arch()` | `'x64'`, `'arm64'` |\n| `os.cpus()` | Array with one entry per logical core |\n| `os.availableParallelism()` | Number of threads you should use (respects container limits better than `cpus().length`) |\n| `os.totalmem()` / `os.freemem()` | Memory in bytes |\n| `os.homedir()` | User home directory |\n| `os.tmpdir()` | Temp directory |\n| `os.hostname()` | Machine name |\n| `os.uptime()` | Seconds since boot |\n| `os.loadavg()` | 1, 5 and 15 minute load (always zeros on Windows) |\n| `os.networkInterfaces()` | IP addresses |\n| `os.EOL` | Line ending: `\\n` or `\\r\\n` |\n| `os.userInfo()` | Current user |\n\n### When to use\n* Sizing a `cluster` or worker pool: `os.availableParallelism()`\n* Storing cache files: `path.join(os.tmpdir(), 'myapp')`\n* Platform specific behaviour: `if (os.platform() === 'win32') ...`\n* Health endpoints that report free memory\n\n### Containers note\nInside Docker or Kubernetes, `os.totalmem()` returns the **host** memory, not the container limit. Use `process.constrainedMemory()` or read the cgroup files for real limits.",
+   "keyPoints": [
+    "os reports platform, CPUs, memory, directories and network info",
+    "Use os.availableParallelism() to size worker pools",
+    "Use os.tmpdir() and os.homedir() instead of hard-coded paths",
+    "Memory values are in bytes and may show host values in containers"
+   ],
+   "pitfalls": [
+    "Hard-coding C:\\\\temp or /tmp",
+    "Trusting os.totalmem() inside containers",
+    "Writing \\n manually in files meant for Windows tools instead of os.EOL"
+   ],
+   "examples": [
+    {
+     "title": "System report",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import os from 'node:os';\n\nconst gb = (n) => (n / 1024 ** 3).toFixed(1) + ' GB';\n\nconsole.log({\n  platform: os.platform(),\n  arch: os.arch(),\n  cores: os.availableParallelism(),\n  totalMem: gb(os.totalmem()),\n  freeMem: gb(os.freemem()),\n  home: os.homedir(),\n  tmp: os.tmpdir(),\n  uptimeHours: (os.uptime() / 3600).toFixed(1),\n});",
+     "explanation": "Output differs per machine.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find how many worker processes to start?",
+     "a": "Use os.availableParallelism() (or os.cpus().length on older Node). It gives the number of logical CPUs that can run in parallel and is container-aware."
+    },
+    {
+     "q": "Why use os.EOL?",
+     "a": "Windows uses \\r\\n and Unix uses \\n for line breaks. os.EOL gives the right one for the current platform when generating text files."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-url-module",
+   "title": "URL and URLSearchParams",
+   "level": "beginner",
+   "summary": "Parse, build and modify URLs and query strings safely with the WHATWG URL classes.",
+   "description": "Do not split URLs with regular expressions. Use the standard **`URL`** and **`URLSearchParams`** classes (global in Node, same as in browsers).\n\n### Parsing\n`new URL('https://user:pw@example.com:8080/a/b?x=1#top')` gives:\n* `protocol` `https:`, `host` `example.com:8080`, `hostname`, `port`\n* `pathname` `/a/b`, `search` `?x=1`, `hash` `#top`\n* `origin`, `href`, `username`, `password`\n\nAn invalid URL throws `TypeError` (`ERR_INVALID_URL`), so wrap user input in try/catch. `URL.canParse(str)` checks without throwing.\n\n### Relative URLs\n`new URL('../img/a.png', 'https://site.com/blog/post/')` resolves against a base.\n\n### Query strings\n`url.searchParams` is a live `URLSearchParams`:\n* `get`, `getAll`, `has`, `append`, `set`, `delete`\n* Iterable: `for (const [k, v] of params)`\n* `toString()` encodes spaces as `+` and special characters safely\n* `Object.fromEntries(params)` converts to a plain object (last duplicate wins)\n\n### In an HTTP server\n`req.url` is just the path and query (`/search?q=node`). Combine with a base to parse: `new URL(req.url, 'http://localhost')`.\n\n### File URLs\n`import.meta.url` is a `file://` URL. Convert with `fileURLToPath(url)` and `pathToFileURL(path)` from `node:url`.\n\n### Legacy API\n`url.parse()` and the `querystring` module are legacy. Avoid them for new code.",
+   "keyPoints": [
+    "Use new URL() instead of manual parsing",
+    "searchParams handles encoding and repeated keys",
+    "Pass a base URL when parsing req.url or relative links",
+    "fileURLToPath converts import.meta.url to a path",
+    "URL.canParse validates safely"
+   ],
+   "pitfalls": [
+    "Forgetting that new URL throws on invalid input",
+    "Using the legacy url.parse",
+    "Concatenating query strings by hand without encoding"
+   ],
+   "examples": [
+    {
+     "title": "Parse and build",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const u = new URL('https://example.com:8080/a/b?x=1&y=2&x=3#top');\n\nconsole.log(u.hostname, u.port, u.pathname);    // example.com 8080 /a/b\nconsole.log(u.searchParams.get('y'));           // 2\nconsole.log(u.searchParams.getAll('x'));        // [ '1', '3' ]\n\nu.searchParams.set('page', '2');\nu.searchParams.delete('x');\nconsole.log(u.href);   // https://example.com:8080/a/b?y=2&page=2#top\n\nconst params = new URLSearchParams({ q: 'node js', tag: 'a&b' });\nconsole.log(params.toString());                 // q=node+js&tag=a%26b",
+     "explanation": "This particular example is plain JavaScript and works in any runtime.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Parsing req.url in a server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nhttp.createServer((req, res) => {\n  const url = new URL(req.url, `http://${req.headers.host}`);\n  const q = url.searchParams.get('q') ?? '';\n  res.setHeader('Content-Type', 'application/json');\n  res.end(JSON.stringify({ path: url.pathname, q }));\n}).listen(3000);",
+     "explanation": "GET /search?q=node returns {\"path\":\"/search\",\"q\":\"node\"}.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you read query parameters in plain Node?",
+     "a": "Create a URL from req.url with a base such as http://localhost, then use url.searchParams.get('name'). Express exposes the same data as req.query."
+    },
+    {
+     "q": "What does URLSearchParams do for you?",
+     "a": "It parses, builds and percent-encodes query strings correctly, supports repeated keys and iteration, and is available in both Node and browsers."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-util-module",
+   "title": "util: promisify, inspect, parseArgs",
+   "level": "intermediate",
+   "summary": "util bundles helpers: promisify callback APIs, deep-print objects, parse CLI flags, format strings and check types.",
+   "description": "The **`util`** module is a toolbox of small helpers.\n\n### util.promisify\nTurns an error-first callback function into one that returns a promise:\n`const sleep = util.promisify(setTimeout)`. Many core APIs already have promise versions, but older libraries do not.\nOpposite: `util.callbackify`.\n\n### util.inspect\nWhat `console.log` uses internally. Options: `depth` (default 2, `null` = unlimited), `colors`, `compact`, `breakLength`, `showHidden`. Define `[util.inspect.custom]` on a class to control how it prints. `console.dir(obj, { depth: null })` is the shortcut.\n\n### util.parseArgs\nParses command line arguments without a dependency (stable since Node 20). Declare `options` with `type` (`string` or `boolean`), `short` aliases, `default` and `multiple`. Positional arguments need `allowPositionals: true`.\n\n### util.format\nprintf-style formatting: `%s` string, `%d` number, `%i` integer, `%j` JSON, `%o`/`%O` objects, `%%` percent.\n\n### util.styleText\nAdds terminal colours without a library: `util.styleText('green', 'OK')`.\n\n### util.types and util.isDeepStrictEqual\n`util.types.isPromise(x)`, `isRegExp`, `isDate`. `util.isDeepStrictEqual(a, b)` compares objects by value.\n\n### util.deprecate\nWrap an old function to print a one-time warning when it is called.\n\n### util.TextEncoder / TextDecoder\nConvert strings to UTF-8 bytes and back.\n\n### util.debuglog\nLogs only when `NODE_DEBUG=name` is set, ideal for library diagnostics.",
+   "keyPoints": [
+    "promisify converts callback APIs to promises",
+    "inspect with depth null prints nested objects fully",
+    "parseArgs replaces small CLI parsing libraries",
+    "format, styleText, deprecate and isDeepStrictEqual are handy extras"
+   ],
+   "pitfalls": [
+    "Promisifying a function that does not follow the (err, value) callback convention",
+    "Reading truncated console.log output and forgetting that depth defaults to 2"
+   ],
+   "examples": [
+    {
+     "title": "promisify and inspect",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import util from 'node:util';\nimport { readFile } from 'node:fs';\n\nconst readFileP = util.promisify(readFile);\nconsole.log((await readFileP('package.json', 'utf8')).length);\n\nconst deep = { a: { b: { c: { d: 1 } } } };\nconsole.log(deep);                                  // { a: { b: { c: [Object] } } }\nconsole.log(util.inspect(deep, { depth: null }));   // everything\nconsole.log(util.format('%s is %d years and %j', 'Ann', 30, { a: 1 }));\n// Ann is 30 years and {\"a\":1}",
+     "explanation": "console.log hides objects deeper than 2 levels.",
+     "lang": "javascript"
+    },
+    {
+     "title": "parseArgs CLI",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// cli.mjs   ->  node cli.mjs --port 4000 -v file.txt\nimport { parseArgs } from 'node:util';\n\nconst { values, positionals } = parseArgs({\n  allowPositionals: true,\n  options: {\n    port:    { type: 'string',  short: 'p', default: '3000' },\n    verbose: { type: 'boolean', short: 'v' },\n  },\n});\n\nconsole.log(values, positionals);\n// [Object: null prototype] { port: '4000', verbose: true } [ 'file.txt' ]",
+     "explanation": "Unknown flags throw an error by default, which is usually what you want.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does util.promisify do?",
+     "a": "It wraps a function whose last argument is an error-first callback (err, result) and returns a new function that returns a promise resolving with the result or rejecting with the error."
+    },
+    {
+     "q": "How do you print a deeply nested object in full?",
+     "a": "Use util.inspect(obj, { depth: null }) or console.dir(obj, { depth: null }); the default depth of 2 replaces deeper levels with [Object]."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-events-emitter",
+   "title": "events: EventEmitter",
+   "level": "intermediate",
+   "summary": "The observer pattern at the heart of Node: on, once, emit, error events and the memory leak warning.",
+   "description": "Much of Node (streams, servers, processes) is built on **`EventEmitter`**. An emitter lets objects announce that something happened and lets other code react.\n\n### Core API\n* `emitter.on(name, listener)` (alias `addListener`) subscribes\n* `emitter.once(name, listener)` runs only the first time\n* `emitter.emit(name, ...args)` calls all listeners **synchronously**, in the order they were added, and returns `true` if there were any\n* `emitter.off(name, listener)` / `removeAllListeners(name)` unsubscribes\n* `emitter.prependListener` runs a listener first\n* `listenerCount(name)`, `eventNames()`\n\n### The special `'error'` event\nIf an emitter emits `'error'` and **no listener** exists, Node throws and the process crashes. Always attach an error listener to emitters you create (streams, sockets).\n\n### Making your own emitter\nExtend the class: `class Chat extends EventEmitter {}`. This is how you build decoupled modules such as job queues, loggers or game engines.\n\n### Waiting for an event\n`await once(emitter, 'ready')` (from `node:events`) turns an event into a promise. `on(emitter, 'data')` gives an async iterator.\n\n### Memory leak warning\nMore than 10 listeners for one event prints `MaxListenersExceededWarning`. It usually means you add listeners inside a loop or request handler without removing them. Raise it with `setMaxListeners` only when it is intentional.\n\n### Sync vs async\n`emit` is synchronous. If a listener is slow it blocks the emitter. Use `setImmediate` or queue work inside the listener for heavy tasks.\n\n### EventTarget\nBrowsers use `EventTarget` and `addEventListener`; Node supports it too, but EventEmitter remains the standard in Node APIs.",
+   "keyPoints": [
+    "on/once subscribe, emit triggers listeners synchronously in order",
+    "An unhandled 'error' event crashes the process",
+    "Extend EventEmitter to create your own event-driven classes",
+    "events.once() converts an event into a promise",
+    "MaxListenersExceededWarning hints at leaked listeners"
+   ],
+   "pitfalls": [
+    "Registering listeners inside a loop or per-request without removing them",
+    "Emitting 'error' without a listener",
+    "Assuming listeners run asynchronously"
+   ],
+   "examples": [
+    {
+     "title": "Custom emitter",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { EventEmitter, once } from 'node:events';\n\nclass Order extends EventEmitter {\n  place(id) {\n    console.log('placing', id);\n    this.emit('placed', { id, at: 'now' });\n  }\n}\n\nconst order = new Order();\norder.on('placed', (o) => console.log('email sent for', o.id));\norder.once('placed', () => console.log('first order bonus!'));\norder.on('error', (err) => console.error('failed:', err.message));\n\norder.place(1);\norder.place(2);\norder.emit('error', new Error('payment declined'));\n\nsetTimeout(() => order.emit('ready'), 10);\nawait once(order, 'ready');\nconsole.log('ready received');",
+     "explanation": "The once listener runs only for the first order.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Expected output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "placing 1\nemail sent for 1\nfirst order bonus!\nplacing 2\nemail sent for 2\nfailed: payment declined\nready received",
+     "explanation": "Listeners run synchronously inside emit.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is EventEmitter synchronous or asynchronous?",
+     "a": "emit() calls the listeners synchronously in registration order before it returns. The listeners themselves can start async work, but the dispatch is synchronous."
+    },
+    {
+     "q": "What happens if you emit 'error' without a listener?",
+     "a": "Node throws the error as an uncaught exception, which crashes the process, so you should always register an 'error' listener on emitters."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-buffer-module",
+   "title": "Buffer and Binary Data",
+   "level": "intermediate",
+   "summary": "Buffers hold raw bytes; learn creation, encodings (utf8, hex, base64), slicing and when you meet them.",
+   "description": "A **Buffer** is a fixed-size chunk of memory holding raw bytes. It is a subclass of `Uint8Array` and is used for files, network packets, images, encryption and anything that is not plain text.\n\n### Creating buffers\n* `Buffer.from('hello')` from a string (UTF-8 by default)\n* `Buffer.from([104, 105])` from bytes\n* `Buffer.from(str, 'base64' | 'hex')` decoding\n* `Buffer.alloc(10)` zero-filled, **safe**\n* `Buffer.allocUnsafe(10)` faster, may contain old memory (never send it to clients unless fully overwritten)\n* `Buffer.concat([a, b])`\n\n### Converting\n`buf.toString('utf8' | 'hex' | 'base64' | 'base64url')`. Example: `Buffer.from('hello').toString('base64')` is `aGVsbG8=`.\n\n### Length is bytes, not characters\n`'héllo'.length` is 5 but `Buffer.from('héllo').length` is 6, because `é` takes two bytes in UTF-8. Remember this for `Content-Length` headers and limits.\n\n### Reading and writing numbers\n`buf.readUInt32BE(0)`, `buf.writeInt16LE(-2, 4)`; BE/LE is big or little endian. Used when speaking binary protocols.\n\n### Other helpers\n* `buf.slice` / `subarray` share memory with the original (no copy)\n* `buf.equals(other)`, `Buffer.compare`, `buf.indexOf`\n* `Buffer.byteLength(str)` counts bytes without allocating\n* Indexing `buf[0]` gives a byte (0-255)\n\n### Where you meet them\n`fs.readFile` without an encoding, stream `data` events, `crypto` outputs, and HTTP request bodies.",
+   "keyPoints": [
+    "Buffer is raw bytes and a Uint8Array subclass",
+    "Convert with toString(encoding) and Buffer.from(string, encoding)",
+    "Length counts bytes, not characters",
+    "Prefer Buffer.alloc over allocUnsafe",
+    "subarray shares memory instead of copying"
+   ],
+   "pitfalls": [
+    "Using string.length as the byte size of UTF-8 text",
+    "Concatenating chunks with + (corrupts multi-byte characters); collect and Buffer.concat instead",
+    "Using allocUnsafe and leaking old memory content"
+   ],
+   "examples": [
+    {
+     "title": "Buffer basics",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const buf = Buffer.from('héllo');\nconsole.log(buf);                         // <Buffer 68 c3 a9 6c 6c 6f>\nconsole.log('héllo'.length, buf.length);  // 5 6\n\nconsole.log(Buffer.from('hello').toString('base64'));   // aGVsbG8=\nconsole.log(Buffer.from('aGVsbG8=', 'base64').toString());  // hello\nconsole.log(Buffer.from('hi').toString('hex'));         // 6869\n\nconst b = Buffer.alloc(8);\nb.writeUInt32BE(258, 0);\nb.writeInt16LE(-2, 4);\nconsole.log(b, b.readUInt32BE(0));        // <Buffer 00 00 01 02 fe ff 00 00> 258",
+     "explanation": "258 is 0x0102 so the first four bytes are 00 00 01 02.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between Buffer.alloc and Buffer.allocUnsafe?",
+     "a": "alloc returns zero-filled memory. allocUnsafe skips zeroing for speed, so it can expose old data from memory; use it only when you immediately overwrite every byte."
+    },
+    {
+     "q": "Why is string.length not equal to buffer.length?",
+     "a": "string.length counts UTF-16 code units, while buffer length counts bytes in the chosen encoding. Non-ASCII characters take 2-4 bytes in UTF-8."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-crypto-module",
+   "title": "crypto: Hashing, HMAC and Random Values",
+   "level": "intermediate",
+   "summary": "Create hashes, HMAC signatures, random tokens, UUIDs and encrypt data; know when to use bcrypt or argon2 instead.",
+   "description": "The **`crypto`** module wraps OpenSSL for security tasks.\n\n### Hashing\n`crypto.createHash('sha256').update(data).digest('hex')`. A hash is one-way and always gives the same output for the same input. Use SHA-256 or SHA-512 for checksums and fingerprints. **MD5 and SHA-1 are broken** for security.\n\n### HMAC\n`crypto.createHmac('sha256', secret).update(data).digest('hex')` produces a hash that also proves the sender knew the **secret key**. It is used for webhook signatures, signed cookies and JWT HS256. Compare signatures with `crypto.timingSafeEqual` to avoid timing attacks.\n\n### Random values\n* `crypto.randomBytes(32).toString('hex')` for tokens, secrets and salts\n* `crypto.randomUUID()` for a v4 UUID\n* `crypto.randomInt(1, 100)` for an unbiased random integer\n* **Never** use `Math.random()` for anything security related\n\n### Passwords\nPlain hashes are too fast for passwords. Use a slow, salted algorithm:\n* Built in: `crypto.scrypt` / `scryptSync(password, salt, 64)`\n* Libraries: **bcrypt** or **argon2** (best choice today)\n\n### Encryption\nSymmetric: `createCipheriv('aes-256-gcm', key, iv)` (use a fresh 12-byte IV per message and store the auth tag). Asymmetric: `generateKeyPairSync('rsa' | 'ed25519')`, `sign`, `verify`.\n\n### Web Crypto\n`globalThis.crypto.subtle` offers the browser-compatible API, and `crypto.getRandomValues` works everywhere.",
+   "keyPoints": [
+    "createHash for checksums, createHmac for keyed signatures",
+    "Use randomBytes/randomUUID/randomInt, never Math.random, for secrets",
+    "Passwords need slow salted hashing: scrypt, bcrypt or argon2",
+    "Compare secrets with timingSafeEqual",
+    "MD5 and SHA-1 are not secure"
+   ],
+   "pitfalls": [
+    "Storing passwords with plain SHA-256",
+    "Reusing an IV (nonce) with AES-GCM",
+    "Comparing signatures with === (timing attack)"
+   ],
+   "examples": [
+    {
+     "title": "Hash, HMAC, random",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import crypto from 'node:crypto';\n\nconsole.log(crypto.createHash('sha256').update('hello').digest('hex'));\n// 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824\n\nconsole.log(crypto.createHmac('sha256', 'secret').update('hello').digest('hex'));\n// 88aab3ede8d3adf94d26ab90d3bafd4a2083070c3bcce9c014ee04a443847c0b\n\nconsole.log(crypto.randomUUID());                        // e.g. 3b241101-e2bb-4255-8caf-4136c566a962\nconsole.log(crypto.randomBytes(16).toString('hex'));     // 32 hex chars\nconsole.log(crypto.randomInt(1, 7));                     // dice roll 1..6",
+     "explanation": "Hash and HMAC outputs are deterministic; random values change on each run.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Password hashing with scrypt",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { scrypt, randomBytes, timingSafeEqual } from 'node:crypto';\nimport { promisify } from 'node:util';\n\nconst scryptP = promisify(scrypt);\n\nexport async function hashPassword(password) {\n  const salt = randomBytes(16);\n  const key = await scryptP(password, salt, 64);\n  return `${salt.toString('hex')}:${key.toString('hex')}`;\n}\n\nexport async function verifyPassword(password, stored) {\n  const [saltHex, keyHex] = stored.split(':');\n  const key = await scryptP(password, Buffer.from(saltHex, 'hex'), 64);\n  return timingSafeEqual(key, Buffer.from(keyHex, 'hex'));\n}\n\nconst h = await hashPassword('s3cret');\nconsole.log(await verifyPassword('s3cret', h), await verifyPassword('wrong', h)); // true false",
+     "explanation": "In real projects most teams use the bcrypt or argon2 package for the same job.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why not store passwords with SHA-256?",
+     "a": "SHA-256 is designed to be fast, so attackers can test billions of guesses per second. Password hashes must be slow, salted and tunable (bcrypt, scrypt, argon2)."
+    },
+    {
+     "q": "Hash vs HMAC?",
+     "a": "A hash only depends on the data, so anyone can compute it. An HMAC mixes in a secret key, so only parties with the key can create or verify it; it proves integrity and authenticity."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-zlib-module",
+   "title": "zlib: Compression",
+   "level": "intermediate",
+   "summary": "Compress and decompress data with gzip, deflate and brotli, in memory or as streams.",
+   "description": "**`zlib`** compresses data using gzip, deflate or brotli. Compression saves bandwidth and disk space, especially for text (JSON, HTML, logs) which often shrinks by 70-90%.\n\n### Three APIs\n1. **Sync**: `zlib.gzipSync(buf)` / `gunzipSync` for small data\n2. **Async/callback** or promisified: `gzip(buf, cb)`\n3. **Streams**: `zlib.createGzip()` / `createGunzip()` for large files and HTTP\n\n### Algorithms\n| Format | Functions | Notes |\n|---|---|---|\n| gzip | `gzip`, `gunzip` | Most common (files, HTTP) |\n| deflate | `deflate`, `inflate` | Raw zlib format |\n| brotli | `brotliCompress`, `brotliDecompress` | Better ratio, standard for HTTPS text |\n\n### Streaming a file\n`pipeline(createReadStream('big.log'), createGzip(), createWriteStream('big.log.gz'))` keeps memory constant.\n\n### HTTP compression\nBrowsers send `Accept-Encoding: gzip, br`. A server can compress responses and add `Content-Encoding: gzip`. In real apps use the `compression` middleware or let nginx/CDN do it.\n\n### Levels\n`{ level: 9 }` is smallest but slowest; `level: 1` is fastest. Default (6) is a good balance.\n\n### Security: zip bombs\nA tiny input can expand to gigabytes. When decompressing untrusted data set `maxOutputLength`.\n\n### CPU note\nCompression is CPU-intensive. Sync versions block the event loop; the async ones use the thread pool.",
+   "keyPoints": [
+    "zlib supports gzip, deflate and brotli",
+    "Use streams (createGzip) for big files and HTTP bodies",
+    "Text compresses very well; images and videos do not",
+    "Limit output size when decompressing untrusted input"
+   ],
+   "pitfalls": [
+    "Using gzipSync on large data inside a request handler",
+    "Double-compressing already compressed files (jpg, zip)",
+    "Forgetting the Content-Encoding header when sending compressed bodies"
+   ],
+   "examples": [
+    {
+     "title": "Compress in memory and as a stream",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import zlib from 'node:zlib';\nimport { createReadStream, createWriteStream } from 'node:fs';\nimport { pipeline } from 'node:stream/promises';\n\nconst input = 'hello '.repeat(100);              // 600 bytes\nconst gz = zlib.gzipSync(input);\nconsole.log(input.length, gz.length);            // 600 32\nconsole.log(zlib.gunzipSync(gz).toString() === input);   // true\n\nawait pipeline(\n  createReadStream('app.log'),\n  zlib.createGzip(),\n  createWriteStream('app.log.gz'),\n);\nconsole.log('compressed app.log');",
+     "explanation": "Repeated text compresses extremely well.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you compress an HTTP response in Node?",
+     "a": "Check the Accept-Encoding header, pipe the response body through zlib.createGzip() (or brotli), and set Content-Encoding. Usually the compression middleware or a reverse proxy does this."
+    },
+    {
+     "q": "Why is the sync zlib API risky on servers?",
+     "a": "It runs on the main thread, blocking the event loop during compression. The async and stream APIs run on the libuv thread pool."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-child-process",
+   "title": "child_process",
+   "level": "intermediate",
+   "summary": "Run shell commands and other programs from Node with exec, execFile, spawn and fork.",
+   "description": "**`child_process`** starts other programs from your script (git, ffmpeg, python, another Node file).\n\n| Function | Best for | Output |\n|---|---|---|\n| `exec(cmd, cb)` | Short shell commands, small output | Buffered string |\n| `execFile(file, args, cb)` | Run a program **without a shell** (safer) | Buffered |\n| `spawn(cmd, args)` | Long running or large output | Streams (`stdout`, `stderr`) |\n| `fork(modulePath)` | Another **Node** script with an IPC message channel | `send()` / `on('message')` |\n| `execSync`, `spawnSync` | Scripts and build tools | Blocking |\n\n### Promises\n`const { promisify } = require('node:util'); const execP = promisify(exec);` returns `{ stdout, stderr }`.\n\n### spawn in detail\n`const child = spawn('ls', ['-la'])` gives `child.stdout.on('data', ...)`, `child.on('close', code => ...)` and `child.kill()`. Options: `cwd`, `env`, `stdio: 'inherit'` (pass through to your terminal), `shell: true`.\n\n### Exit codes and errors\nA non-zero exit code is a failure. `'error'` fires if the program cannot start (not found). `exec` rejects with an error that has `code`, `stdout` and `stderr`.\n\n### Security: command injection\nBuilding a command string such as `\"git log \" + userInput` lets a user inject `; rm -rf /`. Never put untrusted data in a shell string. Use `execFile` or `spawn` with an arguments **array** and `shell: false`.\n\n### fork vs worker_threads\n`fork` creates a whole new process with its own memory (heavier, isolated). `worker_threads` shares the process and is lighter for CPU work.",
+   "keyPoints": [
+    "exec buffers output, spawn streams it, fork starts a Node child with IPC",
+    "execFile/spawn with an args array avoid shell injection",
+    "Check the exit code and listen for the error event",
+    "stdio 'inherit' connects the child to your terminal"
+   ],
+   "pitfalls": [
+    "Building shell command strings from user input",
+    "Using exec for commands with huge output (maxBuffer exceeded)",
+    "Not handling the case where the executable is missing"
+   ],
+   "examples": [
+    {
+     "title": "exec, spawn and fork",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { exec, spawn } from 'node:child_process';\nimport { promisify } from 'node:util';\n\nconst execP = promisify(exec);\nconst { stdout } = await execP('node --version');\nconsole.log('node is', stdout.trim());\n\nconst child = spawn('node', ['-e', 'console.log(\"hi from child\"); process.exit(3)']);\nchild.stdout.on('data', (d) => console.log('child said:', d.toString().trim()));\nchild.on('close', (code) => console.log('exit code', code));",
+     "explanation": "Output: node is v24.x.x, child said: hi from child, exit code 3.",
+     "lang": "javascript"
+    },
+    {
+     "title": "fork with messages",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// parent.js\nimport { fork } from 'node:child_process';\nconst child = fork('./worker.js');\nchild.on('message', (m) => { console.log('parent got', m); child.disconnect(); });\nchild.send({ n: 5 });\n\n// worker.js\nprocess.on('message', ({ n }) => {\n  process.send({ square: n * n });\n});",
+     "explanation": "The parent prints \"parent got { square: 25 }\".",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "exec vs spawn?",
+     "a": "exec runs a command in a shell and buffers all output until it finishes (limited by maxBuffer), so it suits short commands. spawn streams stdout/stderr as data arrives and avoids the shell by default, so it suits long-running or large-output programs."
+    },
+    {
+     "q": "How do you avoid command injection?",
+     "a": "Never interpolate user input into a shell string. Use execFile or spawn with the program and an array of arguments, without shell: true, and validate input against an allow-list."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-readline-module",
+   "title": "readline: Interactive Input",
+   "level": "beginner",
+   "summary": "Read user input line by line from the terminal or from a large file.",
+   "description": "**`readline`** reads a stream one line at a time. It has two main jobs: interactive prompts in CLI tools and processing big text files line by line.\n\n### Prompting the user\nWith `node:readline/promises`:\n`const rl = readline.createInterface({ input: process.stdin, output: process.stdout }); const name = await rl.question('Name? '); rl.close();`\n\nAlways call `rl.close()`, otherwise the process stays alive waiting for input.\n\n### Reading a file line by line\n`createInterface({ input: fs.createReadStream('big.csv'), crlfDelay: Infinity })` then `for await (const line of rl)`. Memory stays small even for huge files; this is the standard way to parse logs and CSV.\n\n### Events\n* `'line'` for each line\n* `'close'` at the end of input or Ctrl+C / Ctrl+D\n* `rl.on('SIGINT')` to customise Ctrl+C\n\n### Other helpers\n* `readline.clearLine`, `cursorTo`, `moveCursor` for progress bars\n* `rl.setPrompt('> ')` and `rl.prompt()` build a REPL-like loop\n* Piped input works: `echo \"Ann\" | node ask.mjs`\n\n### For rich CLIs\nLibraries such as `inquirer`, `prompts` and `@clack/prompts` add menus, checkboxes and validation on top of the same idea.\n\n### Windows line endings\nUse `crlfDelay: Infinity` so `\\r\\n` counts as a single line break.",
+   "keyPoints": [
+    "readline/promises gives await rl.question() for prompts",
+    "for await over the interface reads large files line by line",
+    "Close the interface or the process will not exit",
+    "Works with piped stdin too"
+   ],
+   "pitfalls": [
+    "Forgetting rl.close()",
+    "Reading an entire large file into memory when line streaming would do"
+   ],
+   "examples": [
+    {
+     "title": "Ask questions",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import readline from 'node:readline/promises';\nimport { stdin as input, stdout as output } from 'node:process';\n\nconst rl = readline.createInterface({ input, output });\nconst name = await rl.question('What is your name? ');\nconst age = Number(await rl.question('Age? '));\nconsole.log(`Hi ${name}, next year you will be ${age + 1}.`);\nrl.close();",
+     "explanation": "Run it with node ask.mjs and type your answers.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Count lines containing ERROR",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createReadStream } from 'node:fs';\nimport readline from 'node:readline';\n\nconst rl = readline.createInterface({\n  input: createReadStream('app.log'),\n  crlfDelay: Infinity,\n});\n\nlet errors = 0;\nfor await (const line of rl) {\n  if (line.includes('ERROR')) errors++;\n}\nconsole.log('errors:', errors);",
+     "explanation": "Works for files of any size because only one line is held in memory.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you process a 10 GB log file in Node?",
+     "a": "Stream it with fs.createReadStream and wrap it in readline.createInterface, then iterate lines with for await. Only a small buffer is in memory at any time."
+    },
+    {
+     "q": "Why does my script hang after reading input?",
+     "a": "The readline interface keeps stdin open. Call rl.close() when you are done so the event loop has nothing left to wait for."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-timers-module",
+   "title": "Timers: setTimeout, setImmediate, timers/promises",
+   "level": "beginner",
+   "summary": "Schedule work with setTimeout, setInterval, setImmediate and process.nextTick, and use the promise timers.",
+   "description": "Node provides the familiar browser timers plus a few extras.\n\n| API | Runs |\n|---|---|\n| `setTimeout(fn, ms)` | After at least `ms` milliseconds |\n| `setInterval(fn, ms)` | Repeatedly every `ms` |\n| `setImmediate(fn)` | After the current I/O phase (check phase of the event loop) |\n| `process.nextTick(fn)` | Before anything else, right after the current operation |\n| `queueMicrotask(fn)` | In the microtask queue (like promise callbacks) |\n\n### Timer objects\nIn Node, `setTimeout` returns a `Timeout` object, not a number. Methods: `clearTimeout(t)`, `t.unref()` (do not keep the process alive for this timer), `t.ref()`, `t.refresh()`.\n\n### Not exact\nThe delay is a **minimum**. If the event loop is busy the callback runs later. Never use timers for precise timing.\n\n### Promise timers\n`import { setTimeout as sleep } from 'node:timers/promises'` gives `await sleep(1000)`, and supports an `AbortSignal`. `setInterval` there is an async iterator.\n\n### Clearing\nAlways clear intervals you no longer need, or the process never exits. Using `unref()` on a background interval (metrics, cleanup) lets Node exit when real work is done.\n\n### Zero delay\n`setTimeout(fn, 0)` actually becomes 1 ms. Compared to `setImmediate`, the order is not guaranteed in the main module but is always immediate-first inside an I/O callback (see the event loop topic).\n\n### Long delays\nDelays above 2,147,483,647 ms (about 24.8 days) overflow and fire immediately.",
+   "keyPoints": [
+    "setTimeout delay is a minimum, not a guarantee",
+    "unref() lets the process exit despite an active timer",
+    "timers/promises gives awaitable sleep with AbortSignal support",
+    "clearInterval or unref intervals to avoid hanging the process",
+    "nextTick and microtasks run before timers"
+   ],
+   "pitfalls": [
+    "Never clearing setInterval in tests or scripts, so the process hangs",
+    "Relying on setTimeout for accurate timing",
+    "Using nextTick recursively and starving the event loop"
+   ],
+   "examples": [
+    {
+     "title": "Awaitable sleep and unref",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setTimeout as sleep, setInterval as every } from 'node:timers/promises';\n\nconsole.log('start');\nawait sleep(500);\nconsole.log('after 500ms');\n\nlet n = 0;\nfor await (const _ of every(200)) {\n  console.log('tick', ++n);\n  if (n === 3) break;\n}\n\nsetInterval(() => console.log('background'), 1000).unref(); // will not keep Node alive\nconsole.log('done');",
+     "explanation": "The script ends right after done because the unref'd interval does not block exit.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is setTimeout(fn, 100) guaranteed to run after exactly 100ms?",
+     "a": "No. 100 ms is the minimum delay. The callback is queued once the time elapsed, but runs only when the event loop is free, so it can be late if other work is running."
+    },
+    {
+     "q": "What does timer.unref() do?",
+     "a": "It tells Node not to wait for this timer before exiting. If only unref'd timers remain, the process ends. Useful for housekeeping tasks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-assert-module",
+   "title": "assert and Validating Assumptions",
+   "level": "intermediate",
+   "summary": "node:assert provides strict equality, deep equality and throws checks used by tests and defensive code.",
+   "description": "**`assert`** throws an `AssertionError` when a condition is false. It is the base of `node:test` and a good way to check assumptions in scripts.\n\n### Use the strict mode\nImport from `node:assert/strict` (or `assert.strict`). Then `equal` means `===` and `deepEqual` means strict deep comparison. The loose versions use `==` and cause surprising passes (`1 == '1'`).\n\n### Main functions\n| Function | Checks |\n|---|---|\n| `assert.ok(value)` / `assert(value)` | Truthy |\n| `assert.equal(a, b)` | `a === b` (strict mode) |\n| `assert.notEqual(a, b)` | Not equal |\n| `assert.deepEqual(a, b)` | Objects/arrays equal by value |\n| `assert.throws(fn, expected)` | `fn` throws a matching error |\n| `assert.rejects(promiseOrFn, expected)` | Promise rejects |\n| `assert.match(str, regex)` | String matches regex |\n| `assert.fail(message)` | Always fails |\n\n### Custom messages\nLast argument: `assert.equal(total, 10, 'cart total should be 10')`. Without it Node prints a helpful diff of actual vs expected.\n\n### Production use?\nUse assert for **programmer errors** and invariants during tests and scripts. For validating user input, throw proper errors (400 responses); do not rely on assert, and avoid assert in hot paths.\n\n### Test runner\n`node --test` discovers files and runs `node:test`, which uses assert for the checks themselves. See the testing section.",
+   "keyPoints": [
+    "Import node:assert/strict for === and strict deepEqual",
+    "assert.throws and assert.rejects test failing code",
+    "AssertionError shows a readable diff",
+    "Good for invariants and tests, not for user input validation"
+   ],
+   "pitfalls": [
+    "Using the legacy loose assert.equal (==)",
+    "Forgetting await with assert.rejects",
+    "Using assertions to validate request data"
+   ],
+   "examples": [
+    {
+     "title": "Assertions in action",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import assert from 'node:assert/strict';\n\nassert.equal(1 + 1, 2);\nassert.deepEqual({ a: [1, 2] }, { a: [1, 2] });\nassert.throws(() => JSON.parse('{bad'), SyntaxError);\nawait assert.rejects(Promise.reject(new Error('boom')), /boom/);\n\ntry {\n  assert.equal(1, '1', 'types must match');\n} catch (e) {\n  console.log(e.name, '-', e.message.split('\n')[0]);   // AssertionError - types must match\n}",
+     "explanation": "Strict equality treats 1 and \"1\" as different.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "assert.equal vs assert.strictEqual?",
+     "a": "In the legacy mode equal uses ==, strictEqual uses ===. When you import node:assert/strict, equal behaves like strictEqual, which is the recommended setup."
+    },
+    {
+     "q": "How do you assert that an async function fails?",
+     "a": "Use await assert.rejects(fnOrPromise, expectedError). Without await the assertion may not finish before the test ends."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-process-object",
+   "title": "The process Object",
+   "level": "intermediate",
+   "summary": "process gives access to arguments, environment variables, exit codes, signals, stdin/stdout, memory and uptime.",
+   "description": "**`process`** is a global object describing the current Node process.\n\n### Information\n* `process.argv`: `[nodePath, scriptPath, ...args]`\n* `process.env`: environment variables (all values are strings)\n* `process.cwd()`: current working directory; `process.chdir(dir)`\n* `process.pid`, `process.platform`, `process.version`, `process.versions`\n* `process.uptime()`, `process.memoryUsage()`, `process.cpuUsage()`, `process.hrtime.bigint()`\n\n### Standard streams\n`process.stdin`, `process.stdout`, `process.stderr` are streams. `console.log` writes to stdout and `console.error` to stderr. Pipes: `echo hi | node app.js` fills stdin.\n\n### Exiting\n* `process.exit(code)` stops immediately; pending async work is lost\n* `process.exitCode = 1` sets the code and lets the process end naturally (preferred)\n* Exit code 0 = success\n\n### Events\n* `'exit'` (sync cleanup only) and `'beforeExit'`\n* `'uncaughtException'` and `'unhandledRejection'`: last-resort handlers: log and exit, do not continue\n* **Signals**: `'SIGINT'` (Ctrl+C), `'SIGTERM'` (kill, Docker/Kubernetes stop). Handle them for graceful shutdown. (`SIGKILL` cannot be caught.)\n\n### Environment variables\n`process.env.PORT ?? 3000`. Values are strings so convert: `Number(process.env.PORT)`. Setting `process.env.X = undefined` stores the string `'undefined'`; use `delete`.\n\n### nextTick\n`process.nextTick(fn)` runs before promise microtasks (see the event loop).\n\n### Warnings and loading env files\n`process.loadEnvFile('.env')` loads a file at runtime, and `process.emitWarning()` raises warnings.",
+   "keyPoints": [
+    "argv holds CLI arguments, env holds string environment variables",
+    "Prefer process.exitCode over process.exit()",
+    "SIGINT and SIGTERM handlers enable graceful shutdown",
+    "uncaughtException/unhandledRejection are for logging and exiting, not continuing",
+    "stdin, stdout and stderr are streams"
+   ],
+   "pitfalls": [
+    "Calling process.exit() and cutting off pending writes",
+    "Continuing to run after an uncaughtException",
+    "Forgetting that env values are strings (\"false\" is truthy)"
+   ],
+   "examples": [
+    {
+     "title": "Inspect the process",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// info.js   ->  node info.js --name Ann\nconsole.log(process.argv.slice(2));          // [ '--name', 'Ann' ]\nconsole.log(process.env.HOME ?? process.env.USERPROFILE);\nconsole.log(process.cwd());\nconsole.log(Math.round(process.memoryUsage().heapUsed / 1024 / 1024), 'MB heap');\nconsole.log(typeof process.hrtime.bigint());  // bigint\n\nprocess.on('exit', (code) => console.log('exiting with', code));\nprocess.exitCode = 2;",
+     "explanation": "Setting exitCode lets the exit handler run naturally.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Signals",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "process.on('SIGINT', () => {\n  console.log('Ctrl+C received, cleaning up...');\n  process.exit(0);\n});\nprocess.on('unhandledRejection', (reason) => {\n  console.error('Unhandled rejection:', reason);\n  process.exit(1);\n});\n\nsetInterval(() => {}, 1000);   // keep the process alive\nconsole.log('running, pid', process.pid);",
+     "explanation": "Press Ctrl+C to see the handler.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "process.exit() vs process.exitCode?",
+     "a": "exit() terminates immediately, possibly dropping pending I/O and timers. Setting exitCode records the code but lets the event loop drain and the process end naturally, which is safer."
+    },
+    {
+     "q": "What are SIGINT and SIGTERM?",
+     "a": "SIGINT is sent by Ctrl+C, SIGTERM is the polite termination request used by Docker, Kubernetes and process managers. Handle both to close servers and database connections before exiting. SIGKILL cannot be handled."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-worker-threads",
+   "title": "worker_threads",
+   "level": "advanced",
+   "summary": "Run CPU-heavy JavaScript on separate threads without blocking the event loop, with message passing and shared memory.",
+   "description": "Node runs your JavaScript on one thread, so a CPU-heavy loop freezes every request. **`worker_threads`** lets you run JavaScript in parallel **threads** inside the same process.\n\n### Basics\n* `new Worker(file, { workerData })` starts a worker\n* In the worker: `parentPort.postMessage(result)` and `parentPort.on('message', ...)`\n* `isMainThread` tells which side you are in, so one file can contain both\n* Events on the worker: `'message'`, `'error'`, `'exit'`\n\n### Communication\nMessages are copied with the **structured clone** algorithm (objects, arrays, Maps, typed arrays). To avoid copying large data:\n* **Transfer** ownership of an `ArrayBuffer`: `postMessage(buf, [buf])`\n* Share memory with `SharedArrayBuffer` and coordinate using `Atomics`\n\n### Workers vs child processes vs cluster\n| | worker_threads | child_process / cluster |\n|---|---|---|\n| Memory | Same process, separate heaps | Separate processes |\n| Start cost | Lower | Higher |\n| Best for | CPU tasks (hashing, image resize, parsing) | Isolation, scaling servers on all cores |\n\n### Not for I/O\nWorkers do not make database or HTTP calls faster; Node's async I/O is already non-blocking. Use workers only for CPU work.\n\n### Worker pools\nCreating a worker per request is expensive (tens of ms). Keep a pool and reuse workers. Libraries: **piscina**, **workerpool**.\n\n### Memory limits\nEach worker has its own V8 heap; set `resourceLimits: { maxOldGenerationSizeMb: 256 }`.",
+   "keyPoints": [
+    "Workers run JS in parallel threads within one process",
+    "Communicate with postMessage (structured clone) or SharedArrayBuffer",
+    "Use for CPU-bound work, not I/O",
+    "Reuse workers through a pool such as piscina"
+   ],
+   "pitfalls": [
+    "Spawning a new worker for every request",
+    "Sending huge objects back and forth instead of transferring buffers",
+    "Using workers for database or HTTP waits"
+   ],
+   "examples": [
+    {
+     "title": "Fibonacci in a worker",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';\n\nfunction fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }\n\nif (isMainThread) {\n  const run = (n) => new Promise((resolve, reject) => {\n    const w = new Worker(new URL(import.meta.url), { workerData: n });\n    w.on('message', resolve);\n    w.on('error', reject);\n  });\n\n  console.time('parallel');\n  const results = await Promise.all([run(38), run(38), run(38)]);\n  console.timeEnd('parallel');\n  console.log(results);                 // [ 39088169, 39088169, 39088169 ]\n} else {\n  parentPort.postMessage(fib(workerData));\n}",
+     "explanation": "The three calculations run on three threads at the same time, and the main thread stays free.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you use worker_threads instead of cluster?",
+     "a": "Use worker_threads to offload CPU-intensive tasks inside one application without blocking the event loop. Use cluster (processes) to run multiple copies of a server so you can use all cores for handling requests."
+    },
+    {
+     "q": "How do workers share data?",
+     "a": "Via postMessage (data is cloned or ArrayBuffers transferred) or via SharedArrayBuffer plus Atomics for true shared memory."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-cluster-module",
+   "title": "cluster",
+   "level": "advanced",
+   "summary": "Fork one worker process per CPU core, all sharing the same server port, and restart them when they die.",
+   "description": "A Node process uses only **one CPU core** for JavaScript. On an 8-core server you waste seven. The **`cluster`** module starts several copies (workers) of your app that all listen on the **same port**.\n\n### How it works\n1. The **primary** process (`cluster.isPrimary`) calls `cluster.fork()` once per core.\n2. Each worker is a separate Node process with its own memory, event loop and V8.\n3. The primary accepts connections and distributes them to workers (round-robin on Linux/macOS).\n4. If a worker crashes, the primary can fork a new one.\n\n### Example outline\n`if (cluster.isPrimary) { for (...) cluster.fork(); cluster.on('exit', () => cluster.fork()); } else { http.createServer(...).listen(3000); }`\n\n### Things to remember\n* **No shared memory**: in-memory sessions, caches, counters and websockets are per worker. Use Redis or a database for shared state.\n* Each worker has its own database connection pool: size pools accordingly.\n* Workers communicate via IPC messages (`process.send`).\n* Zero-downtime restarts: restart workers one at a time.\n\n### In practice\nMost teams do not write cluster code by hand:\n* **PM2** has `pm2 start app.js -i max` (cluster mode)\n* **Containers**: run one process per container and scale containers horizontally\n* **Kubernetes** / load balancers do the distribution\n\n### cluster vs worker_threads\ncluster scales **request handling** across cores; worker_threads offloads **CPU tasks**.",
+   "keyPoints": [
+    "cluster forks multiple processes that share one listening port",
+    "Primary distributes connections; workers are isolated processes",
+    "In-memory state is not shared between workers",
+    "PM2 or containers often replace manual cluster code",
+    "Respawn workers on exit"
+   ],
+   "pitfalls": [
+    "Keeping sessions or caches in memory with multiple workers",
+    "Forking more workers than cores",
+    "Not restarting crashed workers"
+   ],
+   "examples": [
+    {
+     "title": "Basic cluster server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import cluster from 'node:cluster';\nimport http from 'node:http';\nimport os from 'node:os';\n\nif (cluster.isPrimary) {\n  const n = os.availableParallelism();\n  console.log(`primary ${process.pid} starting ${n} workers`);\n  for (let i = 0; i < n; i++) cluster.fork();\n\n  cluster.on('exit', (worker, code) => {\n    console.log(`worker ${worker.process.pid} died (${code}), restarting`);\n    cluster.fork();\n  });\n} else {\n  http.createServer((req, res) => {\n    res.end(`handled by ${process.pid}\\n`);\n  }).listen(3000);\n}",
+     "explanation": "Request the server repeatedly and the pid in the response will rotate between workers.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use cluster?",
+     "a": "To use all CPU cores: each worker process runs the same server on the shared port, multiplying throughput and adding resilience because a crashed worker can be replaced."
+    },
+    {
+     "q": "What is the main limitation of clustering?",
+     "a": "Workers do not share memory, so in-process state such as sessions, caches or WebSocket connections must move to external stores like Redis (or use sticky sessions)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-perf-hooks",
+   "title": "perf_hooks: Measuring Performance",
+   "level": "intermediate",
+   "summary": "Measure durations with performance.now, marks and measures, timerify functions and track event loop delay.",
+   "description": "The **`perf_hooks`** module (and the global `performance`) gives high resolution timing.\n\n### Quick timing\n* `performance.now()` returns milliseconds with microsecond precision since the process started\n* `console.time('label')` / `console.timeEnd('label')` is the casual version\n* `process.hrtime.bigint()` returns nanoseconds as a BigInt\n* `Date.now()` is not suitable for benchmarks because the system clock can jump\n\n### Marks and measures\n`performance.mark('start')`, `performance.mark('end')`, `performance.measure('task', 'start', 'end')` record named points and durations. Read them with `performance.getEntriesByName('task')`.\n\n### PerformanceObserver\nListen to entries as they are created, including built-ins such as garbage collection (`'gc'`), HTTP requests, and `'function'` entries produced by `performance.timerify(fn)`.\n\n### Event loop delay\n`monitorEventLoopDelay({ resolution: 20 })` creates a histogram showing how long the loop is blocked. Values (mean, p99, max) reveal blocking code. It is also a great health metric.\n\n`performance.eventLoopUtilization()` returns how busy the loop is (0 to 1).\n\n### When to use\n* Compare two algorithm implementations\n* Time database queries or external calls and log slow ones\n* Expose event loop lag in monitoring dashboards\n\n### Benchmark tips\nRun code many times, warm up first (JIT), and use dedicated tools (`mitata`, `tinybench`) for serious comparisons.",
+   "keyPoints": [
+    "performance.now() and hrtime.bigint() are the correct clocks for timing",
+    "mark and measure label sections of code",
+    "monitorEventLoopDelay reveals a blocked event loop",
+    "timerify wraps functions for automatic measurement"
+   ],
+   "pitfalls": [
+    "Benchmarking with Date.now() or a single un-warmed run",
+    "Measuring cold JIT code and drawing conclusions"
+   ],
+   "examples": [
+    {
+     "title": "Mark and measure",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { performance, PerformanceObserver, monitorEventLoopDelay } from 'node:perf_hooks';\n\nconst obs = new PerformanceObserver((list) => {\n  for (const e of list.getEntries()) console.log(e.name, e.duration.toFixed(1), 'ms');\n});\nobs.observe({ entryTypes: ['measure'] });\n\nperformance.mark('start');\nlet x = 0;\nfor (let i = 0; i < 5e7; i++) x += i;     // some work\nperformance.mark('end');\nperformance.measure('loop', 'start', 'end');\n\nconst h = monitorEventLoopDelay({ resolution: 10 });\nh.enable();\nsetTimeout(() => {\n  h.disable();\n  console.log('p99 delay (ms):', (h.percentile(99) / 1e6).toFixed(1));\n}, 200);",
+     "explanation": "Prints the loop duration and then the event loop delay percentile.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why not use Date.now() for benchmarks?",
+     "a": "It has millisecond resolution and follows the system clock, which can jump when the time syncs. performance.now() and process.hrtime are monotonic and high resolution."
+    },
+    {
+     "q": "What does event loop delay tell you?",
+     "a": "How late timers fire compared to schedule. High values mean synchronous code is blocking the loop, so requests wait; it is a key health indicator for Node services."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-diagnostics-channel",
+   "title": "diagnostics_channel and Observability Hooks",
+   "level": "advanced",
+   "summary": "A publish/subscribe channel built into Node that lets libraries emit diagnostics and tools observe them with no coupling.",
+   "description": "**`diagnostics_channel`** is a lightweight, named publish/subscribe system. Libraries publish data on channels, and observability tools (APM, tracing, loggers) subscribe without patching the library.\n\n### Why it exists\nBefore this, monitoring tools had to **monkey-patch** modules like `http` or `pg`. That is fragile. A channel offers an official, stable hook with almost zero cost when nobody subscribes.\n\n### API\n* `diagnostics_channel.channel('my.event')` get a channel object\n* `channel.publish(data)` send a message\n* `channel.subscribe((message, name) => ...)` / `unsubscribe`\n* `channel.hasSubscribers` check before building expensive payloads\n* `diagnostics_channel.subscribe(name, fn)` shortcut\n* `tracingChannel(name)` publishes `start`, `end`, `asyncStart`, `asyncEnd` and `error` events around an operation\n\n### Built-in channels\nNode publishes channels for core modules, for example `http.client.request.start`, `http.server.request.start`, `net.client.socket`, and `undici:request:create` for fetch. Tools like OpenTelemetry, Datadog and Sentry subscribe to them.\n\n### Related tools in the same family\n| Tool | Use |\n|---|---|\n| `AsyncLocalStorage` (`async_hooks`) | Per-request context (request id) across async calls |\n| `perf_hooks` | Timing |\n| `process.report`, `--heapsnapshot-signal` | Diagnostic reports and heap dumps |\n| `v8.getHeapStatistics()` | Memory numbers |\n| `inspector` | Programmatic debugger/profiler |\n\n### Should you use it?\nAs an app developer you will mostly use it indirectly through APM tools. Library authors use it to expose events cleanly.",
+   "keyPoints": [
+    "A named pub/sub bus for diagnostics, built into Node",
+    "Replaces fragile monkey patching in monitoring tools",
+    "Node core publishes channels for http, net and fetch",
+    "Check hasSubscribers before doing costly work",
+    "AsyncLocalStorage carries request context across awaits"
+   ],
+   "pitfalls": [
+    "Building large payloads without checking hasSubscribers",
+    "Using it for application business events (use EventEmitter or a queue)"
+   ],
+   "examples": [
+    {
+     "title": "Publish and subscribe",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import dc from 'node:diagnostics_channel';\n\nconst ch = dc.channel('app.order.created');\n\nch.subscribe((msg, name) => {\n  console.log(`[${name}]`, msg);\n});\n\nfunction createOrder(id) {\n  if (ch.hasSubscribers) ch.publish({ id, at: Date.now() > 0 });\n  return { id };\n}\n\ncreateOrder(42);   // [app.order.created] { id: 42, at: true }",
+     "explanation": "Libraries publish; monitoring code subscribes separately.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Per-request context with AsyncLocalStorage",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { AsyncLocalStorage } from 'node:async_hooks';\nimport { setTimeout as sleep } from 'node:timers/promises';\n\nconst als = new AsyncLocalStorage();\n\nasync function work() {\n  await sleep(10);\n  console.log('request', als.getStore().id);   // still knows its id\n}\n\nawait Promise.all([\n  als.run({ id: 'A' }, work),\n  als.run({ id: 'B' }, work),\n]);",
+     "explanation": "Each call keeps its own context across await, which is how loggers attach request ids.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem does diagnostics_channel solve?",
+     "a": "It gives libraries and Node core an official, low-overhead way to expose events (like HTTP requests starting) so monitoring tools can subscribe instead of monkey-patching modules."
+    },
+    {
+     "q": "What is AsyncLocalStorage used for?",
+     "a": "To keep context, such as a request id or user, available throughout an asynchronous call chain without passing it through every function argument."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

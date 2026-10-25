@@ -1,0 +1,435 @@
+{
+ "id": "node-performance",
+ "title": "Performance and Scaling",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "node-profiling",
+   "title": "Profiling Node Applications",
+   "level": "advanced",
+   "summary": "Find CPU hot spots and slow code with --cpu-prof, flame graphs, clinic and the event loop metrics before optimising.",
+   "description": "**Measure first, then optimise.** Guessing what is slow wastes time; profilers show where the time actually goes.\n\n### Workflow\n1. **Define a goal**: for example p95 latency under 200 ms at 500 requests per second\n2. **Reproduce load** with a tool like autocannon\n3. **Profile** while the load runs\n4. **Fix the biggest hot spot**, measure again, repeat\n\n### CPU profiling\n* `node --cpu-prof app.js` writes `CPU.<date>.cpuprofile` on exit; open it in Chrome DevTools (Performance / Profiler tab) or VS Code\n* `node --prof app.js` then `node --prof-process isolate*.log` (V8 tick profiler)\n* **Flame graphs**: wide boxes are functions where time is spent. Tools: `0x`, `clinic flame`\n* `--inspect` plus DevTools Profiler for live sessions\n\n### Other tools\n| Tool | Shows |\n|---|---|\n| `clinic doctor` | Event loop delay, CPU, memory, handles; suggests the problem category |\n| `clinic bubbleprof` | Async delays between operations |\n| `perf_hooks` | Custom marks, event loop delay histogram |\n| APM (Datadog, New Relic, Sentry, OpenTelemetry) | Production traces per request |\n\n### What to look for\n* A single synchronous function dominating the flame graph (JSON, regex, crypto, loops)\n* Lots of garbage collection (allocations in hot paths)\n* Slow database queries (check with `EXPLAIN`, add indexes) - often the real cause\n* Sequential `await` that could run in parallel\n* N+1 queries\n\n### Common quick wins\nAdd indexes, cache repeated reads, paginate, use streaming, compress responses, reuse HTTP connections (keep-alive agents), avoid sync APIs, use `lean()`/projections, run on all cores.\n\n### Benchmarks\nMicro-benchmarks lie unless warmed up and run many times; prefer realistic end-to-end tests. Compare before and after with the same load.",
+   "keyPoints": [
+    "Measure with a profiler before changing code",
+    "node --cpu-prof plus DevTools or clinic flame shows CPU hot spots",
+    "The database is often the real bottleneck",
+    "Event loop delay indicates blocking code",
+    "Re-measure after each change"
+   ],
+   "pitfalls": [
+    "Optimising by intuition",
+    "Profiling an idle app without load",
+    "Micro-optimising code that is not on the hot path"
+   ],
+   "examples": [
+    {
+     "title": "Profiling session",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# 1. start the app with the profiler\nnode --cpu-prof --cpu-prof-dir=./prof src/server.js &\n\n# 2. generate load\nnpx autocannon -c 50 -d 20 http://localhost:3000/api/products\n\n# 3. stop the server (Ctrl+C / kill -SIGINT) -> .cpuprofile is written\n# 4. open prof/*.cpuprofile in Chrome DevTools > Performance > Load profile\n\n# alternatives\nnpx clinic doctor -- node src/server.js\nnpx 0x src/server.js",
+     "explanation": "Look for the widest bars at the bottom of the flame chart.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find why a Node service is slow?",
+     "a": "Reproduce the load, then profile: CPU profile/flame graph for hot synchronous code, event loop delay for blocking, database query analysis, and tracing for slow downstream calls. Fix the largest contributor and measure again."
+    },
+    {
+     "q": "What does a wide block in a flame graph mean?",
+     "a": "That function (including what it calls) accounts for a large share of the sampled CPU time, so it is a candidate for optimisation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-caching-strategies",
+   "title": "Caching Strategies",
+   "level": "intermediate",
+   "summary": "Avoid repeated work with in-memory LRU caches, Redis, HTTP cache headers and ETags, and know how to invalidate.",
+   "description": "The fastest request is the one you never compute. Caching stores the result of expensive work (database queries, API calls, rendering) for reuse.\n\n### Layers\n| Layer | Example | Notes |\n|---|---|---|\n| **Browser / CDN** | `Cache-Control: public, max-age=3600`, `ETag` | Free scalability for static and public data |\n| **Reverse proxy** | nginx `proxy_cache` | Caches whole responses |\n| **Application memory** | Map, LRU cache (`lru-cache`) | Fastest, per process, lost on restart |\n| **Shared cache** | Redis | Shared by all instances, TTLs |\n| **Database** | Query cache, materialised views | Heavy aggregations |\n\n### HTTP caching headers\n* `Cache-Control: public, max-age=31536000, immutable` for fingerprinted assets (`app.4f3a.js`)\n* `Cache-Control: no-cache` means \"revalidate before use\" (not \"don't store\")\n* `Cache-Control: private` for user-specific data; `no-store` for sensitive data\n* **ETag / If-None-Match** and **Last-Modified / If-Modified-Since** produce `304 Not Modified` with no body\n* `Vary: Accept-Encoding` (or `Authorization`) when the response differs per header\n\n### In-process LRU\nLimit entries and size, always set a TTL, and remember each cluster worker has a separate copy. `lru-cache` is the standard package.\n\n### Invalidation (the hard part)\n1. **TTL**: accept slight staleness\n2. **Write-through / delete on write**: update or delete the key when data changes\n3. **Versioned keys**: `product:42:v7`\n4. **Stale-while-revalidate**: serve stale data while refreshing in the background\n\n### Pitfalls\nCaching per-user data in a shared key (data leaks), unbounded memory growth, cache stampedes, caching errors, forgetting cache warm-up after restarts.",
+   "keyPoints": [
+    "Cache at the right layer: CDN/browser, proxy, memory, Redis",
+    "Use Cache-Control, ETag and 304 responses for HTTP caching",
+    "An LRU with TTL bounds memory usage",
+    "Plan invalidation: TTL, delete on write or versioned keys",
+    "Never share user-specific responses through public caches"
+   ],
+   "pitfalls": [
+    "Unbounded in-memory Map caches that grow forever",
+    "Caching authenticated responses with Cache-Control: public",
+    "No invalidation strategy so users see stale data"
+   ],
+   "examples": [
+    {
+     "title": "LRU cache with TTL helper",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "class LRU {\n  #max; #map = new Map();\n  constructor(max = 100) { this.#max = max; }\n  get(key) {\n    if (!this.#map.has(key)) return undefined;\n    const entry = this.#map.get(key);\n    if (entry.expires < Date.now()) { this.#map.delete(key); return undefined; }\n    this.#map.delete(key); this.#map.set(key, entry);        // mark as recently used\n    return entry.value;\n  }\n  set(key, value, ttlMs = 60_000) {\n    this.#map.delete(key);\n    this.#map.set(key, { value, expires: Date.now() + ttlMs });\n    if (this.#map.size > this.#max) this.#map.delete(this.#map.keys().next().value);  // evict oldest\n  }\n}\n\nconst cache = new LRU(500);\nexport async function getProduct(id) {\n  const key = `product:${id}`;\n  const hit = cache.get(key);\n  if (hit) return hit;\n  const product = await db.products.findById(id);\n  cache.set(key, product, 30_000);\n  return product;\n}",
+     "explanation": "A Map keeps insertion order, so the first key is always the least recently used.",
+     "lang": "javascript"
+    },
+    {
+     "title": "HTTP caching in Express",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "app.use('/assets', express.static('public/assets', { maxAge: '1y', immutable: true }));\n\napp.get('/api/products', async (req, res) => {\n  const products = await listProducts();\n  res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');\n  res.json(products);          // Express adds a weak ETag and answers 304 when it matches\n});",
+     "explanation": "Express generates ETags automatically for res.json and res.send.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between no-cache and no-store?",
+     "a": "no-cache lets the response be stored but requires revalidation with the server before each reuse. no-store forbids storing it at all, used for sensitive data."
+    },
+    {
+     "q": "Why is cache invalidation hard?",
+     "a": "The cache holds copies of data that can change at any time; you must remove or update every copy at the right moment without hurting performance, and multiple instances and layers make consistency difficult."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-streaming-big-files",
+   "title": "Streaming Big Files and Data",
+   "level": "advanced",
+   "summary": "Process gigabytes with constant memory: NDJSON, CSV, uploads, downloads, Range requests and database cursors.",
+   "description": "Anything that can grow without bound should be **streamed**, never fully loaded: file uploads, exports, log processing, large API responses and database result sets.\n\n### Patterns\n| Task | Approach |\n|---|---|\n| Download a big file | `pipeline(createReadStream(file), res)` with `Content-Length` and Range support |\n| Upload a big file | Stream the request to disk or object storage (busboy, `@aws-sdk/lib-storage`), not into memory |\n| Export 1M rows as CSV | Database **cursor** to a Transform that formats lines, piped to `res` |\n| Parse huge JSON | Newline-delimited JSON (`ndjson`) with `readline`, or `stream-json` |\n| Process a large CSV | `createReadStream` + `csv-parse` stream |\n| Proxy a response | Pipe the upstream `fetch` body: `Readable.fromWeb(upstream.body).pipe(res)` |\n| Compress on the fly | Add `zlib.createGzip()` to the pipeline |\n\n### Range requests\nVideo players and download managers ask for part of a file with `Range: bytes=0-1023`. Respond `206 Partial Content` with `Content-Range: bytes 0-1023/total` and `createReadStream(file, { start, end })`.\n\n### Backpressure and cleanup\n`pipeline` handles both. Also destroy the stream if the client disconnects (`res.on('close')`), so you stop reading the disk or cursor.\n\n### Memory facts\n* Default `highWaterMark`: 16 KB (64 KB for fs)\n* Node strings max out near 512 MB; Buffers can be larger but use RAM\n* `JSON.stringify` of millions of rows blocks the event loop and can crash; stream instead\n\n### Object mode\nFor streams of rows use `objectMode: true` and keep the batch size reasonable (say 1,000 rows) when writing to the database.",
+   "keyPoints": [
+    "Stream anything unbounded; never buffer whole files in memory",
+    "pipeline gives backpressure and cleanup",
+    "Use database cursors and Transform streams to export large datasets",
+    "Support Range requests with 206 responses",
+    "Stop work when the client disconnects"
+   ],
+   "pitfalls": [
+    "Building a giant array and JSON.stringify-ing it",
+    "Reading uploads fully into memory",
+    "Not handling client disconnects"
+   ],
+   "examples": [
+    {
+     "title": "Stream a CSV export from the database",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { pipeline } from 'node:stream/promises';\nimport { Transform } from 'node:stream';\n\napp.get('/export/orders.csv', async (req, res, next) => {\n  try {\n    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename=\"orders.csv\"' });\n\n    const cursor = Order.find().lean().cursor();          // Mongoose cursor (Readable, objectMode)\n    const toCsv = new Transform({\n      writableObjectMode: true,\n      construct(cb) { this.push('id,customer,total\\n'); cb(); },\n      transform(o, _enc, cb) { cb(null, `${o._id},${JSON.stringify(o.customer)},${o.total}\\n`); },\n    });\n\n    await pipeline(cursor, toCsv, res);\n  } catch (err) {\n    if (!res.headersSent) next(err); else res.destroy(err);\n  }\n});",
+     "explanation": "Memory stays flat whether there are 10 or 10 million orders.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Range request handler",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { stat } from 'node:fs/promises';\nimport { createReadStream } from 'node:fs';\nimport { pipeline } from 'node:stream/promises';\n\nexport async function sendVideo(req, res, file) {\n  const { size } = await stat(file);\n  const range = req.headers.range;               // \"bytes=1000-\"\n\n  if (!range) {\n    res.writeHead(200, { 'Content-Length': size, 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes' });\n    return pipeline(createReadStream(file), res);\n  }\n  const [s, e] = range.replace('bytes=', '').split('-');\n  const start = Number(s);\n  const end = e ? Number(e) : size - 1;\n  res.writeHead(206, {\n    'Content-Range': `bytes ${start}-${end}/${size}`,\n    'Accept-Ranges': 'bytes',\n    'Content-Length': end - start + 1,\n    'Content-Type': 'video/mp4',\n  });\n  await pipeline(createReadStream(file, { start, end }), res);\n}",
+     "explanation": "Browsers use this to seek inside a video without downloading everything.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you export millions of rows without running out of memory?",
+     "a": "Read with a database cursor, transform each row to a line (CSV/NDJSON) in a Transform stream and pipe it to the response with backpressure, so only a small batch is in memory."
+    },
+    {
+     "q": "What is HTTP status 206?",
+     "a": "Partial Content: the server returns only the requested byte range of a resource, used for video seeking, resumable downloads and large files."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-memory-leaks",
+   "title": "Memory Management and Leaks",
+   "level": "advanced",
+   "summary": "How V8 garbage collection works, common leak sources in Node, and how to find them with heap snapshots.",
+   "description": "Node uses V8's **garbage collector**: objects no longer reachable from any root (globals, running functions) are freed. A **memory leak** is memory that stays reachable by accident, so heap usage climbs until the process is killed (`JavaScript heap out of memory`, or OOMKilled in a container).\n\n### The numbers\n`process.memoryUsage()` returns `rss` (total process memory), `heapTotal`, `heapUsed`, `external` (Buffers) and `arrayBuffers`. Healthy apps show a **sawtooth**: growth, then GC drops it back. A leak shows a rising baseline.\n\nThe default old-space limit depends on the machine and Node version; raise it with `--max-old-space-size=2048` (MB) only after you understand the cause.\n\n### Common leak sources\n1. **Unbounded caches/maps/arrays** (module-level objects that only grow)\n2. **Event listeners** added repeatedly and never removed (`MaxListenersExceededWarning`)\n3. **Timers** (`setInterval`) never cleared, holding closures\n4. **Closures** capturing large objects\n5. **Global variables** and singletons holding request data\n6. **Unclosed resources**: sockets, streams, DB cursors, file handles\n7. **Promises that never settle**, holding references\n8. **Per-request data** stored in module state (sessions in memory)\n\n### How to investigate\n1. Watch metrics: `heapUsed` over time\n2. Take **heap snapshots** (DevTools Memory tab, `--heapsnapshot-signal=SIGUSR2`, `v8.writeHeapSnapshot()`)\n3. Take a snapshot, run load, take another, and use **Comparison** view to see which object types grew\n4. Follow the **retainers** path to the code holding the reference\n5. Fix, then repeat the load test\n\n### Prevention\n* Bound every cache (LRU with max size and TTL)\n* Remove listeners (`off`) and clear timers on cleanup; use `AbortController`\n* Use `WeakMap`/`WeakRef` for metadata attached to objects\n* Stream instead of buffering\n* Add memory alerts and restart policies as a safety net (not a cure)",
+   "keyPoints": [
+    "A leak is memory kept reachable unintentionally",
+    "Watch heapUsed for a rising baseline over time",
+    "Compare heap snapshots to find growing object types and their retainers",
+    "Common causes: unbounded caches, listeners, timers, closures",
+    "Bound caches and clean up listeners and timers"
+   ],
+   "pitfalls": [
+    "Raising the memory limit instead of finding the leak",
+    "Treating a sawtooth heap as a leak",
+    "Storing request-scoped data in module-level variables"
+   ],
+   "examples": [
+    {
+     "title": "A leak and its fix",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { writeHeapSnapshot } from 'node:v8';\n\n// LEAK: the cache grows forever\nconst cache = new Map();\nexport function getUser(id) {\n  if (!cache.has(id)) cache.set(id, loadUser(id));\n  return cache.get(id);\n}\n\n// LEAK: a new listener per request\napp.get('/stream', (req, res) => {\n  eventBus.on('update', (d) => res.write(d));      // never removed\n});\n\n// FIX: remove on disconnect, bound the cache\napp.get('/stream', (req, res) => {\n  const send = (d) => res.write(d);\n  eventBus.on('update', send);\n  req.on('close', () => eventBus.off('update', send));\n});\n\nsetInterval(() => {\n  const { heapUsed, rss } = process.memoryUsage();\n  console.log(`heap ${(heapUsed / 1e6).toFixed(0)} MB, rss ${(rss / 1e6).toFixed(0)} MB`);\n}, 30_000).unref();\n\nprocess.on('SIGUSR2', () => console.log('snapshot:', writeHeapSnapshot()));",
+     "explanation": "Send SIGUSR2 (Linux/macOS) to dump a .heapsnapshot file you can load in Chrome DevTools.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find a memory leak in Node?",
+     "a": "Monitor heap growth, take heap snapshots at different times under load, compare them in DevTools to see which objects keep growing, and follow the retainer chain to the code that holds the references."
+    },
+    {
+     "q": "Name common causes of memory leaks in Node.",
+     "a": "Unbounded caches or arrays, event listeners that are never removed, uncleared timers, closures retaining large data, global state holding request data and resources like sockets or streams that are never closed."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-load-testing",
+   "title": "Load Testing with autocannon",
+   "level": "intermediate",
+   "summary": "Measure throughput and latency percentiles under concurrent load with autocannon, k6 or wrk.",
+   "description": "Load testing answers: how many requests per second can we serve, what is the latency under load, and where does it break?\n\n### autocannon\nA fast HTTP benchmarking tool written in Node.\n`npx autocannon -c 100 -d 30 http://localhost:3000`\n* `-c` concurrent connections\n* `-d` duration in seconds\n* `-p` pipelined requests per connection\n* `-m POST -H \"Content-Type: application/json\" -b '{\"a\":1}'` custom requests\n* `-R` fixed rate for steady load\n\n### Reading the output\n| Metric | Meaning |\n|---|---|\n| **Req/Sec** | Throughput (average and min) |\n| **Latency percentiles** (p50, p97.5, p99) | How slow the slowest requests are; averages hide spikes |\n| **Bytes/Sec** | Network throughput |\n| **Errors / non-2xx / timeouts** | Failures under load |\n\nLook at **p99**: 1% of users suffer that latency.\n\n### Other tools\n| Tool | Strength |\n|---|---|\n| **k6** | Scripted scenarios in JavaScript, thresholds, CI friendly |\n| **wrk / wrk2** | Very fast C benchmark; wrk2 for constant throughput |\n| **Artillery** | YAML scenarios, WebSocket support |\n| **Apache Bench (ab)** | Simple and old |\n\n### Good practice\n1. Test in an environment similar to production (not your laptop with other apps open)\n2. Run the load generator on a **different machine** from the server\n3. Warm up before measuring\n4. Increase load stepwise to find the knee where latency explodes\n5. Test realistic endpoints with a database and realistic data size\n6. Watch CPU, memory, event loop delay and DB connections while testing\n7. Compare before/after changes with the same test\n\n### Hello-world numbers\nA bare Node HTTP server can reach tens of thousands of requests/second; your real API with a database will be far lower. Benchmarks of \"hello world\" prove little.",
+   "keyPoints": [
+    "autocannon -c connections -d seconds url runs a quick benchmark",
+    "Judge latency by percentiles (p99), not averages",
+    "Test realistic endpoints and environments",
+    "Increase load gradually and watch server metrics",
+    "k6 or Artillery for scripted scenarios"
+   ],
+   "pitfalls": [
+    "Load testing on the same machine as the server",
+    "Testing only a trivial endpoint",
+    "Looking only at averages"
+   ],
+   "examples": [
+    {
+     "title": "autocannon run",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ npx autocannon -c 100 -d 20 http://localhost:3000/api/products\n\nRunning 20s test @ http://localhost:3000/api/products\n100 connections\n\n┌─────────┬──────┬──────┬───────┬──────┬─────────┬─────────┬───────┐\n│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%  │ Avg     │ Stdev   │ Max   │\n├─────────┼──────┼──────┼───────┼──────┼─────────┼─────────┼───────┤\n│ Latency │ 3 ms │ 7 ms │ 18 ms │ 25ms │ 8.2 ms  │ 4.1 ms  │ 91 ms │\n└─────────┴──────┴──────┴───────┴──────┴─────────┴─────────┴───────┘\n\nReq/Sec   avg 11,900   min 9,800\n200k requests in 20.05s, 120 MB read",
+     "explanation": "Numbers are illustrative; yours depend on hardware and code.",
+     "lang": "bash"
+    },
+    {
+     "title": "Programmatic use and a k6 script",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// load.js (autocannon API)\nimport autocannon from 'autocannon';\n\nconst result = await autocannon({ url: 'http://localhost:3000', connections: 50, duration: 10 });\nconsole.log('req/s', result.requests.average, 'p99 ms', result.latency.p99);\n\n// k6 script (run with: k6 run script.js)\n// import http from 'k6/http';\n// import { check, sleep } from 'k6';\n// export const options = { vus: 50, duration: '30s', thresholds: { http_req_duration: ['p(95)<300'] } };\n// export default function () {\n//   const res = http.get('http://localhost:3000/api/products');\n//   check(res, { 'status 200': (r) => r.status === 200 });\n//   sleep(1);\n// }",
+     "explanation": "k6 thresholds fail the run when latency goals are not met, which suits CI.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why look at p99 latency instead of the average?",
+     "a": "Averages hide outliers. p99 shows the experience of the slowest 1% of requests, which in busy systems affects many users and reveals queuing and garbage-collection pauses."
+    },
+    {
+     "q": "Why run the load generator on another machine?",
+     "a": "Otherwise it competes for CPU and network with the server, distorting results."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-pm2",
+   "title": "PM2 Process Manager",
+   "level": "intermediate",
+   "summary": "Keep Node apps running with restarts, cluster mode, logs, zero-downtime reloads and ecosystem files.",
+   "description": "Running `node app.js` in a terminal dies when you log out or the app crashes. A **process manager** keeps it alive. **PM2** is the most popular for Node on a plain VPS.\n\n### Core features\n* Starts apps in the background and **restarts on crash**\n* **Cluster mode**: `pm2 start app.js -i max` runs one process per CPU core with load balancing\n* **Zero-downtime reload**: `pm2 reload app`\n* Log management (`pm2 logs`), rotation (`pm2 install pm2-logrotate`)\n* Monitoring: `pm2 monit`, `pm2 status`\n* Restart on memory limit (`max_memory_restart`)\n* Start on boot: `pm2 startup` then `pm2 save`\n\n### Daily commands\n| Command | Purpose |\n|---|---|\n| `pm2 start app.js --name api` | Start |\n| `pm2 list` | Status table |\n| `pm2 logs api --lines 100` | Follow logs |\n| `pm2 restart api` / `reload api` | Restart (hard) / graceful |\n| `pm2 stop api`, `pm2 delete api` | Stop / remove |\n| `pm2 save && pm2 startup` | Persist across reboots |\n\n### ecosystem.config.cjs\nKeep settings in a file under version control so deployments are repeatable. Use `env_production` blocks and `pm2 start ecosystem.config.cjs --env production`.\n\n### Graceful reload\nPM2 sends `SIGINT`, waits for `kill_timeout`, then `SIGKILL`. Handle SIGINT/SIGTERM and optionally send `process.send('ready')` with `wait_ready: true` so PM2 knows when the new worker can take traffic.\n\n### PM2 vs containers\nIn Docker/Kubernetes the orchestrator already restarts and scales containers, so run `node server.js` directly (or `pm2-runtime` if you want PM2 features). PM2 shines on a single VPS.\n\n### Alternatives\n`systemd` services, `forever`, Docker `restart: unless-stopped`, Kubernetes deployments.",
+   "keyPoints": [
+    "PM2 keeps apps alive, restarts crashes and starts on boot",
+    "-i max enables cluster mode on all cores",
+    "pm2 reload gives zero-downtime restarts",
+    "Use an ecosystem file in version control",
+    "In containers prefer the orchestrator (or pm2-runtime)"
+   ],
+   "pitfalls": [
+    "Forgetting pm2 save and startup so apps vanish after reboot",
+    "Using in-memory sessions with cluster mode",
+    "Running PM2 inside a container with an orchestrator, doubling supervision"
+   ],
+   "examples": [
+    {
+     "title": "ecosystem.config.cjs",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "module.exports = {\n  apps: [\n    {\n      name: 'api',\n      script: 'src/server.js',\n      instances: 'max',            // one per CPU core\n      exec_mode: 'cluster',\n      max_memory_restart: '500M',\n      kill_timeout: 10000,\n      wait_ready: true,            // wait for process.send('ready')\n      listen_timeout: 8000,\n      env: { NODE_ENV: 'development', PORT: 3000 },\n      env_production: { NODE_ENV: 'production', PORT: 8080 },\n    },\n  ],\n};",
+     "explanation": "Start with: pm2 start ecosystem.config.cjs --env production",
+     "lang": "javascript"
+    },
+    {
+     "title": "Commands",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "npm i -g pm2\npm2 start ecosystem.config.cjs --env production\npm2 status\npm2 logs api\npm2 reload api          # zero downtime\npm2 save\npm2 startup             # prints a command to run once with sudo",
+     "explanation": "After pm2 startup and pm2 save, the app returns after a server reboot.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use PM2?",
+     "a": "It supervises Node processes: auto-restarts after crashes, runs multiple instances across CPU cores in cluster mode, supports zero-downtime reloads, logs and starting on boot."
+    },
+    {
+     "q": "When is PM2 unnecessary?",
+     "a": "When you run in containers on Docker/Kubernetes or a platform (Render, Railway), because they restart and scale instances for you."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-worker-pool-offload",
+   "title": "Worker Pools and Offloading CPU Work",
+   "level": "advanced",
+   "summary": "Reuse a small pool of worker threads (or piscina) to run CPU-heavy tasks without blocking request handling.",
+   "description": "When a request needs heavy CPU work (image resizing, PDF generation, password hashing at scale, parsing huge files, ML inference), run it **off the main thread**.\n\n### Options\n| Option | Use when |\n|---|---|\n| `crypto`/`zlib` async APIs | Already use the libuv thread pool |\n| **Worker threads pool** | JavaScript CPU work inside one app |\n| **Native addon / WASM** | Very hot loops (sharp for images, argon2) |\n| **Separate service / queue worker** | Long jobs, retries, independent scaling |\n| **cluster / more instances** | More request capacity |\n\n### Why a pool\nStarting a worker costs tens of milliseconds and its own memory. A **pool** keeps N workers (usually `cores - 1`), queues extra jobs and reuses workers. Libraries: **piscina** (best known), `workerpool`.\n\n### Design tips\n* Send small inputs; transfer large `ArrayBuffer`s instead of copying\n* Handle worker `error` and `exit` events and replace crashed workers\n* Set timeouts for jobs and a maximum queue size so overload becomes a 503 instead of unbounded memory\n* Do not use workers for I/O waiting\n* Keep the pool a singleton created at start-up\n\n### Alternative: queues\nFor jobs longer than a few seconds, respond `202 Accepted` and process in a background worker via a queue (BullMQ), then notify the client (polling, websocket, webhook).\n\n### piscina in a nutshell\n`const pool = new Piscina({ filename: new URL('./task.js', import.meta.url).href }); const result = await pool.run(input);`",
+   "keyPoints": [
+    "Use worker pools for CPU-heavy JavaScript, not I/O",
+    "Reuse workers; limit queue length",
+    "Transfer large buffers instead of copying",
+    "Long jobs belong in a queue with a background worker",
+    "Handle worker crashes and timeouts"
+   ],
+   "pitfalls": [
+    "Creating a Worker per request",
+    "Unlimited queue growth during overload",
+    "Offloading tiny tasks where messaging costs more than the work"
+   ],
+   "examples": [
+    {
+     "title": "A minimal worker pool",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// pool.mjs - run: node pool.mjs\nimport { Worker, isMainThread, parentPort } from 'node:worker_threads';\n\nif (isMainThread) {\n  class Pool {\n    constructor(size = 2) {\n      this.idle = [];\n      this.queue = [];\n      for (let i = 0; i < size; i++) this.idle.push(this.#spawn());\n    }\n    #spawn() {\n      const w = new Worker(new URL(import.meta.url));\n      w.on('message', (result) => {\n        const { resolve } = w.job;\n        w.job = null;\n        resolve(result);\n        const next = this.queue.shift();\n        if (next) this.#run(w, next); else this.idle.push(w);\n      });\n      w.on('error', (err) => w.job?.reject(err));\n      return w;\n    }\n    #run(w, job) { w.job = job; w.postMessage(job.data); }\n    exec(data) {\n      return new Promise((resolve, reject) => {\n        const job = { data, resolve, reject };\n        const w = this.idle.pop();\n        if (w) this.#run(w, job); else this.queue.push(job);\n      });\n    }\n    close() { return Promise.all(this.idle.map((w) => w.terminate())); }\n  }\n\n  const pool = new Pool(2);\n  console.time('4 jobs on 2 workers');\n  const results = await Promise.all([35, 35, 35, 35].map((n) => pool.exec(n)));\n  console.timeEnd('4 jobs on 2 workers');\n  console.log(results);                       // [ 9227465, 9227465, 9227465, 9227465 ]\n  await pool.close();\n} else {\n  const fib = (n) => (n < 2 ? n : fib(n - 1) + fib(n - 2));\n  parentPort.on('message', (n) => parentPort.postMessage(fib(n)));\n}",
+     "explanation": "Four jobs share two workers; jobs wait in the queue when both are busy.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a worker pool rather than spawning a worker per task?",
+     "a": "Worker start-up is expensive in time and memory. A pool reuses a fixed number of workers and queues extra tasks, giving predictable resource use and better throughput."
+    },
+    {
+     "q": "When should CPU work go to a queue instead of a worker thread?",
+     "a": "When the job is long-running, needs retries, must survive restarts or should scale independently of the web server; the API accepts the job and a separate worker processes it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-horizontal-scaling",
+   "title": "Horizontal Scaling and Stateless Design",
+   "level": "advanced",
+   "summary": "Scale by running many identical instances behind a load balancer; keep servers stateless and share state externally.",
+   "description": "**Vertical scaling** = a bigger machine. **Horizontal scaling** = more machines or containers running the same app behind a **load balancer**. Node apps scale horizontally well because processes are cheap and independent.\n\n### Make the app stateless\nAny instance must be able to serve any request. Move state out of process memory:\n| State | Put it in |\n|---|---|\n| Sessions | Redis / database (or JWT) |\n| Cache | Redis |\n| Uploaded files | Object storage (S3, R2, GCS), not local disk |\n| Scheduled jobs | A queue or a single scheduler, or lock with Redis/DB |\n| WebSocket rooms | Redis pub/sub adapter |\n| Rate limit counters | Redis |\n| In-memory counters | Metrics system |\n\n### Load balancing\n* Algorithms: round robin, least connections, IP hash\n* Tools: nginx, HAProxy, Traefik, cloud load balancers, Kubernetes Services\n* **Health checks** remove unhealthy instances\n* **Sticky sessions** keep a client on one instance (needed by some websocket setups); avoid if possible\n\n### Scaling the database\nThe database becomes the bottleneck first:\n1. Indexes and query tuning\n2. Connection pooling (PgBouncer)\n3. **Read replicas** for read-heavy traffic\n4. Caching\n5. **Sharding/partitioning** as a last resort\n\n### Autoscaling\nScale on CPU, memory, request rate or queue length. Start new instances before the old ones are overloaded and use graceful shutdown when scaling in.\n\n### Design for failure\nTimeouts, retries with backoff, circuit breakers, idempotent endpoints, and graceful degradation when a dependency is down.\n\n### Twelve-factor hints\nConfig in environment, logs to stdout, disposable processes with fast start-up, backing services as attached resources.",
+   "keyPoints": [
+    "Horizontal scaling adds identical instances behind a load balancer",
+    "Stateless servers: store sessions, files and caches externally",
+    "Health checks and graceful shutdown enable safe scaling",
+    "The database is usually the next bottleneck",
+    "Plan for failure with timeouts, retries and circuit breakers"
+   ],
+   "pitfalls": [
+    "Saving uploads to local disk on one instance",
+    "Keeping sessions or caches in process memory",
+    "Running scheduled jobs on every instance, causing duplicates"
+   ],
+   "examples": [
+    {
+     "title": "nginx load balancing and a distributed lock",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# nginx.conf\nupstream api {\n    least_conn;\n    server 10.0.0.11:3000;\n    server 10.0.0.12:3000;\n    server 10.0.0.13:3000 max_fails=3 fail_timeout=10s;\n}\nserver {\n    listen 80;\n    location / {\n        proxy_pass http://api;\n        proxy_set_header Host $host;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n    }\n}",
+     "explanation": "nginx spreads requests across three instances and avoids a failing one.",
+     "lang": "text"
+    },
+    {
+     "title": "Run a cron job on only one instance",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// every instance runs this, but only the lock holder does the work\nasync function runNightlyJob() {\n  const got = await redis.set('lock:nightly-report', process.pid, { NX: true, EX: 300 });\n  if (!got) return;                      // another instance has it\n  try {\n    await buildReport();\n  } finally {\n    await redis.del('lock:nightly-report');\n  }\n}",
+     "explanation": "SET NX EX is an atomic \"create if absent with expiry\" operation, the basis of simple distributed locks.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does it mean for a server to be stateless?",
+     "a": "It keeps no client-specific data between requests in its own memory or disk, so any instance can handle any request. State lives in shared stores such as Redis, a database or object storage."
+    },
+    {
+     "q": "Vertical vs horizontal scaling?",
+     "a": "Vertical scaling gives one machine more CPU or RAM (simple but limited). Horizontal scaling adds more instances behind a load balancer (more complex but nearly unlimited and more fault tolerant)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-queues-bullmq",
+   "title": "Background Jobs with BullMQ",
+   "level": "advanced",
+   "summary": "Move slow work (emails, reports, images) to Redis-backed queues with retries, delays, concurrency and schedules.",
+   "description": "Some work should not happen inside the HTTP request: sending emails, resizing images, generating PDFs, calling slow third-party APIs, webhooks, nightly reports. A **job queue** lets the API respond immediately and a **worker** process the job in the background.\n\n### BullMQ\n**BullMQ** (`npm i bullmq`) is a queue library built on Redis.\n* **Queue**: producers add jobs (`queue.add(name, data, options)`)\n* **Worker**: consumers process jobs with a concurrency setting\n* **QueueEvents**: listen for completed, failed, progress\n* **FlowProducer**: parent/child job trees\n\n### Job options\n`attempts` and `backoff` for retries, `delay`, `priority`, `removeOnComplete`, `jobId` for deduplication, `repeat` (cron or every N ms) for **scheduled jobs**, `rateLimiter` on workers.\n\n### Why queues help\n* Fast responses (return **202 Accepted**)\n* Automatic **retries** with backoff after failures\n* Survive restarts (jobs are stored in Redis)\n* Scale workers independently of the web servers\n* Smooth traffic spikes\n\n### Design rules\n1. Make jobs **idempotent**: running twice must be safe (use unique keys)\n2. Keep job data small (ids, not whole documents)\n3. Handle failures: dead-letter/failed set, alerts\n4. Use graceful shutdown: `await worker.close()` on SIGTERM\n5. Run workers as separate processes or containers\n6. Monitor with Bull Board or Taskforce\n\n### Alternatives\nRabbitMQ or Kafka for messaging between services, SQS/Cloud Tasks on cloud platforms, `pg-boss` for queues on PostgreSQL, Agenda for MongoDB.",
+   "keyPoints": [
+    "Queues move slow work out of the request cycle",
+    "BullMQ stores jobs in Redis; Workers process them with concurrency",
+    "Retries, delays and repeat schedules are built in",
+    "Jobs must be idempotent and small",
+    "Run workers separately and close them gracefully"
+   ],
+   "pitfalls": [
+    "Non-idempotent jobs that double-charge or double-email on retry",
+    "Putting huge payloads into jobs",
+    "Forgetting a worker 'failed' handler and monitoring"
+   ],
+   "examples": [
+    {
+     "title": "Producer and worker",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// queue.js\nimport { Queue, Worker } from 'bullmq';\nconst connection = { host: '127.0.0.1', port: 6379 };\n\nexport const emailQueue = new Queue('email', { connection });\n\n// in the API\napp.post('/signup', async (req, res) => {\n  const user = await createUser(req.body);\n  await emailQueue.add('welcome', { userId: user.id }, {\n    attempts: 5,\n    backoff: { type: 'exponential', delay: 2000 },\n    removeOnComplete: 1000,\n    jobId: `welcome-${user.id}`,           // dedupe\n  });\n  res.status(202).json({ id: user.id });\n});\n\n// worker.js - separate process\nconst worker = new Worker('email', async (job) => {\n  const user = await findUser(job.data.userId);\n  await sendEmail(user.email, 'Welcome!');\n  return { sent: true };\n}, { connection, concurrency: 10 });\n\nworker.on('failed', (job, err) => console.error(`job ${job?.id} failed`, err.message));\nprocess.on('SIGTERM', async () => { await worker.close(); process.exit(0); });\n\n// nightly job\nawait emailQueue.add('digest', {}, { repeat: { pattern: '0 3 * * *' } });",
+     "explanation": "The API responds instantly; failed emails are retried up to five times with exponential backoff.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a job queue?",
+     "a": "To perform slow or unreliable work outside the request, with retries, scheduling, rate control and independent scaling, while keeping API responses fast and resilient to restarts."
+    },
+    {
+     "q": "What does it mean for a job to be idempotent?",
+     "a": "Running it more than once has the same effect as running it once, so retries or duplicate deliveries do not cause duplicate emails, charges or records."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,206 @@
+{
+ "id": "py-data-structures",
+ "title": "Data Structures",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "py-lists",
+   "title": "Lists, Slicing and Sorting",
+   "level": "beginner",
+   "summary": "Ordered, mutable sequences with indexing, slicing, common methods and sorting.",
+   "description": "A `list` is an ordered, **mutable** collection that can hold any mix of types. It is the most-used container in Python.\n\n### Core operations\n- Index: `a[0]`, `a[-1]` (last).\n- Add: `append(x)`, `extend(iterable)`, `insert(i, x)`.\n- Remove: `pop()`, `pop(i)`, `remove(x)`, `del a[i]`, `clear()`.\n- Info: `len(a)`, `x in a`, `a.index(x)`, `a.count(x)`.\n\n### Slicing\n`a[start:stop:step]` returns a **new list**; `stop` is excluded and every part is optional. `a[::-1]` reverses, `a[:3]` takes the first three, `a[1::2]` takes every second item starting at index 1. Slicing never raises IndexError for out-of-range bounds.\n\n### Sorting\n- `a.sort()` sorts **in place** and returns `None`.\n- `sorted(a)` returns a **new** sorted list and works on any iterable.\n- Use `key=` for custom order and `reverse=True` for descending. Sorting is **stable**, so you can sort by several keys in turn.\n\n### Copying\n`b = a` makes a second name for the same list. Use `a.copy()`, `a[:]` or `list(a)` for a shallow copy, and `copy.deepcopy` when you have nested mutable objects.\n\nLists are great for ordered data you modify. For frequent inserts/removals at the front use `collections.deque`; for fast membership tests use a `set`.",
+   "keyPoints": [
+    "Lists are ordered and mutable",
+    "Slices return new lists: a[start:stop:step]",
+    "sort() is in place and returns None; sorted() returns a new list",
+    "key= controls the sort order",
+    "b = a does not copy; use a.copy() or a[:]"
+   ],
+   "pitfalls": [
+    "Assigning the result of a.sort() (it is None)",
+    "Shallow copies share nested lists",
+    "Removing items while iterating over the same list",
+    "Using a list as a default argument"
+   ],
+   "examples": [
+    {
+     "title": "Slicing and sorting",
+     "language": "python",
+     "code": "nums = [5, 2, 9, 1, 7]\nprint(nums[0], nums[-1], nums[1:4], nums[::-1], nums[::2])\n\nnums.append(3)\nnums.extend([8, 6])\nprint(nums)\nprint(sorted(nums))\nprint(sorted(nums, reverse=True))\n\nwords = [\"pear\", \"fig\", \"banana\", \"kiwi\"]\nprint(sorted(words, key=len))\nprint(sorted(words, key=lambda w: (len(w), w)))\n\npeople = [(\"Ana\", 30), (\"Bo\", 25), (\"Cy\", 30)]\npeople.sort(key=lambda p: (-p[1], p[0]))\nprint(people)\n\na = [[1], [2]]\nb = a.copy()\nb[0].append(99)\nprint(a)   # shallow copy shares inner lists",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between sort() and sorted()?",
+     "a": "sort() mutates the list in place and returns None; sorted() accepts any iterable and returns a new sorted list."
+    },
+    {
+     "q": "What is the time complexity of list.append and list.insert(0, x)?",
+     "a": "append is amortised O(1); insert at the front is O(n) because elements shift."
+    },
+    {
+     "q": "Shallow vs deep copy?",
+     "a": "A shallow copy copies the outer list but shares inner objects; a deep copy recursively copies everything."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-tuples-sets",
+   "title": "Tuples and Sets",
+   "level": "beginner",
+   "summary": "Immutable ordered tuples and unordered collections of unique items called sets.",
+   "description": "### Tuples\nA `tuple` is an ordered, **immutable** sequence: `point = (3, 4)`. A single-item tuple needs a trailing comma: `(5,)`. Tuples are used for fixed records, as dictionary keys (if all items are hashable) and for returning several values from a function. **Unpacking** is a favourite feature:\n\n```python\nx, y = point\nfirst, *rest = [1, 2, 3, 4]\n```\n\nBecause tuples cannot change, they are slightly faster and safer than lists for constant data.\n\n### Sets\nA `set` is an **unordered collection of unique, hashable items**. Create with `{1, 2, 3}` or `set(iterable)` (note `{}` is an empty dict; use `set()` for an empty set).\n\n- Add/remove: `add`, `discard` (no error if missing), `remove` (KeyError if missing).\n- Math: `a | b` union, `a & b` intersection, `a - b` difference, `a ^ b` symmetric difference, `a <= b` subset.\n- Membership tests are **O(1)** on average, much faster than lists.\n\n### Typical uses\n- Remove duplicates: `list(set(items))` (order is lost; use `dict.fromkeys(items)` to keep order).\n- Fast \"have I seen this?\" checks.\n- Comparing groups: who is in A but not in B.\n\n`frozenset` is an immutable set that can be used as a dict key or inside another set.",
+   "keyPoints": [
+    "Tuples are immutable and support unpacking",
+    "A one-item tuple needs a trailing comma",
+    "Sets hold unique hashable items with O(1) membership tests",
+    "Use set operators | & - ^ for group maths",
+    "set() creates an empty set; {} is a dict"
+   ],
+   "pitfalls": [
+    "Writing (5) and expecting a tuple",
+    "Expecting a set to keep insertion order",
+    "Putting a list or dict inside a set (unhashable)"
+   ],
+   "examples": [
+    {
+     "title": "Tuples and sets",
+     "language": "python",
+     "code": "point = (3, 4)\nx, y = point\nfirst, *rest = [10, 20, 30, 40]\nprint(x, y, first, rest)\nsingle = (5,)\nprint(type(single), type((5)))\n\na = {1, 2, 3, 4}\nb = {3, 4, 5}\nprint(a | b, a & b, a - b, a ^ b)\nprint({1, 2} <= a)\n\nitems = [\"b\", \"a\", \"b\", \"c\", \"a\"]\nprint(sorted(set(items)))\nprint(list(dict.fromkeys(items)))   # unique, order kept",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why would you use a tuple instead of a list?",
+     "a": "For fixed data, as dict keys or set members, and to signal that the data must not change. They are also a bit lighter and faster."
+    },
+    {
+     "q": "How do you remove duplicates while keeping order?",
+     "a": "list(dict.fromkeys(items)), since dicts preserve insertion order."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-dicts",
+   "title": "Dictionaries",
+   "level": "beginner",
+   "summary": "Key-value mappings with fast lookups, plus the essential methods and patterns.",
+   "description": "A `dict` maps **keys to values** with O(1) average lookup. Since Python 3.7 dictionaries remember insertion order. Keys must be hashable (strings, numbers, tuples of immutables); values can be anything.\n\n### Basics\n```python\nuser = {\"name\": \"Asha\", \"age\": 25}\nuser[\"city\"] = \"Pune\"      # add / update\nuser[\"name\"]               # read (KeyError if missing)\nuser.get(\"email\", \"n/a\")   # safe read with default\ndel user[\"age\"]\n```\n\n### Methods you need\n`keys()`, `values()`, `items()`, `get()`, `pop()`, `setdefault()`, `update()`, and the merge operator `a | b` (3.9+). Iterate with `for k, v in d.items()`.\n\n### Dict comprehension\n`{n: n * n for n in range(5)}` builds a dict in one line.\n\n### Useful patterns\n- Counting: `d[k] = d.get(k, 0) + 1`, or use `collections.Counter`.\n- Grouping: `d.setdefault(k, []).append(v)`, or `defaultdict(list)`.\n- Inverting: `{v: k for k, v in d.items()}`.\n- Nested data: dicts of lists/dicts, exactly the shape of JSON.\n\n### Views\n`keys()`, `values()` and `items()` return live **views**, not copies. Convert with `list()` if you need a snapshot, especially before changing the dict while looping.",
+   "keyPoints": [
+    "Keys must be hashable; values can be anything",
+    "Use get() or in to avoid KeyError",
+    "items() gives (key, value) pairs for loops",
+    "Dicts keep insertion order (3.7+)",
+    "Dict comprehensions and | merge (3.9+) keep code short"
+   ],
+   "pitfalls": [
+    "Changing dict size while iterating over it (RuntimeError)",
+    "Using a list as a key",
+    "Assuming d[k] returns None for missing keys"
+   ],
+   "examples": [
+    {
+     "title": "Common dict patterns",
+     "language": "python",
+     "code": "user = {\"name\": \"Asha\", \"age\": 25}\nuser[\"city\"] = \"Pune\"\nprint(user.get(\"email\", \"n/a\"))\nfor k, v in user.items():\n    print(k, \"->\", v)\n\ntext = \"to be or not to be\"\ncount = {}\nfor w in text.split():\n    count[w] = count.get(w, 0) + 1\nprint(count)\n\ngroups = {}\nfor w in [\"apple\", \"avocado\", \"banana\", \"blueberry\", \"cherry\"]:\n    groups.setdefault(w[0], []).append(w)\nprint(groups)\n\nsquares = {n: n * n for n in range(1, 5)}\nprint(squares)\nprint({**squares, 5: 25} == squares | {5: 25})",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How are Python dicts implemented?",
+     "a": "As hash tables, which gives O(1) average time for get, set and delete. Keys must be hashable."
+    },
+    {
+     "q": "d[key] vs d.get(key)?",
+     "a": "d[key] raises KeyError when missing; get returns None or a supplied default."
+    },
+    {
+     "q": "Are dicts ordered?",
+     "a": "Yes, since Python 3.7 they preserve insertion order as a language guarantee."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-comprehensions",
+   "title": "Comprehensions",
+   "level": "intermediate",
+   "summary": "Build lists, dicts, sets and generators from iterables in a single readable expression.",
+   "description": "A comprehension builds a new collection from an iterable, optionally filtering items. It is shorter and usually faster than the equivalent `for` loop with `append`.\n\n### Forms\n```python\n[x * 2 for x in nums]                 # list\n[x for x in nums if x % 2 == 0]       # with filter\n{x: x ** 2 for x in nums}             # dict\n{len(w) for w in words}               # set\n(x * 2 for x in nums)                 # generator expression (lazy)\n```\n\n### Conditional expression vs filter\n- Filter goes at the end: `[x for x in data if x > 0]`\n- Transform with if/else goes at the start: `[x if x > 0 else 0 for x in data]`\n\n### Nested loops\n`[(r, c) for r in range(3) for c in range(2)]` reads in the same order as nested `for` statements. Flattening a matrix: `[v for row in m for v in row]`.\n\n### Generator expressions\nWith round brackets nothing is built up front; values are produced one by one. Use them inside `sum()`, `any()`, `all()`, `max()` to save memory: `sum(x * x for x in range(10**6))`.\n\n### When not to use\nIf the logic needs several statements, side effects, or deep nesting, write a normal loop. Readability beats cleverness.",
+   "keyPoints": [
+    "[expr for x in it if cond] builds a list",
+    "Dict and set comprehensions use {}",
+    "Generator expressions use () and are lazy",
+    "Filter goes at the end; if/else expression goes in front",
+    "Switch to a loop when it stops being readable"
+   ],
+   "pitfalls": [
+    "Cramming multiple nested conditions into one line",
+    "Using a comprehension only for side effects such as print",
+    "Keeping a huge list in memory when a generator would do"
+   ],
+   "examples": [
+    {
+     "title": "All comprehension types",
+     "language": "python",
+     "code": "nums = [1, 2, 3, 4, 5, 6]\nprint([n * n for n in nums if n % 2 == 0])\nprint([n if n > 3 else 0 for n in nums])\nprint({n: n % 3 for n in nums})\nprint({len(w) for w in [\"a\", \"bb\", \"cc\", \"ddd\"]})\n\nmatrix = [[1, 2, 3], [4, 5, 6]]\nprint([v for row in matrix for v in row])\nprint([[row[i] for row in matrix] for i in range(3)])   # transpose\n\ntotal = sum(n * n for n in range(1000))\nprint(total)\nprint(any(n > 5 for n in nums), all(n > 0 for n in nums))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "List comprehension vs generator expression?",
+     "a": "A list comprehension builds the entire list in memory; a generator expression yields items lazily and uses almost no memory."
+    },
+    {
+     "q": "Are comprehensions faster than loops?",
+     "a": "Usually somewhat, since the loop runs in optimised bytecode without repeated append method lookups, but clarity matters more."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-collections-itertools",
+   "title": "collections, heapq and itertools",
+   "level": "intermediate",
+   "summary": "Specialised containers (Counter, defaultdict, deque, namedtuple), heaps and iterator tools.",
+   "description": "The standard library gives you specialised tools that replace a lot of hand-written code.\n\n### collections\n- `Counter` counts hashable items: `Counter(\"hello\").most_common(2)`.\n- `defaultdict(factory)` creates missing keys automatically: `defaultdict(list)`.\n- `deque` is a double-ended queue with O(1) append/pop on both ends; `maxlen` makes a sliding window.\n- `namedtuple` gives tuples readable field names: `Point = namedtuple(\"Point\", \"x y\")`.\n- `OrderedDict`, `ChainMap` are less common today.\n\n### heapq\nA **min-heap** stored in a plain list. `heappush`, `heappop`, `heapify`, `nlargest(k, it)`, `nsmallest(k, it)`. Use it for priority queues, \"top K\" and merging sorted streams. Pop always returns the smallest item; for a max-heap push negated values.\n\n### itertools\nLazy iterator building blocks:\n`count`, `cycle`, `chain`, `islice`, `zip_longest`, `product` (cartesian), `permutations`, `combinations`, `groupby` (needs sorted input), `accumulate`, `pairwise` (3.10+), `batched` (3.12+).\n\n```python\nfrom itertools import combinations\nlist(combinations(\"ABC\", 2))   # AB AC BC\n```\n\nThese functions return iterators, so wrap them in `list()` when you want to see the values and remember an iterator can be consumed only once.",
+   "keyPoints": [
+    "Counter, defaultdict, deque and namedtuple remove boilerplate",
+    "deque is O(1) at both ends; list is O(n) at the front",
+    "heapq is a min-heap: push, pop, nlargest, nsmallest",
+    "itertools returns lazy iterators; groupby needs sorted data",
+    "Iterators can be consumed only once"
+   ],
+   "pitfalls": [
+    "Using list.pop(0) in a queue (O(n)) instead of deque",
+    "Forgetting to sort before itertools.groupby",
+    "Reusing an exhausted iterator"
+   ],
+   "examples": [
+    {
+     "title": "Counter, defaultdict, deque, heapq, itertools",
+     "language": "python",
+     "code": "from collections import Counter, defaultdict, deque, namedtuple\nimport heapq\nfrom itertools import chain, combinations, groupby, islice, product\n\nprint(Counter(\"mississippi\").most_common(2))\n\nd = defaultdict(list)\nfor word in [\"ant\", \"bee\", \"ape\", \"bat\"]:\n    d[word[0]].append(word)\nprint(dict(d))\n\nq = deque([1, 2, 3], maxlen=3)\nq.append(4)\nq.appendleft(0)\nprint(q)\n\nPoint = namedtuple(\"Point\", \"x y\")\np = Point(2, 5)\nprint(p.x, p.y, p)\n\nh = [7, 2, 9, 4]\nheapq.heapify(h)\nprint(heapq.heappop(h), heapq.nlargest(2, [7, 2, 9, 4]))\n\nprint(list(combinations(\"ABC\", 2)))\nprint(list(product([1, 2], \"ab\")))\nprint(list(islice(chain([1, 2], [3, 4]), 3)))\nfor key, grp in groupby(sorted(\"aabbbc\")):\n    print(key, len(list(grp)))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When use deque instead of list?",
+     "a": "When you add or remove at both ends often, such as queues, BFS and sliding windows; deque gives O(1) on both ends."
+    },
+    {
+     "q": "How do you get the k largest items efficiently?",
+     "a": "heapq.nlargest(k, iterable), O(n log k), or keep a min-heap of size k."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

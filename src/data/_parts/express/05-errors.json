@@ -1,0 +1,229 @@
+{
+ "id": "express-errors",
+ "title": "Error Handling",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-sync-async-errors",
+   "title": "Sync vs Async Errors (and Express 5 Promises)",
+   "level": "intermediate",
+   "summary": "Express catches synchronous throws automatically; Express 5 also forwards rejected promises, while v4 needed asyncHandler.",
+   "description": "How errors reach your error handler depends on the code style.\n\n### Synchronous errors\nIf a route handler or middleware **throws**, Express catches it and passes it to the error-handling middleware automatically:\n\n```js\napp.get('/bad', (req, res) => { throw new Error('Oops') })\n```\n\n### Asynchronous errors in Express 4\nIn v4, an error thrown inside a callback or `async` function was **not caught**: the request hung and an unhandled rejection could crash the process. You had to call `next(err)` manually inside `try/catch`, or wrap handlers:\n\n```js\nconst asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)\napp.get('/users', asyncHandler(async (req, res) => { ... }))\n```\n\n(The `express-async-errors` package patched this globally.)\n\n### Express 5: promises are first-class\nIn Express 5, if a handler or middleware returns a **rejected promise** (every `async` function that throws does), Express calls `next(err)` for you. You can write:\n\n```js\napp.get('/users/:id', async (req, res) => {\n  const user = await User.findById(req.params.id)   // rejection -> error handler\n  if (!user) throw new NotFoundError('User not found')\n  res.json(user)\n})\n```\n\n### Still needs `next(err)`\nCallbacks that are *not* promises (old-style `fs.readFile(cb)`, event emitters, `setTimeout`) are not tracked. Convert them to promises (`fs.promises`, `util.promisify`) or call `next(err)` yourself. An error thrown inside `setTimeout` still crashes the process.\n\n### Best practice\nUse `async/await`, let errors bubble up, and handle them in ONE central error middleware.",
+   "keyPoints": [
+    "Sync `throw` -> automatically handled in every Express version",
+    "Express 5 forwards rejected promises/async errors to the error handler",
+    "Express 4 needs `try/catch + next(err)` or an `asyncHandler` wrapper",
+    "Callback-style or timer errors are not tracked: promisify or call `next(err)`"
+   ],
+   "pitfalls": [
+    "Porting Express 5 code back to 4 and wondering why async errors hang requests",
+    "Throwing inside `setTimeout`/event handlers expecting Express to catch it",
+    "Swallowing errors with an empty `catch {}`"
+   ],
+   "examples": [
+    {
+     "title": "Same route in v4 and v5 style",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\nconst fakeDb = { find: async (id) => { if (id === '0') throw new Error('DB down'); return null } }\n\n// Express 5: just throw / reject\napp.get('/v5/users/:id', async (req, res) => {\n  const user = await fakeDb.find(req.params.id)\n  if (!user) throw Object.assign(new Error('User not found'), { status: 404 })\n  res.json(user)\n})\n\n// Express 4 compatible wrapper (also fine in 5)\nconst asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)\napp.get('/v4/users/:id', asyncHandler(async (req, res) => {\n  const user = await fakeDb.find(req.params.id)\n  if (!user) throw Object.assign(new Error('User not found'), { status: 404 })\n  res.json(user)\n}))\n\napp.use((err, req, res, next) => {\n  res.status(err.status || 500).json({ error: err.message })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/v5/users/1   # 404 {\"error\":\"User not found\"}\ncurl localhost:3000/v5/users/0   # 500 {\"error\":\"DB down\"}\ncurl localhost:3000/v4/users/1   # 404 {\"error\":\"User not found\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What changed about async errors in Express 5?",
+     "a": "Rejected promises returned by handlers and middleware are passed to next(err) automatically, so async/await code no longer needs try/catch or wrappers just to reach the error handler."
+    },
+    {
+     "q": "Which errors are still not caught automatically?",
+     "a": "Errors from non-promise callbacks, timers and event emitters, because Express only tracks the return value of the handler itself."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-error-middleware",
+   "title": "Error-Handling Middleware",
+   "level": "intermediate",
+   "summary": "An error handler has four parameters (err, req, res, next), is registered last and sends a clean response.",
+   "description": "Error-handling middleware is recognised by its **four parameters**:\n\n```js\napp.use((err, req, res, next) => {\n  console.error(err)\n  res.status(500).json({ error: 'Something went wrong' })\n})\n```\n\nEven if you do not use `next`, it must be in the signature or Express will treat the function as a normal middleware.\n\n### How errors reach it\n- `throw` in sync code\n- A rejected promise in Express 5 handlers\n- `next(err)` with any value that is not `'route'` or `'router'`\n\nWhen an error occurs Express skips all normal middleware and routes and jumps to the **next error handler registered after it**. That is why error handlers go **last**. You can register several (for example one that logs and calls `next(err)`, and a final one that responds).\n\n### Default handler\nIf you do not write one, Express uses a built-in handler: it prints the stack trace in development and sends only the status text in production (when `NODE_ENV=production`). Always provide your own so clients receive JSON.\n\n### Writing a good handler\n1. Pick the status: `err.status ?? err.statusCode ?? 500`.\n2. Log the full error server-side.\n3. Send a safe message: never leak stack traces, SQL or file paths in production.\n4. If `res.headersSent` is true, delegate to Express with `return next(err)` because you can no longer change the response.\n\n### Errors thrown by Express itself\n`express.json()` throws a 400 `SyntaxError` for malformed JSON and 413 for big bodies; both carry `err.status`, so a central handler covers them too.",
+   "keyPoints": [
+    "Four arguments `(err, req, res, next)` identify an error handler",
+    "Register it after all routes and the 404 handler",
+    "Express skips normal middleware once an error is raised",
+    "Check `res.headersSent` and delegate with `next(err)` if true",
+    "Hide internals in production responses"
+   ],
+   "pitfalls": [
+    "Declaring `(err, req, res)` - three arguments - so it is never used as an error handler",
+    "Sending the raw `err.stack` to clients",
+    "Registering the error handler before routes"
+   ],
+   "examples": [
+    {
+     "title": "Central error handler",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\napp.use(express.json())\n\napp.post('/data', (req, res) => res.json(req.body))\napp.get('/boom', () => { throw new Error('Kaboom') })\n\n// 404 handler (3 args)\napp.use((req, res) => res.status(404).json({ error: 'Not found' }))\n\n// error handler (4 args) - LAST\napp.use((err, req, res, next) => {\n  if (res.headersSent) return next(err)\n  const status = err.status ?? err.statusCode ?? 500\n  console.error(`[${status}]`, err.message)\n  res.status(status).json({\n    error: status === 500 && process.env.NODE_ENV === 'production'\n      ? 'Internal Server Error'\n      : err.message,\n  })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Behaviour",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/boom\n# {\"error\":\"Kaboom\"}                       (development)\n# {\"error\":\"Internal Server Error\"}        (NODE_ENV=production)\n\ncurl -X POST localhost:3000/data -H \"Content-Type: application/json\" -d '{bad'\n# 400 {\"error\":\"Expected property name or '}' in JSON at position 1 ...\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why must error middleware be registered last?",
+     "a": "Because Express only forwards an error to error handlers registered after the point where it occurred; placing it last ensures it catches errors from every route."
+    },
+    {
+     "q": "How does Express know a middleware handles errors?",
+     "a": "By having exactly four declared parameters: (err, req, res, next)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-app-error-class",
+   "title": "Custom AppError and a Centralized Handler",
+   "level": "intermediate",
+   "summary": "Create an AppError class with status and an operational flag so one handler can format every error consistently.",
+   "description": "Errors fall into two groups:\n- **Operational errors**: expected problems at runtime - invalid input, not found, duplicate email, bad token. Respond to the client with a proper 4xx.\n- **Programmer errors**: bugs - `undefined` is not a function, wrong query. Respond with a generic 500 and fix the code.\n\nA small custom class lets you tell them apart.\n\n### The AppError class\n```js\nexport class AppError extends Error {\n  constructor(message, statusCode = 500, details) {\n    super(message)\n    this.name = this.constructor.name\n    this.statusCode = statusCode\n    this.isOperational = true\n    this.details = details\n    Error.captureStackTrace(this, this.constructor)\n  }\n}\n```\n\nAdd small subclasses: `NotFoundError` (404), `BadRequestError` (400), `UnauthorizedError` (401), `ForbiddenError` (403), `ConflictError` (409).\n\n### Using it\nControllers just `throw new NotFoundError('Task not found')`. No `res` calls for failures, no try/catch repeated everywhere.\n\n### The central handler\nOne middleware at the bottom:\n1. Normalises library errors into `AppError`s (Mongoose `ValidationError`, `CastError`, duplicate key code `11000`, JWT `TokenExpiredError`, JSON `SyntaxError`).\n2. For operational errors, returns the message with the right status.\n3. For unknown errors, logs the stack and sends a generic 500.\n4. Includes the stack only when not in production.\n\n### Standard error shape\nKeep a stable JSON shape such as `{ \"status\": \"fail\", \"message\": \"...\", \"details\": [...] }` so the React front end can show errors without special cases.",
+   "keyPoints": [
+    "Operational errors (expected, 4xx) vs programmer errors (bugs, 500)",
+    "`AppError` carries `statusCode`, `isOperational` and optional `details`",
+    "Throw errors in controllers; format them in ONE handler",
+    "Convert Mongoose/JWT/JSON errors to AppError in the handler",
+    "Return a consistent JSON error shape"
+   ],
+   "pitfalls": [
+    "Leaking programmer-error details (stack, SQL) to clients",
+    "Using `res.send` for errors in every controller instead of throwing",
+    "Forgetting `Error.captureStackTrace` or `super(message)`, losing the stack"
+   ],
+   "examples": [
+    {
+     "title": "errors.js and error middleware",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/utils/AppError.js\nexport class AppError extends Error {\n  constructor(message, statusCode = 500, details) {\n    super(message)\n    this.name = this.constructor.name\n    this.statusCode = statusCode\n    this.isOperational = true\n    this.details = details\n    Error.captureStackTrace(this, this.constructor)\n  }\n}\nexport class NotFoundError extends AppError {\n  constructor(what = 'Resource') { super(`${what} not found`, 404) }\n}\nexport class BadRequestError extends AppError {\n  constructor(message = 'Bad request', details) { super(message, 400, details) }\n}\nexport class UnauthorizedError extends AppError {\n  constructor(message = 'Not authenticated') { super(message, 401) }\n}\n\n// ## src/middleware/errorHandler.js\nimport { AppError } from '../utils/AppError.js'\n\nfunction normalize(err) {\n  if (err instanceof AppError) return err\n  if (err.name === 'CastError') return new AppError(`Invalid ${err.path}: ${err.value}`, 400)\n  if (err.code === 11000) {\n    const field = Object.keys(err.keyValue ?? {})[0]\n    return new AppError(`Duplicate value for ${field}`, 409)\n  }\n  if (err.name === 'ValidationError') {\n    const details = Object.values(err.errors).map((e) => e.message)\n    return new AppError('Validation failed', 400, details)\n  }\n  if (err.name === 'JsonWebTokenError') return new AppError('Invalid token', 401)\n  if (err.name === 'TokenExpiredError') return new AppError('Token expired', 401)\n  if (err.type === 'entity.parse.failed') return new AppError('Malformed JSON body', 400)\n  return err\n}\n\nexport function errorHandler(err, req, res, next) {\n  if (res.headersSent) return next(err)\n  const e = normalize(err)\n  const known = e instanceof AppError\n  if (!known) console.error('UNEXPECTED ERROR', err)\n\n  res.status(known ? e.statusCode : 500).json({\n    status: 'error',\n    message: known ? e.message : 'Internal Server Error',\n    ...(e.details && { details: e.details }),\n    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),\n  })\n}\n\n// ## src/routes/tasks.js\nimport { Router } from 'express'\nimport { NotFoundError } from '../utils/AppError.js'\nconst router = Router()\n\nrouter.get('/:id', async (req, res) => {\n  const task = null                          // pretend DB lookup found nothing\n  if (!task) throw new NotFoundError('Task')\n  res.json(task)\n})\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "Response shape",
+     "language": "text",
+     "lang": "json",
+     "code": "{\n  \"status\": \"error\",\n  \"message\": \"Task not found\"\n}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Operational vs programmer errors?",
+     "a": "Operational errors are expected runtime problems (bad input, missing record) and get a helpful 4xx response; programmer errors are bugs and get a generic 500 plus logging."
+    },
+    {
+     "q": "Why create an AppError class?",
+     "a": "It attaches a status code and flag to errors so a single handler can respond consistently without each controller formatting its own error response."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-validation-404-500",
+   "title": "404 vs 500 and Validation Errors",
+   "level": "intermediate",
+   "summary": "Choose the right status for missing routes, missing records, bad input and server failures.",
+   "description": "Choosing the correct status makes an API predictable and easier to debug.\n\n### 404 - two different meanings\n1. **Route not found**: the URL does not exist. Handled by a catch-all `app.use((req, res) => ...)` placed after all routes.\n2. **Resource not found**: the route exists but the record does not (`GET /users/999`). Return 404 from the handler (or throw `NotFoundError`).\n\n### 400 vs 422\n- **400 Bad Request**: the request is malformed (invalid JSON, missing required header).\n- **422 Unprocessable Entity**: syntactically valid but semantically wrong (email format invalid, age negative). Many teams simply use 400 for both; just be consistent.\n\n### Other common codes\n| Situation | Status |\n|---|---|\n| Duplicate unique value | 409 Conflict |\n| Not logged in / bad token | 401 |\n| Logged in, no permission | 403 |\n| Payload too big | 413 |\n| Rate limit hit | 429 |\n| Unexpected bug / DB down | 500 |\n| Upstream service failed | 502/503 |\n\n### Validation errors\nReturn **all** field errors at once, not just the first, so the form can highlight them:\n\n```json\n{ \"status\": \"fail\", \"message\": \"Validation failed\",\n  \"errors\": [ { \"field\": \"email\", \"message\": \"Invalid email\" } ] }\n```\n\n### 500 rules\nA 500 means *our* fault. Log it with a request id, return a generic message, and alert on spikes. Never return 200 with `{ success: false }`; clients, caches and monitoring tools rely on the status code.",
+   "keyPoints": [
+    "Route 404 (catch-all) differs from resource 404 (record missing)",
+    "400 = malformed, 422 = valid syntax but invalid data (or use 400 for both consistently)",
+    "409 for duplicates, 401 vs 403 for auth issues",
+    "Return every validation error in a list",
+    "500 = our bug: generic message to the client, details in logs"
+   ],
+   "pitfalls": [
+    "Returning 200 with an error body",
+    "Responding 500 for user mistakes such as invalid input",
+    "Returning only the first validation error, forcing repeated submissions"
+   ],
+   "examples": [
+    {
+     "title": "404 handler and validation response",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\napp.use(express.json())\n\nfunction validateUser({ name, email, age }) {\n  const errors = []\n  if (!name || name.length < 2) errors.push({ field: 'name', message: 'Name must have 2+ characters' })\n  if (!/^\\S+@\\S+\\.\\S+$/.test(email ?? '')) errors.push({ field: 'email', message: 'Invalid email' })\n  if (!Number.isInteger(age) || age < 0) errors.push({ field: 'age', message: 'Age must be a positive integer' })\n  return errors\n}\n\napp.post('/users', (req, res) => {\n  const errors = validateUser(req.body ?? {})\n  if (errors.length) {\n    return res.status(422).json({ status: 'fail', message: 'Validation failed', errors })\n  }\n  res.status(201).json({ status: 'success', data: req.body })\n})\n\n// route not found\napp.use((req, res) => {\n  res.status(404).json({ status: 'fail', message: `Cannot ${req.method} ${req.originalUrl}` })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Result",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST localhost:3000/users -H \"Content-Type: application/json\" -d '{\"name\":\"A\",\"email\":\"x\"}'\n# 422\n# {\"status\":\"fail\",\"message\":\"Validation failed\",\"errors\":[\n#   {\"field\":\"name\",\"message\":\"Name must have 2+ characters\"},\n#   {\"field\":\"email\",\"message\":\"Invalid email\"},\n#   {\"field\":\"age\",\"message\":\"Age must be a positive integer\"}]}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "404 vs 500 - when is each correct?",
+     "a": "404 when the URL or requested record does not exist; 500 when the server failed unexpectedly, which indicates a bug or infrastructure problem."
+    },
+    {
+     "q": "Why should you not return 200 for errors?",
+     "a": "Clients, proxies, caches and monitoring depend on status codes; a 200 with an error body hides failures and breaks standard error handling."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-graceful-shutdown",
+   "title": "Process-Level Errors and Graceful Shutdown",
+   "level": "advanced",
+   "summary": "Handle unhandledRejection and uncaughtException, and close the server cleanly on SIGTERM.",
+   "description": "Some failures happen outside Express: a rejected promise nobody awaited, an exception in a timer, a lost database connection. Node emits process events for them.\n\n### Process-level handlers\n- `process.on('unhandledRejection', (reason) => ...)` - a promise rejected with no handler. Since Node 15 it crashes the process by default.\n- `process.on('uncaughtException', (err) => ...)` - a synchronous throw that nobody caught. After this the process may be in an inconsistent state.\n\n**Recommended policy:** log the error, stop accepting new work, finish in-flight requests if possible, then **exit with code 1** and let a process manager (PM2, Docker restart policy, Kubernetes) start a clean instance. Do not try to \"keep going\" after `uncaughtException`.\n\n### Graceful shutdown\nDeployments send `SIGTERM` (Ctrl+C sends `SIGINT`). A graceful shutdown:\n1. Stops accepting new connections: `server.close()`.\n2. Lets active requests finish.\n3. Closes resources: database (`mongoose.connection.close()`), Redis, queues.\n4. Exits with `process.exit(0)`.\n5. Has a **timeout** (for example 10 s) that force-exits if something hangs.\n\n`server.close()` waits for keep-alive connections, so call `server.closeIdleConnections()` (Node 18.2+) or `server.closeAllConnections()` after the timeout.\n\n### Health checks\nExpose `/health` so orchestrators know when the app is ready, and return 503 while shutting down.",
+   "keyPoints": [
+    "Handle `unhandledRejection` and `uncaughtException`: log, then exit(1)",
+    "Let PM2/Docker/Kubernetes restart the process",
+    "On SIGTERM: `server.close()`, close DB, exit 0",
+    "Add a forced-exit timeout for hanging connections",
+    "Expose a health endpoint"
+   ],
+   "pitfalls": [
+    "Continuing to run after `uncaughtException` in a corrupted state",
+    "Calling `process.exit()` immediately and dropping in-flight requests",
+    "Not closing DB/Redis connections, leaving them open on the server side"
+   ],
+   "examples": [
+    {
+     "title": "Graceful shutdown",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport mongoose from 'mongoose'\n\nconst app = express()\napp.get('/health', (req, res) => res.json({ status: 'ok' }))\n\nawait mongoose.connect(process.env.MONGO_URI)\nconst server = app.listen(process.env.PORT || 3000, () => console.log('listening'))\n\nlet shuttingDown = false\nasync function shutdown(signal, code = 0) {\n  if (shuttingDown) return\n  shuttingDown = true\n  console.log(`${signal} received: closing server`)\n\n  const force = setTimeout(() => {\n    console.error('Forced exit after timeout')\n    process.exit(1)\n  }, 10_000)\n  force.unref()\n\n  server.close(async () => {          // waits for in-flight requests\n    await mongoose.connection.close()\n    console.log('Closed cleanly')\n    process.exit(code)\n  })\n  server.closeIdleConnections()\n}\n\nprocess.on('SIGTERM', () => shutdown('SIGTERM'))\nprocess.on('SIGINT', () => shutdown('SIGINT'))\nprocess.on('unhandledRejection', (reason) => {\n  console.error('Unhandled rejection:', reason)\n  shutdown('unhandledRejection', 1)\n})\nprocess.on('uncaughtException', (err) => {\n  console.error('Uncaught exception:', err)\n  shutdown('uncaughtException', 1)\n})",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What should you do on uncaughtException?",
+     "a": "Log it, shut down gracefully (or immediately) and exit with a non-zero code so a process manager restarts a clean process; the app state may be corrupted."
+    },
+    {
+     "q": "Why is graceful shutdown important?",
+     "a": "It lets in-flight requests complete and closes database connections properly, avoiding dropped requests and half-written data during deploys or restarts."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

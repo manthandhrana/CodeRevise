@@ -1,0 +1,814 @@
+{
+  "id": "js-err-browser-async",
+  "title": "Browser, Network and Async Errors",
+  "level": "intermediate",
+  "topics": [
+    {
+      "source": "",
+      "pitfalls": [
+        "new Promise(async (resolve, reject) => { throw ... }) never rejects the promise - avoid the async executor.",
+        "promise.then(a).catch(b) differs from promise.then(a, b): the latter does not catch errors thrown in a."
+      ],
+      "id": "js-err-promise-rejections",
+      "title": "Promise Rejections and \"Uncaught (in promise)\"",
+      "level": "intermediate",
+      "summary": "How promises fail, what an unhandled rejection is, and how errors flow through then, catch and finally.",
+      "description": "A promise is **rejected** when the function passed to `new Promise` calls `reject(reason)`, when it `throw`s, or when an `async` function throws. A rejection is an *asynchronous error*: it is not delivered to `try/catch` around the call, but to a **rejection handler**.\n\n### Where rejections are handled\n```js\npromise\n  .then(onFulfilled, onRejected)   // 2nd argument handles only the previous promise\n  .catch(onRejected)               // handles errors from everything above\n  .finally(cleanup);               // runs either way; passes the result through\n```\n\n### Error flow rules\n1. A `throw` inside `then` turns the **returned** promise into a rejection.\n2. `catch` **recovers**: whatever it returns becomes a fulfilled value for the next `then`. Rethrow (`throw e`) to keep failing.\n3. `finally` cannot change the value, but a throw inside `finally` replaces the result with the new rejection.\n4. Always `return` the inner promise in a `then`, or errors escape the chain (\"floating promise\").\n\n### Unhandled rejections\nIf a rejected promise has **no handler** by the time the microtask queue drains, the host reports it:\n- Browser console: `Uncaught (in promise) Error: message` and the `unhandledrejection` event (`event.reason`).\n- Node.js 15+: prints the error and **terminates** the process (`ERR_UNHANDLED_REJECTION`).\n- If a handler is attached later, a `rejectionhandled` event fires.\n\n### Common causes\n- Calling an async function without `await` or `.catch` (**fire and forget**).\n- `new Promise(async (resolve) => { ... })` - a throw inside the async executor is never connected to the promise.\n- Forgetting `return` inside `then`.\n- `setTimeout(() => { throw ... })` is not a promise error at all - it is an uncaught exception.\n\n### Fix\nEnd every chain with a `catch` (or `await` in a `try/catch`), and add a global `unhandledrejection` listener as a safety net that reports to your logging service.",
+      "keyPoints": [
+        "A rejection is delivered to .catch / the second then argument, not to a surrounding try/catch (unless awaited).",
+        "catch returns a fulfilled promise: rethrow if you cannot handle the error.",
+        "\"Uncaught (in promise)\" = a rejected promise with no handler.",
+        "Node 15+ crashes on unhandled rejections; browsers fire unhandledrejection.",
+        "Always return promises inside then and end chains with catch."
+      ],
+      "examples": [
+        {
+          "title": "Error flow through a chain",
+          "language": "javascript",
+          "code": "Promise.resolve(1)\n  .then((v) => { console.log(\"then 1:\", v); throw new Error(\"boom in then\"); })\n  .then(() => console.log(\"skipped\"))\n  .catch((e) => { console.log(\"catch:\", e.message); return \"recovered\"; })\n  .then((v) => console.log(\"then after catch:\", v))\n  .finally(() => console.log(\"finally runs\"))\n  .then(() => { throw new TypeError(\"second failure\"); })\n  .catch((e) => console.log(\"caught again:\", e.name));",
+          "explanation": ""
+        },
+        {
+          "title": "then(a, b) vs then(a).catch(b)",
+          "language": "javascript",
+          "code": "const fail = () => Promise.reject(new Error(\"failed\"));\nfail().then(() => {}, (e) => console.log(\"2-arg handler:\", e.message));\n\nPromise.resolve(\"ok\")\n  .then(() => { throw new Error(\"thrown inside success handler\"); }, (e) => console.log(\"never runs\", e.message))\n  .catch((e) => console.log(\"catch sees it:\", e.message));\n\nPromise.resolve(\"ok\")\n  .then(() => { throw new Error(\"not handled by 2-arg form\"); }, () => {})\n  .catch((e) => console.log(\"needs a later catch:\", e.message));",
+          "explanation": ""
+        },
+        {
+          "title": "The async executor trap",
+          "language": "javascript",
+          "code": "const boom = async () => { await null; throw new Error(\"lost!\"); };\n\n// BAD: the async function has its OWN promise; the outer promise is never told\nconst bad = new Promise((resolve) => {\n  boom().catch((e) => console.log(\"the error went to the executor's own promise:\", e.message));\n});\n// GOOD: use an async function directly, so the rejection reaches the caller\nconst good = (async () => { await null; throw new Error(\"propagated\"); })();\ngood.catch((e) => console.log(\"good rejected:\", e.message));\n\nPromise.race([bad, new Promise((r) => setTimeout(() => r(\"bad promise is still pending\"), 20))]).then(console.log);",
+          "explanation": "new Promise(async (resolve) => { throw ... }) behaves like the BAD version: the outer promise stays pending (and the executor promise becomes an unhandled rejection)."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does \"Uncaught (in promise)\" mean?",
+          "a": "A promise was rejected and no rejection handler was attached, so the error reached the global unhandledrejection handling."
+        },
+        {
+          "q": "Does catch() stop the chain?",
+          "a": "No. catch returns a new promise that fulfils with the handler's return value, so later thens run. Rethrow to keep the chain rejected."
+        },
+        {
+          "q": "Why is new Promise(async ...) an anti-pattern?",
+          "a": "Errors thrown in the async executor reject the executor's own promise, not the outer one, so they are lost and the promise may never settle."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "A forgotten await on a function returning a Promise makes if(promise) always true.",
+        "Awaiting inside a loop for 100 items runs requests sequentially - often unintended."
+      ],
+      "id": "js-err-async-await-errors",
+      "title": "async/await Error Handling Pitfalls",
+      "level": "intermediate",
+      "summary": "try/catch with await, return vs return await, forgotten await, parallel requests and loops.",
+      "description": "In an `async` function, `await` turns a rejection back into a normal exception, so `try/catch` works - **but only for promises you `await` inside the `try` block**.\n\n### Core patterns\n```js\nasync function load() {\n  try {\n    const res = await fetch(url);          // rejection becomes throw\n    return await res.json();\n  } catch (e) {\n    handle(e);\n  } finally {\n    hideSpinner();\n  }\n}\n```\n\n### Pitfalls\n| Mistake | What happens | Fix |\n|---|---|---|\n| `return promise` inside `try` | the function returns *before* the promise settles; the `catch` never sees the rejection | `return await promise` |\n| Forgetting `await` | you get a Promise (truthy!), and later an unhandled rejection | `await` or `.catch` |\n| `await` in a `forEach` callback | not awaited by the loop; errors lost | `for...of` or `Promise.all` |\n| Sequential awaits that could be parallel | slow | `await Promise.all([a(), b()])` |\n| `await` in a non-async function | `SyntaxError: await is only valid in async functions` | add `async` |\n| try/catch around too much | cannot tell which call failed | smaller blocks, add context |\n| Swallowing in `catch` and returning `undefined` | caller continues with `undefined` | rethrow or return a clear fallback |\n| Top-level code | ES modules support top-level `await`; scripts do not | use a module or an async IIFE |\n\n### return vs return await\nWithout `await` the `try/catch` in the function **does not apply** to the returned promise. With `return await` errors are caught locally (and the stack trace includes the function). Use plain `return` only when you intentionally pass errors to the caller.\n\n### Parallel and error handling\nStart all promises first, then await: `const [a, b] = await Promise.all([getA(), getB()])`. If one rejects, the other keeps running (its result is ignored) - and if it also rejects, that rejection is *handled* by `Promise.all`, so there is no unhandled warning.\n\n### Errors in event handlers\n`button.onclick = async () => { await save(); }` - a rejection becomes \"Uncaught (in promise)\"; wrap the body in `try/catch` to show UI feedback.",
+      "keyPoints": [
+        "await converts a rejection into a throw, catchable with try/catch.",
+        "return await inside try/catch if you want the catch to handle the returned promise.",
+        "Do not use async callbacks inside forEach; use for...of or Promise.all(map).",
+        "Run independent awaits in parallel with Promise.all.",
+        "Wrap async event handlers in try/catch to give UI feedback."
+      ],
+      "examples": [
+        {
+          "title": "return vs return await",
+          "language": "javascript",
+          "code": "const failLater = () => new Promise((_, rej) => setTimeout(() => rej(new Error(\"late failure\")), 5));\n\nasync function withoutAwait() {\n  try { return failLater(); }                // returns the promise: catch is skipped\n  catch (e) { return \"caught inside (never)\"; }\n}\nasync function withAwait() {\n  try { return await failLater(); }          // awaited: catch handles it\n  catch (e) { return \"caught inside: \" + e.message; }\n}\nwithoutAwait().then(console.log, (e) => console.log(\"withoutAwait rejected to caller:\", e.message));\nwithAwait().then(console.log);",
+          "explanation": ""
+        },
+        {
+          "title": "Sequential vs parallel and the forgotten await",
+          "language": "javascript",
+          "code": "const sleep = (ms, v, fail) => new Promise((res, rej) => setTimeout(() => (fail ? rej(new Error(v + \" failed\")) : res(v)), ms));\n\n(async () => {\n  const wrong = sleep(5, \"data\");                 // forgot await\n  console.log(\"forgot await ->\", wrong instanceof Promise, Boolean(wrong));\n\n  const [a, b] = await Promise.all([sleep(10, \"A\"), sleep(10, \"B\")]);\n  console.log(\"parallel:\", a, b);\n\n  try { await Promise.all([sleep(5, \"A\", true), sleep(10, \"B\")]); }\n  catch (e) { console.log(\"Promise.all rejected with first error:\", e.message); }\n\n  for (const id of [1, 2, 3]) {\n    try { if (id === 2) await sleep(1, \"item\" + id, true); console.log(\"item\", id, \"ok\"); }\n    catch (e) { console.log(\"item\", id, \"->\", e.message); }\n  }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "Handler wrapper for UI events",
+          "language": "javascript",
+          "code": "function safeHandler(fn, onError) {\n  return async (...args) => {\n    try { return await fn(...args); }\n    catch (e) { onError(e); }\n  };\n}\nconst save = async (data) => { if (!data.name) throw new Error(\"Name is required\"); return \"saved \" + data.name; };\nconst handler = safeHandler(save, (e) => console.log(\"toast:\", e.message));\n(async () => {\n  console.log(await handler({ name: \"Asha\" }));\n  await handler({});\n})();",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between return promise and return await promise in a try block?",
+          "a": "Plain return passes the promise to the caller before it settles, so the local catch will not run on rejection. return await waits inside the try, so the catch handles it."
+        },
+        {
+          "q": "Why shouldn't you use async callbacks in forEach?",
+          "a": "forEach ignores the returned promises, so it does not wait and errors become unhandled. Use for...of with await or Promise.all(items.map(...))."
+        },
+        {
+          "q": "How do you handle errors in async event handlers?",
+          "a": "Wrap the body in try/catch (or a wrapper like safeHandler) and show the user a message; otherwise the rejection is only an \"Uncaught (in promise)\" in the console."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Using Promise.race for a timeout without aborting leaves the real request running.",
+        "Promise.all loses information about the other failures."
+      ],
+      "id": "js-err-promise-combinators",
+      "title": "Promise.all vs allSettled vs race vs any: Error Behaviour",
+      "level": "intermediate",
+      "summary": "Pick the right combinator by how it treats failures: fail-fast, collect all, first settled or first success.",
+      "description": "The four combinators differ mainly in **how they react to rejection**.\n\n| Combinator | Fulfils when | Rejects when | Rejection value |\n|---|---|---|---|\n| `Promise.all` | all fulfil → array of values | **first** rejection (fail-fast) | that single reason |\n| `Promise.allSettled` | all settle → array of `{status, value/reason}` | **never** | - |\n| `Promise.race` | first promise settles (fulfilled) | first settled promise is rejected | that reason |\n| `Promise.any` | **first fulfilment** | **all** reject (or empty array) | `AggregateError` |\n\n### Choosing\n- Need everything or nothing (page needs user **and** settings)? → `all`.\n- Want a report for every item (bulk upload, health checks)? → `allSettled`.\n- Timeouts: `race([request, timeout])` (but also abort the request!).\n- Fastest of redundant sources (mirrors, CDNs)? → `any`.\n\n### Details\n- With `all`, the other promises **keep running** after one rejection. Their later rejections are handled (no warning) but side effects still happen. Use an `AbortController` to cancel.\n- `all` preserves **input order** in the result, not completion order.\n- `race([])` never settles; `all([])` resolves `[]`; `any([])` rejects with an empty `AggregateError`.\n- Non-promise values are treated as already fulfilled.\n- `allSettled` results: `{ status: \"fulfilled\", value }` or `{ status: \"rejected\", reason }` - **reason is whatever was thrown**, not necessarily an Error.\n\n### Handling allSettled results\n```js\nconst results = await Promise.allSettled(tasks);\nconst ok = results.filter(r => r.status === \"fulfilled\").map(r => r.value);\nconst failed = results.filter(r => r.status === \"rejected\").map(r => r.reason);\n```\nUse `failed.length` to decide: show partial results, retry only the failed ones, or throw an `AggregateError`.",
+      "keyPoints": [
+        "all = fail-fast; allSettled = never rejects; race = first to settle; any = first success.",
+        "Promise.any rejects with AggregateError only if everything fails.",
+        "Other promises keep running after all/race settle: cancel with AbortController.",
+        "allSettled results have status and value or reason.",
+        "Empty arrays: all resolves [], any rejects, race never settles."
+      ],
+      "examples": [
+        {
+          "title": "Side by side",
+          "language": "javascript",
+          "code": "const ok = (v, ms) => new Promise((r) => setTimeout(() => r(v), ms));\nconst bad = (m, ms) => new Promise((_, j) => setTimeout(() => j(new Error(m)), ms));\nconst show = (label) => (v) => console.log(label.padEnd(22), v);\n\nPromise.all([ok(\"a\", 10), ok(\"b\", 20)]).then(show(\"all (success)\"));\nPromise.all([ok(\"a\", 10), bad(\"x failed\", 5), bad(\"y failed\", 15)]).catch((e) => console.log(\"all (fail-fast)\".padEnd(22), e.message));\nPromise.allSettled([ok(\"a\", 10), bad(\"x failed\", 5)]).then((r) => console.log(\"allSettled\".padEnd(22), JSON.stringify(r.map((x) => x.status))));\nPromise.race([ok(\"slow\", 30), bad(\"fast fail\", 5)]).catch((e) => console.log(\"race (fail first)\".padEnd(22), e.message));\nPromise.any([bad(\"a\", 5), ok(\"winner\", 15), ok(\"later\", 25)]).then(show(\"any (first success)\"));\nPromise.any([bad(\"a\", 5), bad(\"b\", 10)]).catch((e) => console.log(\"any (all fail)\".padEnd(22), e.name, e.errors.length));\nPromise.all([]).then(show(\"all([])\"));",
+          "explanation": ""
+        },
+        {
+          "title": "Timeout with race and cancellation",
+          "language": "javascript",
+          "code": "function withTimeout(promiseFactory, ms) {\n  const controller = new AbortController();\n  const timer = new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error(\"Timed out after \" + ms + \"ms\")); }, ms));\n  return Promise.race([promiseFactory(controller.signal), timer]);\n}\nconst slowTask = (signal) => new Promise((res, rej) => {\n  const id = setTimeout(() => res(\"finished\"), 50);\n  signal.addEventListener(\"abort\", () => { clearTimeout(id); rej(new Error(\"task cancelled\")); });\n});\nwithTimeout(slowTask, 10).catch((e) => console.log(e.message));\nwithTimeout((s) => Promise.resolve(\"fast\"), 10).then(console.log);",
+          "explanation": ""
+        },
+        {
+          "title": "Separate successes and failures",
+          "language": "javascript",
+          "code": "const jobs = [1, 2, 3, 4].map((n) => (n % 2 ? Promise.resolve(\"job\" + n) : Promise.reject(new RangeError(\"job\" + n + \" out of range\"))));\nPromise.allSettled(jobs).then((results) => {\n  const values = results.filter((r) => r.status === \"fulfilled\").map((r) => r.value);\n  const reasons = results.filter((r) => r.status === \"rejected\").map((r) => r.reason.message);\n  console.log(\"values:\", values);\n  console.log(\"reasons:\", reasons);\n});",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "When would you pick allSettled over all?",
+          "a": "When partial success is acceptable and you need to know the outcome of every promise, such as batch uploads or multi-source dashboards."
+        },
+        {
+          "q": "What does Promise.race do with a rejection?",
+          "a": "If the first promise to settle is rejected, race rejects with that reason. Later results are ignored."
+        },
+        {
+          "q": "Does Promise.all cancel the remaining promises after one rejects?",
+          "a": "No. They continue running; only their results are ignored. Use AbortController to actually cancel work."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "try { await fetch(url) } catch { showError() } misses all HTTP errors because nothing throws.",
+        "Calling res.json() on a 204 or HTML error page throws SyntaxError: Unexpected end of JSON input / Unexpected token <."
+      ],
+      "id": "js-err-fetch-errors",
+      "title": "fetch Errors: Network Failure vs HTTP Status",
+      "level": "intermediate",
+      "summary": "fetch only rejects on network-level failure. A 404 or 500 is a successful promise - check response.ok yourself.",
+      "description": "The most important fetch fact: **`fetch()` does not reject on HTTP error statuses.** It rejects only when the request could not be completed at all.\n\n| Situation | What fetch does |\n|---|---|\n| Server replied `200` | resolves, `response.ok === true` |\n| Server replied `404` / `500` | **resolves**, `response.ok === false`, `response.status` is set |\n| Network down, DNS failure, connection refused, CORS blocked, mixed content blocked, adblocker, invalid URL | **rejects** with `TypeError` (`Failed to fetch` in Chrome) |\n| `AbortController.abort()` | rejects with `DOMException AbortError` |\n| `AbortSignal.timeout(ms)` elapsed | rejects with `DOMException TimeoutError` |\n| Body parse fails (`res.json()` on HTML) | `res.json()` rejects with `SyntaxError` |\n\n### Browser wording of the network TypeError\nChrome `TypeError: Failed to fetch` · Firefox `TypeError: NetworkError when attempting to fetch resource.` · Safari `TypeError: Load failed` · Node `TypeError: fetch failed` (with `cause`). The **reason is hidden on purpose** for security: open the Network and Console tabs to see whether it is CORS, DNS, offline or blocked.\n\n### Robust wrapper\n```js\nclass HttpError extends Error {\n  constructor(res) { super(\"HTTP \" + res.status + \" \" + res.statusText); this.name = \"HttpError\"; this.status = res.status; this.response = res; }\n}\nasync function request(url, options) {\n  const res = await fetch(url, options);       // TypeError on network failure\n  if (!res.ok) throw new HttpError(res);       // convert HTTP errors to exceptions\n  return res;\n}\n```\nThen callers use `catch (e)` with `e instanceof HttpError` vs `e instanceof TypeError` vs `e.name === \"AbortError\"`.\n\n### Other things to remember\n- The body can be read **once** (`Body is unusable` / `body stream already read`): use `res.clone()` before reading twice.\n- `204 No Content` has no body: do not call `res.json()`.\n- Cookies are not sent cross-origin unless `credentials: \"include\"` (and CORS allows it).\n- Check `navigator.onLine` only as a hint; the request is the real test.",
+      "keyPoints": [
+        "fetch resolves for 404/500: always check response.ok or status.",
+        "It rejects with TypeError for network-level failures (offline, CORS, DNS, mixed content).",
+        "The message differs by browser; the reason is intentionally hidden - use DevTools.",
+        "A response body can be consumed only once; use clone().",
+        "Wrap fetch to throw an HttpError for non-OK responses."
+      ],
+      "examples": [
+        {
+          "title": "Network failure vs HTTP error",
+          "language": "javascript",
+          "code": "// A fake fetch that behaves like the real one\nfunction fakeFetch(url) {\n  return new Promise((resolve, reject) => setTimeout(() => {\n    if (url === \"/offline\") return reject(new TypeError(\"Failed to fetch\"));\n    if (url === \"/missing\") return resolve(new Response(\"Not found\", { status: 404, statusText: \"Not Found\" }));\n    if (url === \"/broken\") return resolve(new Response(\"<h1>500</h1>\", { status: 500, statusText: \"Server Error\" }));\n    return resolve(new Response(JSON.stringify({ hello: \"world\" }), { status: 200, headers: { \"content-type\": \"application/json\" } }));\n  }, 1));\n}\nclass HttpError extends Error {\n  constructor(res) { super(\"HTTP \" + res.status + \" \" + res.statusText); this.name = \"HttpError\"; this.status = res.status; }\n}\nasync function request(url) {\n  const res = await fakeFetch(url);\n  if (!res.ok) throw new HttpError(res);\n  return res.json();\n}\n(async () => {\n  for (const url of [\"/ok\", \"/missing\", \"/broken\", \"/offline\"]) {\n    try { console.log(url, \"->\", JSON.stringify(await request(url))); }\n    catch (e) {\n      const kind = e instanceof HttpError ? \"http \" + e.status : e instanceof TypeError ? \"network failure\" : \"other\";\n      console.log(url, \"->\", kind, \"|\", e.message);\n    }\n  }\n  const naive = await fakeFetch(\"/missing\");\n  console.log(\"naive: promise resolved, ok =\", naive.ok, \"status =\", naive.status);\n})();",
+          "explanation": "The naive version shows why a try/catch alone misses 404 and 500."
+        },
+        {
+          "title": "Body can be read once",
+          "language": "javascript",
+          "code": "(async () => {\n  const res = new Response('{\"a\":1}', { headers: { \"content-type\": \"application/json\" } });\n  const copy = res.clone();\n  console.log(await res.json());\n  console.log(await copy.text());\n  try { await res.json(); } catch (e) { console.log(e.name + \": \" + e.message); }\n  const empty = new Response(null, { status: 204 });\n  console.log(\"204 body text:\", JSON.stringify(await empty.text()));\n  try { await new Response(null, { status: 204 }).json(); } catch (e) { console.log(e.name + \": \" + e.message); }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "Using the wrapper in the browser",
+          "language": "text",
+          "lang": "javascript",
+          "code": "async function loadUser(id) {\n  try {\n    const res = await fetch(\"/api/users/\" + id, { signal: AbortSignal.timeout(8000), credentials: \"include\" });\n    if (res.status === 404) return null;                       // expected: not an error for the caller\n    if (!res.ok) throw new Error(\"Server responded \" + res.status);\n    return await res.json();\n  } catch (e) {\n    if (e.name === \"TimeoutError\") showMessage(\"The server is taking too long.\");\n    else if (e.name === \"AbortError\") return;                 // navigation / cancel\n    else if (e instanceof TypeError) showMessage(\"Network problem. Check your connection (or CORS).\");\n    else throw e;\n  }\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Does fetch reject on a 404 response?",
+          "a": "No. It resolves with response.ok === false. You must check ok or status and throw yourself."
+        },
+        {
+          "q": "What causes \"TypeError: Failed to fetch\"?",
+          "a": "A network-level failure: offline, DNS error, server unreachable, CORS block, mixed content, certificate error or a blocking extension. The browser hides the exact reason from JavaScript."
+        },
+        {
+          "q": "Why does reading a response twice fail?",
+          "a": "The body is a stream that can be consumed once. Use response.clone() before reading, or read it once and reuse the result."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Redirecting to login on 403 creates login loops for users who simply lack permission.",
+        "Retrying POST without an idempotency key can create duplicates."
+      ],
+      "id": "js-err-http-status",
+      "title": "Handling 401, 403, 404, 429 and 500 Responses",
+      "level": "intermediate",
+      "summary": "What each common HTTP error means for your UI and what the client should do: login, hide, retry, back off, report.",
+      "description": "Turn status codes into **decisions**, not just messages.\n\n| Status | Meaning | Client should |\n|---|---|---|\n| `400 Bad Request` | invalid syntax/params | fix the request (bug) or show field errors |\n| `401 Unauthorized` | not authenticated / token expired | refresh token once, else go to login |\n| `403 Forbidden` | authenticated but not allowed | show \"no permission\"; do **not** retry; do not redirect to login |\n| `404 Not Found` | resource does not exist | show not-found UI, or treat as empty result |\n| `408 Request Timeout` | server waited too long | retry |\n| `409 Conflict` | version/state conflict | reload data, merge, ask user |\n| `413 Payload Too Large` | file/body too big | tell user the limit |\n| `422 Unprocessable Entity` | validation failed | show per-field errors from the body |\n| `429 Too Many Requests` | rate limited | wait for `Retry-After`, back off; slow down |\n| `500 Internal Server Error` | server bug | show generic error, report; retry only if idempotent |\n| `502/503/504` | gateway / overloaded / timeout | retry with backoff; show \"try later\" |\n\n### Token refresh without a stampede\nWhen several requests fail with `401` at once, refresh the token **once** and let the others wait for the same promise (\"single-flight\"), then retry each request once. If the refresh also fails, log the user out.\n\n### Read the error body\nAPIs usually send details: `{ \"error\": \"email_taken\", \"message\": \"...\" }`. Parse it defensively (the body may be HTML from a proxy).\n\n### Design tips\n- Map status → typed error classes (`AuthError`, `NotFoundError`, `RateLimitError`) in one place (an API client), not in every component.\n- Respect `Retry-After` (seconds or an HTTP date).\n- Never retry `4xx` (except `408`, `429`).\n- Show friendly messages; log request id (`x-request-id`) for support.\n- Use `fetch` interceptors / a thin wrapper so behaviour is consistent.",
+      "keyPoints": [
+        "401 = who are you? (refresh/login); 403 = you may not (show permission message).",
+        "429: honour Retry-After and back off; 5xx/408: retry with backoff.",
+        "Do not retry other 4xx errors; they will fail again.",
+        "Refresh tokens with a single in-flight promise to avoid a stampede.",
+        "Centralise status handling in an API client."
+      ],
+      "examples": [
+        {
+          "title": "Mapping status codes to typed errors",
+          "language": "javascript",
+          "code": "class ApiError extends Error { constructor(status, message) { super(message); this.name = \"ApiError\"; this.status = status; } }\nclass AuthError extends ApiError { constructor() { super(401, \"Session expired\"); this.name = \"AuthError\"; } }\nclass ForbiddenError extends ApiError { constructor() { super(403, \"You do not have permission\"); this.name = \"ForbiddenError\"; } }\nclass NotFoundError extends ApiError { constructor() { super(404, \"Not found\"); this.name = \"NotFoundError\"; } }\nclass RateLimitError extends ApiError { constructor(retryAfter) { super(429, \"Too many requests\"); this.name = \"RateLimitError\"; this.retryAfter = retryAfter; } }\n\nfunction toError(res) {\n  switch (res.status) {\n    case 401: return new AuthError();\n    case 403: return new ForbiddenError();\n    case 404: return new NotFoundError();\n    case 429: return new RateLimitError(Number(res.headers.get(\"retry-after\")) || 1);\n    default: return new ApiError(res.status, res.status >= 500 ? \"Server problem, try again later\" : \"Request failed\");\n  }\n}\nfunction uiAction(e) {\n  if (e instanceof AuthError) return \"redirect to /login\";\n  if (e instanceof ForbiddenError) return \"show 'no access' page\";\n  if (e instanceof NotFoundError) return \"show 404 page\";\n  if (e instanceof RateLimitError) return \"wait \" + e.retryAfter + \"s then retry\";\n  return e.status >= 500 ? \"show retry banner\" : \"show message: \" + e.message;\n}\nfor (const [status, headers] of [[401], [403], [404], [429, { \"retry-after\": \"7\" }], [500], [422]]) {\n  const res = new Response(\"x\", { status, headers });\n  const err = toError(res);\n  console.log(status, err.name.padEnd(15), \"->\", uiAction(err));\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Single-flight token refresh",
+          "language": "javascript",
+          "code": "let refreshCalls = 0;\nlet refreshing = null;\nfunction refreshToken() {\n  if (!refreshing) {\n    refreshCalls++;\n    refreshing = new Promise((r) => setTimeout(() => r(\"new-token\"), 10)).finally(() => { refreshing = null; });\n  }\n  return refreshing;\n}\nlet validToken = \"new-token\";\nasync function api(path, token) {\n  return token === validToken ? { path, ok: true } : { path, status: 401 };\n}\nasync function authedRequest(path, token = \"expired\") {\n  let res = await api(path, token);\n  if (res.status === 401) {\n    const fresh = await refreshToken();          // everyone waits for the same refresh\n    res = await api(path, fresh);\n  }\n  return res;\n}\nPromise.all([\"/a\", \"/b\", \"/c\"].map((p) => authedRequest(p))).then((results) => {\n  console.log(results.map((r) => r.path + \":\" + r.ok).join(\" \"));\n  console.log(\"refresh calls:\", refreshCalls);\n});",
+          "explanation": ""
+        },
+        {
+          "title": "Retry-After parsing",
+          "language": "javascript",
+          "code": "function retryAfterMs(headerValue, now = 0) {\n  if (!headerValue) return 1000;\n  const seconds = Number(headerValue);\n  if (Number.isFinite(seconds)) return seconds * 1000;\n  const date = Date.parse(headerValue);                       // HTTP-date form\n  return Number.isNaN(date) ? 1000 : Math.max(0, date - now);\n}\nconsole.log(retryAfterMs(\"7\"));\nconsole.log(retryAfterMs(null));\nconsole.log(retryAfterMs(\"Wed, 21 Oct 2015 07:28:05 GMT\", Date.parse(\"Wed, 21 Oct 2015 07:28:00 GMT\")));\nconsole.log(retryAfterMs(\"garbage\"));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "401 vs 403?",
+          "a": "401 means the client is not authenticated (missing/expired credentials) and may retry after logging in. 403 means the server knows who you are but refuses; logging in again will not help."
+        },
+        {
+          "q": "How do you handle many parallel requests that get 401?",
+          "a": "Refresh the token once using a shared in-flight promise, make the other requests wait for it, then retry each once. If refresh fails, sign the user out."
+        },
+        {
+          "q": "Which statuses should be retried?",
+          "a": "Transient ones: 408, 429 (after Retry-After), 500/502/503/504 for idempotent requests, with exponential backoff and a limit."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "A server error (500) without CORS headers also looks like a CORS error in the console.",
+        "Allow-Origin: * together with credentials is rejected by browsers."
+      ],
+      "id": "js-err-cors",
+      "title": "CORS Errors Explained and Fixed",
+      "level": "intermediate",
+      "summary": "Why \"blocked by CORS policy\" happens, how preflight works, and what the server (not the frontend) must change.",
+      "description": "**CORS** (Cross-Origin Resource Sharing) is a browser security rule: JavaScript on `https://app.com` may read a response from `https://api.com` only if the API **opts in** with response headers. An **origin** = scheme + host + port (`http://localhost:3000` and `http://localhost:5000` are different origins).\n\nThe error you see in Chrome:\n`Access to fetch at 'https://api.com/data' from origin 'https://app.com' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.`\nIn JavaScript this is only `TypeError: Failed to fetch` - the details are in the **Console**.\n\n### Important truths\n- CORS is enforced by the **browser**. The request often reaches the server; the browser then refuses to give the response to your script. Curl/Postman/servers are not affected.\n- It **cannot be fixed in frontend code**. Fix it on the server (or use a proxy).\n- `fetch(url, { mode: \"no-cors\" })` does not fix it; it returns an **opaque** response you cannot read.\n\n### Simple vs preflighted requests\n\"Simple\" requests (`GET/POST` with basic headers and `application/x-www-form-urlencoded` or `text/plain`) are sent directly. Everything else (JSON `Content-Type`, `Authorization` header, `PUT/DELETE/PATCH`) triggers a **preflight**: the browser first sends an `OPTIONS` request and the server must answer with `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers` (and `204/200`).\n\n### Common messages and fixes\n| Message | Fix |\n|---|---|\n| `No 'Access-Control-Allow-Origin' header is present` | add the header on the server for your origin |\n| `Response to preflight request doesn't pass access control check: It does not have HTTP ok status` | handle `OPTIONS` and return `204` (also before auth middleware) |\n| `Request header field authorization is not allowed by Access-Control-Allow-Headers in preflight response` | add the header name to `Allow-Headers` |\n| `The value of the 'Access-Control-Allow-Origin' header must not be the wildcard '*' when the request's credentials mode is 'include'` | send the exact origin and `Allow-Credentials: true` |\n| `Method PUT is not allowed by Access-Control-Allow-Methods` | add the method |\n| `has been blocked by CORS policy: The request client is not a secure context...` / Private Network Access | HTTPS or private network headers |\n\n### Development workaround\nUse a dev-server **proxy** (Vite `server.proxy`, CRA `proxy`) so the browser talks to the same origin, and forward to the API. Production: same origin via reverse proxy, or configure CORS properly.",
+      "keyPoints": [
+        "CORS is enforced by browsers; fix it on the server with Access-Control-* headers.",
+        "Origin = scheme + host + port.",
+        "JSON bodies and Authorization headers trigger an OPTIONS preflight.",
+        "Credentials (cookies) need an exact origin, not *, plus Allow-Credentials: true.",
+        "no-cors does not make the response readable; use a proxy in development."
+      ],
+      "examples": [
+        {
+          "title": "Express server with correct CORS",
+          "language": "text",
+          "lang": "javascript",
+          "code": "import express from \"express\";\nimport cors from \"cors\";\n\nconst app = express();\nconst allowed = [\"https://app.com\", \"http://localhost:5173\"];\n\napp.use(cors({\n  origin(origin, cb) { cb(null, !origin || allowed.includes(origin)); },  // exact origins\n  methods: [\"GET\", \"POST\", \"PUT\", \"PATCH\", \"DELETE\"],\n  allowedHeaders: [\"Content-Type\", \"Authorization\"],\n  credentials: true,                 // allow cookies\n  maxAge: 600,                       // cache preflight for 10 minutes\n}));\napp.options(\"*\", cors());            // answer every preflight\n\napp.get(\"/data\", (req, res) => res.json({ ok: true }));\napp.listen(5000);",
+          "explanation": "Place cors() before routes and before authentication middleware."
+        },
+        {
+          "title": "What the browser and server exchange",
+          "language": "text",
+          "lang": "http",
+          "code": "# 1. Preflight (sent automatically by the browser)\nOPTIONS /data HTTP/1.1\nOrigin: https://app.com\nAccess-Control-Request-Method: PUT\nAccess-Control-Request-Headers: content-type, authorization\n\n# 2. Server answer that makes the browser continue\nHTTP/1.1 204 No Content\nAccess-Control-Allow-Origin: https://app.com\nAccess-Control-Allow-Methods: GET, POST, PUT, DELETE\nAccess-Control-Allow-Headers: content-type, authorization\nAccess-Control-Allow-Credentials: true\nAccess-Control-Max-Age: 600\nVary: Origin\n\n# 3. The real request carries Origin and the response must again include Allow-Origin",
+          "explanation": ""
+        },
+        {
+          "title": "Vite dev proxy",
+          "language": "text",
+          "lang": "javascript",
+          "code": "// vite.config.js - the browser calls /api on the SAME origin; Vite forwards it\nexport default {\n  server: {\n    proxy: {\n      \"/api\": { target: \"http://localhost:5000\", changeOrigin: true },\n    },\n  },\n};\n// frontend: fetch(\"/api/users\")  -> no CORS involved",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why can curl call the API but my frontend cannot?",
+          "a": "CORS is a browser-enforced policy. curl/Postman are not browsers and do not apply it. The browser blocks the response unless the server sends the right Access-Control-Allow-* headers."
+        },
+        {
+          "q": "What is a preflight request?",
+          "a": "An automatic OPTIONS request the browser sends before a non-simple cross-origin request to ask whether the actual method and headers are allowed."
+        },
+        {
+          "q": "Why does Access-Control-Allow-Origin: * fail with cookies?",
+          "a": "Credentialed requests require an exact origin and Allow-Credentials: true; the wildcard is rejected for security."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Hard-coded http:// URLs in config or database content break after moving to HTTPS.",
+        "Third-party snippets (analytics, widgets) often need script-src and connect-src entries."
+      ],
+      "id": "js-err-mixed-csp",
+      "title": "Mixed Content and Content-Security-Policy Errors",
+      "level": "intermediate",
+      "summary": "Blocked http resources on https pages, CSP violations (inline scripts, eval, third-party hosts) and how to read and fix them.",
+      "description": "### Mixed content\nWhen an **HTTPS** page loads a resource over **HTTP**, browsers treat it as insecure:\n- **Active mixed content** (scripts, iframes, fetch/XHR, stylesheets) is **blocked**. Console: `Mixed Content: The page at 'https://...' was loaded over HTTPS, but requested an insecure XMLHttpRequest endpoint 'http://...'. This request has been blocked; the content must be served over HTTPS.` In JavaScript this surfaces as `TypeError: Failed to fetch`.\n- **Passive** (images, audio, video) are usually auto-upgraded to HTTPS or show a warning.\n\nFix: use `https://` (or protocol-relative / relative URLs), serve the API over TLS, and add `Content-Security-Policy: upgrade-insecure-requests` as a safety net. A call from HTTPS to `http://localhost` is allowed by browsers (it is treated as potentially trustworthy).\n\n### Content-Security-Policy (CSP)\nA CSP header (or `<meta http-equiv>`) tells the browser which sources of scripts, styles, images, connections etc. are allowed. Violations are **blocked** and reported:\n`Refused to execute inline script because it violates the following Content Security Policy directive: \"script-src 'self'\". Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution.`\n\n| Console message | Meaning | Fix |\n|---|---|---|\n| `Refused to execute inline script...` | inline `<script>` or `onclick=\"...\"` | move to a file, or add a **nonce** / hash |\n| `Refused to load the script 'https://x.com/a.js' because it violates ... \"script-src\"` | host not allowed | add host to `script-src` |\n| `Refused to connect to 'https://api...' because it violates ... \"connect-src\"` | `fetch`/XHR/WebSocket blocked | add to `connect-src` |\n| `Refused to evaluate a string as JavaScript because 'unsafe-eval' is not allowed...` | `eval`, `new Function`, string `setTimeout` | remove eval (EvalError in some browsers) |\n| `Refused to apply inline style...` | inline `style=\"\"` | external CSS / nonce |\n| `Refused to frame 'x' because an ancestor violates \"frame-ancestors\"` | page cannot be embedded | adjust `frame-ancestors` |\n\n### Debugging\nOpen the Console (messages name the directive), use the `securitypolicyviolation` event, or start with `Content-Security-Policy-Report-Only` to collect violations without breaking the site.\n\n### Principle\nDo not \"fix\" CSP errors with `'unsafe-inline'` / `'unsafe-eval'` / `*`; these remove the XSS protection that CSP provides.",
+      "keyPoints": [
+        "HTTPS pages block HTTP scripts, iframes and fetch/XHR (active mixed content).",
+        "Mixed-content/CSP/CORS blocks all show as TypeError: Failed to fetch in JS; the Console tells why.",
+        "CSP blocks inline scripts, eval and unlisted hosts; use nonces or hashes, not unsafe-inline.",
+        "Use Content-Security-Policy-Report-Only to roll out safely.",
+        "The securitypolicyviolation event lets you log violations."
+      ],
+      "examples": [
+        {
+          "title": "Typical CSP header and meta tag",
+          "language": "text",
+          "lang": "http",
+          "code": "Content-Security-Policy:\n  default-src 'self';\n  script-src 'self' 'nonce-r4nd0m123' https://cdn.example.com;\n  style-src 'self' 'nonce-r4nd0m123';\n  img-src 'self' data: https:;\n  connect-src 'self' https://api.example.com wss://realtime.example.com;\n  frame-ancestors 'none';\n  upgrade-insecure-requests\n\n<!-- usage in HTML with the same nonce -->\n<script nonce=\"r4nd0m123\">console.log(\"allowed inline script\");</script>",
+          "explanation": ""
+        },
+        {
+          "title": "Listening for violations",
+          "language": "text",
+          "lang": "javascript",
+          "code": "document.addEventListener(\"securitypolicyviolation\", (e) => {\n  console.warn(\"CSP blocked:\", e.blockedURI, \"| directive:\", e.violatedDirective, \"| line:\", e.lineNumber);\n  navigator.sendBeacon(\"/csp-report\", JSON.stringify({\n    blocked: e.blockedURI, directive: e.effectiveDirective, page: location.href,\n  }));\n});",
+          "explanation": ""
+        },
+        {
+          "title": "Detecting mixed content in URLs",
+          "language": "javascript",
+          "code": "function isMixedContent(pageUrl, resourceUrl) {\n  const page = new URL(pageUrl);\n  const res = new URL(resourceUrl, pageUrl);\n  const loopback = [\"localhost\", \"127.0.0.1\", \"[::1]\"].includes(res.hostname);\n  return page.protocol === \"https:\" && res.protocol === \"http:\" && !loopback;\n}\nconst page = \"https://shop.example.com/cart\";\nfor (const url of [\"http://api.example.com/items\", \"https://api.example.com/items\", \"/relative/path\", \"http://localhost:3000/dev\", \"//cdn.example.com/lib.js\"]) {\n  console.log(url.padEnd(34), isMixedContent(page, url) ? \"BLOCKED (mixed content)\" : \"ok\");\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does my fetch to an http:// API fail on my https:// site?",
+          "a": "Browsers block active mixed content. Serve the API over HTTPS (or use relative URLs behind the same HTTPS host)."
+        },
+        {
+          "q": "How do you allow an inline script under CSP safely?",
+          "a": "Add a per-response random nonce to the CSP and to the script tag (or allow its hash). Avoid unsafe-inline."
+        },
+        {
+          "q": "What is Report-Only mode?",
+          "a": "Content-Security-Policy-Report-Only logs violations without blocking them, letting you tune a policy before enforcing it."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Promise.race timeouts do not cancel the request; use an abort signal.",
+        "Reusing an already aborted signal makes every new request fail immediately."
+      ],
+      "id": "js-err-abort-timeout",
+      "title": "AbortError, Cancellation and Timeouts",
+      "level": "intermediate",
+      "summary": "Cancel in-flight requests with AbortController, add timeouts with AbortSignal.timeout, and tell AbortError from real failures.",
+      "description": "Network requests can take forever, or become irrelevant (the user typed another letter, left the page, changed tab). **AbortController** lets you cancel them.\n\n```js\nconst controller = new AbortController();\nfetch(url, { signal: controller.signal })\n  .catch(e => { if (e.name === \"AbortError\") return; throw e; });\ncontroller.abort();                 // rejects the fetch with AbortError\n```\n\n### Key facts\n| API | Behaviour |\n|---|---|\n| `controller.abort(reason?)` | signal becomes aborted; fetch rejects with `signal.reason` (default: a `DOMException` named `AbortError`) |\n| `AbortSignal.timeout(ms)` | auto-abort after ms with a `TimeoutError` |\n| `AbortSignal.any([a, b])` | aborted when any signal aborts (user cancel + timeout) |\n| `signal.throwIfAborted()` | throw `signal.reason` if aborted - use inside your own async work |\n| `signal.addEventListener(\"abort\", fn)` | cleanup hook |\n| `AbortSignal.abort(reason)` | already aborted signal |\n\n### Handling\n- **AbortError is not a failure**: the user or your code cancelled. Do not show an error toast. Ignore or clean up.\n- **TimeoutError is a failure**: show a message, maybe retry.\n- Network error → `TypeError`. HTTP error → check `response.ok`.\n- A signal can be used **once**; create a new controller for each request. Reusing an aborted signal makes new requests reject immediately.\n\n### Typical use cases\n1. **Search as you type** – abort the previous request when a new key is pressed (avoid out-of-order responses).\n2. **React `useEffect` cleanup** – abort in the cleanup function to avoid state updates after unmount.\n3. **Timeouts** – never leave a request without one.\n4. **Navigating away** – cancel pending loads.\n\n### Timeout without AbortSignal.timeout (older browsers)\n`const c = new AbortController(); const id = setTimeout(() => c.abort(), 5000); try { ... } finally { clearTimeout(id); }`\n\nAbort also works with `addEventListener` options (`{ signal }` removes the listener), streams and many libraries (axios supports `signal`).",
+      "keyPoints": [
+        "controller.abort() makes fetch reject with DOMException AbortError.",
+        "AbortSignal.timeout(ms) produces TimeoutError; AbortSignal.any combines signals.",
+        "Do not show error UI for AbortError; it is intentional.",
+        "Use a fresh AbortController per request.",
+        "Abort previous search requests and in React effect cleanups."
+      ],
+      "examples": [
+        {
+          "title": "Cancelling work with a signal",
+          "language": "javascript",
+          "code": "function cancellableDelay(ms, signal) {\n  return new Promise((resolve, reject) => {\n    signal.throwIfAborted();                                // already aborted?\n    const id = setTimeout(() => resolve(\"done after \" + ms + \"ms\"), ms);\n    signal.addEventListener(\"abort\", () => { clearTimeout(id); reject(signal.reason); }, { once: true });\n  });\n}\n(async () => {\n  const c1 = new AbortController();\n  const p1 = cancellableDelay(50, c1.signal);\n  c1.abort();\n  try { await p1; } catch (e) { console.log(\"cancelled:\", e.name, \"|\", e instanceof DOMException); }\n\n  const c2 = new AbortController();\n  console.log(await cancellableDelay(5, c2.signal));\n\n  const c3 = new AbortController();\n  c3.abort(new Error(\"custom reason\"));\n  try { await cancellableDelay(5, c3.signal); } catch (e) { console.log(\"reason:\", e.message); }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "Timeout versus user cancel",
+          "language": "javascript",
+          "code": "function classify(e) {\n  if (e.name === \"AbortError\") return \"cancelled by user - ignore\";\n  if (e.name === \"TimeoutError\") return \"timed out - show retry\";\n  if (e instanceof TypeError) return \"network failure\";\n  return \"other\";\n}\nconst user = new AbortController();\nuser.abort();\nconsole.log(classify(user.signal.reason));\n\nconst timeoutSignal = AbortSignal.timeout(5);\ntimeoutSignal.addEventListener(\"abort\", () => console.log(classify(timeoutSignal.reason), \"->\", timeoutSignal.reason.name));\n\nconst both = AbortSignal.any([new AbortController().signal, AbortSignal.timeout(10)]);\nboth.addEventListener(\"abort\", () => console.log(\"combined signal aborted by:\", both.reason.name));\nsetTimeout(() => {}, 30);        // keep the page/worker alive until the timeouts fire",
+          "explanation": ""
+        },
+        {
+          "title": "Search-as-you-type: keep only the latest",
+          "language": "javascript",
+          "code": "const fakeSearch = (q, signal) => new Promise((res, rej) => {\n  const id = setTimeout(() => res(\"results for '\" + q + \"'\"), 15);\n  signal.addEventListener(\"abort\", () => { clearTimeout(id); rej(new DOMException(\"aborted\", \"AbortError\")); });\n});\nlet current;\nasync function search(q) {\n  current?.abort();\n  current = new AbortController();\n  try { console.log(await fakeSearch(q, current.signal)); }\n  catch (e) { if (e.name !== \"AbortError\") throw e; console.log(\"ignored stale search:\", q); }\n}\nsearch(\"a\"); search(\"ab\"); search(\"abc\");",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Is AbortError an error you should report?",
+          "a": "No. It means the operation was cancelled on purpose. Ignore it (or clean up); report only real failures."
+        },
+        {
+          "q": "How do you add a timeout to fetch?",
+          "a": "Pass signal: AbortSignal.timeout(ms), or create an AbortController and call abort() from setTimeout. Catch TimeoutError/AbortError."
+        },
+        {
+          "q": "Why is Promise.race not a proper timeout?",
+          "a": "The losing promise keeps running; the request continues using bandwidth. An abort signal actually cancels it."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Proxies and SPAs may return index.html with status 200 for missing API routes.",
+        "JSON.parse on a stored \"undefined\" string (from localStorage.setItem(k, undefined)) throws."
+      ],
+      "id": "js-err-json-api",
+      "title": "JSON Parse Errors from APIs",
+      "level": "intermediate",
+      "summary": "Why response.json() throws on real APIs - HTML error pages, empty bodies, wrong content-type, BOMs - and a defensive parsing helper.",
+      "description": "`response.json()` fails with a `SyntaxError` whenever the body is not valid JSON. In production this is almost always **the server sent something else**.\n\n| Symptom (Chrome) | Real cause | Fix |\n|---|---|---|\n| `Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON` | HTML page: wrong URL, 404/500 page, login redirect, SPA `index.html` fallback, proxy error | check status and `Content-Type`; fix URL / proxy |\n| `Unexpected end of JSON input` | empty body: `204 No Content`, `HEAD` request, server crash mid-response, aborted request | check `res.status === 204` or `text()` is empty |\n| `\"undefined\" is not valid JSON` | you called `JSON.parse(undefined)` (e.g. missing localStorage key shows `null` ok, but `\"undefined\"` string stored) | validate before parsing |\n| `Unexpected token 'N', \"NaN\" is not valid JSON` / `Infinity` | server serialised NaN | fix server |\n| `Unexpected token '﻿'...` | UTF-8 BOM at start of file | strip `﻿` |\n| `Unexpected token ' in JSON` | single quotes: this is a JS object literal, not JSON | server must use `JSON.stringify` |\n| `Unexpected non-whitespace character after JSON` | two JSON documents concatenated, trailing text, NDJSON | parse per line |\n| `Body is unusable` | body already read | `clone()` |\n\n### Defensive reading\n1. Check `res.ok` first - an error page will not be JSON.\n2. Check `Content-Type` contains `application/json` (or `+json`).\n3. Read as **text once**, then decide; include a short snippet of the text in your error to debug.\n4. Handle `204` / empty bodies explicitly.\n5. Validate the parsed shape (is `data.items` an array?) before using it.\n\n### Developer tips\n- Open the **Network tab → Response/Preview** to see the real body.\n- Beware dev-server proxies returning `index.html` for unknown `/api` paths.\n- Redirects to a login page return HTML `200`: `res.redirected` and `res.url` help detect them.\n- Large numbers: JSON numbers above `2^53` lose precision in `JSON.parse`; send IDs as strings.",
+      "keyPoints": [
+        "\"Unexpected token <\" means HTML came back instead of JSON.",
+        "\"Unexpected end of JSON input\" means an empty body (204, aborted, crashed).",
+        "Check res.ok and Content-Type before res.json().",
+        "Read the body as text once, parse yourself, and include a snippet in the error.",
+        "Send big IDs as strings and validate the parsed shape."
+      ],
+      "examples": [
+        {
+          "title": "A defensive JSON reader",
+          "language": "javascript",
+          "code": "class ApiResponseError extends Error {\n  constructor(message, { status, snippet, cause } = {}) { super(message, { cause }); this.name = \"ApiResponseError\"; this.status = status; this.snippet = snippet; }\n}\nasync function readJson(res) {\n  const text = await res.text();\n  if (!res.ok) throw new ApiResponseError(\"HTTP \" + res.status, { status: res.status, snippet: text.slice(0, 60) });\n  if (res.status === 204 || text.trim() === \"\") return null;\n  const type = res.headers.get(\"content-type\") || \"\";\n  if (!/json/i.test(type)) throw new ApiResponseError(\"Expected JSON but got \" + (type || \"no content-type\"), { status: res.status, snippet: text.slice(0, 60) });\n  try { return JSON.parse(text.replace(/^﻿/, \"\")); }\n  catch (e) { throw new ApiResponseError(\"Invalid JSON from server\", { status: res.status, snippet: text.slice(0, 60), cause: e }); }\n}\nconst json = { \"content-type\": \"application/json\" };\nconst cases = {\n  good: new Response('{\"items\":[1,2]}', { headers: json }),\n  empty204: new Response(null, { status: 204 }),\n  htmlWith200: new Response(\"<!DOCTYPE html><html>\", { headers: { \"content-type\": \"text/html\" } }),\n  errorPage: new Response(\"<h1>Bad gateway</h1>\", { status: 502 }),\n  truncated: new Response('{\"items\":[1,', { headers: json }),\n  withBom: new Response('﻿{\"ok\":true}', { headers: json }),\n};\n(async () => {\n  for (const [name, res] of Object.entries(cases)) {\n    try { console.log(name.padEnd(12), \"->\", JSON.stringify(await readJson(res))); }\n    catch (e) { console.log(name.padEnd(12), \"->\", e.message, e.snippet ? \"| snippet: \" + e.snippet : \"\"); }\n  }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "Why the message looks like that",
+          "language": "javascript",
+          "code": "const bodies = {\n  \"<!DOCTYPE html><html><body>Not found</body></html>\": \"HTML page\",\n  \"\": \"empty body\",\n  \"{'a': 1}\": \"single quotes\",\n  \"NaN\": \"NaN serialised\",\n  '{\"a\":1}{\"b\":2}': \"two documents\",\n  \"undefined\": \"stored undefined\",\n};\nfor (const [text, label] of Object.entries(bodies)) {\n  try { JSON.parse(text); } catch (e) { console.log(label.padEnd(18), \"->\", e.message); }\n}\nconsole.log(JSON.parse('{\"id\": 12345678901234567890}').id, \"<- precision lost; send as string\");",
+          "explanation": ""
+        },
+        {
+          "title": "Parse NDJSON line by line",
+          "language": "javascript",
+          "code": "const ndjson = '{\"id\":1}\\n{\"id\":2}\\nnot json\\n{\"id\":4}';\nconst rows = [], errors = [];\nndjson.split(\"\\n\").forEach((line, i) => {\n  try { rows.push(JSON.parse(line)); } catch (e) { errors.push(\"line \" + (i + 1) + \": \" + e.name); }\n});\nconsole.log(rows, errors);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do I get \"Unexpected token < in JSON at position 0\" from my API call?",
+          "a": "The response starts with \"<\", so it is HTML (a 404/500 page, login redirect or index.html fallback), not JSON. Check the URL, status and Content-Type in the Network tab."
+        },
+        {
+          "q": "How should you handle 204 No Content?",
+          "a": "Do not call res.json(); it has an empty body and throws \"Unexpected end of JSON input\". Return null/undefined when status is 204 or the text is empty."
+        },
+        {
+          "q": "How do you avoid losing precision for large ids?",
+          "a": "JSON numbers above 2^53 lose precision in JavaScript. Send them as strings (or use BigInt with a custom reviver)."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "if (localStorage) throws in sandboxed iframes and blocked-cookie modes - the check itself needs try/catch.",
+        "Using localStorage for tokens exposes them to XSS."
+      ],
+      "id": "js-err-storage-errors",
+      "title": "localStorage Errors: QuotaExceededError and SecurityError",
+      "level": "intermediate",
+      "summary": "Storage can throw: it may be full, disabled, blocked in private mode or in sandboxed iframes. Wrap it defensively.",
+      "description": "`localStorage` and `sessionStorage` look simple, but they can **throw** in several situations:\n\n| Error | When | Message (Chrome) |\n|---|---|---|\n| `QuotaExceededError` (DOMException) | ~5 MB per origin exceeded; Safari private mode (old) set quota to 0 | `Failed to execute 'setItem' on 'Storage': Setting the value of 'key' exceeded the quota.` |\n| `SecurityError` | storage blocked: \"Block third-party cookies\", cookies disabled, sandboxed iframe without `allow-same-origin`, `file://` in some browsers, opaque origin | `Failed to read the 'localStorage' property from 'Window': Access is denied for this document.` |\n| `ReferenceError` / `undefined` | Node.js, Web Worker, SSR (no `localStorage` there) | `localStorage is not defined` |\n| `SyntaxError` | `JSON.parse` of corrupted value | `Unexpected token...` |\n| `TypeError` | circular object in `JSON.stringify` | `Converting circular structure to JSON` |\n\nNotice that merely **reading** the `window.localStorage` property can throw `SecurityError` - so a check like `if (window.localStorage)` must also be inside `try/catch`.\n\n### Defensive pattern\n1. Feature-test once inside `try/catch` by writing and removing a test key.\n2. Wrap `get`/`set` in helpers that parse JSON safely and return defaults.\n3. On `QuotaExceededError` (check `e.name === \"QuotaExceededError\"` or the legacy `e.code === 22`; Firefox old name `NS_ERROR_DOM_QUOTA_REACHED` / code 1014): remove old entries (cache eviction/LRU), or fall back to memory.\n4. Keep an **in-memory fallback** (a `Map`) so the app still works.\n5. Version your stored data (`{v: 2, data}`) and ignore invalid old formats.\n\n### Don'ts\n- Don't store large data (images, big JSON) in localStorage; use **IndexedDB** (hundreds of MB, async) or the Cache API.\n- Don't store secrets or tokens that XSS could steal (prefer `HttpOnly` cookies).\n- Remember storage is **synchronous** and blocks the main thread; large reads are slow.\n- Values are always strings: store `\"undefined\"` by mistake (`setItem(k, undefined)`) and `JSON.parse` later throws.\n\n### Check usage\n`navigator.storage.estimate()` returns `{ usage, quota }` for the origin (IndexedDB, Cache, etc.).",
+      "keyPoints": [
+        "setItem can throw QuotaExceededError; reading window.localStorage can throw SecurityError.",
+        "Always wrap storage access in try/catch and provide an in-memory fallback.",
+        "Values are strings: stringify/parse safely and never store undefined.",
+        "Use IndexedDB for large data; storage is synchronous.",
+        "navigator.storage.estimate() shows usage and quota."
+      ],
+      "examples": [
+        {
+          "title": "A safe storage wrapper (with a simulated full storage)",
+          "language": "javascript",
+          "code": "// Simulate a Storage that throws like a full browser storage\nclass TinyStorage {\n  constructor(limit) { this.limit = limit; this.map = new Map(); }\n  setItem(k, v) {\n    const used = [...this.map.values()].join(\"\").length;\n    if (used + String(v).length > this.limit) throw new DOMException(\"Setting the value of '\" + k + \"' exceeded the quota.\", \"QuotaExceededError\");\n    this.map.set(k, String(v));\n  }\n  getItem(k) { return this.map.has(k) ? this.map.get(k) : null; }\n  removeItem(k) { this.map.delete(k); }\n}\nfunction createSafeStore(storage) {\n  const memory = new Map();\n  return {\n    set(key, value) {\n      const text = JSON.stringify({ v: 1, data: value });\n      try { storage.setItem(key, text); return \"stored\"; }\n      catch (e) {\n        if (e.name === \"QuotaExceededError\") { memory.set(key, text); return \"quota full -> kept in memory\"; }\n        throw e;\n      }\n    },\n    get(key, fallback = null) {\n      const text = storage.getItem(key) ?? memory.get(key);\n      if (text == null) return fallback;\n      try { const parsed = JSON.parse(text); return parsed.v === 1 ? parsed.data : fallback; }\n      catch { return fallback; }\n    },\n  };\n}\nconst store = createSafeStore(new TinyStorage(40));\nconsole.log(store.set(\"theme\", \"dark\"));\nconsole.log(store.set(\"bigList\", Array.from({ length: 30 }, (_, i) => i)));\nconsole.log(store.get(\"theme\"), store.get(\"bigList\").length, store.get(\"missing\", \"default\"));",
+          "explanation": ""
+        },
+        {
+          "title": "Feature-detect storage safely",
+          "language": "web",
+          "html": "<p id=\"out\">checking...</p>",
+          "css": "",
+          "js": "function storageAvailable(type) {\n  try {\n    const s = window[type];             // reading this property may throw SecurityError\n    const x = '__test__';\n    s.setItem(x, x);\n    s.removeItem(x);\n    return true;\n  } catch (e) {\n    console.log(type, 'unavailable:', e.name);\n    return false;\n  }\n}\nconst ok = storageAvailable('localStorage');\ndocument.getElementById('out').textContent = 'localStorage usable: ' + ok;\nconsole.log('usable:', ok);\nif (navigator.storage && navigator.storage.estimate) {\n  navigator.storage.estimate().then(function (e) { console.log('quota > 0:', e.quota > 0); });\n}",
+          "explanation": ""
+        },
+        {
+          "title": "Corrupt value and undefined",
+          "language": "javascript",
+          "code": "const fake = new Map([[\"good\", '{\"a\":1}'], [\"bad\", \"{oops\"], [\"undef\", \"undefined\"]]);\nconst getItem = (k) => (fake.has(k) ? fake.get(k) : null);\nfunction readJson(key, fallback) {\n  const raw = getItem(key);\n  if (raw === null) return fallback;\n  try { return JSON.parse(raw); } catch (e) { console.log(\"corrupt value for\", key + \":\", e.name); return fallback; }\n}\nconsole.log(readJson(\"good\", {}), readJson(\"bad\", \"fallback\"), readJson(\"undef\", \"fallback\"), readJson(\"none\", \"fallback\"));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why can localStorage throw?",
+          "a": "The quota (about 5 MB) can be exceeded (QuotaExceededError), and storage can be blocked by privacy settings or sandboxed iframes (SecurityError), even on property access."
+        },
+        {
+          "q": "Where should large client-side data go instead?",
+          "a": "IndexedDB (async, much larger quotas) or the Cache API. localStorage is small, synchronous and string-only."
+        },
+        {
+          "q": "How do you detect localStorage safely?",
+          "a": "Inside try/catch, write and remove a test key; any exception means it is unavailable."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Caching an element and later re-rendering the DOM leaves you with a detached node.",
+        "Duplicate ids: getElementById returns only the first."
+      ],
+      "id": "js-err-dom-null",
+      "title": "DOM Errors: null Elements, querySelector and Timing",
+      "level": "beginner",
+      "summary": "Why getElementById returns null, how to avoid \"Cannot read properties of null\", and invalid selector errors.",
+      "description": "The DOM is the top source of `TypeError: Cannot read properties of null` in front-end code.\n\n### Why you get null\n| Cause | Explanation | Fix |\n|---|---|---|\n| **Script runs before the element exists** | `<script>` in `<head>` runs while the body is not parsed | put script at end of `<body>`, add `defer`, use `type=\"module\"` (deferred), or `DOMContentLoaded` |\n| **Wrong selector** | typo, missing `#` or `.`, wrong id/class | check in DevTools Elements, use `document.querySelector(\"#id\")` |\n| **Element added later** | rendered by JS/framework after your code ran | query after render; use event delegation or `MutationObserver` |\n| **Inside another document** | iframe, Shadow DOM | query the `shadowRoot` / `contentDocument` |\n| **Duplicate or changed id** | framework re-created the node | re-query, don't cache stale nodes |\n| **Calling `document.getElementById(\"#id\")`** | `getElementById` takes the id **without** `#` | remove `#` |\n\n### DOMException messages\n- `Failed to execute 'querySelector' on 'Document': '#1abc' is not a valid selector.` - ids starting with a digit or containing special characters need `CSS.escape(\"1abc\")`.\n- `InvalidCharacterError: String contains an invalid character` - `createElement(\"<div>\")` (give only the tag name).\n- `HierarchyRequestError`, `NotFoundError` (see DOMException topics).\n- `TypeError: Failed to execute 'appendChild' on 'Node': parameter 1 is not of type 'Node'.` - passing a string/null.\n- `TypeError: Cannot set properties of null (setting 'textContent')`.\n\n### Defensive code\n```js\nconst el = document.querySelector(\"#price\");\nif (!el) return;                // or throw a clear error: new Error(\"#price not found\")\nel.textContent = total;\n// or\ndocument.querySelector(\"#price\")?.append(total);\n```\nPrefer `textContent` over `innerHTML` for text (also avoids XSS). Use `element.closest()`, `matches()` and event delegation for dynamic content.\n\n### Remember\n`querySelectorAll` returns a (possibly empty) NodeList and never null. `getElementById` and `querySelector` return `null` when nothing matches.",
+      "keyPoints": [
+        "getElementById / querySelector return null when nothing matches; querySelectorAll returns an empty list.",
+        "Script ran before the DOM was ready: use defer, module scripts or DOMContentLoaded.",
+        "getElementById takes the id without #.",
+        "Escape ids/classes with CSS.escape for querySelector.",
+        "Guard with if (!el) or optional chaining."
+      ],
+      "examples": [
+        {
+          "title": "Typical null element errors",
+          "language": "web",
+          "html": "<h2 id=\"title\">Hello</h2>\n<ul id=\"list\"></ul>",
+          "css": "",
+          "js": "function show(label, fn) {\n  try { fn(); console.log(label, '-> ok'); }\n  catch (e) { console.log(label, '->', e.name + ': ' + e.message); }\n}\nshow('missing id', () => { document.getElementById('nope').textContent = 'x'; });\nshow('# in getElementById', () => { document.getElementById('#title').textContent = 'x'; });\nshow('querySelector on null', () => { document.querySelector('#nope').querySelector('span'); });\nshow('safe optional chaining', () => { document.querySelector('#nope')?.classList.add('x'); });\nshow('digit id selector', () => document.querySelector('#1abc'));\nshow('escaped selector', () => document.querySelector('#' + CSS.escape('1abc')));\nshow('createElement with <>', () => document.createElement('<div>'));\nshow('appendChild(null)', () => document.getElementById('list').appendChild(null));\nshow('querySelectorAll never null', () => console.log('count:', document.querySelectorAll('.nothing').length));",
+          "explanation": "Run it and compare the printed names/messages with the table above."
+        },
+        {
+          "title": "Waiting for the DOM",
+          "language": "web",
+          "html": "<p id=\"status\">pending...</p>",
+          "css": "",
+          "js": "// In a real page: <script src=\"app.js\" defer></script> or type=\"module\"\nfunction init() {\n  const status = document.getElementById('status');\n  if (!status) throw new Error('#status not found - is the script running before the DOM exists?');\n  status.textContent = 'DOM ready: ' + document.readyState;\n  console.log('init ran, readyState =', document.readyState);\n}\nif (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);\nelse init();",
+          "explanation": ""
+        },
+        {
+          "title": "A guard helper",
+          "language": "javascript",
+          "code": "function must(root, selector) {\n  const el = root.querySelector(selector);\n  if (!el) throw new Error(\"Required element not found: \" + selector);\n  return el;\n}\n// Minimal fake DOM for the demo (no browser needed)\nconst fakeRoot = { querySelector: (sel) => (sel === \"#app\" ? { id: \"app\" } : null) };\nconsole.log(must(fakeRoot, \"#app\").id);\ntry { must(fakeRoot, \"#missing\"); } catch (e) { console.log(e.message); }",
+          "explanation": "A clear error message beats \"Cannot read properties of null\"."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does document.getElementById return null?",
+          "a": "No element with that id exists at that moment: the script ran before the HTML was parsed, the id is misspelled, or the element is created later by JavaScript."
+        },
+        {
+          "q": "How do you make sure the DOM is ready?",
+          "a": "Use the defer attribute or type=\"module\" on the script, place it at the end of body, or run code in a DOMContentLoaded listener."
+        },
+        {
+          "q": "Difference between querySelector and querySelectorAll when nothing matches?",
+          "a": "querySelector returns null; querySelectorAll returns an empty NodeList."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Silencing every ResizeObserver message globally can also hide real layout loops during development.",
+        "Reporting every \"Failed to fetch\" floods dashboards when users lose connectivity."
+      ],
+      "id": "js-err-script-error-resize",
+      "title": "\"Script error.\", ResizeObserver Loop and Other Benign Errors",
+      "level": "advanced",
+      "summary": "Cross-origin \"Script error.\" with no details, the harmless ResizeObserver loop message and other noise your monitoring should filter.",
+      "description": "### \"Script error.\"\nWhen an uncaught error comes from a script loaded from **another origin** (a CDN, a third-party widget), browsers hide the details to prevent information leaks. `window.onerror` receives:\n`message: \"Script error.\"  source: \"\"  line: 0  col: 0  error: null`\n\nTo get real information:\n1. Add `crossorigin=\"anonymous\"` to the `<script>` tag.\n2. Make the CDN respond with `Access-Control-Allow-Origin` (most CDNs already do).\n3. Self-host the script, or use a source map-aware monitoring tool.\nSame-origin code does not have this problem.\n\n### ResizeObserver loop messages\n`ResizeObserver loop completed with undelivered notifications.` (older: `ResizeObserver loop limit exceeded`) appears when a ResizeObserver callback changes layout so that another resize is triggered in the same frame. It is a **warning-level error event, not an exception**: nothing breaks, no stack trace, `event.error` is `null`. Fix by changing sizes inside `requestAnimationFrame`, or ignore the message in your error reporter.\n\n### Other noise to filter in monitoring\n| Message | Source |\n|---|---|\n| `Script error.` | cross-origin without CORS |\n| `ResizeObserver loop ...` | layout feedback, benign |\n| `Non-Error promise rejection captured` | someone rejected with a string/object |\n| `Extension context invalidated`, `chrome-extension://` in stack | browser extensions |\n| `Load failed` / `Failed to fetch` | user went offline or navigated away mid-request (Safari/Chrome) |\n| `AbortError` | intentional cancellation |\n| `The operation is insecure` | storage in blocked contexts |\n| `Java object is gone`, `window.webkit.messageHandlers` | in-app browsers |\n\n### Error event shapes\n- `ErrorEvent` (runtime): `message, filename, lineno, colno, error`.\n- Resource errors (image/script load failure) are plain `Event` on the element; they do **not bubble**, so listen with `addEventListener(\"error\", fn, true)` (capture) on `window`.\n- `PromiseRejectionEvent` has `reason` and `promise`.\n\n### A good filter\nIgnore by message prefix, extension URLs and known third-party hosts, but keep a counter so you notice if they spike.",
+      "keyPoints": [
+        "\"Script error.\" means a cross-origin script threw; add crossorigin=\"anonymous\" and CORS headers.",
+        "ResizeObserver loop messages are benign; they have no stack and break nothing.",
+        "Resource load errors do not bubble: capture them with addEventListener(\"error\", fn, true).",
+        "Filter noise (extensions, aborts, offline) in your error reporter.",
+        "Non-Error rejections (\"Non-Error promise rejection captured\") come from code rejecting with plain values."
+      ],
+      "examples": [
+        {
+          "title": "An error filter for a reporter",
+          "language": "javascript",
+          "code": "const IGNORED = [\n  /^Script error\\.?$/,\n  /^ResizeObserver loop/,\n  /^Non-Error promise rejection captured/,\n  /chrome-extension:\\/\\//,\n  /^AbortError/,\n];\nfunction shouldReport(message = \"\", stack = \"\") {\n  return !IGNORED.some((re) => re.test(message) || re.test(stack));\n}\nconst samples = [\n  [\"Script error.\", \"\"],\n  [\"ResizeObserver loop completed with undelivered notifications.\", \"\"],\n  [\"Cannot read properties of undefined (reading 'x')\", \"at app.js:10\"],\n  [\"Unexpected token\", \"at chrome-extension://abc/content.js:1\"],\n  [\"AbortError: This operation was aborted\", \"\"],\n  [\"Payment failed\", \"at checkout.js:88\"],\n];\nfor (const [m, s] of samples) console.log(shouldReport(m, s) ? \"REPORT \" : \"ignore \", m);",
+          "explanation": ""
+        },
+        {
+          "title": "Cross-origin scripts and resource errors",
+          "language": "text",
+          "lang": "markup",
+          "code": "<!-- full error details for a script from another origin -->\n<script src=\"https://cdn.example.com/widget.js\" crossorigin=\"anonymous\"></script>\n\n<script>\n  // resource errors (img/script/link) do not bubble: use capture\n  window.addEventListener(\"error\", (e) => {\n    if (e.target && e.target !== window) {\n      console.warn(\"Resource failed to load:\", e.target.tagName, e.target.src || e.target.href);\n    }\n  }, true);\n</script>\n<img src=\"/missing.png\" alt=\"\">",
+          "explanation": ""
+        },
+        {
+          "title": "ResizeObserver without the loop warning",
+          "language": "web",
+          "html": "<div id=\"box\" style=\"width:60%;background:#cde;padding:8px\">Resize the preview to see height sync.</div><div id=\"mirror\"></div>",
+          "css": "",
+          "js": "const box = document.getElementById('box');\nconst mirror = document.getElementById('mirror');\nlet frame;\nconst ro = new ResizeObserver(function (entries) {\n  // do layout changes in the next frame to avoid the \"loop completed with undelivered notifications\" event\n  cancelAnimationFrame(frame);\n  frame = requestAnimationFrame(function () {\n    mirror.style.height = Math.round(entries[0].contentRect.height) + 'px';\n    mirror.textContent = 'mirror height = ' + mirror.style.height;\n  });\n});\nro.observe(box);\nwindow.addEventListener('error', function (e) { console.log('error event:', e.message); });\nconsole.log('observing');",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is the error message just \"Script error.\"?",
+          "a": "The script came from another origin without CORS, so the browser hides details for security. Load it with crossorigin=\"anonymous\" and serve Access-Control-Allow-Origin."
+        },
+        {
+          "q": "Is the ResizeObserver loop error dangerous?",
+          "a": "No. It is a notification that layout changed again in the same frame. Defer layout changes with requestAnimationFrame or ignore the message."
+        },
+        {
+          "q": "Why do image/script load errors not reach window.onerror?",
+          "a": "Resource errors fire on the element and do not bubble. Register a capturing error listener on window to see them."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Auto-reloading on chunk errors without a guard can create endless reload loops.",
+        "Deleting old hashed assets immediately on deploy breaks users who still have the old HTML open."
+      ],
+      "id": "js-err-modules-sw",
+      "title": "Module Loading and Service Worker Errors",
+      "level": "advanced",
+      "summary": "Failed dynamic imports (ChunkLoadError), MIME-type and specifier errors, and Service Worker registration/update failures.",
+      "description": "### Static and dynamic import errors\n| Message | Cause | Fix |\n|---|---|---|\n| `Failed to resolve module specifier \"react\". Relative references must start with either \"/\", \"./\", or \"../\".` | bare import without bundler / import map | bundle, or add an `importmap` |\n| `Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of \"text/html\"` | wrong path (404 page) or SPA fallback | fix path; serve `.js` as `text/javascript` |\n| `Failed to load module script: The server responded with a non-JavaScript MIME type of \"\"` | server sends wrong `Content-Type` for `.mjs`/`.js` | configure MIME types |\n| `The requested module './x.js' does not provide an export named 'y'` | wrong named import, CommonJS module | check export; use default import |\n| `TypeError: Failed to fetch dynamically imported module: https://.../chunk-ab12.js` (Chrome) / `error loading dynamically imported module` (Firefox) / `Importing a module script failed.` (Safari) | **chunk file missing after a new deploy**, offline, CORS | reload the page; keep old assets for a while; retry |\n| `Loading chunk 12 failed.` / `ChunkLoadError` (webpack) | same: stale HTML points to deleted chunks | same |\n| `Cannot use import statement outside a module` | classic script | `type=\"module\"` |\n| `Cross-Origin Request Blocked` for module scripts | module scripts always use CORS | send CORS headers |\n| `file:// import blocked` | modules do not work on `file://` | use a local server |\n\n### Handling dynamic import failures\n```js\nasync function loadWithRetry(loader, retries = 2) {\n  for (let i = 0; ; i++) {\n    try { return await loader(); }\n    catch (e) { if (i >= retries) throw e; await new Promise(r => setTimeout(r, 300 * 2 ** i)); }\n  }\n}\nconst Chart = await loadWithRetry(() => import(\"./chart.js\"));\n```\nAfter final failure show \"A new version is available - reload\" and call `location.reload()` (once!, guard with `sessionStorage` to avoid reload loops).\n\n### Service Worker errors\n| Error | Meaning / fix |\n|---|---|\n| `SecurityError: Failed to register a ServiceWorker... The origin of the provided scriptURL does not match` | script must be same origin |\n| `A bad HTTP response code (404) was received when fetching the script.` | wrong path or scope |\n| `The script has an unsupported MIME type ('text/html')` | server returns HTML for the SW file |\n| `Failed to register ... The path of the provided scope is not under the max scope allowed` | SW file location limits scope; move it to root or send `Service-Worker-Allowed` |\n| `InvalidStateError: ... The document is in an invalid state` | registering from a detached document |\n| `TypeError: Failed to update a ServiceWorker: An unknown error occurred when fetching the script.` | offline during update check |\n| `Failed to execute 'addAll' on 'Cache': Request failed` | one URL in `cache.addAll` failed (404/CORS) so install fails |\n| HTTP only | Service workers require HTTPS (localhost is exempt) |\n\nDebug in DevTools → **Application → Service Workers** (Update on reload, Bypass for network, Unregister) and the **Cache Storage** viewer.",
+      "keyPoints": [
+        "Failed dynamic imports after a deploy are usually stale chunk URLs: retry, then ask for a reload.",
+        "MIME type text/html for a module means a 404 or SPA fallback is being served.",
+        "Bare module specifiers need a bundler or an import map.",
+        "cache.addAll fails entirely if any single request fails, which breaks SW installation.",
+        "Service workers need HTTPS (except localhost) and a same-origin script under the allowed scope."
+      ],
+      "examples": [
+        {
+          "title": "Retry a failing dynamic import",
+          "language": "javascript",
+          "code": "async function loadWithRetry(loader, { retries = 2, delayMs = 5 } = {}) {\n  for (let attempt = 0; ; attempt++) {\n    try { return await loader(); }\n    catch (e) {\n      console.log(\"import attempt \" + (attempt + 1) + \" failed: \" + e.message);\n      if (attempt >= retries) throw new Error(\"Could not load the module. Please reload the page.\", { cause: e });\n      await new Promise((r) => setTimeout(r, delayMs * 2 ** attempt));\n    }\n  }\n}\nlet calls = 0;\nconst flakyImport = async () => {\n  if (++calls < 3) throw new TypeError(\"Failed to fetch dynamically imported module: /assets/chart-ab12.js\");\n  return { default: \"chart module\" };\n};\nloadWithRetry(flakyImport).then((m) => console.log(\"loaded:\", m.default));\nloadWithRetry(async () => { throw new TypeError(\"chunk 404\"); }, { retries: 1 }).catch((e) => console.log(e.message, \"| cause:\", e.cause.message));",
+          "explanation": ""
+        },
+        {
+          "title": "Service worker registration with error handling",
+          "language": "text",
+          "lang": "javascript",
+          "code": "if (\"serviceWorker\" in navigator) {\n  window.addEventListener(\"load\", async () => {\n    try {\n      const reg = await navigator.serviceWorker.register(\"/sw.js\", { scope: \"/\" });\n      reg.addEventListener(\"updatefound\", () => console.log(\"new service worker installing\"));\n    } catch (e) {\n      // SecurityError (origin/scope/MIME) or TypeError (script fetch failed)\n      console.error(\"SW registration failed:\", e.name, e.message);\n    }\n  });\n}\n\n// sw.js - never let one bad URL break installation\nself.addEventListener(\"install\", (event) => {\n  event.waitUntil(caches.open(\"v3\").then(async (cache) => {\n    const urls = [\"/\", \"/app.css\", \"/app.js\"];\n    await Promise.allSettled(urls.map((u) => cache.add(u)));\n  }));\n});",
+          "explanation": ""
+        },
+        {
+          "title": "Import map for bare specifiers",
+          "language": "text",
+          "lang": "markup",
+          "code": "<script type=\"importmap\">\n{\n  \"imports\": {\n    \"lodash-es\": \"https://cdn.example.com/lodash-es@4/lodash.js\",\n    \"app/\": \"/src/\"\n  }\n}\n</script>\n<script type=\"module\">\n  import { debounce } from \"lodash-es\";\n  import { init } from \"app/main.js\";\n</script>",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do dynamic imports fail right after deploying a new version?",
+          "a": "Users with the old HTML request old hashed chunk files that no longer exist on the server. Keep old assets for a while, retry, and prompt a reload."
+        },
+        {
+          "q": "What does a \"MIME type of text/html\" module error mean?",
+          "a": "The server returned an HTML page (404 or SPA fallback) for a module URL. Fix the path or server routing."
+        },
+        {
+          "q": "Why can cache.addAll break service worker installation?",
+          "a": "It is atomic: if any single request fails, the whole promise rejects and the install event fails. Use individual cache.add with allSettled for optional files."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Reconnecting immediately in a tight loop hammers the server - use backoff.",
+        "Trusting that a message was delivered: WebSocket has no built-in acknowledgements."
+      ],
+      "id": "js-err-websocket",
+      "title": "WebSocket Errors, Close Codes and Reconnection",
+      "level": "advanced",
+      "summary": "Understand the opaque error event, close codes like 1006, InvalidStateError on send, and reconnect with backoff.",
+      "description": "The browser `WebSocket` API deliberately gives **very little** error detail.\n\n### Events\n```js\nconst ws = new WebSocket(\"wss://example.com/socket\");\nws.onopen    = () => ...;\nws.onmessage = (e) => ...;\nws.onerror   = (e) => ...;   // plain Event: NO message, NO status code (security)\nws.onclose   = (e) => ...;   // e.code, e.reason, e.wasClean\n```\n`onerror` is always followed by `onclose`. The real information is the **close code**.\n\n### Close codes\n| Code | Meaning |\n|---|---|\n| `1000` | normal closure |\n| `1001` | going away (page navigation, server shutdown) |\n| `1006` | **abnormal closure**: no close frame (network drop, server crash, connection refused, handshake failed, proxy timeout) - never sent by code, only reported locally |\n| `1008` | policy violation |\n| `1009` | message too big |\n| `1011` | server internal error |\n| `1012/1013` | service restart / try again later |\n| `4000-4999` | application-defined (custom: auth failed, kicked...) |\n\n### Errors you can get\n| Message | Cause |\n|---|---|\n| `WebSocket connection to 'wss://...' failed: ` (console) | server down, wrong URL/port, TLS error, proxy not forwarding `Upgrade` |\n| `WebSocket opening handshake was canceled` | closed before connecting |\n| `Error during WebSocket handshake: Unexpected response code: 401/403/404` | auth cookie/origin check failed or wrong path |\n| `SyntaxError: Failed to construct 'WebSocket': The URL 'http://...' is invalid. The scheme must be 'ws' or 'wss'` | wrong scheme |\n| `SecurityError: ... An insecure WebSocket connection may not be initiated from a page loaded over HTTPS` | use `wss://` (mixed content) |\n| `InvalidStateError: Failed to execute 'send' on 'WebSocket': Still in CONNECTING state.` | `send` before `onopen` |\n| `Failed to execute 'send' ...: WebSocket is already in CLOSING or CLOSED state` (warning) | sending after close - messages are dropped |\n\n### Production checklist\n1. **Reconnect** automatically with exponential backoff + jitter (cap at ~30 s).\n2. **Queue** outgoing messages while disconnected.\n3. **Heartbeat** (ping/pong messages) to detect half-open connections.\n4. Check `ws.readyState === WebSocket.OPEN` before `send`.\n5. Authenticate via first message or cookie/ticket in the URL (browsers cannot set custom headers).\n6. Re-subscribe after reconnect; treat messages as possibly lost.",
+      "keyPoints": [
+        "ws.onerror gives no details; read the code in onclose.",
+        "Code 1006 = abnormal closure (no close frame): network/server/handshake failure.",
+        "send() in CONNECTING state throws InvalidStateError; check readyState or queue.",
+        "wss:// is required on HTTPS pages (mixed content).",
+        "Reconnect with exponential backoff, jitter and a heartbeat."
+      ],
+      "examples": [
+        {
+          "title": "Reconnect with backoff (simulated socket)",
+          "language": "javascript",
+          "code": "class FakeSocket {\n  static attempt = 0;\n  constructor() {\n    FakeSocket.attempt++;\n    setTimeout(() => {\n      if (FakeSocket.attempt < 3) { this.onerror?.({}); this.onclose?.({ code: 1006, reason: \"\", wasClean: false }); }\n      else { this.readyState = 1; this.onopen?.(); setTimeout(() => this.onclose?.({ code: 1000, wasClean: true }), 5); }\n    }, 1);\n    this.readyState = 0;\n  }\n  send(data) { if (this.readyState !== 1) throw new DOMException(\"Still in CONNECTING state.\", \"InvalidStateError\"); }\n}\nfunction connect(attempt = 0) {\n  const ws = new FakeSocket();\n  const queue = [];\n  ws.onopen = () => { console.log(\"open after\", attempt, \"retries\"); queue.forEach((m) => ws.send(m)); };\n  ws.onerror = () => console.log(\"error event (no details)\");\n  ws.onclose = (e) => {\n    console.log(\"close code\", e.code, e.code === 1006 ? \"(abnormal)\" : \"(normal)\");\n    if (e.code !== 1000) {\n      const delay = Math.min(30000, 5 * 2 ** attempt);\n      console.log(\"reconnect in\", delay, \"ms\");\n      setTimeout(() => connect(attempt + 1), delay);\n    }\n  };\n  try { ws.send(\"too early\"); } catch (err) { console.log(\"send before open:\", err.name); queue.push(\"hello\"); }\n}\nconnect();",
+          "explanation": ""
+        },
+        {
+          "title": "Production-style WebSocket client",
+          "language": "text",
+          "lang": "javascript",
+          "code": "function createSocket(url, { onMessage }) {\n  let ws, attempt = 0, closedByUser = false, heartbeat;\n  const queue = [];\n  function open() {\n    ws = new WebSocket(url);\n    ws.onopen = () => {\n      attempt = 0;\n      queue.splice(0).forEach((m) => ws.send(m));\n      heartbeat = setInterval(() => ws.readyState === WebSocket.OPEN && ws.send('{\"type\":\"ping\"}'), 25000);\n    };\n    ws.onmessage = (e) => onMessage(JSON.parse(e.data));\n    ws.onclose = (e) => {\n      clearInterval(heartbeat);\n      if (closedByUser || e.code === 1000 || e.code === 4001) return;       // 4001: custom \"unauthorized\"\n      const delay = Math.min(30000, 500 * 2 ** attempt++) + Math.random() * 250;\n      setTimeout(open, delay);\n    };\n  }\n  open();\n  return {\n    send(msg) { const text = JSON.stringify(msg); ws.readyState === WebSocket.OPEN ? ws.send(text) : queue.push(text); },\n    close() { closedByUser = true; ws.close(1000); },\n  };\n}",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does the WebSocket onerror event have no message?",
+          "a": "To prevent scripts from probing the network (port scanning) the browser hides details. Use the close code, the Console and the Network tab."
+        },
+        {
+          "q": "What does close code 1006 mean?",
+          "a": "The connection closed abnormally without a close frame: network failure, server crash, failed handshake or proxy timeout. It is reported locally and never sent over the wire."
+        },
+        {
+          "q": "How should a client handle disconnects?",
+          "a": "Reconnect with exponential backoff and jitter, queue outgoing messages, re-subscribe after reconnect and use heartbeats to detect dead connections."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Catching an OOM-style RangeError and continuing may leave the app in a bad state; free memory first.",
+        "Increasing --max-old-space-size hides a leak, it does not fix it."
+      ],
+      "id": "js-err-memory",
+      "title": "Memory Leaks vs \"Out of Memory\" Errors",
+      "level": "advanced",
+      "summary": "Which memory errors are catchable (RangeError) and which crash the tab, the usual leak sources and how to find them.",
+      "description": "### Two different problems\n- A **memory leak**: memory that is no longer needed is still reachable, so the garbage collector cannot free it. Memory grows slowly until the page becomes slow or crashes.\n- **Out of memory (OOM)**: you try to allocate more than the engine allows at once or in total.\n\n### What you can catch\n| Error | Where | Catchable? |\n|---|---|---|\n| `RangeError: Invalid string length` | string larger than ~512 MB (V8: 2^29-24 chars) | yes |\n| `RangeError: Invalid array length` | length > 2^32 - 1 | yes |\n| `RangeError: Array buffer allocation failed` / `Invalid array buffer length` | huge `ArrayBuffer` / typed array | yes |\n| `RangeError: Maximum call stack size exceeded` | recursion | yes |\n| `WebAssembly.Memory(): could not allocate memory` | wasm | yes |\n| Chrome \"Aw, Snap! Error code: Out of Memory\" (STATUS_RESULT_CODE_HUNG / OOM) | tab killed | **no** |\n| Node: `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory` | process killed | **no** |\n| `QuotaExceededError` | storage | yes |\n\nNode's default old-space limit depends on RAM (about 2-4 GB). Increase with `node --max-old-space-size=4096 app.js` only after checking for leaks.\n\n### Common leak sources\n1. **Event listeners** never removed (`addEventListener` in a component without cleanup). Use `{ signal }` or `removeEventListener`.\n2. **Timers / intervals** never cleared (`setInterval` keeps closures alive).\n3. **Closures** capturing large objects (a callback keeps a big array reachable).\n4. **Global variables** and caches (`Map` that only grows). Use `WeakMap`/`WeakRef`/LRU limits.\n5. **Detached DOM nodes** referenced from JS after removal.\n6. **Unbounded arrays** (logs, history, undo stacks, message queues).\n7. **Subscriptions / observers** not unsubscribed (RxJS, WebSocket, ResizeObserver, MutationObserver).\n8. **Promises that never settle** hold their closures.\n\n### Finding leaks\nChrome DevTools → **Memory**: take heap snapshots, perform the action, snapshot again, compare (\"Objects allocated between snapshots\", filter *Detached*); **Performance monitor** (JS heap size, DOM nodes, listeners); Node: `--inspect`, `process.memoryUsage()`, `heapdump`.\n\nA saw-tooth heap graph (grow, GC drop) is healthy; a rising staircase is a leak.",
+      "keyPoints": [
+        "RangeError allocation messages are catchable; browser tab or Node heap OOM is a crash.",
+        "Leaks come from listeners, timers, closures, global caches and detached DOM nodes.",
+        "Always clean up in teardown: removeEventListener, clearInterval, unsubscribe, AbortController.",
+        "Use WeakMap/WeakRef or size-limited caches for derived data.",
+        "Compare heap snapshots in DevTools to find retained objects."
+      ],
+      "examples": [
+        {
+          "title": "Catchable allocation errors",
+          "language": "javascript",
+          "code": "function tryAlloc(label, fn) {\n  try { fn(); console.log(label, \"-> allocated\"); }\n  catch (e) { console.log(label, \"->\", e.name + \": \" + e.message); }\n}\ntryAlloc(\"string 2^30 chars\", () => \"a\".repeat(2 ** 30));\ntryAlloc(\"new Array(2**32)\", () => new Array(2 ** 32));\ntryAlloc(\"ArrayBuffer(-1)\", () => new ArrayBuffer(-1));\ntryAlloc(\"small buffer\", () => new ArrayBuffer(1024));",
+          "explanation": ""
+        },
+        {
+          "title": "Leaky vs clean: listeners and timers",
+          "language": "javascript",
+          "code": "class Widget {\n  constructor(bus) {\n    this.bus = bus;\n    this.controller = new AbortController();\n    this.count = 0;\n    bus.addEventListener(\"tick\", () => this.count++, { signal: this.controller.signal });\n    this.timer = setInterval(() => {}, 1000);\n  }\n  destroy() {\n    this.controller.abort();            // removes the listener\n    clearInterval(this.timer);          // stops the interval\n  }\n}\nconst bus = new EventTarget();\nconst w = new Widget(bus);\nbus.dispatchEvent(new Event(\"tick\"));\nconsole.log(\"before destroy:\", w.count);\nw.destroy();\nbus.dispatchEvent(new Event(\"tick\"));\nconsole.log(\"after destroy:\", w.count, \"(listener removed, timer cleared)\");",
+          "explanation": ""
+        },
+        {
+          "title": "Bounded cache instead of a growing Map",
+          "language": "javascript",
+          "code": "class LruCache {\n  constructor(limit) { this.limit = limit; this.map = new Map(); }\n  get(key) {\n    if (!this.map.has(key)) return undefined;\n    const value = this.map.get(key);\n    this.map.delete(key); this.map.set(key, value);          // mark as most recent\n    return value;\n  }\n  set(key, value) {\n    this.map.delete(key); this.map.set(key, value);\n    if (this.map.size > this.limit) this.map.delete(this.map.keys().next().value);   // evict oldest\n  }\n}\nconst cache = new LruCache(3);\nfor (let i = 1; i <= 5; i++) cache.set(\"k\" + i, i);\nconsole.log([...cache.map.keys()], cache.get(\"k1\"), cache.get(\"k5\"));",
+          "explanation": "The cache never grows beyond its limit, so it cannot leak unboundedly."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between a memory leak and an out-of-memory error?",
+          "a": "A leak is unreachable-in-practice but still referenced memory that grows over time. OOM is the failure when allocations exceed the limit; a leak is a common cause of eventual OOM."
+        },
+        {
+          "q": "What are the most common JavaScript leak sources?",
+          "a": "Forgotten event listeners and timers, closures holding large data, unbounded global caches or arrays, detached DOM nodes still referenced, and unsubscribed observers."
+        },
+        {
+          "q": "How do you find a leak in Chrome?",
+          "a": "Use the Memory panel: take a heap snapshot, repeat the suspect action, take another and compare retained objects (filter Detached DOM nodes), or record an allocation timeline."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+ "id": "node",
+ "title": "Node.js",
+ "tagline": "From first script to production: the complete Node.js roadmap",
+ "description": "Learn Node.js from scratch to hero: the runtime and event loop, core modules, async patterns and streams, building HTTP servers by hand, databases, authentication and security, tooling, testing, performance, real projects, deployment and interview preparation.",
+ "color": "#16a34a"
+}

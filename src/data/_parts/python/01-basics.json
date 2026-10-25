@@ -1,0 +1,207 @@
+{
+ "id": "py-basics",
+ "title": "Python Basics",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "py-setup-venv-pip",
+   "title": "Setup, Virtual Environments and pip",
+   "level": "beginner",
+   "summary": "Install Python, create an isolated virtual environment and install packages with pip.",
+   "description": "Python is an interpreted, general-purpose language known for readable syntax. Before writing real projects you need three things: the interpreter, a **virtual environment** and a package manager (**pip**).\n\n### Running Python\n- `python --version` checks the install (use `python3` on macOS/Linux).\n- `python` opens the REPL, an interactive prompt for quick experiments.\n- `python app.py` runs a script file.\n\n### Why virtual environments?\nDifferent projects need different versions of libraries. If you install everything globally, versions clash. A virtual environment (`venv`) is a private folder with its own Python and its own packages, so each project stays isolated.\n\n```bash\npython -m venv .venv\nsource .venv/bin/activate      # macOS / Linux\n.venv\\Scripts\\activate         # Windows\npip install requests\npip freeze > requirements.txt\npip install -r requirements.txt\ndeactivate\n```\n\n### pip basics\n`pip install name`, `pip install name==2.1.0`, `pip uninstall name`, `pip list`, `pip show name`, and `pip install --upgrade name`. A `requirements.txt` file lists the exact packages so someone else can recreate your environment. Newer projects often use `pyproject.toml` with tools such as Poetry or uv, but the idea is the same: declare dependencies, lock them, keep them isolated.\n\nAlways run `python -m pip ...` if you are unsure which Python a bare `pip` belongs to; it guarantees pip matches the interpreter.",
+   "keyPoints": [
+    "Create one virtual environment per project with python -m venv .venv",
+    "Activate it before running pip so packages go into the project, not the system",
+    "pip freeze > requirements.txt records exact versions",
+    "python -m pip is safer than bare pip",
+    "Never commit the .venv folder; commit requirements.txt instead"
+   ],
+   "pitfalls": [
+    "Installing packages globally and hitting version conflicts",
+    "Forgetting to activate the venv, then wondering why an import fails",
+    "Committing .venv to git"
+   ],
+   "examples": [
+    {
+     "title": "Typical project setup",
+     "language": "text",
+     "code": "python -m venv .venv\n.venv\\Scripts\\activate        # Windows (use source .venv/bin/activate on Linux/macOS)\npython -m pip install --upgrade pip\npip install requests beautifulsoup4\npip freeze > requirements.txt\npython main.py",
+     "explanation": "The full life cycle: create, activate, install, record and run."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a virtual environment?",
+     "a": "It isolates a project's dependencies so different projects can use different library versions without conflict."
+    },
+    {
+     "q": "What does requirements.txt do?",
+     "a": "It lists the exact packages and versions a project needs, so anyone can recreate the environment with pip install -r requirements.txt."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-variables-types",
+   "title": "Variables, Types and Input/Output",
+   "level": "beginner",
+   "summary": "Names bound to objects, Python's core built-in types, type conversion and print/input.",
+   "description": "In Python a variable is a **name that points to an object**. You do not declare a type; the object carries its type, and the same name can later point to a different type (dynamic typing). Python is still **strongly typed**: it will not silently add `\"5\" + 5`.\n\n### Core built-in types\n| Type | Example | Mutable? |\n|---|---|---|\n| `int` | `42` | no |\n| `float` | `3.14` | no |\n| `bool` | `True` | no |\n| `str` | `\"hi\"` | no |\n| `NoneType` | `None` | no |\n| `list` | `[1, 2]` | yes |\n| `tuple` | `(1, 2)` | no |\n| `dict` | `{\"a\": 1}` | yes |\n| `set` | `{1, 2}` | yes |\n\n### Conversion and checking\nUse `int(\"5\")`, `float(\"2.5\")`, `str(10)`, `bool(0)`. `type(x)` shows the type and `isinstance(x, int)` is the preferred check.\n\n### Input and output\n`print()` writes to the console; `sep` and `end` control separators. `input()` reads a line of text as a **string**, so convert it when you need a number.\n\n```python\nage = int(input(\"Age: \"))\nprint(\"Next year:\", age + 1)\n```\n\n### Naming\nUse `snake_case` for variables and functions, `UPPER_CASE` for constants and `PascalCase` for classes. Names cannot start with a digit or use keywords like `class` or `for`.\n\nFalsy values are `0`, `0.0`, `\"\"`, `[]`, `{}`, `set()`, `None` and `False`; everything else is truthy.",
+   "keyPoints": [
+    "Variables are names bound to objects; types belong to objects",
+    "Python is dynamically but strongly typed",
+    "int, float, bool, str are immutable; list, dict, set are mutable",
+    "input() always returns a string; convert it explicitly",
+    "Use isinstance() for type checks"
+   ],
+   "pitfalls": [
+    "Forgetting that input() returns str, so \"2\" + \"3\" gives \"23\"",
+    "Using a mutable default or alias without realising two names share one object",
+    "Comparing floats for equality: 0.1 + 0.2 != 0.3"
+   ],
+   "examples": [
+    {
+     "title": "Types and conversion",
+     "language": "python",
+     "code": "x = 10\ny = 3.5\nname = \"Asha\"\nflag = True\nnothing = None\n\nprint(type(x), type(y), type(name), type(flag), type(nothing))\nprint(int(\"42\") + 1)\nprint(float(\"2.5\") * 2)\nprint(str(99) + \" is text\")\nprint(bool(0), bool(\"hi\"), bool([]))\nprint(isinstance(x, int))\nprint(0.1 + 0.2 == 0.3, round(0.1 + 0.2, 2) == 0.3)\n\na = [1, 2]\nb = a          # same object, two names\nb.append(3)\nprint(a, a is b)",
+     "explanation": "Shows types, conversion, falsy values and aliasing."
+    },
+    {
+     "title": "print options",
+     "language": "python",
+     "code": "print(\"a\", \"b\", \"c\", sep=\"-\")\nprint(\"no newline\", end=\" | \")\nprint(\"next\")\nx, y = 5, 10\nx, y = y, x      # swap\nprint(x, y)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is Python statically or dynamically typed?",
+     "a": "Dynamically typed (types are checked at runtime) and strongly typed (no implicit unsafe conversions). Optional type hints add static checking via tools."
+    },
+    {
+     "q": "What is the difference between == and is?",
+     "a": "== compares values; is compares identity, i.e. whether two names refer to the same object."
+    },
+    {
+     "q": "Which values are falsy?",
+     "a": "None, False, zero of any numeric type, and empty containers or strings."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-operators",
+   "title": "Operators",
+   "level": "beginner",
+   "summary": "Arithmetic, comparison, logical, membership, identity and assignment operators.",
+   "description": "Operators combine values into expressions.\n\n### Arithmetic\n`+ - * /` as usual. `/` always returns a float, `//` is floor division, `%` is the remainder and `**` is power.\n\n### Comparison and chaining\n`== != < > <= >=` return booleans. Python allows chains like `1 < x < 10`, which is read as `1 < x and x < 10`.\n\n### Logical\n`and`, `or`, `not`. They **short-circuit** and return one of the operands, not strictly `True`/`False`: `\"\" or \"default\"` gives `\"default\"`. This is a common idiom for fallback values.\n\n### Membership and identity\n- `in` / `not in` test membership in strings, lists, sets, dicts (keys).\n- `is` / `is not` test whether two names point to the same object. Use `x is None`, never `x == None`.\n\n### Assignment\n`+=`, `-=`, `*=` etc. update in place. The walrus operator `:=` assigns inside an expression (Python 3.8+).\n\n### Bitwise\n`& | ^ ~ << >>` work on integers at the bit level, useful for flags and masks.\n\n### Precedence (high to low)\n`**`, unary `-`, `* / // %`, `+ -`, comparisons, `not`, `and`, `or`. When in doubt, use parentheses; they cost nothing and make intent clear.",
+   "keyPoints": [
+    "/ gives float, // floors, % is remainder, ** is power",
+    "Comparison operators can be chained: 1 < x < 10",
+    "and/or short-circuit and return an operand",
+    "Use \"is None\" for None checks",
+    "in tests membership; for dicts it checks keys"
+   ],
+   "pitfalls": [
+    "Using == None instead of is None",
+    "Expecting // to truncate toward zero: -7 // 2 is -4",
+    "Using is to compare numbers or strings"
+   ],
+   "examples": [
+    {
+     "title": "Operators in action",
+     "language": "python",
+     "code": "print(7 / 2, 7 // 2, 7 % 2, 2 ** 10)\nprint(-7 // 2, -7 % 2)\nx = 5\nprint(1 < x < 10)\nprint(\"\" or \"default\")\nprint(0 and 100, 3 and 100)\nprint(\"a\" in \"cat\", 3 not in [1, 2])\nn = 10\nn += 5\nprint(n)\nif (m := len(\"hello\")) > 3:\n    print(\"long word\", m)\nprint(5 & 3, 5 | 3, 5 ^ 3, 1 << 4)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does // do with negative numbers?",
+     "a": "It floors the result toward negative infinity, so -7 // 2 is -4."
+    },
+    {
+     "q": "What does \"a or b\" return?",
+     "a": "The first truthy operand, or the last operand if none is truthy. It does not always return a boolean."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-strings",
+   "title": "Strings and f-strings",
+   "level": "beginner",
+   "summary": "Immutable text sequences, slicing, common methods and f-string formatting.",
+   "description": "A `str` is an **immutable sequence of Unicode characters**. You can index and slice it, but you cannot change a character in place; every \"modification\" builds a new string.\n\n### Creating\nSingle, double or triple quotes. Triple quotes allow multi-line text. Prefix `r` makes a raw string (backslashes kept, handy for regex and Windows paths).\n\n### Common methods\n`upper()`, `lower()`, `title()`, `strip()`, `split()`, `join()`, `replace()`, `find()`, `startswith()`, `endswith()`, `isdigit()`, `count()`.\n\n### f-strings\nThe modern way to format. Put `f` before the quote and expressions inside `{}`:\n\n```python\nname, price = \"Pen\", 12.5\nprint(f\"{name}: Rs {price:.2f}\")\n```\n\nFormat specs: `:.2f` (2 decimals), `:>10` (right-align width 10), `:,` (thousands separator), `:05d` (zero-pad), `:%` (percent). `f\"{value=}\"` prints the expression and its value, which is great for debugging.\n\n### Joining and splitting\n`\",\".join([\"a\", \"b\"])` is much faster than repeated `+` in a loop. `\"a b c\".split()` splits on whitespace.\n\n### Encoding\nStrings are Unicode; `.encode(\"utf-8\")` gives `bytes`, and `.decode()` goes back. Always specify the encoding when reading or writing files.",
+   "keyPoints": [
+    "Strings are immutable; methods return new strings",
+    "f\"{x:.2f}\" is the preferred formatting style",
+    "Use \"sep\".join(list) instead of += in loops",
+    "Slicing works on strings: s[::-1] reverses",
+    "Raw strings r\"...\" keep backslashes literally"
+   ],
+   "pitfalls": [
+    "Trying s[0] = \"X\", which raises TypeError",
+    "Building big strings with += in a loop",
+    "Forgetting that split() with no argument also removes empty parts"
+   ],
+   "examples": [
+    {
+     "title": "Methods and formatting",
+     "language": "python",
+     "code": "s = \"  Hello, Python  \"\nprint(s.strip().upper())\nprint(s.strip().split(\", \"))\nprint(\"-\".join([\"a\", \"b\", \"c\"]))\nprint(\"python\"[::-1])\nprint(\"banana\".count(\"a\"), \"banana\".find(\"n\"), \"banana\".replace(\"a\", \"o\"))\n\nname, score, total = \"Ravi\", 87.456, 1234567\nprint(f\"{name} scored {score:.1f}\")\nprint(f\"Total: {total:,}\")\nprint(f\"[{name:>8}] [{name:<8}] [{name:^8}]\")\nprint(f\"{score=}\")\nprint(f\"{7:03d}\")",
+     "explanation": "Output shows common string methods and format specs."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Are Python strings mutable?",
+     "a": "No. They are immutable; operations such as replace() or upper() return new strings."
+    },
+    {
+     "q": "Why is join() better than += in a loop?",
+     "a": "Each += creates a new string and copies everything, which is O(n^2) overall. join() builds the result once."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-control-flow",
+   "title": "Conditionals and Loops",
+   "level": "beginner",
+   "summary": "Branch with if/elif/else and repeat with for and while, including break, continue and else.",
+   "description": "Python uses **indentation** (normally 4 spaces) to define blocks; there are no braces.\n\n### Conditionals\n```python\nif score >= 90:\n    grade = \"A\"\nelif score >= 75:\n    grade = \"B\"\nelse:\n    grade = \"C\"\n```\nA one-line form is the conditional expression: `label = \"adult\" if age >= 18 else \"minor\"`.\n\nPython 3.10 added `match`/`case` for structural pattern matching, a cleaner replacement for long `elif` chains.\n\n### for loops\n`for` iterates over any iterable: lists, strings, dicts, ranges, files. Use `range(start, stop, step)` for numbers, `enumerate()` for index plus value and `zip()` to walk several sequences together.\n\n### while loops\n`while condition:` repeats until the condition is false. Always make sure something changes inside the loop.\n\n### Loop control\n- `break` leaves the loop.\n- `continue` jumps to the next iteration.\n- `else` on a loop runs only if the loop finished without `break`, handy for search patterns.\n- `pass` is a do-nothing placeholder.\n\n### Pythonic tips\nPrefer `for item in items` over indexing with `range(len(items))`. Use `enumerate` when you need the index, and `zip` rather than manual index juggling.",
+   "keyPoints": [
+    "Indentation defines blocks",
+    "range(), enumerate() and zip() make loops clean",
+    "break exits, continue skips, loop-else runs when no break happened",
+    "match/case gives pattern matching (3.10+)",
+    "Truthiness lets you write if items: instead of if len(items) > 0:"
+   ],
+   "pitfalls": [
+    "Mixing tabs and spaces",
+    "Infinite while loops because the condition never changes",
+    "Modifying a list while iterating over it"
+   ],
+   "examples": [
+    {
+     "title": "for, while, else",
+     "language": "python",
+     "code": "for i, fruit in enumerate([\"apple\", \"kiwi\", \"fig\"], start=1):\n    print(i, fruit)\n\nfor a, b in zip([1, 2, 3], \"xyz\"):\n    print(a, b)\n\nn = 5\nwhile n > 0:\n    n -= 2\nprint(\"n =\", n)\n\nfor x in [4, 6, 8]:\n    if x % 2 == 1:\n        print(\"found odd\")\n        break\nelse:\n    print(\"no odd numbers\")\n\ncommand = \"stop\"\nmatch command:\n    case \"go\":\n        print(\"going\")\n    case \"stop\" | \"halt\":\n        print(\"stopping\")\n    case _:\n        print(\"unknown\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When does the else clause of a for loop run?",
+     "a": "When the loop completes normally without hitting break."
+    },
+    {
+     "q": "How do you get the index and value in a loop?",
+     "a": "Use enumerate(iterable), optionally with start=1."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

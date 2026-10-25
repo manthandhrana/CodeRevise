@@ -1,0 +1,193 @@
+{
+ "id": "react-custom-hooks",
+ "title": "Custom Hooks",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-custom-hooks-intro",
+   "title": "Custom Hooks: Reusing Stateful Logic",
+   "level": "intermediate",
+   "summary": "A custom hook is a function starting with use that bundles other hooks so logic can be shared between components.",
+   "description": "Components share **UI** through other components. Custom hooks share **logic**: state, effects and refs that belong together. A custom hook is just a JavaScript function whose name starts with `use` and that calls other hooks.\n\n```jsx\nfunction useWindowWidth() {\n  const [w, setW] = useState(window.innerWidth);\n  useEffect(() => {\n    const on = () => setW(window.innerWidth);\n    window.addEventListener(\"resize\", on);\n    return () => window.removeEventListener(\"resize\", on);\n  }, []);\n  return w;\n}\n```\n\n### Key facts\n\n- Each call creates **independent state**. Two components using `useWindowWidth()` do not share a state value (they share the *logic*).\n- The `use` prefix lets React and ESLint apply the rules of hooks.\n- A hook can take arguments and return anything: a value, a tuple `[value, setValue]`, or an object.\n- Custom hooks can call other custom hooks and compose.\n\n### When to extract a hook\n\n- The same `useState` + `useEffect` combination appears in several components.\n- A component mixes too much non-visual logic with markup.\n- You want to test logic separately from UI.\n\n### Naming and API design\n\nName by purpose, not implementation: `useOnlineStatus`, not `useEventListenerOnWindow`. Return arrays for 1-2 values the caller will rename (`[value, setValue]`), objects for more.\n\n### Do not overdo it\n\nDo not create lifecycle wrappers such as `useMount`; they hide dependencies. Extract hooks around real concrete use cases.",
+   "keyPoints": [
+    "Custom hook = function named useX that calls hooks",
+    "Shares logic, not state; every call has its own state",
+    "Can accept args and return values or functions",
+    "Compose small hooks into bigger ones",
+    "Name by purpose (useOnlineStatus), not by mechanism"
+   ],
+   "pitfalls": [
+    "Believing two components calling the same hook share state.",
+    "Naming a function with use but never calling hooks inside (or vice versa)."
+   ],
+   "examples": [
+    {
+     "title": "useCounter hook reused twice",
+     "language": "react",
+     "css": "",
+     "code": "function useCounter(initial = 0, step = 1) {\n  const [count, setCount] = useState(initial);\n  const inc = useCallback(() => setCount((c) => c + step), [step]);\n  const dec = useCallback(() => setCount((c) => c - step), [step]);\n  const reset = useCallback(() => setCount(initial), [initial]);\n  return { count, inc, dec, reset };\n}\n\nfunction Counter({ label, step }) {\n  const { count, inc, dec, reset } = useCounter(0, step);\n  return (\n    <p>\n      {label}: <b>{count}</b>{\" \"}\n      <button onClick={dec}>-</button>\n      <button onClick={inc}>+</button>\n      <button onClick={reset}>reset</button>\n    </p>\n  );\n}\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Counter label=\"Step 1\" step={1} />\n      <Counter label=\"Step 10\" step={10} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a custom hook?",
+     "a": "A function whose name starts with use that calls other hooks, used to share stateful logic between components."
+    },
+    {
+     "q": "Do components that use the same custom hook share state?",
+     "a": "No. Each call creates its own state; only the logic is shared."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-uselocalstorage",
+   "title": "useLocalStorage Hook",
+   "level": "intermediate",
+   "summary": "A hook that behaves like useState but persists the value in localStorage.",
+   "description": "A very common custom hook: keep a piece of state (theme, filters, a draft) across page reloads by mirroring it into `localStorage`.\n\n### Design\n\n- **Read once** on first render with a lazy initializer.\n- **Write** to storage whenever the value changes (in an effect).\n- Store JSON, so use `JSON.stringify` / `JSON.parse` inside `try/catch` because storage can be unavailable (private mode, quota) and parsed data can be corrupt.\n- Return the same API as `useState`: `[value, setValue]`.\n\n```jsx\nfunction useLocalStorage(key, initial) {\n  const [value, setValue] = useState(() => {\n    try {\n      const raw = localStorage.getItem(key);\n      return raw !== null ? JSON.parse(raw) : initial;\n    } catch { return initial; }\n  });\n  useEffect(() => {\n    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}\n  }, [key, value]);\n  return [value, setValue];\n}\n```\n\n### Improvements\n\n- Listen to the `storage` event to sync across tabs (or use `useSyncExternalStore`).\n- On the server (SSR) `localStorage` does not exist, so guard with `typeof window`.\n- Support a functional updater - it works for free because you return the real `setValue`.\n\n### Remember\n\n`localStorage` is synchronous, string-only, limited to ~5 MB and readable by any script on your origin, so never store secrets or tokens that must be protected.",
+   "keyPoints": [
+    "Lazy initial state reads from storage once",
+    "Write in useEffect when value changes",
+    "Wrap parse/set in try/catch",
+    "Return [value, setValue] like useState",
+    "Do not store sensitive data in localStorage"
+   ],
+   "pitfalls": [
+    "Reading localStorage during SSR where it does not exist.",
+    "Crashing on corrupted JSON."
+   ],
+   "examples": [
+    {
+     "title": "Persistent notes (survive reload)",
+     "language": "react",
+     "css": "",
+     "code": "function useLocalStorage(key, initial) {\n  const [value, setValue] = useState(() => {\n    try {\n      const raw = window.localStorage.getItem(key);\n      return raw !== null ? JSON.parse(raw) : initial;\n    } catch (e) {\n      return initial;\n    }\n  });\n  useEffect(() => {\n    try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}\n  }, [key, value]);\n  return [value, setValue];\n}\n\nfunction App() {\n  const [note, setNote] = useLocalStorage(\"demo-note\", \"\");\n  const [count, setCount] = useLocalStorage(\"demo-count\", 0);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder=\"Notes are saved...\" rows={3} />\n      <p>\n        Visits clicked: {count}{\" \"}\n        <button onClick={() => setCount((c) => c + 1)}>+1</button>\n      </p>\n      <small>Reload the preview: values remain (if storage is allowed).</small>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why pass a function to useState in useLocalStorage?",
+     "a": "So localStorage is read only on the first render instead of on every render."
+    },
+    {
+     "q": "What are the risks of localStorage?",
+     "a": "It is synchronous, string-only, size-limited, can throw in private mode, and is accessible to any script on the origin so it is unsafe for secrets."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usefetch",
+   "title": "useFetch Hook",
+   "level": "intermediate",
+   "summary": "Wrap loading, error, data and cancellation logic in one reusable hook.",
+   "description": "Every data-fetching component repeats the same logic: three pieces of state, an effect, cleanup. Extract it into `useFetch(url)`.\n\n```jsx\nfunction useFetch(url) {\n  const [state, setState] = useState({ data: null, error: null, loading: true });\n  useEffect(() => {\n    const controller = new AbortController();\n    setState(s => ({ ...s, loading: true, error: null }));\n    fetch(url, { signal: controller.signal })\n      .then(r => { if (!r.ok) throw new Error(\"HTTP \" + r.status); return r.json(); })\n      .then(data => setState({ data, error: null, loading: false }))\n      .catch(err => { if (err.name !== \"AbortError\") setState({ data: null, error: err, loading: false }); });\n    return () => controller.abort();\n  }, [url]);\n  return state;\n}\n```\n\n### Why it is built this way\n\n- **AbortController** cancels stale requests when `url` changes or the component unmounts (no race condition, no memory leak).\n- `fetch` does not reject on 404/500, so you must check `r.ok` yourself.\n- The hook returns `{ data, error, loading }` so the component is purely presentational.\n\n### Extending it\n\nAdd a `refetch` function, request options, caching keyed by URL, retries, or a `skip` argument for conditional fetching.\n\n### When to stop\n\nA hand-rolled `useFetch` has no cache, deduplication, background refresh or retry logic. For anything serious use **TanStack Query** or SWR (covered in the data fetching section). The hook is perfect for learning and small tools.",
+   "keyPoints": [
+    "Encapsulate data, error, loading in one hook",
+    "Cancel with AbortController in cleanup",
+    "fetch only rejects on network failure; check response.ok",
+    "Ignore AbortError",
+    "Production apps should use TanStack Query or SWR"
+   ],
+   "pitfalls": [
+    "Forgetting to reset loading state when the url changes.",
+    "Treating HTTP 404/500 as success because fetch did not throw."
+   ],
+   "examples": [
+    {
+     "title": "useFetch with a simulated async source",
+     "language": "react",
+     "css": "",
+     "code": "// Simulated network function: resolves after 400ms, rejects for \"bad\"\nfunction fakeApi(path, signal) {\n  return new Promise((resolve, reject) => {\n    const t = setTimeout(() => {\n      if (path === \"bad\") reject(new Error(\"Server error 500\"));\n      else resolve({ path, items: [path + \"-1\", path + \"-2\", path + \"-3\"] });\n    }, 400);\n    signal.addEventListener(\"abort\", () => { clearTimeout(t); reject(new DOMException(\"Aborted\", \"AbortError\")); });\n  });\n}\n\nfunction useFetch(path) {\n  const [state, setState] = useState({ data: null, error: null, loading: true });\n  useEffect(() => {\n    const controller = new AbortController();\n    setState({ data: null, error: null, loading: true });\n    fakeApi(path, controller.signal)\n      .then((data) => setState({ data, error: null, loading: false }))\n      .catch((err) => {\n        if (err.name !== \"AbortError\") setState({ data: null, error: err, loading: false });\n      });\n    return () => controller.abort();\n  }, [path]);\n  return state;\n}\n\nfunction App() {\n  const [path, setPath] = useState(\"users\");\n  const { data, error, loading } = useFetch(path);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      {[\"users\", \"posts\", \"bad\"].map((p) => (\n        <button key={p} onClick={() => setPath(p)} style={{ marginRight: 6 }}>{p}</button>\n      ))}\n      {loading && <p>Loading {path}...</p>}\n      {error && <p style={{ color: \"crimson\" }}>{error.message}</p>}\n      {data && <ul>{data.items.map((i) => <li key={i}>{i}</li>)}</ul>}\n    </div>\n  );\n}",
+     "explanation": "No network is used: a fake fetch function with setTimeout."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use AbortController in useFetch?",
+     "a": "To cancel in-flight requests when the URL changes or the component unmounts, avoiding stale updates and wasted work."
+    },
+    {
+     "q": "Does fetch reject on a 404?",
+     "a": "No. It only rejects on network errors; you must check response.ok or status and throw yourself."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-usedebounce",
+   "title": "useDebounce Hook",
+   "level": "intermediate",
+   "summary": "Delay reacting to a fast-changing value (like typing) until the user pauses.",
+   "description": "Debouncing waits until a value has stopped changing for N milliseconds before using it. It is perfect for search-as-you-type: instead of calling the API on every keystroke, call it once the user pauses.\n\n### The hook\n\n```jsx\nfunction useDebounce(value, delay = 300) {\n  const [debounced, setDebounced] = useState(value);\n  useEffect(() => {\n    const id = setTimeout(() => setDebounced(value), delay);\n    return () => clearTimeout(id);\n  }, [value, delay]);\n  return debounced;\n}\n```\n\n### How it works\n\nEach time `value` changes, the effect cleanup cancels the previous timer and starts a new one. Only if the value stays unchanged for `delay` ms does the timer fire and update `debounced`.\n\n### Using it\n\n```jsx\nconst [query, setQuery] = useState(\"\");\nconst debouncedQuery = useDebounce(query, 400);\nuseEffect(() => { search(debouncedQuery); }, [debouncedQuery]);\n```\n\nThe input stays instant (bound to `query`), while the expensive work reacts to `debouncedQuery`.\n\n### Debounce vs throttle\n\n- **Debounce** - run after activity stops (search box, auto-save, resize end).\n- **Throttle** - run at most once per interval (scroll, mouse move).\n\n### Related: debounced callback\n\nSometimes you debounce a *function* instead of a value. Keep the timer id in a `useRef` and clear it before setting a new one.",
+   "keyPoints": [
+    "Debounce waits for a pause before updating",
+    "The effect cleanup cancels the previous timer",
+    "Input binds to raw value; work uses debounced value",
+    "Throttle limits frequency instead of waiting",
+    "Typical delay is 250-500 ms"
+   ],
+   "pitfalls": [
+    "Debouncing inside the component body without a ref or effect (a new timer each render).",
+    "Forgetting to clear the timer, causing updates after unmount."
+   ],
+   "examples": [
+    {
+     "title": "Debounced search term",
+     "language": "react",
+     "css": "",
+     "code": "function useDebounce(value, delay = 400) {\n  const [debounced, setDebounced] = useState(value);\n  useEffect(() => {\n    const id = setTimeout(() => setDebounced(value), delay);\n    return () => clearTimeout(id);\n  }, [value, delay]);\n  return debounced;\n}\n\nfunction App() {\n  const [text, setText] = useState(\"\");\n  const debounced = useDebounce(text, 500);\n  const [calls, setCalls] = useState(0);\n\n  useEffect(() => {\n    if (debounced) setCalls((c) => c + 1);\n  }, [debounced]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"Type quickly...\" />\n      <p>Raw value: <b>{text}</b></p>\n      <p>Debounced (500ms): <b>{debounced}</b></p>\n      <p>Pretend API calls made: {calls}</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain debounce vs throttle.",
+     "a": "Debounce runs the action only after events stop for a delay; throttle runs it at most once per fixed interval while events continue."
+    },
+    {
+     "q": "How does useDebounce avoid firing on every keystroke?",
+     "a": "Each change cleans up and restarts a timer, so the debounced value is updated only after the input has been stable for the delay."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-small-utility-hooks",
+   "title": "Utility Hooks: useToggle, usePrevious, useOnClickOutside",
+   "level": "intermediate",
+   "summary": "A toolbox of tiny hooks you will write again and again: boolean toggles, previous values, outside clicks.",
+   "description": "Small hooks remove boilerplate. Here are three of the most useful.\n\n### useToggle\n\n```jsx\nfunction useToggle(initial = false) {\n  const [on, setOn] = useState(initial);\n  const toggle = useCallback(() => setOn(v => !v), []);\n  return [on, toggle, setOn];\n}\n```\n\nUsed for modals, menus, dark mode, accordions.\n\n### usePrevious\n\n```jsx\nfunction usePrevious(value) {\n  const ref = useRef();\n  useEffect(() => { ref.current = value; });\n  return ref.current;\n}\n```\n\nThe ref is updated *after* render, so during the render it still holds the previous value. Handy for animations (\"went up or down\") and comparing props.\n\n### useOnClickOutside\n\nCloses dropdowns and popovers when the user clicks anywhere else.\n\n```jsx\nfunction useOnClickOutside(ref, handler) {\n  useEffect(() => {\n    const listener = (e) => {\n      if (!ref.current || ref.current.contains(e.target)) return;\n      handler(e);\n    };\n    document.addEventListener(\"mousedown\", listener);\n    return () => document.removeEventListener(\"mousedown\", listener);\n  }, [ref, handler]);\n}\n```\n\n### Other popular hooks\n\n`useWindowSize`, `useMediaQuery`, `useOnlineStatus`, `useInterval`, `useEventListener`, `useKeyPress`, `useCopyToClipboard`. Before writing your own, check libraries such as **usehooks-ts** or **react-use**.\n\n### Tip\n\nWrap the handler passed to `useOnClickOutside` in `useCallback`, or store the latest handler in a ref, to avoid re-subscribing each render.",
+   "keyPoints": [
+    "useToggle: boolean state with stable toggle function",
+    "usePrevious: store value in a ref inside an effect",
+    "useOnClickOutside: document listener + ref.contains",
+    "Always remove listeners in cleanup",
+    "Consider usehooks-ts or react-use before reinventing"
+   ],
+   "pitfalls": [
+    "Using click instead of mousedown, causing open-then-close flicker with toggle buttons.",
+    "Forgetting ref.current can be null."
+   ],
+   "examples": [
+    {
+     "title": "Dropdown that closes on outside click",
+     "language": "react",
+     "css": "",
+     "code": "function useToggle(initial = false) {\n  const [on, setOn] = useState(initial);\n  const toggle = useCallback(() => setOn((v) => !v), []);\n  return [on, toggle, setOn];\n}\nfunction usePrevious(value) {\n  const ref = useRef();\n  useEffect(() => { ref.current = value; });\n  return ref.current;\n}\nfunction useOnClickOutside(ref, handler) {\n  useEffect(() => {\n    const listener = (e) => {\n      if (!ref.current || ref.current.contains(e.target)) return;\n      handler(e);\n    };\n    document.addEventListener(\"mousedown\", listener);\n    return () => document.removeEventListener(\"mousedown\", listener);\n  }, [ref, handler]);\n}\n\nfunction App() {\n  const [open, toggle, setOpen] = useToggle(false);\n  const [n, setN] = useState(0);\n  const prev = usePrevious(n);\n  const boxRef = useRef(null);\n  const close = useCallback(() => setOpen(false), [setOpen]);\n  useOnClickOutside(boxRef, close);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <div ref={boxRef} style={{ display: \"inline-block\", position: \"relative\" }}>\n        <button onClick={toggle}>Menu {open ? \"^\" : \"v\"}</button>\n        {open && (\n          <ul style={{ position: \"absolute\", margin: 0, padding: 8, listStyle: \"none\", border: \"1px solid #ccc\", background: \"#fff\", whiteSpace: \"nowrap\" }}>\n            <li>Profile</li><li>Settings</li><li>Logout</li>\n          </ul>\n        )}\n      </div>\n      <p style={{ marginTop: 70 }}>\n        n = {n}, previous = {String(prev)}{\" \"}\n        <button onClick={() => setN(n + 1)}>n+1</button>\n      </p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does usePrevious work?",
+     "a": "It stores the value in a ref inside an effect, so during render the ref still contains the value from the previous render."
+    },
+    {
+     "q": "How do you detect a click outside a component?",
+     "a": "Attach a document listener and check ref.current.contains(event.target); if false, call the close handler. Clean up the listener on unmount."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

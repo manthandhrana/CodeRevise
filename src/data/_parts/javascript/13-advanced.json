@@ -1,0 +1,267 @@
+{
+  "id": "js-advanced",
+  "title": "Advanced JavaScript and Best Practices",
+  "level": "advanced",
+  "topics": [
+    {
+      "id": "js-proxy-reflect",
+      "title": "Proxy and Reflect",
+      "level": "advanced",
+      "summary": "A Proxy intercepts operations on an object (get, set, delete...) and Reflect performs the default behaviour.",
+      "description": "A **Proxy** wraps an object (the target) and lets you define **traps** that intercept fundamental operations. It is the basis of reactivity in Vue 3, validation layers, logging and mocking.\n\n```js\nconst proxy = new Proxy(target, {\n  get(target, prop, receiver) { return Reflect.get(target, prop, receiver); },\n  set(target, prop, value, receiver) { return Reflect.set(target, prop, value, receiver); },\n});\n```\n\n### Common traps\n| Trap | Intercepts |\n|---|---|\n| `get` | reading a property |\n| `set` | assigning a property |\n| `has` | the `in` operator |\n| `deleteProperty` | `delete obj.x` |\n| `ownKeys` | `Object.keys`, `for...in` |\n| `apply` | calling a function |\n| `construct` | `new` on a function |\n\nThe `set` trap must return `true` for success (in strict mode returning `false` throws).\n\n### Reflect\nA built-in object whose methods mirror the proxy traps (`Reflect.get`, `set`, `has`, `ownKeys`, `apply`...). Use it inside traps to perform the **default operation** with correct `this` handling and a boolean result instead of exceptions.\n\n### Use cases\n- **Validation** - reject wrong types in `set`.\n- **Default values** - return a fallback in `get` for missing keys.\n- **Observable state** - run effects when data changes.\n- **Logging / profiling** API calls.\n- **Negative array indexes** or read-only views.\n\n### Caveats\n- Proxies add overhead; do not use them in hot loops.\n- Private class fields (`#x`) do not work through a proxy.\n- `proxy !== target`; identity checks can surprise.",
+      "keyPoints": [
+        "Proxy wraps a target and intercepts operations via traps",
+        "Reflect provides the default behaviour inside traps",
+        "set trap must return true",
+        "Used for validation, reactivity, defaults and logging",
+        "Slower than direct access"
+      ],
+      "pitfalls": [
+        "Forgetting to return true from the set trap",
+        "Infinite recursion by touching the proxy inside its own trap",
+        "Private fields and built-ins like Map can break through proxies"
+      ],
+      "examples": [
+        {
+          "title": "Validation and default values",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const user = { name: \"Asha\", age: 25 };\nconst validated = new Proxy(user, {\n  set(target, prop, value) {\n    if (prop === \"age\" && (typeof value !== \"number\" || value < 0)) {\n      throw new TypeError(\"age must be a positive number\");\n    }\n    console.log(`set ${prop} = ${value}`);\n    return Reflect.set(target, prop, value);\n  },\n  get(target, prop, receiver) {\n    return prop in target ? Reflect.get(target, prop, receiver) : `no ${String(prop)}`;\n  },\n});\nvalidated.age = 30;\nconsole.log(validated.age, validated.email);\ntry { validated.age = -5; } catch (e) { console.log(e.name + \": \" + e.message); }\n\nconst negativeArray = (arr) => new Proxy(arr, {\n  get: (t, p, r) => Reflect.get(t, typeof p === \"string\" && /^-\\d+$/.test(p) ? t.length + Number(p) : p, r),\n});\nconsole.log(negativeArray([10, 20, 30])[-1]);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is a Proxy?",
+          "a": "An object that wraps another object and intercepts operations like get, set and delete through handler traps, allowing custom behaviour."
+        },
+        {
+          "q": "Why use Reflect inside proxy traps?",
+          "a": "Reflect methods perform the default operation with the correct receiver and return booleans, keeping the proxy behaving like the original."
+        },
+        {
+          "q": "Name a framework that uses Proxy.",
+          "a": "Vue 3 uses Proxy for its reactivity system to track property reads and writes."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-memory-gc",
+      "title": "Memory Management and Garbage Collection",
+      "level": "advanced",
+      "summary": "JavaScript frees memory automatically when objects become unreachable; leaks happen when you keep references.",
+      "description": "JavaScript manages memory for you. You create objects; the **garbage collector (GC)** frees them when they are no longer **reachable**.\n\n### Life cycle\n1. **Allocate** - creating objects, arrays, closures, strings.\n2. **Use** - read and write.\n3. **Release** - the GC frees unreachable memory.\n\n### Reachability and mark-and-sweep\nStarting from **roots** (global object, current stack, active closures), the GC **marks** everything reachable and **sweeps** (frees) the rest. Circular references are fine - if nothing reachable points to the cycle, it is collected. The old reference counting approach could not do this.\n\n### Common memory leaks\n1. **Accidental globals** (`leak = [];`).\n2. **Forgotten timers**: `setInterval` callbacks keep their scope alive.\n3. **Event listeners** never removed from DOM nodes that are discarded.\n4. **Detached DOM nodes** still referenced from a variable or array.\n5. **Closures** capturing large objects unnecessarily.\n6. **Unbounded caches** (a `Map` that only grows).\n\n### Prevent and detect\n- Clear timers; remove listeners (or use `{ signal }` with AbortController).\n- Use **WeakMap / WeakSet / WeakRef** for caches keyed by objects.\n- Set references to `null` when finished with big data.\n- Use browser DevTools: **Memory** tab, heap snapshots and the allocation timeline. A steadily rising line after repeated GC means a leak.\n\n### Stack vs heap\nPrimitives and references live on the stack; objects live on the heap and are managed by the GC.",
+      "keyPoints": [
+        "GC frees objects that are no longer reachable",
+        "Mark-and-sweep starts from roots",
+        "Leaks: globals, timers, listeners, detached DOM, large closures",
+        "Weak collections do not prevent collection",
+        "Use DevTools heap snapshots to find leaks"
+      ],
+      "pitfalls": [
+        "Assuming setting a variable to null always frees the memory immediately",
+        "Forgetting clearInterval in components",
+        "Caches that never evict"
+      ],
+      "examples": [
+        {
+          "title": "Cache with WeakMap vs Map",
+          "language": "javascript",
+          "explanation": "",
+          "code": "// A Map cache keeps keys alive forever; a WeakMap lets them be collected.\nconst strongCache = new Map();\nconst weakCache = new WeakMap();\n\nfunction expensive(obj) {\n  return Object.keys(obj).length * 100;\n}\nfunction cached(cache, obj) {\n  if (!cache.has(obj)) cache.set(obj, expensive(obj));\n  return cache.get(obj);\n}\n\nlet data = { a: 1, b: 2 };\nconsole.log(cached(weakCache, data), cached(weakCache, data));\nconsole.log(cached(strongCache, data), strongCache.size);\ndata = null;                   // weak entry can now be collected\nconsole.log(\"strong cache still holds:\", strongCache.size);\nconsole.log(\"weak cache has no size property:\", weakCache.size);\n\n// closure holding big data\nfunction makeReader() {\n  const big = new Array(1000).fill(\"x\");\n  return () => big.length;     // big stays alive while reader exists\n}\nlet reader = makeReader();\nconsole.log(reader());\nreader = null;                 // closure and big become collectable"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How does garbage collection work in JavaScript?",
+          "a": "Engines use mark-and-sweep: they mark all objects reachable from roots (globals, stack) and free everything unmarked."
+        },
+        {
+          "q": "Name common causes of memory leaks in JavaScript.",
+          "a": "Accidental globals, uncleared timers, undeleted event listeners, references to detached DOM nodes, closures holding large data and ever-growing caches."
+        },
+        {
+          "q": "What is the benefit of WeakMap?",
+          "a": "Its keys are held weakly, so cached or associated data is automatically released when the key object is no longer referenced elsewhere."
+        }
+      ],
+      "source": "JS-one-shot/how_js_works/closure.js"
+    },
+    {
+      "id": "js-debounce-throttle",
+      "title": "Debounce, Throttle and Memoization",
+      "level": "advanced",
+      "summary": "Limit how often a function runs (debounce/throttle) or cache its results (memoize).",
+      "description": "Events like `input`, `scroll`, `resize` and `mousemove` can fire hundreds of times per second. These three techniques keep your app fast.\n\n### Debounce\nWait until the user **stops** triggering the event for `delay` ms, then run **once**. Each call resets the timer.\n- Use for: search-as-you-type, auto-save, window resize end.\n```js\nfunction debounce(fn, delay) {\n  let timer;\n  return function (...args) {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), delay);\n  };\n}\n```\n\n### Throttle\nRun **at most once** per interval, no matter how often it is triggered.\n- Use for: scroll position, mousemove, drag, game input, analytics.\n```js\nfunction throttle(fn, limit) {\n  let waiting = false;\n  return function (...args) {\n    if (waiting) return;\n    fn.apply(this, args);\n    waiting = true;\n    setTimeout(() => (waiting = false), limit);\n  };\n}\n```\n\n### Debounce vs throttle\n| | Debounce | Throttle |\n|---|---|---|\n| Runs | after activity stops | at a steady rate during activity |\n| Calls for 100 events in 1 s (delay 200ms) | 1 | about 5 |\n\n### Memoization\nCache the result of a **pure** function by its arguments:\n```js\nconst memoize = (fn) => {\n  const cache = new Map();\n  return (...args) => {\n    const key = JSON.stringify(args);\n    if (!cache.has(key)) cache.set(key, fn(...args));\n    return cache.get(key);\n  };\n};\n```\nGreat for expensive computations and recursive algorithms. Do not memoize impure functions or functions with huge input sets without a cache limit.",
+      "keyPoints": [
+        "Debounce waits for a pause, then runs once",
+        "Throttle runs at most once per interval",
+        "Both are closures around a timer or flag",
+        "Memoize caches results of pure functions",
+        "Clear timers and limit cache size"
+      ],
+      "pitfalls": [
+        "Using debounce when you need regular updates (use throttle)",
+        "Losing this and arguments when wrapping functions",
+        "Unbounded memoization caches"
+      ],
+      "examples": [
+        {
+          "title": "Debounce, throttle and memoize",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const debounce = (fn, ms) => {\n  let t;\n  return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };\n};\nconst throttle = (fn, ms) => {\n  let wait = false;\n  return (...a) => { if (wait) return; fn(...a); wait = true; setTimeout(() => (wait = false), ms); };\n};\nconst memoize = (fn) => {\n  const cache = new Map();\n  return (n) => (cache.has(n) ? cache.get(n) : (cache.set(n, fn(n)), cache.get(n)));\n};\n\nconst search = debounce((q) => console.log(\"debounced search:\", q), 30);\nconst scroll = throttle((y) => console.log(\"throttled scroll:\", y), 30);\n[\"j\", \"ja\", \"jav\", \"java\"].forEach((q) => search(q));      // only \"java\" runs\n[1, 2, 3].forEach((y) => scroll(y));                        // only 1 runs\n\nlet calls = 0;\nconst slowSquare = memoize((n) => { calls++; return n * n; });\nconsole.log(slowSquare(9), slowSquare(9), slowSquare(9), \"real calls:\", calls);"
+        },
+        {
+          "title": "Live debounce and throttle counters",
+          "language": "web",
+          "explanation": "",
+          "html": "<p>Type or move the mouse over the box:</p>\n<input id=\"field\" placeholder=\"type fast...\" />\n<div id=\"pad\">move here</div>\n<ul>\n  <li>Raw events: <b id=\"raw\">0</b></li>\n  <li>Debounced (400ms): <b id=\"deb\">0</b></li>\n  <li>Throttled (400ms): <b id=\"thr\">0</b></li>\n</ul>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\n#pad { height: 90px; border: 2px dashed #888; display: grid; place-items: center; margin: 10px 0; background: #f4f4f4; }\ninput { padding: 8px; }",
+          "js": "const counters = { raw: 0, deb: 0, thr: 0 };\nconst bump = (k) => { counters[k]++; document.getElementById(k).textContent = counters[k]; };\nconst debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };\nconst throttle = (fn, ms) => { let w = false; return (...a) => { if (w) return; fn(...a); w = true; setTimeout(() => (w = false), ms); }; };\n\nconst onEvent = () => bump(\"raw\");\nconst onDeb = debounce(() => bump(\"deb\"), 400);\nconst onThr = throttle(() => bump(\"thr\"), 400);\ndocument.getElementById(\"field\").addEventListener(\"input\", () => { onEvent(); onDeb(); onThr(); });\ndocument.getElementById(\"pad\").addEventListener(\"mousemove\", () => { onEvent(); onDeb(); onThr(); });"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between debounce and throttle?",
+          "a": "Debounce delays execution until events stop for a given time and then runs once; throttle guarantees the function runs at most once in every interval during continuous events."
+        },
+        {
+          "q": "When would you use debounce for search inputs?",
+          "a": "To avoid sending an API request on every keystroke - wait until the user pauses typing and then send a single request."
+        },
+        {
+          "q": "What is memoization?",
+          "a": "Caching the return value of a function for given arguments so repeated calls with the same input return the stored result instead of recomputing."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-design-patterns",
+      "title": "Common Design Patterns",
+      "level": "advanced",
+      "summary": "Reusable solutions: module, singleton, factory, observer (pub/sub) and more, expressed in JavaScript.",
+      "description": "Design patterns are proven ways to structure code. JavaScript's closures, objects and modules make many of them very short.\n\n### Module pattern\nUse a closure (IIFE) or an ES module to hide private state and expose a small public API. In modern code every ES module file is a module.\n\n### Singleton\nOnly **one instance** exists. An ES module that exports an object is naturally a singleton, because modules are evaluated once.\n```js\nexport const config = Object.freeze({ api: \"/v1\" });\n```\n\n### Factory\nA function that returns new objects, hiding the construction details: `createUser(type)`.\n\n### Observer / Pub-Sub\nSubjects keep a list of subscribers and notify them on change. DOM events and Node's `EventEmitter` are observers.\n```js\nconst bus = {\n  handlers: {},\n  on(e, fn) { (this.handlers[e] ||= []).push(fn); },\n  emit(e, data) { (this.handlers[e] || []).forEach((fn) => fn(data)); },\n};\n```\n\n### Strategy\nSwap algorithms at run time by passing functions (`sortBy(compareFn)`).\n\n### Decorator / Higher-order wrapper\nAdd behaviour by wrapping a function: `withLogging(fn)`, `debounce(fn)`.\n\n### Others worth knowing\n- **Command** (undo/redo), **Iterator**, **Proxy**, **Mixin** (copy methods into classes), **Facade** (simple API over a complex one), **Dependency injection** (pass dependencies in).\n\n### Advice\nDo not force patterns. Start simple, and apply a pattern when the problem it solves appears.",
+      "keyPoints": [
+        "Module hides state, exposes an API",
+        "Singleton: one shared instance (ES modules are naturally singletons)",
+        "Observer/pub-sub decouples emitters from listeners",
+        "Factory centralises object creation",
+        "Strategy and decorator use functions as values"
+      ],
+      "pitfalls": [
+        "Over-engineering simple code with patterns",
+        "Global singletons make testing difficult",
+        "Pub/sub without unsubscribe causes leaks"
+      ],
+      "examples": [
+        {
+          "title": "Event bus and factory",
+          "language": "javascript",
+          "explanation": "",
+          "code": "class EventBus {\n  #handlers = new Map();\n  on(event, fn) {\n    if (!this.#handlers.has(event)) this.#handlers.set(event, new Set());\n    this.#handlers.get(event).add(fn);\n    return () => this.#handlers.get(event).delete(fn);   // unsubscribe\n  }\n  emit(event, data) {\n    this.#handlers.get(event)?.forEach((fn) => fn(data));\n  }\n}\nconst bus = new EventBus();\nconst off = bus.on(\"login\", (user) => console.log(\"welcome\", user));\nbus.on(\"login\", (user) => console.log(\"analytics:\", user));\nbus.emit(\"login\", \"Asha\");\noff();\nbus.emit(\"login\", \"Ravi\");\n\nconst createShape = (type, size) => {\n  const shapes = {\n    square: () => ({ type, area: size * size }),\n    circle: () => ({ type, area: +(Math.PI * size * size).toFixed(2) }),\n  };\n  return (shapes[type] ?? (() => { throw new Error(\"Unknown shape\"); }))();\n};\nconsole.log(createShape(\"square\", 3), createShape(\"circle\", 2));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the observer pattern?",
+          "a": "A subject keeps a list of observers and notifies them automatically when its state changes. Examples are DOM events and EventEmitter."
+        },
+        {
+          "q": "How do you create a singleton in JavaScript?",
+          "a": "Export a single instance from an ES module (modules run once and are cached), or use a closure that stores the instance."
+        },
+        {
+          "q": "What is the module pattern used for?",
+          "a": "Encapsulating private variables and functions with a closure and exposing only a public interface."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-performance",
+      "title": "Performance Best Practices",
+      "level": "advanced",
+      "summary": "Keep the main thread free, minimise DOM work and load only what you need.",
+      "description": "Performance problems in JavaScript usually come from **blocking the main thread**, **too much DOM work** and **too much code**.\n\n### Main thread\n- Break long tasks into chunks (`setTimeout`, `requestIdleCallback`, `scheduler.yield()`).\n- Move heavy computation to a **Web Worker** (`new Worker(\"worker.js\")`, communicate with `postMessage`).\n- Use `requestAnimationFrame` for animations instead of timers.\n- Debounce and throttle high-frequency events; use `{ passive: true }` for scroll/touch listeners.\n\n### DOM\n- Batch reads and writes: reading `offsetHeight` after writing styles forces layout (**layout thrashing**).\n- Use `DocumentFragment` or build HTML once instead of appending in a loop.\n- Prefer `classList` toggles and CSS animations (`transform`, `opacity`).\n- Use **event delegation** instead of many listeners.\n- Virtualise very long lists.\n\n### Code and data\n- Choose the right data structure: `Set`/`Map` for lookups instead of `array.includes` in loops.\n- Avoid nested loops over large arrays (O(n^2)).\n- Do not create functions or objects inside hot loops unnecessarily.\n- Memoize expensive pure functions.\n\n### Loading\n- **Code splitting** with dynamic `import()`.\n- `defer` / `async` on scripts, lazy-load images and below-the-fold content (IntersectionObserver).\n- Minify and compress (gzip/brotli), cache with HTTP headers.\n\n### Measure first\nUse DevTools Performance and Lighthouse; `performance.now()` and `console.time()` for quick tests. Optimise measured bottlenecks, not guesses.",
+      "keyPoints": [
+        "Never block the main thread with long synchronous work",
+        "Batch DOM changes and avoid layout thrashing",
+        "Pick efficient data structures (Map/Set)",
+        "Split code and lazy load resources",
+        "Measure with DevTools before optimising"
+      ],
+      "pitfalls": [
+        "Premature optimisation without measurements",
+        "Interleaving DOM reads and writes in loops",
+        "Large unvirtualised lists"
+      ],
+      "examples": [
+        {
+          "title": "Measuring array search vs Set",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const N = 20000;\nconst items = Array.from({ length: N }, (_, i) => i);\nconst lookups = Array.from({ length: 2000 }, (_, i) => i * 10);\n\nconsole.time(\"array.includes\");\nlet found1 = 0;\nfor (const x of lookups) if (items.includes(x)) found1++;\nconsole.timeEnd(\"array.includes\");\n\nconst set = new Set(items);\nconsole.time(\"set.has\");\nlet found2 = 0;\nfor (const x of lookups) if (set.has(x)) found2++;\nconsole.timeEnd(\"set.has\");\n\nconsole.log(found1 === found2, found1);\nconst t0 = performance.now();\nlet sum = 0;\nfor (let i = 0; i < 1e6; i++) sum += i;\nconsole.log(\"loop result\", sum, \"took >= 0ms:\", performance.now() - t0 >= 0);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is layout thrashing and how do you avoid it?",
+          "a": "Alternating DOM reads (that force layout) and writes causes repeated reflows. Batch all reads first, then all writes, or use requestAnimationFrame."
+        },
+        {
+          "q": "How can you run heavy computation without freezing the UI?",
+          "a": "Move it to a Web Worker, or split it into small chunks scheduled with setTimeout/requestIdleCallback."
+        },
+        {
+          "q": "Why use a Set instead of an array for lookups?",
+          "a": "Set.has is on average O(1) while Array.includes is O(n), which matters inside loops."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-security-xss",
+      "title": "Security Basics: XSS and Safe Coding",
+      "level": "advanced",
+      "summary": "Never insert untrusted data as HTML, avoid eval, and keep secrets out of client code.",
+      "description": "Front-end security is about not letting attacker-controlled data become **executable code** in your page.\n\n### Cross-site scripting (XSS)\nXSS happens when untrusted input (a comment, a URL parameter, an API field) is inserted into the page as HTML and a script runs with your site's privileges - it can read `localStorage`, cookies, make requests as the user, or rewrite the page.\n\n```js\n// DANGEROUS\ndiv.innerHTML = userComment;           // <img src=x onerror=stealData()>\n// SAFE\ndiv.textContent = userComment;\n```\n\n### Safe practices\n- Use **`textContent`** or `setAttribute` for text; avoid `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `document.write` with user data.\n- If you must render HTML, sanitise with a library like **DOMPurify**.\n- Never use `eval()`, `new Function(string)` or `setTimeout(\"string\")`.\n- Validate URLs: block `javascript:` links before setting `href`.\n- Frameworks (React, Vue) escape output by default; avoid `dangerouslySetInnerHTML` / `v-html` with untrusted data.\n\n### Other essentials\n- **Content Security Policy (CSP)** header limits where scripts can load from.\n- Keep **tokens in HttpOnly cookies**, not in localStorage.\n- **CSRF**: use SameSite cookies and CSRF tokens for state-changing requests.\n- **Never put secrets** (API keys, passwords) in front-end code - everyone can read it.\n- Validate and sanitise on the **server** as well; client checks are only for UX.\n- Keep dependencies updated (`npm audit`).\n- Use `rel=\"noopener noreferrer\"` on `target=\"_blank\"` links.\n\n### Remember\nTreat **all** input as untrusted: user text, URL, cookies, postMessage, third-party APIs.",
+      "keyPoints": [
+        "XSS = untrusted input executed as script",
+        "Use textContent instead of innerHTML for user data",
+        "Sanitise HTML with DOMPurify when HTML is required",
+        "Never use eval or build code from strings",
+        "Secrets do not belong in front-end code"
+      ],
+      "pitfalls": [
+        "Assuming data from your own API is always safe",
+        "Using innerHTML for convenience with template strings",
+        "Storing auth tokens in localStorage"
+      ],
+      "examples": [
+        {
+          "title": "Escaping untrusted HTML",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const escapeHTML = (str) =>\n  str.replace(/[&<>\"']/g, (c) => ({ \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\" }[c]));\n\nconst evil = `<img src=x onerror=\"alert('hacked')\">`;\nconsole.log(\"raw  :\", evil);\nconsole.log(\"safe :\", escapeHTML(evil));\n\nconst unsafeUrl = \"javascript:alert(1)\";\nconst isSafeUrl = (u) => {\n  try { return [\"http:\", \"https:\"].includes(new URL(u, \"https://example.com\").protocol); }\n  catch { return false; }\n};\nconsole.log(isSafeUrl(unsafeUrl), isSafeUrl(\"https://example.com/a\"), isSafeUrl(\"/relative\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is XSS and how do you prevent it?",
+          "a": "Cross-site scripting is injecting malicious script into a page through untrusted data. Prevent it by escaping or using textContent, sanitising any HTML, using CSP and avoiding eval and innerHTML with user input."
+        },
+        {
+          "q": "Why is it risky to store JWT tokens in localStorage?",
+          "a": "Any XSS script can read localStorage and steal the token. HttpOnly cookies cannot be read by JavaScript."
+        },
+        {
+          "q": "Is front-end validation enough?",
+          "a": "No. It improves user experience but can be bypassed, so the server must validate and sanitise every request."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

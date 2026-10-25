@@ -1,0 +1,237 @@
+{
+ "id": "express-security",
+ "title": "Validation and Security",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "express-validation-libs",
+   "title": "Validation with Zod, Joi and express-validator",
+   "level": "intermediate",
+   "summary": "Validate and clean req.body, params and query at the edge using a schema library in a reusable middleware.",
+   "description": "**Never trust client input.** Every value in `req.body`, `req.params`, `req.query` and headers must be validated for type, shape, range and length before use. Validate at the edge (middleware) so controllers receive clean data.\n\n### Three popular choices\n| Library | Style | Notes |\n|---|---|---|\n| **Zod** | schema objects, TypeScript-first | `safeParse`, transforms, coercion, inferred types |\n| **Joi** | schema objects | mature, rich rules, `abortEarly: false` |\n| **express-validator** | chain of checks per field | `body('email').isEmail()`, built on validator.js |\n\n### Why schemas beat manual `if`s\nThey describe the contract once, return all errors, **strip unknown fields** (stops mass assignment), coerce types (`\"5\"` -> `5`) and give consistent messages.\n\n### A reusable `validate` middleware\n`validate({ body: schema, query: schema, params: schema })` parses each part; on failure respond `400/422` with the list of issues; on success replace the data with the parsed, cleaned values. Remember that in Express 5 `req.query` is a read-only getter, so store parsed query data on another property such as `req.validated.query` (or `res.locals`).\n\n### Validate more than the body\nIDs (`ObjectId` format), pagination numbers, enums for sort fields, file mime types and headers.\n\n### Beyond the schema\nValidation checks *shape*; business checks (email already used, stock available) still happen in the service layer. Database constraints (unique index) are the final safety net.",
+   "keyPoints": [
+    "Validate body, params and query in middleware, before controllers",
+    "Schema libraries return all errors, coerce types and strip unknown keys",
+    "Zod = modern/TypeScript, Joi = mature, express-validator = chain style",
+    "In Express 5 do not reassign `req.query`; store parsed data elsewhere",
+    "Keep database constraints as the last line of defence"
+   ],
+   "pitfalls": [
+    "Validating only in React; the API can be called without your UI",
+    "Allowing extra fields through (mass assignment)",
+    "Trusting numeric strings without coercion/range checks"
+   ],
+   "examples": [
+    {
+     "title": "Zod validate middleware",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/middleware/validate.js\nexport const validate = (schemas) => (req, res, next) => {\n  const errors = []\n  req.validated = {}\n  for (const part of ['params', 'query', 'body']) {\n    if (!schemas[part]) continue\n    const result = schemas[part].safeParse(req[part] ?? {})\n    if (!result.success) {\n      for (const issue of result.error.issues) {\n        errors.push({ in: part, field: issue.path.join('.'), message: issue.message })\n      }\n    } else {\n      req.validated[part] = result.data\n    }\n  }\n  if (errors.length) return res.status(400).json({ status: 'fail', errors })\n  next()\n}\n\n// ## src/routes/users.js\nimport { Router } from 'express'\nimport { z } from 'zod'\nimport { validate } from '../middleware/validate.js'\n\nconst createUser = z.object({\n  name: z.string().trim().min(2).max(50),\n  email: z.string().trim().toLowerCase().email(),\n  age: z.coerce.number().int().min(13).max(120).optional(),\n}).strict()                                           // unknown keys -> error\n\nconst listQuery = z.object({\n  page: z.coerce.number().int().min(1).default(1),\n  limit: z.coerce.number().int().min(1).max(100).default(10),\n})\n\nconst router = Router()\n\nrouter.get('/', validate({ query: listQuery }), (req, res) => {\n  res.json({ query: req.validated.query })\n})\n\nrouter.post('/', validate({ body: createUser }), (req, res) => {\n  res.status(201).json(req.validated.body)\n})\n\nexport default router",
+     "explanation": ""
+    },
+    {
+     "title": "express-validator version",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { body, validationResult } from 'express-validator'\n\nconst rules = [\n  body('email').trim().isEmail().normalizeEmail(),\n  body('password').isLength({ min: 8 }).withMessage('Min 8 characters'),\n]\n\napp.post('/register', rules, (req, res) => {\n  const result = validationResult(req)\n  if (!result.isEmpty()) return res.status(400).json({ errors: result.array() })\n  res.status(201).json({ ok: true })\n})",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why validate on the server if the React form already validates?",
+     "a": "Client checks are only convenience; anyone can call the API directly, so the server must enforce every rule."
+    },
+    {
+     "q": "What does a strict schema protect against?",
+     "a": "Mass assignment: unknown fields such as role or isAdmin are rejected or stripped instead of reaching the database."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-helmet-rate-limit",
+   "title": "Helmet and Rate Limiting",
+   "level": "intermediate",
+   "summary": "helmet sets safe HTTP security headers; express-rate-limit throttles abuse such as brute-force logins.",
+   "description": "### Helmet\n**helmet** is a collection of small middleware that set security-related response headers with sensible defaults. One line: `app.use(helmet())`.\n\n| Header | Protects against |\n|---|---|\n| `Content-Security-Policy` | XSS by restricting where scripts/styles can load from |\n| `Strict-Transport-Security` | forces HTTPS |\n| `X-Content-Type-Options: nosniff` | MIME sniffing |\n| `X-Frame-Options` / `frame-ancestors` | clickjacking |\n| `Referrer-Policy` | leaking URLs to other sites |\n| removes `X-Powered-By` | hides the framework |\n\nFor a pure JSON API the default CSP is harmless; if you serve a React build from Express you may need to tune CSP directives (images, API origins).\n\n### Rate limiting\nA rate limiter counts requests per client (IP or user id) within a time window and answers **429 Too Many Requests** when the limit is exceeded. It reduces brute-force attacks, scraping and accidental overload.\n\n- Apply a general limit to the whole API (for example 100 requests per 15 minutes).\n- Apply a **stricter** limit to sensitive routes (`/login`, `/forgot-password`, OTP verification).\n- Send standard headers (`RateLimit-*`, `Retry-After`) so clients can back off.\n- Behind a proxy set `trust proxy`, otherwise everyone shares the proxy's IP.\n- The default store is in memory and per process; with several instances use a shared store such as Redis (`rate-limit-redis`).\n\n### Related defences\nAccount lockouts, CAPTCHAs, slow-down middleware (`express-slow-down`) and WAF/CDN limits (Cloudflare) at the edge.",
+   "keyPoints": [
+    "`app.use(helmet())` early in the middleware chain",
+    "Rate-limit globally and stricter on auth routes",
+    "429 + `Retry-After` tells clients to back off",
+    "Set `trust proxy` so IPs are real behind proxies",
+    "Use a Redis store for multi-instance deployments"
+   ],
+   "pitfalls": [
+    "Rate limiting by IP without `trust proxy` (all users share one IP)",
+    "Per-process memory store in a clustered/Docker-scaled app (limits multiply)",
+    "Disabling helmet's CSP because it \"breaks things\" instead of configuring it"
+   ],
+   "examples": [
+    {
+     "title": "helmet and layered limiters",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport helmet from 'helmet'\nimport rateLimit from 'express-rate-limit'\n\nconst app = express()\napp.set('trust proxy', 1)\napp.use(helmet())\napp.use(express.json())\n\nconst apiLimiter = rateLimit({\n  windowMs: 15 * 60 * 1000,\n  limit: 100,                         // 100 requests / 15 min / IP\n  standardHeaders: 'draft-7',\n  legacyHeaders: false,\n  message: { error: 'Too many requests, please try again later' },\n})\n\nconst loginLimiter = rateLimit({\n  windowMs: 15 * 60 * 1000,\n  limit: 5,\n  skipSuccessfulRequests: true,       // only failed attempts count\n  message: { error: 'Too many login attempts' },\n})\n\napp.use('/api', apiLimiter)\napp.post('/api/auth/login', loginLimiter, (req, res) => res.status(401).json({ error: 'Invalid credentials' }))\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Hitting the limit",
+     "language": "text",
+     "lang": "bash",
+     "code": "for i in 1 2 3 4 5 6; do curl -s -o /dev/null -w \"%{http_code} \" -X POST localhost:3000/api/auth/login; done\n# 401 401 401 401 401 429\n\ncurl -i -X POST localhost:3000/api/auth/login\n# HTTP/1.1 429 Too Many Requests\n# RateLimit: limit=5, remaining=0, reset=900\n# {\"error\":\"Too many login attempts\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does helmet do?",
+     "a": "It sets protective HTTP headers (CSP, HSTS, nosniff, frame protections and more) to reduce common browser-based attacks."
+    },
+    {
+     "q": "Why stricter limits on /login?",
+     "a": "Login endpoints are the main target of brute-force and credential-stuffing attacks, so they need much lower thresholds than normal API routes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-cors",
+   "title": "CORS: What, Why and How to Configure",
+   "level": "intermediate",
+   "summary": "Browsers block cross-origin requests unless the server sends CORS headers; configure the cors package with an allow-list.",
+   "description": "### The problem\nBrowsers enforce the **same-origin policy**: a page at `http://localhost:5173` (React) cannot read responses from `http://localhost:3000` (API), because the *origin* (protocol + host + port) differs. **CORS** (Cross-Origin Resource Sharing) is the mechanism by which the **server** opts in by sending headers such as `Access-Control-Allow-Origin`.\n\nCORS is enforced **by browsers only**. curl, Postman and server-to-server calls ignore it, so it is not an authentication mechanism.\n\n### Simple vs preflighted requests\nFor \"non-simple\" requests (methods other than GET/POST/HEAD, custom headers like `Authorization`, or `Content-Type: application/json`) the browser first sends an **OPTIONS preflight** asking permission. The server must answer with `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers` and the allowed origin. The `cors` package handles it.\n\n### Using the `cors` package\n```js\napp.use(cors({ origin: 'http://localhost:5173', credentials: true }))\n```\n- `origin`: string, array, regex or a function (best for allow-lists).\n- `credentials: true`: lets the browser send/receive cookies; then `origin` **cannot** be `*`, and the front end must use `credentials: 'include'` (fetch) or `withCredentials: true` (axios).\n- `methods`, `allowedHeaders`, `exposedHeaders`, `maxAge` (cache preflight).\n\n### Rules\n- Register `cors()` **before** your routes.\n- Use an explicit allow-list from an env variable in production.\n- Never combine `origin: '*'` with credentials.\n- A \"CORS error\" for a request that failed with 500 or 404 may simply be a missing header on the error response; check the Network tab.",
+   "keyPoints": [
+    "CORS is a browser rule; the server opts in via response headers",
+    "Preflight `OPTIONS` happens for JSON, custom headers and non-simple methods",
+    "Cookies need `credentials: true` plus a specific origin (not `*`)",
+    "Register `cors()` before routes and use an allow-list in production",
+    "It does not protect your API from non-browser clients"
+   ],
+   "pitfalls": [
+    "`origin: '*'` together with `credentials: true` (browser rejects it)",
+    "Forgetting `credentials: 'include'` on the client, so cookies are not sent",
+    "Treating CORS as security for the API"
+   ],
+   "examples": [
+    {
+     "title": "Allow-list CORS",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport cors from 'cors'\n\nconst app = express()\n\nconst allowed = (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(',')\n\napp.use(cors({\n  origin(origin, callback) {\n    // no Origin header = curl / server-to-server / same-origin: allow\n    if (!origin || allowed.includes(origin)) return callback(null, true)\n    callback(new Error(`Origin ${origin} not allowed by CORS`))\n  },\n  credentials: true,\n  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],\n  allowedHeaders: ['Content-Type', 'Authorization'],\n  maxAge: 600,\n}))\n\napp.get('/api/ping', (req, res) => res.json({ pong: true }))\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Browser client",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// React side: send cookies to another origin\nconst res = await fetch('http://localhost:3000/api/ping', {\n  method: 'GET',\n  credentials: 'include',            // required when the API uses cookies\n})\nconsole.log(await res.json())",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a preflight request?",
+     "a": "An automatic OPTIONS request the browser sends before certain cross-origin requests to ask the server whether the actual method and headers are allowed."
+    },
+    {
+     "q": "Why can't you use Access-Control-Allow-Origin: * with cookies?",
+     "a": "Browsers reject wildcard origins on credentialed requests; the server must echo one specific allowed origin and send Access-Control-Allow-Credentials: true."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-injection-xss-csrf",
+   "title": "NoSQL Injection, XSS, CSRF and HPP",
+   "level": "advanced",
+   "summary": "Understand and block the classic web attacks: operator injection, script injection, forged requests and parameter pollution.",
+   "description": "### NoSQL injection\nIf you pass JSON straight into a query, a client can send operators instead of values:\n`{ \"email\": \"a@x.com\", \"password\": { \"$ne\": \"\" } }` makes `User.findOne(req.body)` match without a password. Defences: validate that fields are **strings** (Zod/Joi), cast explicitly (`String(req.body.email)`), whitelist fields, and strip keys starting with `$` or containing `.`. Mongoose `sanitizeFilter: true` neutralises operators in filters. The old `express-mongo-sanitize` package assumed a writable `req.query`, so check compatibility with Express 5 or sanitize yourself.\n\n### XSS (Cross-Site Scripting)\nAttacker-supplied HTML/JS ends up in a page and runs in other users' browsers, stealing tokens. React escapes output by default; danger comes from `dangerouslySetInnerHTML`, server-rendered templates with unescaped output, and stored HTML. Defences: escape output, sanitise rich text (`sanitize-html`, DOMPurify), set a Content Security Policy via helmet, use `httpOnly` cookies.\n\n### CSRF (Cross-Site Request Forgery)\nA malicious site makes the victim's browser send a request to your API; cookies are attached automatically. It only matters for **cookie-based** auth. Defences: `SameSite=Lax/Strict` cookies, verifying `Origin`/`Referer`, CSRF tokens (double-submit cookie, e.g. `csrf-csrf`; the old `csurf` is deprecated), and requiring a custom header (`X-Requested-With`) that cross-site forms cannot set. Bearer tokens in the `Authorization` header are not affected.\n\n### HPP (HTTP Parameter Pollution)\n`?role=user&role=admin` becomes an **array** and can break logic or bypass checks. Validate that expected strings really are strings, or use the `hpp` middleware (check Express 5 support).\n\n### General rule\nTreat all input as untrusted, validate strictly, encode on output.",
+   "keyPoints": [
+    "NoSQL injection: reject non-string values; use schema validation and `sanitizeFilter`",
+    "XSS: escape/sanitise output, CSP via helmet, httpOnly cookies",
+    "CSRF only affects cookie auth: SameSite, Origin check, CSRF token",
+    "HPP: repeated params become arrays; validate types",
+    "Validate on input, encode on output"
+   ],
+   "pitfalls": [
+    "`User.findOne(req.body)` or `find(req.query)` with unvalidated objects",
+    "Rendering user HTML with `dangerouslySetInnerHTML` without sanitising",
+    "Assuming CORS prevents CSRF (it does not stop simple form posts)"
+   ],
+   "examples": [
+    {
+     "title": "Injection, then fixes",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport { z } from 'zod'\nimport User from './models/User.js'\n\nconst app = express()\napp.use(express.json())\n\n// VULNERABLE: body { \"email\": \"admin@x.com\", \"password\": { \"$ne\": \"\" } }\napp.post('/bad-login', async (req, res) => {\n  const user = await User.findOne(req.body)            // operator injection!\n  res.json({ loggedIn: Boolean(user) })\n})\n\n// FIX 1: schema forces strings\nconst loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) })\napp.post('/login', async (req, res) => {\n  const parsed = loginSchema.safeParse(req.body)\n  if (!parsed.success) return res.status(400).json({ error: 'Invalid input' })\n  const user = await User.findOne({ email: parsed.data.email }).select('+password')\n  // ...compare password with bcrypt\n  res.json({ ok: Boolean(user) })\n})\n\n// FIX 2: ask Mongoose to strip operators from filters\napp.get('/users', async (req, res) => {\n  const users = await User.find({ name: req.query.name }, null, { sanitizeFilter: true })\n  res.json(users)\n})",
+     "explanation": ""
+    },
+    {
+     "title": "CSRF defence: Origin check + SameSite",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/middleware/csrfOriginCheck.js\nconst SAFE = new Set(['GET', 'HEAD', 'OPTIONS'])\n\nexport function originCheck(allowedOrigins) {\n  return (req, res, next) => {\n    if (SAFE.has(req.method)) return next()\n    const origin = req.get('origin') ?? new URL(req.get('referer') ?? 'http://none').origin\n    if (!allowedOrigins.includes(origin)) {\n      return res.status(403).json({ error: 'Cross-site request blocked' })\n    }\n    next()\n  }\n}\n\n// ## src/app.js\nimport express from 'express'\nimport { originCheck } from './middleware/csrfOriginCheck.js'\n\nconst app = express()\napp.use(originCheck(['https://app.example.com']))\n// cookies set with: { httpOnly: true, secure: true, sameSite: 'lax' }",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is NoSQL injection and how do you prevent it?",
+     "a": "Sending query operators (like {\"$ne\": \"\"}) where a plain value is expected so the query matches unintended documents; prevent it by validating input types and sanitising filters."
+    },
+    {
+     "q": "Does CSRF affect APIs using Authorization Bearer headers?",
+     "a": "Not really, because browsers do not attach that header automatically; CSRF targets credentials the browser sends by itself, such as cookies."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-secrets-owasp",
+   "title": "Secrets, Environment Variables and OWASP Checklist",
+   "level": "advanced",
+   "summary": "Keep secrets out of code, validate config on startup and walk through an OWASP-based security checklist.",
+   "description": "### Secrets and environment variables\nAPI keys, database URLs and JWT secrets must **never** be in source control. Store them in environment variables:\n- Local: `.env` (ignored by git) loaded with `node --env-file=.env` or `dotenv`.\n- Production: the hosting platform's secret manager (Render/Railway/Vercel settings, AWS Secrets Manager, Docker/Kubernetes secrets).\n- Commit a `.env.example` listing the variable **names** only.\n- Validate required variables at startup with Zod and fail fast; generate secrets with `node -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"`.\n- If a secret is ever committed, **rotate it** - deleting the file does not remove it from git history.\n\n### OWASP Top 10 checklist (API focus)\n| Risk | Express action |\n|---|---|\n| Broken access control | authZ on every route, ownership checks, deny by default |\n| Cryptographic failures | HTTPS only, bcrypt/argon2, strong JWT secrets |\n| Injection | validated input, parameterised SQL, `sanitizeFilter` |\n| Insecure design | rate limits, least privilege, threat modelling |\n| Security misconfiguration | helmet, no stack traces in prod, `NODE_ENV=production` |\n| Vulnerable components | `npm audit`, Dependabot, lockfile, update regularly |\n| Auth failures | strong passwords, rate-limit login, 2FA, short tokens |\n| Integrity failures | verify webhook signatures, pin CI dependencies |\n| Logging failures | log auth events, never log secrets/passwords |\n| SSRF | never fetch user-supplied URLs without an allow-list |\n\n### Extras\nLimit body size, disable `X-Powered-By`, secure cookies, set timeouts, run as non-root in Docker, and keep error messages generic.",
+   "keyPoints": [
+    "Secrets live in env vars or a secret manager, never in git",
+    "Provide `.env.example`; validate env at startup and fail fast",
+    "Rotate any leaked secret immediately",
+    "Run `npm audit` and keep dependencies updated",
+    "Use the OWASP Top 10 as a recurring review checklist"
+   ],
+   "pitfalls": [
+    "Committing `.env` or hard-coding a fallback secret (`|| 'secret'`) in code",
+    "Logging full request bodies or Authorization headers",
+    "Leaving `NODE_ENV` unset in production (verbose errors, slower Express)"
+   ],
+   "examples": [
+    {
+     "title": "Validated config module",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/config/env.js\nimport { z } from 'zod'\n\nconst schema = z.object({\n  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),\n  PORT: z.coerce.number().default(3000),\n  MONGO_URI: z.string().min(1),\n  JWT_ACCESS_SECRET: z.string().min(32, 'use a long random secret'),\n  JWT_REFRESH_SECRET: z.string().min(32),\n  CLIENT_URL: z.string().url().default('http://localhost:5173'),\n})\n\nconst parsed = schema.safeParse(process.env)\nif (!parsed.success) {\n  console.error('Invalid environment configuration:')\n  console.error(parsed.error.issues.map((i) => ` - ${i.path.join('.')}: ${i.message}`).join('\\n'))\n  process.exit(1)\n}\n\nexport const env = parsed.data",
+     "explanation": ""
+    },
+    {
+     "title": ".env.example and git ignore",
+     "language": "text",
+     "lang": "bash",
+     "code": "# .env.example  (committed - names only, no real values)\nNODE_ENV=development\nPORT=3000\nMONGO_URI=mongodb://localhost:27017/myapp\nJWT_ACCESS_SECRET=change-me-to-a-long-random-string\nJWT_REFRESH_SECRET=change-me-too\nCLIENT_URL=http://localhost:5173\n\n# .gitignore\n.env\nnode_modules/\n\n# generate a strong secret\nnode -e \"console.log(require('crypto').randomBytes(48).toString('hex'))\"",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What should you do if a secret was committed to Git?",
+     "a": "Rotate (replace) it immediately, because it remains in history and may already be exposed; then optionally clean history."
+    },
+    {
+     "q": "Name some OWASP API risks and fixes.",
+     "a": "Broken access control (check ownership, deny by default), injection (validate and parameterise), auth failures (rate limiting, strong hashing, short tokens), misconfiguration (helmet, no stack traces in production)."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

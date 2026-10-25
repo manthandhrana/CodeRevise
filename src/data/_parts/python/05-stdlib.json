@@ -1,0 +1,317 @@
+{
+ "id": "py-stdlib",
+ "title": "Errors, Files and the Standard Library",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-exceptions",
+   "title": "Exception Handling",
+   "level": "intermediate",
+   "summary": "Handle errors with try/except/else/finally, raise your own exceptions and build custom ones.",
+   "description": "Errors at runtime are raised as **exceptions**. Unhandled, they stop the program with a traceback. Handling them lets your program recover or fail gracefully.\n\n### The full structure\n```python\ntry:\n    value = int(text)\nexcept ValueError as e:\n    print(\"not a number:\", e)\nexcept (TypeError, KeyError):\n    ...\nelse:\n    print(\"ran only if no exception\")\nfinally:\n    print(\"always runs (cleanup)\")\n```\n\n### Raising\n`raise ValueError(\"bad input\")`. Inside an `except` block a bare `raise` re-raises the same error. `raise NewError(...) from original` keeps the cause chained, which is very useful in logs.\n\n### Custom exceptions\nSubclass `Exception` to express domain problems clearly, and give related errors a common base:\n```python\nclass AppError(Exception): ...\nclass NotFound(AppError): ...\n```\n\n### Hierarchy\n`BaseException` -> `Exception` -> `ValueError`, `TypeError`, `KeyError`, `OSError` (with `FileNotFoundError`), `ZeroDivisionError`, etc. Catch the **most specific** exception you can handle.\n\n### EAFP vs LBYL\nPython style prefers **EAFP** (\"easier to ask forgiveness than permission\"): try the operation and catch failures, rather than checking everything first.\n\n### Python 3.11+\n`ExceptionGroup` and `except*` handle multiple errors raised together (used by `asyncio.TaskGroup`). `add_note()` attaches extra info.",
+   "keyPoints": [
+    "Catch specific exceptions, not bare except:",
+    "else runs when no error; finally always runs",
+    "raise ... from ... preserves the cause",
+    "Custom exceptions should subclass Exception",
+    "Prefer EAFP: try first, handle failure"
+   ],
+   "pitfalls": [
+    "Bare except: that hides bugs and swallows KeyboardInterrupt",
+    "Catching Exception and doing nothing",
+    "Using exceptions for normal control flow in hot loops"
+   ],
+   "examples": [
+    {
+     "title": "try/except/else/finally",
+     "language": "python",
+     "code": "class ValidationError(Exception):\n    pass\n\ndef parse_age(text):\n    try:\n        age = int(text)\n    except ValueError as e:\n        raise ValidationError(f\"{text!r} is not a number\") from e\n    else:\n        if age < 0:\n            raise ValidationError(\"age cannot be negative\")\n        return age\n    finally:\n        print(\"checked\", repr(text))\n\nfor raw in [\"25\", \"abc\", \"-4\"]:\n    try:\n        print(\"age:\", parse_age(raw))\n    except ValidationError as err:\n        print(\"invalid:\", err, \"| cause:\", type(err.__cause__).__name__)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between else and finally?",
+     "a": "else runs only when the try block raised nothing; finally runs always, whether or not an exception occurred, and is used for cleanup."
+    },
+    {
+     "q": "Why avoid a bare except?",
+     "a": "It catches everything including SystemExit and KeyboardInterrupt and hides real bugs. Catch specific exceptions."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-files-pathlib",
+   "title": "Files and pathlib",
+   "level": "intermediate",
+   "summary": "Read and write text and binary files safely and build OS-independent paths with pathlib.",
+   "description": "### Reading and writing\nAlways use `with` so the file is closed automatically, and always give an encoding for text:\n\n```python\nwith open(\"notes.txt\", \"w\", encoding=\"utf-8\") as f:\n    f.write(\"hello\\n\")\n\nwith open(\"notes.txt\", encoding=\"utf-8\") as f:\n    for line in f:            # lazy, memory friendly\n        print(line.rstrip())\n```\n\n### Modes\n`r` read (default), `w` write (truncates), `a` append, `x` create-only, `b` binary (`rb`, `wb`), `+` read and write.\n\n### Reading methods\n`f.read()` whole file, `f.readline()` one line, `f.readlines()` a list of lines, and iterating `for line in f` which is the best for big files.\n\n### pathlib\n`pathlib.Path` represents file-system paths as objects and works the same on Windows, macOS and Linux.\n\n```python\nfrom pathlib import Path\np = Path(\"data\") / \"users.csv\"\np.exists(); p.suffix; p.stem; p.parent; p.name\np.read_text(encoding=\"utf-8\")\np.write_text(\"abc\", encoding=\"utf-8\")\np.parent.mkdir(parents=True, exist_ok=True)\nfor f in Path(\".\").glob(\"*.py\"): ...\n```\n\n### Other helpers\n`shutil` for copy/move/delete trees, `tempfile` for temporary files, `os.environ` for environment variables.\n\nNever build paths with string concatenation or hard-coded backslashes; use `/` with `Path`.\n\n### Practical advice\nPaths in a script are relative to the **current working directory**, which is not always the script's folder. When you need files next to your script, anchor on `Path(__file__).parent`. For large files never call `read()`; iterate lines or read in chunks. When you write data that must not be half-written (config, state), write to a temporary file and then rename it, because a rename is atomic on most systems. Binary files such as images or PDFs use the `\"rb\"` and `\"wb\"` modes and return `bytes` instead of `str`.",
+   "keyPoints": [
+    "Use with open(...) so files close automatically",
+    "Specify encoding=\"utf-8\" for text files",
+    "Iterate a file object line by line for large files",
+    "pathlib.Path with the / operator builds portable paths",
+    "Path.read_text and write_text cover small files"
+   ],
+   "pitfalls": [
+    "Opening with \"w\" and accidentally truncating an existing file",
+    "Forgetting the encoding on Windows",
+    "Concatenating paths with + and hard-coded separators"
+   ],
+   "examples": [
+    {
+     "title": "Path operations (no disk access)",
+     "language": "python",
+     "code": "from pathlib import PurePosixPath\n\np = PurePosixPath(\"projects\") / \"site\" / \"report.final.csv\"\nprint(p)\nprint(p.name, p.stem, p.suffix, p.parent)\nprint(p.with_suffix(\".json\"))\nprint(p.parts)\nprint(p.is_absolute())",
+     "explanation": "PurePath objects work without touching the disk, so they are safe to run here."
+    },
+    {
+     "title": "Real file read/write",
+     "language": "text",
+     "code": "from pathlib import Path\n\nfolder = Path(\"output\")\nfolder.mkdir(exist_ok=True)\n\ntarget = folder / \"log.txt\"\nwith target.open(\"a\", encoding=\"utf-8\") as f:\n    f.write(\"run started\\n\")\n\nfor number, line in enumerate(target.read_text(encoding=\"utf-8\").splitlines(), 1):\n    print(number, line)\n\nfor csv_file in Path(\".\").rglob(\"*.csv\"):\n    print(csv_file, csv_file.stat().st_size)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use with open()?",
+     "a": "The context manager guarantees the file is closed even if an exception occurs, preventing leaks and unflushed data."
+    },
+    {
+     "q": "Why prefer pathlib over os.path?",
+     "a": "It offers an object-oriented, readable API, portable path joining with /, and convenient methods like read_text, glob and mkdir."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-modules-packages",
+   "title": "Modules, Packages and Imports",
+   "level": "intermediate",
+   "summary": "Split code into files and folders, import it cleanly and understand __name__ == \"__main__\".",
+   "description": "A **module** is any `.py` file. A **package** is a folder of modules (traditionally with an `__init__.py`). Modules let you organise code, avoid name clashes and reuse functionality.\n\n### Import styles\n```python\nimport math\nfrom math import sqrt, pi\nimport numpy as np\nfrom package.module import func as f\n```\nAvoid `from x import *`; it pollutes the namespace and hides where names come from.\n\n### Import search path\nPython looks in the script's directory, then `PYTHONPATH`, then the standard library and `site-packages`. Inspect it with `sys.path`. Imported modules are cached in `sys.modules`, so a module body runs only once.\n\n### Project layout\n```text\nmyapp/\n  main.py\n  utils.py\n  services/\n    __init__.py\n    email.py\n```\nUse `from services.email import send` or relative imports `from .email import send` inside a package.\n\n### The main guard\n```python\nif __name__ == \"__main__\":\n    main()\n```\n`__name__` is `\"__main__\"` when the file is run directly and the module name when it is imported, so test code and CLI entry points don't run on import.\n\n### Circular imports\nIf module A imports B and B imports A, you may get partially initialised modules. Fix by restructuring, moving the import inside a function, or extracting shared code.\n\n### Standard library highlights\n`os`, `sys`, `pathlib`, `json`, `re`, `datetime`, `collections`, `itertools`, `random`, `math`, `argparse`, `subprocess`.",
+   "keyPoints": [
+    "A module is a file; a package is a folder of modules",
+    "Use explicit imports; avoid import *",
+    "if __name__ == \"__main__\" separates script from import use",
+    "Modules are cached in sys.modules and run once",
+    "Break circular imports by restructuring"
+   ],
+   "pitfalls": [
+    "Naming your file like a standard module (random.py, json.py)",
+    "Circular imports",
+    "Relying on the current working directory instead of package structure"
+   ],
+   "examples": [
+    {
+     "title": "Project with a package",
+     "language": "text",
+     "code": "# app/utils.py\ndef slugify(text):\n    return \"-\".join(text.lower().split())\n\n# app/main.py\nfrom utils import slugify\n\ndef main():\n    print(slugify(\"Hello Python World\"))\n\nif __name__ == \"__main__\":\n    main()\n\n# run with:  python app/main.py",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does if __name__ == \"__main__\" do?",
+     "a": "It runs the code only when the file is executed directly, not when it is imported as a module."
+    },
+    {
+     "q": "What is __init__.py?",
+     "a": "It marks a directory as a regular package and can contain package-level initialisation or re-exports. Namespace packages work without it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-json-csv",
+   "title": "JSON and CSV",
+   "level": "intermediate",
+   "summary": "Convert between Python objects and JSON text, and read or write tabular CSV data.",
+   "description": "### JSON\nJSON is the standard data format of web APIs. The `json` module maps JSON to Python types: object -> `dict`, array -> `list`, string -> `str`, number -> `int`/`float`, true/false -> `True`/`False`, null -> `None`.\n\n- `json.loads(text)` string -> object, `json.dumps(obj, indent=2)` object -> string.\n- `json.load(f)` and `json.dump(obj, f)` work with file objects.\n- Options: `indent`, `sort_keys=True`, `ensure_ascii=False`, `default=str` for unsupported types such as `datetime`.\n\nJSON only has string keys, so `{1: \"a\"}` comes back as `{\"1\": \"a\"}`. Tuples become arrays and sets cannot be serialised without conversion.\n\n### CSV\n`csv` handles quoting and delimiters correctly, so never split lines by commas yourself.\n\n- `csv.reader` gives lists; `csv.DictReader` gives dicts keyed by header.\n- `csv.writer` / `csv.DictWriter` for output. Open files with `newline=\"\"` and an explicit encoding.\n\n```python\nwith open(\"out.csv\", \"w\", newline=\"\", encoding=\"utf-8\") as f:\n    w = csv.DictWriter(f, fieldnames=[\"name\", \"age\"])\n    w.writeheader()\n    w.writerow({\"name\": \"Asha\", \"age\": 25})\n```\n\n### When to use what\nJSON for nested data and APIs; CSV for flat tables and spreadsheets; `pandas.read_csv` once the data is large or needs analysis.",
+   "keyPoints": [
+    "json.loads/dumps work on strings; load/dump on files",
+    "JSON keys are always strings",
+    "Use DictReader/DictWriter for header-based CSV",
+    "Open CSV files with newline=\"\" and an encoding",
+    "default= handles non-serialisable types"
+   ],
+   "pitfalls": [
+    "Splitting CSV lines manually on commas",
+    "Forgetting that CSV values are all strings",
+    "Trying to dump datetime or set without a converter"
+   ],
+   "examples": [
+    {
+     "title": "JSON and CSV with in-memory data",
+     "language": "python",
+     "code": "import csv\nimport io\nimport json\n\ndata = {\"name\": \"Asha\", \"skills\": [\"python\", \"sql\"], \"active\": True, \"boss\": None}\ntext = json.dumps(data, indent=2)\nprint(text)\nback = json.loads(text)\nprint(back[\"skills\"][0], back == data)\n\nraw = \"name,age\\nAsha,25\\nRavi,31\\n\"\nrows = list(csv.DictReader(io.StringIO(raw)))\nprint(rows)\nprint(sum(int(r[\"age\"]) for r in rows))\n\nout = io.StringIO()\nw = csv.DictWriter(out, fieldnames=[\"name\", \"city\"])\nw.writeheader()\nw.writerow({\"name\": \"Mia\", \"city\": \"Rome, Italy\"})\nprint(out.getvalue())",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does JSON map to Python types?",
+     "a": "object->dict, array->list, string->str, number->int/float, true/false->bool, null->None."
+    },
+    {
+     "q": "Why use csv.DictReader?",
+     "a": "It gives each row as a dict using the header, making code readable and independent of column order."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-datetime",
+   "title": "Dates and Times",
+   "level": "intermediate",
+   "summary": "Work with date, time, datetime, timedelta, formatting, parsing and time zones.",
+   "description": "The `datetime` module has four main classes:\n\n- `date(2025, 3, 14)` a calendar date.\n- `time(10, 30)` a time of day.\n- `datetime(2025, 3, 14, 10, 30)` both together.\n- `timedelta(days=7, hours=2)` a duration.\n\n### Arithmetic\n`datetime - datetime` gives a `timedelta`; `datetime + timedelta` gives a new `datetime`. Use `.total_seconds()`, `.days`.\n\n### Formatting and parsing\n- `dt.strftime(\"%Y-%m-%d %H:%M\")` object -> string.\n- `datetime.strptime(\"2025-03-14\", \"%Y-%m-%d\")` string -> object.\n- `dt.isoformat()` and `datetime.fromisoformat(...)` for ISO 8601, the best interchange format.\n\nCommon codes: `%Y` year, `%m` month, `%d` day, `%H` hour, `%M` minute, `%S` second, `%A` weekday name, `%b` month abbreviation.\n\n### Time zones\nA **naive** datetime has no timezone; an **aware** one does. Use `zoneinfo` (3.9+):\n```python\nfrom zoneinfo import ZoneInfo\ndatetime.now(ZoneInfo(\"Asia/Kolkata\"))\n```\nBest practice: store and compute in **UTC**, convert to local time only for display.\n\n### Others\n`time.time()` is the Unix timestamp; `time.sleep(1)` pauses; `calendar` module gives month layouts; `dateutil` (third party) parses messy date strings.",
+   "keyPoints": [
+    "timedelta represents a duration and supports arithmetic",
+    "strftime formats, strptime parses",
+    "Use ISO 8601 strings for storage and APIs",
+    "Prefer timezone-aware datetimes and store UTC",
+    "zoneinfo replaces pytz in modern Python"
+   ],
+   "pitfalls": [
+    "Mixing naive and aware datetimes (TypeError)",
+    "Using datetime.utcnow() which returns a naive object (deprecated)",
+    "Hard-coding date formats that differ per locale"
+   ],
+   "examples": [
+    {
+     "title": "Date arithmetic and formatting",
+     "language": "python",
+     "code": "from datetime import date, datetime, timedelta, timezone\n\nd = date(2025, 3, 14)\nprint(d.strftime(\"%A, %d %B %Y\"))\nprint(d + timedelta(days=30))\n\nstart = datetime(2025, 1, 1, 9, 30)\nend = datetime(2025, 1, 3, 17, 0)\ndiff = end - start\nprint(diff, diff.days, diff.total_seconds() / 3600)\n\nparsed = datetime.strptime(\"2025-12-25 18:45\", \"%Y-%m-%d %H:%M\")\nprint(parsed.isoformat())\nprint(datetime.fromisoformat(\"2025-12-25T18:45:00\") == parsed)\n\nutc = datetime(2025, 6, 1, 12, 0, tzinfo=timezone.utc)\nprint(utc.isoformat())\nprint((date(2025, 12, 31) - date(2025, 1, 1)).days)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between naive and aware datetimes?",
+     "a": "A naive datetime carries no timezone information; an aware one has tzinfo, so it represents an exact moment and can be converted safely."
+    },
+    {
+     "q": "How do you get the difference between two dates in days?",
+     "a": "Subtract them to get a timedelta and read its .days attribute."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-regex",
+   "title": "Regular Expressions",
+   "level": "intermediate",
+   "summary": "Search, match and extract text patterns with the re module.",
+   "description": "Regular expressions describe text patterns. The `re` module provides the engine.\n\n### Main functions\n- `re.search(p, s)` first match anywhere (returns a match object or `None`).\n- `re.match(p, s)` match only at the start; `re.fullmatch` the whole string.\n- `re.findall(p, s)` list of all matches (or groups).\n- `re.finditer(p, s)` iterator of match objects.\n- `re.sub(p, repl, s)` replace; `re.split(p, s)`.\n- `re.compile(p)` precompile a pattern you reuse.\n\n### Pattern cheat sheet\n| Token | Meaning |\n|---|---|\n| `.` | any char except newline |\n| `\\d \\w \\s` | digit, word char, space |\n| `^ $` | start, end |\n| `* + ?` | 0+, 1+, 0 or 1 |\n| `{n,m}` | between n and m |\n| `[abc]` `[^abc]` | set, negated set |\n| `( )` | capture group |\n| `(?P<name>...)` | named group |\n| `a|b` | alternation |\n\n### Tips\n- Use **raw strings** (`r\"\\d+\"`) so backslashes are not escape sequences.\n- Quantifiers are greedy; add `?` (`.*?`) for lazy matching.\n- Flags: `re.I` ignore case, `re.M` multiline, `re.S` dot matches newline, `re.X` verbose.\n- Do not parse HTML with regex; use BeautifulSoup or lxml instead.",
+   "keyPoints": [
+    "Use raw strings for patterns",
+    "search finds anywhere, match anchors at the start",
+    "Groups ( ) capture; named groups improve readability",
+    ".* is greedy, .*? is lazy",
+    "Compile patterns you reuse in loops"
+   ],
+   "pitfalls": [
+    "Forgetting that match() only checks the start",
+    "Greedy patterns swallowing too much",
+    "Using regex to parse nested HTML or JSON"
+   ],
+   "examples": [
+    {
+     "title": "Extracting data",
+     "language": "python",
+     "code": "import re\n\ntext = \"Contact: asha@example.com, ravi.k@work.org | Phone: 98765-43210 | Date: 2025-03-14\"\n\nemails = re.findall(r\"[\\w.]+@[\\w.]+\\.\\w+\", text)\nprint(emails)\n\nm = re.search(r\"(?P<y>\\d{4})-(?P<m>\\d{2})-(?P<d>\\d{2})\", text)\nprint(m.group(\"y\"), m.group(\"m\"), m.group(\"d\"), m.groupdict())\n\nprint(re.sub(r\"\\d\", \"#\", \"Order 123 and 45\"))\nprint(re.split(r\"[,;|]\\s*\", \"a, b;c|d\"))\nprint(re.findall(r\"<b>(.*?)</b>\", \"<b>one</b> and <b>two</b>\"))\nprint(bool(re.fullmatch(r\"\\d{5}-\\d{5}\", \"98765-43210\")))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between re.match and re.search?",
+     "a": "match only matches at the beginning of the string; search scans the string for the first match anywhere."
+    },
+    {
+     "q": "What are greedy and lazy quantifiers?",
+     "a": "Greedy ones (*, +) match as much as possible; adding ? makes them lazy, matching as little as possible."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-logging",
+   "title": "Logging",
+   "level": "intermediate",
+   "summary": "Replace print debugging with leveled, configurable logs using the logging module.",
+   "description": "`print()` is fine for scripts, but real applications need **logging**: severity levels, timestamps, destinations (console, files, remote services) and the ability to turn detail up or down without changing code.\n\n### Levels (low to high)\n`DEBUG` < `INFO` < `WARNING` (default threshold) < `ERROR` < `CRITICAL`.\n\n### Quick setup\n```python\nimport logging\n\nlogging.basicConfig(\n    level=logging.INFO,\n    format=\"%(asctime)s %(levelname)s %(name)s: %(message)s\",\n)\nlog = logging.getLogger(__name__)\nlog.info(\"started\")\nlog.error(\"failed\", exc_info=True)   # includes traceback\n```\n\n### Core concepts\n- **Logger**: what you call (`logging.getLogger(__name__)`), arranged in a dotted hierarchy.\n- **Handler**: where records go (`StreamHandler`, `FileHandler`, `RotatingFileHandler`).\n- **Formatter**: how records look.\n- **Filter**: which records pass.\n\n### Best practices\n- One logger per module with `__name__`.\n- Use lazy formatting: `log.info(\"user %s logged in\", name)`.\n- `log.exception(\"...\")` inside `except` logs the traceback at ERROR level.\n- Libraries should not configure logging; applications do.\n- Never log passwords, tokens or personal data.\n\nDjango and Flask both use this same module, so these skills transfer directly.",
+   "keyPoints": [
+    "Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL",
+    "Use logging.getLogger(__name__) per module",
+    "logging.exception() records the traceback",
+    "Handlers decide destination; formatters decide layout",
+    "Pass arguments with %s style instead of f-strings"
+   ],
+   "pitfalls": [
+    "Calling basicConfig in library code",
+    "Logging secrets or personal data",
+    "Expecting DEBUG messages without lowering the level"
+   ],
+   "examples": [
+    {
+     "title": "Logging to stdout",
+     "language": "python",
+     "code": "import logging\nimport sys\n\nlogging.basicConfig(\n    level=logging.DEBUG,\n    stream=sys.stdout,\n    format=\"%(levelname)s %(name)s: %(message)s\",\n)\nlog = logging.getLogger(\"shop\")\n\nlog.debug(\"loading cart\")\nlog.info(\"user %s added %d items\", \"asha\", 3)\nlog.warning(\"stock is low\")\ntry:\n    1 / 0\nexcept ZeroDivisionError as err:\n    log.error(\"calculation failed: %s\", err)\n# log.exception(\"...\") would also print the full traceback",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use logging instead of print?",
+     "a": "Logging has severity levels, timestamps, multiple destinations and runtime configuration, so you can control output without editing code."
+    },
+    {
+     "q": "What is the default logging level?",
+     "a": "WARNING: DEBUG and INFO messages are hidden until you configure a lower level."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-context-managers",
+   "title": "Context Managers and the with Statement",
+   "level": "intermediate",
+   "summary": "Guarantee setup and cleanup using with, __enter__/__exit__ and contextlib.",
+   "description": "A **context manager** wraps a block of code with setup and teardown that always happens, even if an exception is raised. You already use it with files:\n\n```python\nwith open(\"data.txt\") as f:\n    data = f.read()\n# file is closed here\n```\n\n### Where they are used\nFiles, locks (`with lock:`), database transactions, temporary directories, network connections, changing the working directory, suppressing exceptions, timing blocks.\n\n### Writing one: class based\n```python\nclass Timer:\n    def __enter__(self):\n        self.start = time.perf_counter()\n        return self\n    def __exit__(self, exc_type, exc, tb):\n        self.elapsed = time.perf_counter() - self.start\n        return False   # do not swallow exceptions\n```\n`__exit__` receives the exception info; returning `True` suppresses the exception.\n\n### Writing one: generator based\n`contextlib.contextmanager` is shorter:\n```python\nfrom contextlib import contextmanager\n\n@contextmanager\ndef tag(name):\n    print(f\"<{name}>\")\n    try:\n        yield\n    finally:\n        print(f\"</{name}>\")\n```\n\n### contextlib extras\n`suppress(FileNotFoundError)`, `redirect_stdout`, `closing`, `ExitStack` (manage a dynamic number of contexts), `nullcontext`.\n\nMultiple managers can share a statement: `with open(a) as f, open(b, \"w\") as g:`.\n\n### Why it matters\nWithout `with` you must remember `try/finally` everywhere, and forgetting it leaks file handles, leaves locks held forever or keeps database transactions open. A context manager moves that discipline into one reusable object, so each caller just writes `with`. In web code you will see this for database sessions, `requests.Session()`, Selenium or Playwright browsers, and transaction blocks such as Django's `transaction.atomic()`.",
+   "keyPoints": [
+    "with guarantees cleanup even when errors occur",
+    "__enter__ sets up; __exit__ tears down",
+    "@contextmanager turns a generator into a context manager",
+    "Returning True from __exit__ swallows the exception",
+    "contextlib.suppress ignores specific exceptions"
+   ],
+   "pitfalls": [
+    "Forgetting try/finally inside a @contextmanager generator",
+    "Accidentally swallowing exceptions by returning True",
+    "Using the resource after the with block has closed it"
+   ],
+   "examples": [
+    {
+     "title": "Two ways to write one",
+     "language": "python",
+     "code": "from contextlib import contextmanager, suppress\n\nclass Managed:\n    def __enter__(self):\n        print(\"setup\")\n        return self\n    def __exit__(self, exc_type, exc, tb):\n        print(\"cleanup\", exc_type.__name__ if exc_type else None)\n        return False\n\n@contextmanager\ndef tag(name):\n    print(f\"<{name}>\")\n    try:\n        yield\n    finally:\n        print(f\"</{name}>\")\n\nwith Managed():\n    print(\"working\")\n\nwith tag(\"section\"):\n    print(\"inside\")\n\ntry:\n    with Managed():\n        raise ValueError(\"boom\")\nexcept ValueError:\n    print(\"caught outside\")\n\nwith suppress(KeyError):\n    {}[\"missing\"]\nprint(\"done\")",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does with do?",
+     "a": "It calls __enter__ on the object before the block and __exit__ after it, even if an exception happens, so cleanup is guaranteed."
+    },
+    {
+     "q": "How can you create a context manager quickly?",
+     "a": "Use the @contextlib.contextmanager decorator on a generator function with a single yield, wrapping the yield in try/finally."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

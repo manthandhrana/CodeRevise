@@ -1,0 +1,239 @@
+{
+ "id": "py-functions",
+ "title": "Functions and Functional Tools",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-functions-args",
+   "title": "Functions, *args and **kwargs",
+   "level": "beginner",
+   "summary": "Define reusable functions with positional, keyword, default, variable-length and keyword-only parameters.",
+   "description": "A function groups reusable logic. Define it with `def`, call it by name, and send values back with `return` (a function without `return` gives `None`).\n\n### Parameter kinds\n```python\ndef f(a, b=10, *args, c, d=1, **kwargs):\n    ...\n```\n- `a` positional, `b=10` has a default.\n- `*args` collects extra positional arguments into a **tuple**.\n- `c`, `d` after `*args` are **keyword-only**.\n- `**kwargs` collects extra keyword arguments into a **dict**.\n- A bare `/` and `*` in the signature mark positional-only and keyword-only boundaries.\n\n### Unpacking when calling\n`f(*my_list, **my_dict)` spreads a sequence and a dict into arguments.\n\n### Docstrings\nThe first string in a function is its docstring, shown by `help(func)`. Write one line saying what it does.\n\n### Return multiple values\n`return a, b` returns a tuple which the caller can unpack: `lo, hi = min_max(data)`.\n\n### Mutable default trap\nDefaults are evaluated **once**, when the function is defined. `def add(x, bag=[])` shares one list across calls. Use `None` and create the list inside:\n\n```python\ndef add(x, bag=None):\n    if bag is None:\n        bag = []\n    bag.append(x)\n    return bag\n```\n\nFunctions are first-class objects: you can store them in variables, pass them to other functions and return them.",
+   "keyPoints": [
+    "*args is a tuple, **kwargs is a dict",
+    "Parameters after *args are keyword-only",
+    "Default values are evaluated once at definition time",
+    "return a, b returns a tuple",
+    "Functions are first-class objects"
+   ],
+   "pitfalls": [
+    "Using a list or dict as a default argument",
+    "Forgetting return and getting None",
+    "Modifying a mutable argument unexpectedly"
+   ],
+   "examples": [
+    {
+     "title": "Argument kinds",
+     "language": "python",
+     "code": "def describe(name, *hobbies, greeting=\"Hi\", **extra):\n    print(f\"{greeting}, {name}!\")\n    print(\"hobbies:\", hobbies)\n    print(\"extra:\", extra)\n\ndescribe(\"Asha\", \"chess\", \"music\", greeting=\"Hello\", city=\"Pune\", age=25)\n\ndef min_max(values):\n    return min(values), max(values)\n\nlo, hi = min_max([4, 9, 1, 7])\nprint(lo, hi)\n\ndef bad(x, bag=[]):\n    bag.append(x)\n    return bag\n\nprint(bad(1), bad(2))   # shared list!\n\ndef good(x, bag=None):\n    bag = [] if bag is None else bag\n    bag.append(x)\n    return bag\n\nprint(good(1), good(2))\nargs = [3, 4]\nprint(pow(*args))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the mutable default argument problem?",
+     "a": "Defaults are created once at function definition, so a mutable default is shared between calls. Use None and build the object inside the function."
+    },
+    {
+     "q": "What do *args and **kwargs do?",
+     "a": "*args gathers extra positional arguments into a tuple and **kwargs gathers extra keyword arguments into a dict."
+    },
+    {
+     "q": "Does Python pass by value or by reference?",
+     "a": "By object reference (assignment): the function gets a reference to the same object, so mutating a mutable argument affects the caller, but rebinding the name does not."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-lambda-scope-closures",
+   "title": "Lambda, Scope and Closures",
+   "level": "intermediate",
+   "summary": "Anonymous functions, the LEGB scope rule, global/nonlocal and closures that remember variables.",
+   "description": "### Lambda\nA `lambda` is a small anonymous function limited to a single expression: `square = lambda x: x * x`. It is mostly used inline as a `key=` for `sorted`, `min`, `max` or with `map`/`filter`. For anything bigger, use `def`.\n\n### Scope: LEGB\nPython looks up names in this order:\n1. **L**ocal (inside the function)\n2. **E**nclosing (outer functions)\n3. **G**lobal (module level)\n4. **B**uilt-in (`len`, `print`...)\n\nAssigning to a name inside a function makes it local. To rebind a module-level name use `global x`; to rebind a variable of an enclosing function use `nonlocal x`. Prefer returning values over `global`.\n\n### Closures\nA **closure** is an inner function that remembers variables from the enclosing function even after the outer function has returned.\n\n```python\ndef make_counter():\n    count = 0\n    def inc():\n        nonlocal count\n        count += 1\n        return count\n    return inc\n```\n\nClosures are how decorators and callback factories work.\n\n### Late binding gotcha\nClosures capture the *variable*, not its value at that moment. In `[lambda: i for i in range(3)]` every lambda sees the final `i`. Fix with a default argument: `lambda i=i: i`.",
+   "keyPoints": [
+    "lambda = single-expression anonymous function",
+    "Scope lookup order is Local, Enclosing, Global, Built-in",
+    "global and nonlocal rebind outer names",
+    "Closures keep access to enclosing variables",
+    "Closures capture variables late, not values"
+   ],
+   "pitfalls": [
+    "Assigning to a global inside a function without global (creates a local)",
+    "Late binding in lambdas created in a loop",
+    "Overusing multi-line lambdas"
+   ],
+   "examples": [
+    {
+     "title": "Closures and lambdas",
+     "language": "python",
+     "code": "def make_counter(start=0):\n    count = start\n    def inc():\n        nonlocal count\n        count += 1\n        return count\n    return inc\n\nc1, c2 = make_counter(), make_counter(100)\nprint(c1(), c1(), c2())\n\ndef multiplier(n):\n    return lambda x: x * n\n\ndouble, triple = multiplier(2), multiplier(3)\nprint(double(5), triple(5))\n\nwrong = [lambda: i for i in range(3)]\nright = [lambda i=i: i for i in range(3)]\nprint([f() for f in wrong], [f() for f in right])\n\nwords = [\"banana\", \"kiwi\", \"apple\"]\nprint(sorted(words, key=lambda w: w[-1]))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a closure?",
+     "a": "A function that retains access to variables from its enclosing scope after that scope has finished executing."
+    },
+    {
+     "q": "What is the difference between global and nonlocal?",
+     "a": "global binds a name to the module scope; nonlocal binds it to the nearest enclosing function scope."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-decorators",
+   "title": "Decorators",
+   "level": "intermediate",
+   "summary": "Wrap functions to add behaviour such as logging, timing, caching or access control.",
+   "description": "A **decorator** is a function that takes a function and returns a (usually wrapped) function. The `@name` syntax above a `def` is shorthand for `func = name(func)`. Decorators let you add cross-cutting behaviour without touching the function body.\n\n### Basic template\n```python\nimport functools\n\ndef timer(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        # before\n        result = func(*args, **kwargs)\n        # after\n        return result\n    return wrapper\n```\n`functools.wraps` copies the original name and docstring onto the wrapper; always use it.\n\n### Decorators with arguments\nAdd one more layer: a function that takes arguments and returns the real decorator. `@retry(times=3)` is `retry(times=3)(func)`.\n\n### Class-based and built-in decorators\nClasses can be decorators by implementing `__call__`. Built-ins you will meet: `@staticmethod`, `@classmethod`, `@property`, `@functools.lru_cache`, `@dataclass`.\n\n### Real-world uses\n- Flask routes: `@app.route(\"/\")`\n- Django: `@login_required`\n- pytest: `@pytest.fixture`, `@pytest.mark.parametrize`\n- Logging, timing, retries, caching, authorization, rate limiting.\n\n### Stacking\nDecorators apply bottom-up: the one closest to the function wraps first.",
+   "keyPoints": [
+    "@dec is sugar for func = dec(func)",
+    "Always use functools.wraps in wrappers",
+    "Accept *args, **kwargs so the wrapper fits any function",
+    "Decorators with arguments need an extra nesting level",
+    "Frameworks such as Flask and Django rely on decorators heavily"
+   ],
+   "pitfalls": [
+    "Forgetting wraps, which loses __name__ and docstrings",
+    "Forgetting to return the wrapped result",
+    "Mixing up the order of stacked decorators"
+   ],
+   "examples": [
+    {
+     "title": "Timer and retry decorators",
+     "language": "python",
+     "code": "import functools\nimport time\n\ndef timer(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.perf_counter()\n        result = func(*args, **kwargs)\n        elapsed = time.perf_counter() - start\n        print(f\"{func.__name__} finished ({'fast' if elapsed < 1 else 'slow'})\")\n        return result\n    return wrapper\n\ndef repeat(times):\n    def decorator(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            result = None\n            for _ in range(times):\n                result = func(*args, **kwargs)\n            return result\n        return wrapper\n    return decorator\n\n@timer\ndef add(a, b):\n    \"\"\"Add two numbers.\"\"\"\n    return a + b\n\n@repeat(3)\ndef hello():\n    print(\"hello\")\n\nprint(add(2, 3), add.__name__, add.__doc__)\nhello()",
+     "explanation": "The decorators wrap the function without changing its code."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a decorator?",
+     "a": "A callable that takes a function and returns a new function (or callable) that extends its behaviour; @dec above def is shorthand for func = dec(func)."
+    },
+    {
+     "q": "Why use functools.wraps?",
+     "a": "It preserves the original function's metadata (__name__, __doc__, signature), which matters for debugging, documentation and frameworks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-generators-iterators",
+   "title": "Iterators and Generators",
+   "level": "intermediate",
+   "summary": "Lazy sequences with the iterator protocol, yield, generator expressions and yield from.",
+   "description": "### The iterator protocol\nAn **iterable** has `__iter__()` which returns an **iterator**; an iterator has `__next__()` that returns the next value and raises `StopIteration` when finished. A `for` loop uses exactly this. Lists, strings, dicts, files and generators are all iterable. An iterator is single-use.\n\n### Generators\nA **generator function** uses `yield` instead of `return`. Calling it does not run the body; it returns a generator object. Each `next()` runs until the next `yield`, then pauses with all local state preserved.\n\n```python\ndef countdown(n):\n    while n > 0:\n        yield n\n        n -= 1\n```\n\n### Why generators?\n- **Memory**: process a 10 GB file line by line, or an infinite stream, with constant memory.\n- **Laziness**: compute only what is consumed.\n- **Pipelines**: chain generators like Unix pipes.\n\n### Related tools\n- Generator expression: `(x * x for x in data)`.\n- `yield from other` delegates to another iterable.\n- `send()` lets the caller push values into a generator (basis of old-style coroutines).\n- `itertools.islice` takes a slice of an infinite generator.\n\n### One-shot nature\nAfter a generator is exhausted it yields nothing. If you need to loop twice, create it again or store the values in a list.",
+   "keyPoints": [
+    "yield pauses a function and keeps its state",
+    "Generators are lazy and memory efficient",
+    "Iterators raise StopIteration when exhausted",
+    "yield from delegates to a sub-iterable",
+    "A generator can be consumed only once"
+   ],
+   "pitfalls": [
+    "Iterating a generator twice and getting nothing the second time",
+    "Converting an infinite generator to list()",
+    "Using return value inside generator expecting it as an item"
+   ],
+   "examples": [
+    {
+     "title": "Generator pipeline",
+     "language": "python",
+     "code": "def fib():\n    a, b = 0, 1\n    while True:\n        yield a\n        a, b = b, a + b\n\ndef take(n, it):\n    for _, v in zip(range(n), it):\n        yield v\n\ndef evens(it):\n    for v in it:\n        if v % 2 == 0:\n            yield v\n\nprint(list(take(8, fib())))\nprint(list(take(5, evens(fib()))))\n\ng = (x * x for x in range(3))\nprint(next(g), next(g), next(g))\ntry:\n    next(g)\nexcept StopIteration:\n    print(\"exhausted\")\n\ndef chain(*its):\n    for it in its:\n        yield from it\nprint(list(chain(\"ab\", [1, 2])))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between iterable and iterator?",
+     "a": "An iterable can produce an iterator via iter(); an iterator produces values via next() and remembers its position."
+    },
+    {
+     "q": "What is the benefit of generators?",
+     "a": "Lazy evaluation: values are produced on demand, so memory use stays small and infinite sequences become possible."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-functools",
+   "title": "functools: partial, lru_cache, reduce",
+   "level": "intermediate",
+   "summary": "Higher-order helpers: caching, partial application, reduce, wraps and single dispatch.",
+   "description": "`functools` contains tools for working with functions as values.\n\n### lru_cache and cache\n`@lru_cache(maxsize=128)` memoises results keyed by the arguments, turning exponential recursion such as Fibonacci into linear time. `@cache` (3.9+) is an unbounded version. Arguments must be hashable. Use `func.cache_info()` to see hits and misses, and `cache_clear()` to reset.\n\n### partial\n`partial(func, *args, **kwargs)` creates a new function with some arguments pre-filled:\n```python\nfrom functools import partial\nint_from_binary = partial(int, base=2)\nint_from_binary(\"1010\")   # 10\n```\n\n### reduce\n`reduce(func, iterable, initial)` folds a sequence into one value, for example a running product. For sums use `sum()`, for min/max use their built-ins; reach for `reduce` only when nothing simpler fits.\n\n### wraps\n`@wraps(func)` keeps metadata when building decorators.\n\n### singledispatch\n`@singledispatch` gives function overloading by the type of the first argument. Register implementations with `@func.register(int)`.\n\n### cached_property\n`@cached_property` computes an attribute once per instance and then stores it. Great for expensive derived values.\n\n### total_ordering\n`@total_ordering` generates the missing comparison methods from `__eq__` and one of `__lt__`, `__le__`, `__gt__`, `__ge__`.",
+   "keyPoints": [
+    "lru_cache memoises pure functions with hashable arguments",
+    "partial pre-fills arguments to make new callables",
+    "reduce folds an iterable into a single value",
+    "cached_property computes a value once per instance",
+    "singledispatch overloads on the type of the first argument"
+   ],
+   "pitfalls": [
+    "Caching functions with side effects or unhashable arguments",
+    "Unbounded cache growth with @cache in long-running programs",
+    "Using reduce when sum/max would be clearer"
+   ],
+   "examples": [
+    {
+     "title": "Cache, partial and reduce",
+     "language": "python",
+     "code": "from functools import lru_cache, partial, reduce, singledispatch\n\n@lru_cache(maxsize=None)\ndef fib(n):\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nprint(fib(80))\nprint(fib.cache_info().hits > 0)\n\nto_int = partial(int, base=2)\nprint(to_int(\"1010\"))\n\nprint(reduce(lambda acc, x: acc * x, [1, 2, 3, 4, 5], 1))\n\n@singledispatch\ndef show(x):\n    return f\"object: {x}\"\n\n@show.register(int)\ndef _(x):\n    return f\"int: {x}\"\n\n@show.register(list)\ndef _(x):\n    return f\"list of {len(x)}\"\n\nprint(show(5), show([1, 2]), show(\"s\"))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does lru_cache do?",
+     "a": "It stores results of previous calls keyed by arguments and returns the cached value on repeats, evicting the least recently used when maxsize is reached."
+    },
+    {
+     "q": "What is functools.partial for?",
+     "a": "To freeze some arguments of a function, producing a new function with a simpler signature."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-type-hints",
+   "title": "Type Hints",
+   "level": "intermediate",
+   "summary": "Annotate parameters and return values so tools and readers understand your code.",
+   "description": "Type hints are optional annotations that describe expected types. Python **does not enforce them at runtime**; tools like **mypy**, **pyright** and editors use them to catch bugs early and to power autocomplete. Frameworks such as FastAPI and Pydantic also read them at runtime.\n\n### Basics\n```python\ndef greet(name: str, times: int = 1) -> str:\n    return (name + \" \") * times\n\nages: dict[str, int] = {\"Ana\": 30}\n```\n\n### Common typing constructs\n- Built-in generics (3.9+): `list[int]`, `dict[str, float]`, `tuple[int, ...]`, `set[str]`.\n- Union: `int | str` (3.10+) or `Union[int, str]`.\n- Optional: `str | None` or `Optional[str]`.\n- `Any`, `Callable[[int], str]`, `Iterable[str]`, `Sequence[int]`.\n- `Literal[\"r\", \"w\"]`, `Final`, `TypedDict`, `NamedTuple`.\n- `TypeVar` and `Generic` for generic classes and functions.\n- `Protocol` for structural typing (\"duck typing\" with checks).\n\n### Using a type checker\n```bash\npip install mypy\nmypy app.py\n```\n\n### Guidance\nAnnotate public function signatures first, prefer abstract types in parameters (`Iterable`) and concrete ones in returns (`list`). Start gradual: you do not need to type everything.",
+   "keyPoints": [
+    "Hints are not enforced at runtime",
+    "mypy or pyright perform the static checks",
+    "Use list[int], dict[str, int], X | None in modern Python",
+    "Protocol gives structural typing",
+    "Frameworks like FastAPI and Pydantic read hints at runtime"
+   ],
+   "pitfalls": [
+    "Believing hints validate input at runtime",
+    "Using Any everywhere, which disables checking",
+    "Annotating mutable defaults incorrectly"
+   ],
+   "examples": [
+    {
+     "title": "Annotated code",
+     "language": "python",
+     "code": "from typing import Callable, Iterable, Protocol, TypeVar\n\nT = TypeVar(\"T\")\n\ndef first(items: Iterable[T], default: T | None = None) -> T | None:\n    for item in items:\n        return item\n    return default\n\ndef apply(fn: Callable[[int], int], values: list[int]) -> list[int]:\n    return [fn(v) for v in values]\n\nclass Speaker(Protocol):\n    def speak(self) -> str: ...\n\nclass Dog:\n    def speak(self) -> str:\n        return \"Woof\"\n\ndef talk(s: Speaker) -> None:\n    print(s.speak())\n\nprint(first([5, 6]), first([], \"empty\"))\nprint(apply(lambda n: n * 2, [1, 2, 3]))\ntalk(Dog())\nprint(first.__annotations__ is not None)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Are type hints enforced?",
+     "a": "Not by the interpreter. Static checkers such as mypy enforce them; libraries like Pydantic may use them for runtime validation."
+    },
+    {
+     "q": "What is Protocol?",
+     "a": "A way to define structural interfaces: any class with the required methods satisfies it without inheriting."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

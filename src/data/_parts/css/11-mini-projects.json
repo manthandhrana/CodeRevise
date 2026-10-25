@@ -1,0 +1,378 @@
+{
+ "id": "css-mini-projects",
+ "title": "Mini Projects",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-project-button-shake",
+   "title": "Project: Shaking Button",
+   "level": "beginner",
+   "summary": "A button that shakes with a keyframe animation when hovered.",
+   "description": "**Goal**: a call-to-action button that wiggles on hover to attract attention.\n\n### Concepts used\n- Basic button styling (`padding`, `border`, `background: transparent`).\n- A **pseudo-class** (`:hover`) to trigger the effect.\n- A short **@keyframes** animation using the individual `rotate` property.\n- `animation-iteration-count` - the shake runs once per hover.\n\n### How it works\n1. Style the button with a purple border and text.\n2. On `:hover`, change the color and attach `animation: shaking .2s linear`.\n3. The keyframes rotate the element to `20deg`, `-20deg` and back to `20deg`. Because the animation is short and plays once, it looks like a quick shake.\n\n### Improvements you can try\n- Use `animation-iteration-count: 2` for a stronger shake.\n- Use `translateX` instead of `rotate` for a horizontal \"no\" shake.\n- Wrap the hover animation in `@media (hover: hover)` and `prefers-reduced-motion`.\n- Add `transform-origin: bottom center` to make it swing like a bell.\n\n### Why not transition?\nA transition only goes from A to B. A shake needs several back-and-forth steps, so keyframes are the right tool.",
+   "keyPoints": [
+    "Keyframes create multi-step motion that transitions cannot",
+    "rotate / translate are cheap, compositor friendly properties",
+    "Trigger with :hover; the animation runs once per hover",
+    "Short durations (0.2-0.5s) feel like a shake",
+    "Respect reduced-motion preferences"
+   ],
+   "pitfalls": [
+    "Animating on hover only, so touch users never see it",
+    "Long infinite shaking that distracts and hurts accessibility"
+   ],
+   "examples": [
+    {
+     "title": "Shake me",
+     "language": "web",
+     "html": "<div class=\"stage\"><button type=\"button\">shake me</button></div>",
+     "css": ".stage { height: 140px; display: grid; place-items: center; background: #191825; }\nbutton { padding: 12px 36px; border: 2px solid #865dff; background: transparent; color: #865dff; font: bold 20px sans-serif; text-transform: capitalize; cursor: pointer; }\nbutton:hover { border-color: #d80032; color: #d80032; animation: shaking .2s linear; }\n@keyframes shaking {\n  0% { rotate: 20deg; }\n  50% { rotate: -20deg; }\n  100% { rotate: 20deg; }\n}\n@media (prefers-reduced-motion: reduce) { button:hover { animation: none; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How would you make a button shake on hover?",
+     "a": "Define @keyframes alternating rotate or translateX values and apply animation: shaking .2s linear on :hover."
+    },
+    {
+     "q": "Why use keyframes instead of a transition here?",
+     "a": "A transition only interpolates between two states; a shake needs multiple back-and-forth steps."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/buttonshake/index.html"
+  },
+  {
+   "id": "css-project-neon-loader",
+   "title": "Project: Neon Circle Loader",
+   "level": "intermediate",
+   "summary": "A glowing rotating ring loader made with ::before, ::after and stacked box-shadows.",
+   "description": "**Goal**: a neon spinner using a single HTML element.\n\n### Concepts used\n- **aspect-ratio** and **border-radius: 50%** to create circles.\n- **::before** to cut a hole in the middle (a dark circle on top of a purple circle).\n- **::after** for the glowing \"head\" using multiple `box-shadow` layers.\n- **position: relative/absolute** to place pseudo-elements.\n- **@keyframes** with `rotate: 360deg` and `animation-direction: reverse`.\n\n### Step by step\n1. `.loader` is a purple circle that rotates infinitely and linearly.\n2. `::before` is a slightly smaller circle painted with the page background color. It looks like the loader is a ring.\n3. `::after` is a small circle at the top of the ring with five growing shadows, producing the neon glow.\n4. Since the whole element rotates, the glowing dot travels around the ring.\n\n### Tips\n- Use `currentColor` or a custom property for the neon color to theme it easily.\n- Keep the ::before color equal to the surface behind the loader. For a transparent ring use a border + conic-gradient + mask instead.\n- Use `animation-timing-function: linear` for continuous spinners.",
+   "keyPoints": [
+    "One element + two pseudo-elements build the whole loader",
+    "Layered box-shadow creates the neon glow",
+    "Rotate the parent so children move along the ring",
+    "linear + infinite is right for spinners",
+    "Use a custom property to recolor the glow"
+   ],
+   "pitfalls": [
+    "Inner circle color not matching the background (ring looks wrong)",
+    "Forgetting content: \"\" on pseudo-elements"
+   ],
+   "examples": [
+    {
+     "title": "Neon loader",
+     "language": "web",
+     "html": "<div class=\"stage\"><div class=\"loader\"></div></div>",
+     "css": ".stage { height: 220px; display: grid; place-items: center; background: #191825; }\n.loader { --c: #865dff; width: 120px; aspect-ratio: 1; border-radius: 50%; background: var(--c); position: relative; animation: circleloader 2s linear infinite reverse; }\n.loader::before { content: \"\"; position: absolute; top: 0; left: 0; width: 100px; aspect-ratio: 1; border-radius: 50%; background: #191825; }\n.loader::after { content: \"\"; position: absolute; top: -14px; left: 50px; width: 30px; aspect-ratio: 1; border-radius: 50%; background: var(--c);\n  box-shadow: 0 0 6px var(--c), 0 0 9px var(--c), 0 0 12px var(--c), 0 0 15px var(--c), 0 0 18px var(--c); }\n@keyframes circleloader { 100% { rotate: 360deg; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you create a glow effect in CSS?",
+     "a": "Stack several box-shadows (or text-shadows) of the same color with increasing blur radii."
+    },
+    {
+     "q": "How is the ring made from one element?",
+     "a": "The element is a filled circle; ::before places a smaller circle in the background color on top, leaving a ring visible."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/neonloader/index.html"
+  },
+  {
+   "id": "css-project-newtons-cradle",
+   "title": "Project: Newton's Cradle",
+   "level": "intermediate",
+   "summary": "Pendulum balls swinging with transform-origin, nth-child selectors and delayed keyframes.",
+   "description": "**Goal**: recreate the desk toy where the outer balls swing alternately.\n\n### Concepts used\n- **Flexbox** (`display: flex; justify-content: center; gap`) to place five strings.\n- **::before** as the ball at the end of each string.\n- **:first-child / :last-child** to animate only the two outer balls.\n- **transform-origin: top** so a string pivots from its top end.\n- **@keyframes** + **animation-delay** so the right ball swings when the left one stops.\n\n### Structure\n```html\n<div class=\"cradle\">\n  <div></div><div></div><div></div><div></div><div></div>\n</div>\n```\nEach `div` is a thin vertical string; its `::before` is the ball placed near the bottom (`top: 90%`).\n\n### Timing\nBoth animations last 2s. The left one swings from 0 to 30deg at 25%, back at 50%, and rests until 100%. The right one uses the same time but starts with a **1s delay**, so the swings alternate.\n\n### Make it better\n- Add a frame (top bar) using a border-top on the container (as in the source).\n- Use `ease-out` going up and `ease-in` coming down for more realistic motion.\n- Use custom properties for string length and ball size.",
+   "keyPoints": [
+    "transform-origin sets the pivot at the top of the string",
+    ":first-child and :last-child target the outer balls",
+    "animation-delay offsets the two swings by half a cycle",
+    "Pseudo-elements draw the balls (no extra HTML)",
+    "Keyframes rest at 0deg for the second half to make a pause"
+   ],
+   "pitfalls": [
+    "Pivoting around the center (default origin) makes the string rotate in place",
+    "Using margin hacks for ball position instead of the string length"
+   ],
+   "examples": [
+    {
+     "title": "Newton's cradle",
+     "language": "web",
+     "html": "<div class=\"stage\"><div class=\"cradle\"><div></div><div></div><div></div><div></div><div></div></div></div>",
+     "css": ".stage { height: 250px; display: grid; place-items: start center; background: #191825; padding-top: 20px; }\n.cradle { width: 260px; border-top: 8px solid #865dff; border-radius: 3px; display: flex; justify-content: center; gap: 18px; }\n.cradle div { width: 3px; height: 130px; background: #865dff; position: relative; transform-origin: top center; }\n.cradle div::before { content: \"\"; position: absolute; left: -12px; top: 100px; width: 27px; aspect-ratio: 1; border-radius: 50%; background: #865dff; }\n.cradle div:first-child { animation: left-swing 2s linear infinite; }\n.cradle div:last-child { animation: right-swing 2s linear 1s infinite; }\n@keyframes left-swing { 0% { rotate: 0deg; } 25% { rotate: 30deg; } 50% { rotate: 0deg; } 100% { rotate: 0deg; } }\n@keyframes right-swing { 0% { rotate: 0deg; } 25% { rotate: -30deg; } 50% { rotate: 0deg; } 100% { rotate: 0deg; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is transform-origin important in a pendulum animation?",
+     "a": "The default origin is the center, which would spin the string around its middle; setting it to the top makes it swing from the pivot point."
+    },
+    {
+     "q": "How do you offset two animations that use the same keyframes?",
+     "a": "Give one of them an animation-delay (e.g. half of the duration)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/newton-cradel/index.html"
+  },
+  {
+   "id": "css-project-text-effects",
+   "title": "Project: Text Reveal and Floating Text",
+   "level": "intermediate",
+   "summary": "Two text effects: a typewriter-like reveal using ::before and a swaying floating heading.",
+   "description": "Two small projects that turn plain headings into animated text.\n\n### 1. Text reveal\n**Idea**: place a copy of the text on top of the original using `::before` with `content: \"SUBSCRIBE...\"`. The copy has a different color, `overflow: hidden` and a right border (the caret). Animate its **width** from 0 to 100% so the colored text appears to be typed or revealed.\n\nKey lines:\n```css\nh1 { position: relative; }\nh1::before {\n  content: \"SUBSCRIBE...\";\n  position: absolute; top: 0; left: 0;\n  overflow: hidden; border-right: 2px solid #e9b824;\n  animation: textreveal 2s linear infinite;\n}\n@keyframes textreveal { 0% { width: 0; } 50% { width: 100%; } 100% { width: 0; } }\n```\n\n### 2. Floating text\nA heading with a soft **text-shadow** that rocks back and forth:\n\n```css\nh1 { text-shadow: -3px 10px 10px rgba(249,141,141,.2);\n     animation: textfloating 1s linear infinite alternate; }\n@keyframes textfloating { 0% { rotate: 15deg; } 50% { rotate: 0deg; } 100% { rotate: -15deg; } }\n```\n\n### Concepts used\nPseudo-elements, `overflow: hidden`, `position`, keyframes, `alternate` direction, text-shadow.\n\n### Notes\nAnimating `width` triggers layout; it is fine for one headline. For many elements use `clip-path: inset(0 100% 0 0)` -> `inset(0)` instead.",
+   "keyPoints": [
+    "::before duplicates text with content: \"...\"",
+    "overflow: hidden + animated width reveals text",
+    "alternate direction makes back-and-forth motion",
+    "text-shadow adds depth to floating text",
+    "clip-path is a lighter alternative to width animation"
+   ],
+   "pitfalls": [
+    "Duplicated text in content is not accessible - keep the real text in HTML",
+    "Width animation on long paragraphs causes layout work"
+   ],
+   "examples": [
+    {
+     "title": "Text reveal",
+     "language": "web",
+     "html": "<div class=\"stage\"><h1 class=\"reveal\">SUBSCRIBE...</h1></div>",
+     "css": ".stage { height: 130px; display: grid; place-items: center; background: #191825; }\n.reveal { margin: 0; position: relative; color: #fff; font: bold 44px sans-serif; text-shadow: -1px 2px 3px rgba(236,247,76,.2); }\n.reveal::before { content: \"SUBSCRIBE...\"; position: absolute; top: 0; left: 0; width: 100%; color: #e9b824; border-right: 2px solid #e9b824; overflow: hidden; white-space: nowrap; animation: textreveal 2.5s linear infinite; }\n@keyframes textreveal { 0% { width: 0; } 50% { width: 100%; } 100% { width: 0; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Floating text",
+     "language": "web",
+     "html": "<div class=\"stage\"><h1 class=\"float\">Css<br>Revise</h1></div>",
+     "css": ".stage { height: 170px; display: grid; place-items: center; background: #191825; }\n.float { margin: 0; color: #865dff; text-align: center; text-transform: uppercase; font: 900 38px sans-serif; text-shadow: -3px 10px 10px rgba(249,141,141,.25); animation: textfloating 1s linear infinite alternate; }\n@keyframes textfloating { 0% { rotate: 15deg; } 50% { rotate: 0deg; } 100% { rotate: -15deg; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How can you create a typewriter-like reveal effect?",
+     "a": "Overlay text using ::before, hide overflow, and animate its width (or clip-path) from 0 to 100% with a caret border."
+    },
+    {
+     "q": "Why is width animation not ideal for performance?",
+     "a": "It changes layout every frame; clip-path or transform animations avoid layout and are cheaper."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/textreveal/index.html, project/textfloat/index.html"
+  },
+  {
+   "id": "css-project-rain",
+   "title": "Project: Falling Rain Background",
+   "level": "intermediate",
+   "summary": "Create a rain effect by sliding a repeating background pattern with background-position.",
+   "description": "**Goal**: an endless rain overlay on top of a dark sky.\n\n### The trick\nInstead of animating hundreds of elements, **animate the background position** of one element that has a repeating raindrop pattern. The pattern tile repeats, so moving it diagonally looks like falling rain.\n\nIn the source course the pattern came from a PNG (`rain.png`). Here we make the tile with gradients so no image is needed.\n\n### Steps\n1. Give the container a dark gradient background (the sky).\n2. Add an overlay element with a **tile pattern**: several thin diagonal lines drawn with `linear-gradient` and `background-size`.\n3. Animate `background-position` from `0 0` to the tile size (so the loop is seamless).\n4. Use a short duration (0.4-0.8s) with `linear` and `infinite`.\n\n### Concepts used\n- Multiple backgrounds and gradient patterns.\n- `background-size` for tiles, `background-position` for motion.\n- `@keyframes` with seamless loops: end position = tile size.\n\n### Improvements\n- Add two overlay layers with different speeds and sizes for depth (parallax rain).\n- Add a flash with an animated `opacity` for lightning.\n- Reduce opacity or disable under `prefers-reduced-motion`.",
+   "keyPoints": [
+    "Move a repeating background instead of many elements",
+    "Tile size = animation distance for a seamless loop",
+    "Gradients can draw thin lines/patterns",
+    "Layer two speeds for depth",
+    "linear + infinite for continuous motion"
+   ],
+   "pitfalls": [
+    "Animation jumping because the end position is not a multiple of the tile size",
+    "Full-screen animated backgrounds hurting low-end devices"
+   ],
+   "examples": [
+    {
+     "title": "Rain overlay",
+     "language": "web",
+     "html": "<div class=\"sky\"><div class=\"rain\"></div><div class=\"rain far\"></div><p>Cozy rainy day</p></div>",
+     "css": ".sky { position: relative; height: 220px; overflow: hidden; background: linear-gradient(#1b2735, #090a0f); font-family: sans-serif; display: grid; place-items: center; color: #cbd5e1; }\n.rain { position: absolute; inset: 0; background-image: linear-gradient(100deg, transparent 47%, rgba(174,194,224,.7) 50%, transparent 53%); background-size: 40px 70px; animation: raining .5s linear infinite; }\n.far { background-size: 22px 40px; opacity: .45; animation-duration: .8s; }\n@keyframes raining { from { background-position: 0 0; } to { background-position: -10px 70px; } }\n.far { animation-name: rainingFar; }\n@keyframes rainingFar { from { background-position: 0 0; } to { background-position: -6px 40px; } }\n@media (prefers-reduced-motion: reduce) { .rain { animation: none; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How would you build a rain effect efficiently?",
+     "a": "Use one element with a repeating pattern background and animate background-position by exactly one tile; avoid animating hundreds of DOM nodes."
+    },
+    {
+     "q": "Why must the animation end position equal the tile size?",
+     "a": "So the last frame looks identical to the first, producing a seamless infinite loop."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/rain/index.html"
+  },
+  {
+   "id": "css-project-sun-moon",
+   "title": "Project: Sun, Moon and Changing Sky",
+   "level": "intermediate",
+   "summary": "An eclipse-like scene: a sky that changes color and a moon sliding across the sun.",
+   "description": "**Goal**: a square \"universe\" whose sky color cycles through day and night while a dark moon passes in front of the sun.\n\n### Concepts used\n- **aspect-ratio: 1** and viewport units for responsive squares.\n- **Flexbox centering** for the sun in the middle.\n- **overflow: hidden** + **border-radius** so the moon is clipped to the circular sun.\n- **::after** as the moon; **translate** and **scale** animated with keyframes.\n- **Two independent animations** on different elements (sky and moon) with the same duration.\n\n### How it works\n1. The sky (`.universe`) animates `background-color` between warm orange and black (0%, 25%, 50%, 75%, 100%).\n2. The sun is a circle with `position: relative; overflow: hidden`.\n3. `.sun::after` is a black circle the same size. It starts off to the right (`translate: 100%`), passes over the sun (`translate: 0`) and leaves to the left (`-100%`).\n4. At the midpoint the moon covers the sun (total eclipse) and gets a soft white glow via `box-shadow`.\n\n### Notes\n- The source code used native CSS nesting (`&::after`) inside `.sun`.\n- Because both animations share a duration (8s) and are infinite, they stay in sync.\n- Use the individual `translate`/`scale` properties for clean keyframes.",
+   "keyPoints": [
+    "overflow: hidden clips the moon inside the sun circle",
+    "Two animations with the same duration stay in sync",
+    "aspect-ratio keeps the elements square",
+    "translate and scale individual properties simplify keyframes",
+    "Nesting (&::after) keeps related rules together"
+   ],
+   "pitfalls": [
+    "Forgetting position: relative on the sun, so the moon positions against another ancestor",
+    "Using px sizes that break on small screens (use % or vw)"
+   ],
+   "examples": [
+    {
+     "title": "Eclipse scene",
+     "language": "web",
+     "html": "<div class=\"stage\"><div class=\"universe\"><div class=\"sun\"></div></div></div>",
+     "css": ".stage { display: grid; place-items: center; padding: 10px; background: #ffe4d6; }\n.universe { width: 220px; aspect-ratio: 1; background: #ffbb5c; display: flex; justify-content: center; align-items: center; border-radius: 12px; animation: skychange 8s ease infinite; }\n@keyframes skychange { 0% { background-color: #ffbb5cb5; } 25% { background-color: #fcbf49; } 50% { background-color: #000; } 75% { background-color: #fcbf49; } 100% { background-color: #ffbb5cb5; } }\n.sun { width: 100px; aspect-ratio: 1; background: #e25e3e; border-radius: 50%; position: relative; overflow: hidden; }\n.sun::after { content: \"\"; position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; border-radius: 50%; background: #000; animation: moonwalk 8s ease-in-out infinite; }\n@keyframes moonwalk {\n  0% { translate: 100%; scale: 1; }\n  50% { translate: 0%; scale: .95; box-shadow: rgba(255,255,255,.5) 0 48px 100px 0; }\n  100% { translate: -100%; scale: .9; }\n}",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does the moon stay inside the sun circle?",
+     "a": "The sun has overflow: hidden and border-radius: 50%, so anything that moves outside its circle is clipped."
+    },
+    {
+     "q": "Why use ::after for the moon?",
+     "a": "It adds a decorative element without extra HTML and can be positioned absolutely inside the relatively positioned sun."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/advanced_css/project.html"
+  },
+  {
+   "id": "css-project-parallax",
+   "title": "Project: Parallax Sections",
+   "level": "intermediate",
+   "summary": "Full-width sections with fixed backgrounds and gradient overlays for a parallax scroll.",
+   "description": "**Goal**: sections whose background stays still while the content scrolls over it.\n\n### Concepts used\n- **background-attachment: fixed** - the background is attached to the viewport, not the element.\n- **Layered backgrounds**: a semi-transparent overlay gradient above the image makes white text readable.\n- **Grid centering**: `display: grid; place-items: center;`.\n- **text-shadow** for legibility.\n\n### Structure\n```html\n<section><div><h2>Parallax</h2><p>...</p></div></section>\n<section class=\"section-2\">...</section>\n<section class=\"section-3\">...</section>\n```\n\n### CSS idea\n```css\nsection {\n  min-height: 100vh;\n  display: grid; place-items: center; text-align: center;\n  background-image: linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url(photo.jpg);\n  background-size: cover;\n  background-attachment: fixed;   /* the parallax part */\n}\n.section-2 { background-attachment: scroll; }  /* alternate for contrast */\n```\n\nAlternating `fixed` and `scroll` sections creates the \"reveal\" feeling of the original demo.\n\n### Caveats\n- iOS Safari ignores `fixed` on most versions; use a fallback (`scroll`) via `@supports` or a media query for touch devices.\n- Large fixed backgrounds force repaints while scrolling; keep images compressed.\n- For real depth, use 3D transforms with `perspective` on the scroller.",
+   "keyPoints": [
+    "background-attachment: fixed pins the background to the viewport",
+    "Overlay gradient improves text contrast",
+    "Alternate fixed and scroll sections for the effect",
+    "Fixed backgrounds are poorly supported on iOS",
+    "Use compressed images and a reduced-effect fallback"
+   ],
+   "pitfalls": [
+    "Text unreadable without an overlay",
+    "Relying on fixed attachment on mobile",
+    "Combining background-attachment: fixed with transforms on ancestors (breaks)"
+   ],
+   "examples": [
+    {
+     "title": "Parallax sections (scroll the preview)",
+     "language": "web",
+     "html": "<section class=\"s s1\"><div><h2>Parallax</h2><p>THE BEST CSS COURSE EVER</p></div></section>\n<section class=\"s s2\"><div><h2>Normal scroll</h2><p>This section scrolls with the page</p></div></section>\n<section class=\"s s3\"><div><h2>Fixed again</h2><p>Background stays put</p></div></section>",
+     "css": "* { margin: 0; box-sizing: border-box; }\n.s { min-height: 220px; display: grid; place-items: center; text-align: center; color: #fff; font-family: sans-serif; background-repeat: no-repeat; background-size: 100% 100%; }\nh2 { font-size: 34px; text-transform: uppercase; text-shadow: 2px 2px 5px #000; }\np { font-size: 15px; }\n.s1 { background-image: linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.25)), linear-gradient(160deg, #0f2027, #2c5364, #f7971e); background-attachment: fixed; }\n.s2 { background-image: linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.25)), linear-gradient(135deg, #614385, #516395); }\n.s3 { background-image: linear-gradient(rgba(0,0,0,.25), rgba(0,0,0,.25)), linear-gradient(160deg, #0f2027, #2c5364, #f7971e); background-attachment: fixed; }",
+     "js": "",
+     "code": "",
+     "explanation": "Scroll the preview: sections 1 and 3 share a fixed gradient that does not move with the content."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you make a simple parallax effect with CSS?",
+     "a": "Use background-attachment: fixed with a background-image so the image stays in place while the section scrolls."
+    },
+    {
+     "q": "What problem exists with background-attachment: fixed on mobile?",
+     "a": "Many mobile browsers (especially iOS Safari) do not support it properly, so provide a scroll fallback."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/background/project.html"
+  },
+  {
+   "id": "css-project-carousel",
+   "title": "Project: Auto Image Slideshow",
+   "level": "intermediate",
+   "summary": "A pure-CSS crossfade slideshow using stacked layers and staggered keyframes.",
+   "description": "**Goal**: a gallery that automatically changes slides forever with no JavaScript.\n\n### The source approach\nThe original demo animated `background-image` inside `@keyframes` (0%, 20%, 40%...) over 20s. It works, but background images **cannot be interpolated**, so slides switch abruptly without fading, and all images are requested via CSS.\n\n### A smoother approach: stacked layers\n1. Stack N slides with `position: absolute; inset: 0;`.\n2. Give every slide the **same** animation (fade in, hold, fade out) with `opacity`.\n3. Offset each slide with `animation-delay` equal to `duration / N`.\n\nFor 4 slides and a 12s cycle: delays of 0s, 3s, 6s, 9s. Each slide is visible for ~25% of the cycle.\n\n### Keyframes\n```css\n@keyframes slide {\n  0%, 25%   { opacity: 1; }   /* visible */\n  33%, 92%  { opacity: 0; }   /* hidden */\n  100%      { opacity: 1; }\n}\n```\n(Adjust percentages so fades overlap slightly.)\n\n### Notes\n- Use real `<img>` elements with `object-fit: cover` for content images (alt text and lazy loading).\n- Pause on hover: `.carousel:hover .slide { animation-play-state: paused; }`\n- For user-controlled sliders use scroll-snap (see Modern CSS).\n- Add `prefers-reduced-motion` to stop the autoplay.",
+   "keyPoints": [
+    "background-image cannot be smoothly animated",
+    "Stack slides and animate opacity with staggered delays",
+    "delay = cycle duration / number of slides",
+    "Pause on hover with animation-play-state",
+    "Add reduced-motion handling for autoplay"
+   ],
+   "pitfalls": [
+    "Autoplay with no way to pause (accessibility)",
+    "Loading all images eagerly at large sizes",
+    "Percent keyframes that never fully hide the previous slide (ghosting)"
+   ],
+   "examples": [
+    {
+     "title": "Crossfade slideshow",
+     "language": "web",
+     "html": "<div class=\"carousel\"><div class=\"slide s1\">Slide 1</div><div class=\"slide s2\">Slide 2</div><div class=\"slide s3\">Slide 3</div><div class=\"slide s4\">Slide 4</div></div>",
+     "css": ".carousel { position: relative; width: 100%; max-width: 380px; height: 170px; border-radius: 12px; overflow: hidden; box-shadow: 0 7px 29px rgba(100,100,111,.3); font-family: sans-serif; }\n.slide { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font: bold 30px sans-serif; opacity: 0; animation: fade 12s linear infinite; }\n.s1 { background: linear-gradient(135deg, #f06, #fc0); animation-delay: 0s; }\n.s2 { background: linear-gradient(135deg, #2575fc, #6a11cb); animation-delay: 3s; }\n.s3 { background: linear-gradient(135deg, #00b09b, #96c93d); animation-delay: 6s; }\n.s4 { background: linear-gradient(135deg, #ff512f, #dd2476); animation-delay: 9s; }\n.carousel:hover .slide { animation-play-state: paused; }\n@keyframes fade { 0% { opacity: 0; } 5% { opacity: 1; } 25% { opacity: 1; } 30% { opacity: 0; } 100% { opacity: 0; } }\n@media (prefers-reduced-motion: reduce) { .slide { animation: none; } .s1 { opacity: 1; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is animating background-image between photos not smooth?",
+     "a": "Images are not interpolable values, so the property switches at keyframes; stacking elements and animating opacity creates a real crossfade."
+    },
+    {
+     "q": "How do you offset each slide in a CSS slideshow?",
+     "a": "Use the same animation on all slides with animation-delay increments of cycle-duration / number-of-slides."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/carousal/index.html"
+  },
+  {
+   "id": "css-project-landing-page",
+   "title": "Project: Responsive Landing Page",
+   "level": "advanced",
+   "summary": "Combine variables, grid, flexbox, nesting and media queries into a complete responsive page.",
+   "description": "The final project of the course is a multipage responsive website. Here is its **core architecture** reduced to one page.\n\n### What it uses\n| Feature | Where |\n|---|---|\n| Reset | `* { margin: 0; padding: 0; box-sizing: border-box; }` |\n| Theme tokens | `:root { --main-color; --heading-color; --para-color; ... }` |\n| rem-based sizing | `html { font-size: 62.5% }` -> `1rem = 10px` |\n| Layout helpers | `.container`, `.grid`, `.grid-two--cols`, `.grid-three--cols` |\n| Reusable modules | `.btn`, `.section-common-heading` |\n| Nesting | `& a::after { ... }` for animated nav underline |\n| Responsive steps | `@media (width <= 998px)` switches 2 columns to 1 and reorders with `order` |\n| Polished details | `:is()` to group sections, `:nth-child()` for icon colors, transitions on hover |\n\n### Page structure\n1. **Header**: logo + navigation (`flex`, `space-between`).\n2. **Hero**: two-column grid (text + visual) that stacks on mobile.\n3. **Features**: grid of cards `repeat(auto-fit, minmax(...))`.\n4. **Call-to-action** and **footer**.\n\n### Build order (recommended)\n1. HTML structure with semantic tags.\n2. Tokens + reset + typography.\n3. Layout helpers.\n4. Components (button, card).\n5. Section styles.\n6. Media queries (mobile-first or adjust down).\n7. Test with DevTools device toolbar.\n\n### Skills practised\nEverything from the previous sections: box model, selectors, flex, grid, transitions and responsive design.",
+   "keyPoints": [
+    "Tokens in :root keep the theme consistent",
+    "Container + grid helpers speed up layout",
+    "Stack columns and reorder with media queries",
+    "Hover transitions and nested pseudo-elements add polish",
+    "Build in layers: reset, tokens, layout, components, sections"
+   ],
+   "pitfalls": [
+    "Starting with pixel-perfect desktop only and fixing mobile at the end",
+    "Duplicating styles instead of building reusable modules"
+   ],
+   "examples": [
+    {
+     "title": "Mini landing page (resize the preview)",
+     "language": "web",
+     "html": "<header class=\"nav\"><b class=\"logo\">Brand</b><nav><a href=\"#\">Home</a><a href=\"#\">Courses</a><a href=\"#\">Contact</a></nav></header>\n<section class=\"hero\"><div class=\"hero-text\"><h1>Learn CSS the right way</h1><p>Build responsive websites with real projects and clear explanations.</p><a href=\"#\" class=\"btn\">Get started</a></div><div class=\"hero-art\"></div></section>\n<section class=\"features\"><article><h3>Flexbox</h3><p>One-dimensional layout.</p></article><article><h3>Grid</h3><p>Two-dimensional layout.</p></article><article><h3>Animation</h3><p>Bring pages to life.</p></article></section>\n<footer>(c) CodeRevise</footer>",
+     "css": ":root { --main: #0062ff; --soft: #ebf3fe; --heading: #000a19; --para: #504e4d; --shadow: 0 7px 29px rgba(100,100,111,.2); }\n* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }\nbody { color: var(--para); line-height: 1.5; }\n.nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; position: sticky; top: 0; background: #fff; box-shadow: var(--shadow); }\n.logo { color: var(--main); font-size: 20px; }\n.nav nav { display: flex; gap: 16px; }\n.nav a { color: var(--heading); text-decoration: none; position: relative;\n  &::after { content: \"\"; position: absolute; left: 0; bottom: -4px; width: 0; height: 2px; background: var(--main); transition: width .3s; }\n  &:hover::after { width: 100%; } }\n.hero { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; padding: 36px 20px; background: var(--soft); }\n.hero h1 { color: var(--heading); font-size: clamp(1.6rem, 1rem + 3vw, 2.6rem); line-height: 1.15; margin-bottom: 10px; }\n.btn { display: inline-block; margin-top: 14px; padding: 10px 24px; background: var(--main); color: #fff; border-radius: 6px; text-decoration: none; transition: background .3s, box-shadow .3s; }\n.btn:hover { background: #003b99; box-shadow: var(--shadow); }\n.hero-art { aspect-ratio: 4 / 3; border-radius: 16px; background: conic-gradient(from 200deg at 30% 30%, #0062ff, #00bf72, #a8eb12, #0062ff); box-shadow: var(--shadow); }\n.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; padding: 28px 20px; }\n.features article { padding: 18px; border-radius: 12px; box-shadow: var(--shadow); transition: transform .3s; }\n.features article:hover { transform: translateY(-4px); }\n.features h3 { color: var(--heading); }\nfooter { text-align: center; padding: 14px; background: #040d12; color: #fff; font-size: 13px; }\n@media (width <= 560px) { .hero { grid-template-columns: 1fr; } .hero-art { order: -1; } .nav nav { gap: 10px; font-size: 14px; } }",
+     "js": "",
+     "code": "",
+     "explanation": "Uses tokens, nesting, grid, flex, clamp(), aspect-ratio and a media query for the mobile stacking order."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you structure CSS for a multi-page website?",
+     "a": "Start with a reset and tokens, then layout helpers (container/grid), reusable components (button, heading), section styles, and finally responsive media queries; reuse one stylesheet across pages."
+    },
+    {
+     "q": "How do you reorder content on mobile without changing HTML?",
+     "a": "Use flex/grid order or place items in a different grid-template-areas inside a media query (mind accessibility of visual vs DOM order)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/final_project/index.html, final_project/css/style.css"
+  }
+ ]
+}

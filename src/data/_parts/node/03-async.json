@@ -1,0 +1,519 @@
+{
+ "id": "node-async",
+ "title": "Async in Node",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-callbacks",
+   "title": "Callbacks and the Error-First Pattern",
+   "level": "beginner",
+   "summary": "The original async style in Node: pass a function that receives (err, result), and avoid callback hell.",
+   "description": "Early Node did all asynchronous work with **callbacks**: a function you pass in that Node calls later when the operation finishes.\n\n### The error-first convention\nNode callbacks always take the error as the **first** argument and the result second:\n\n`fs.readFile(path, (err, data) => { if (err) return handle(err); use(data); })`\n\nIf `err` is `null` or `undefined` the operation succeeded. Always check it first and `return` so you do not continue.\n\n### Rules of good callback APIs\n1. The callback is called **once**\n2. The callback is called **either always sync or always async** (never mixed; \"releasing Zalgo\")\n3. Errors are never thrown, they are passed to the callback\n\n### Callback hell\nDependent steps nest deeper and deeper: read a file, parse it, query a database, write a result. The code drifts to the right, error handling is repeated at each level and it is easy to forget a `return`.\n\n### Escape routes\n* Name your functions and keep them flat\n* Wrap callbacks with `util.promisify` and use `async/await`\n* Use the promise versions of core modules (`fs/promises`)\n\n### A try/catch trap\n`try { fs.readFile(p, cb) } catch (e) {}` **does not catch** errors that happen later inside the async operation. The stack is gone by the time the callback runs.\n\n### Where you still see them\nEvent emitters, older libraries, `process.nextTick`, `setTimeout`, and Express middleware `next(err)`.",
+   "keyPoints": [
+    "Error-first: callback(err, result)",
+    "Check err first and return early",
+    "try/catch cannot catch errors from a later callback",
+    "Flatten nested callbacks or promisify them"
+   ],
+   "pitfalls": [
+    "Calling the callback twice (e.g. forgetting return after an error)",
+    "Throwing inside a callback, which crashes the process",
+    "Mixing sync and async invocation of the same callback"
+   ],
+   "examples": [
+    {
+     "title": "Callback hell and the fix",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import fs from 'node:fs';\nimport { promisify } from 'node:util';\n\n// Callback style: nesting grows with each step\nfs.readFile('a.json', 'utf8', (err, a) => {\n  if (err) return console.error(err);\n  fs.readFile('b.json', 'utf8', (err, b) => {\n    if (err) return console.error(err);\n    fs.writeFile('c.json', a + b, (err) => {\n      if (err) return console.error(err);\n      console.log('done');\n    });\n  });\n});\n\n// Flat equivalent\nconst readFile = promisify(fs.readFile);\nconst writeFile = promisify(fs.writeFile);\ntry {\n  const a = await readFile('a.json', 'utf8');\n  const b = await readFile('b.json', 'utf8');\n  await writeFile('c.json', a + b);\n  console.log('done');\n} catch (err) {\n  console.error(err);\n}",
+     "explanation": "The second version has one error handler and reads top to bottom.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the error-first callback convention?",
+     "a": "The first argument of a callback is reserved for an error (null on success) and the following arguments carry the results, so callers can consistently check if (err) before using data."
+    },
+    {
+     "q": "Why does try/catch not catch errors from async callbacks?",
+     "a": "The callback runs later from the event loop when the original call stack has already finished, so the try block is no longer active. Errors must be passed to the callback or handled with promises and await."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-promises",
+   "title": "Promises in Node",
+   "level": "beginner",
+   "summary": "Promises represent a future value, can be chained and combined with Promise.all, allSettled, race and any.",
+   "description": "A **Promise** is an object for a value that will exist later. It has three states: *pending*, *fulfilled* (with a value) or *rejected* (with an error). Once settled it never changes.\n\n### Using promises\n`fetchUser(1).then(user => user.name).catch(err => ...).finally(() => ...)`. Each `.then` returns a **new** promise, so you can chain. Returning a value passes it on; returning a promise waits for it; throwing becomes a rejection.\n\n### Creating promises\n`new Promise((resolve, reject) => { ... })` wraps callback APIs. Call `resolve` or `reject` exactly once. Most of the time you can use `util.promisify` or the built-in promise APIs instead of writing this by hand.\n\n### Combinators\n| Function | Result |\n|---|---|\n| `Promise.all([...])` | All values; rejects at the first failure |\n| `Promise.allSettled([...])` | Waits for all; gives `{status, value/reason}` for each |\n| `Promise.race([...])` | First to settle (value or error) |\n| `Promise.any([...])` | First to **fulfil**; rejects only if all fail |\n| `Promise.withResolvers()` | `{ promise, resolve, reject }` handy for events |\n\n### Parallel vs sequential\nStarting promises first and awaiting later runs them in parallel: `await Promise.all([a(), b()])`. Awaiting one after another runs them in sequence and takes the sum of both durations.\n\n### Unhandled rejections\nA rejected promise with no handler triggers `unhandledRejection`. Since Node 15 this **crashes the process** by default.\n\n### Microtasks\n`.then` callbacks run as microtasks, after the current synchronous code and before timers.",
+   "keyPoints": [
+    "Pending, fulfilled or rejected, and settled once",
+    "then/catch/finally return new promises, so they chain",
+    "Promise.all for parallel work, allSettled for tolerant collection",
+    "Unhandled rejections terminate modern Node by default",
+    "Create promises manually only when wrapping callback APIs"
+   ],
+   "pitfalls": [
+    "Forgetting to return a promise inside then (breaks the chain)",
+    "Using the explicit-construction anti-pattern around functions that already return promises",
+    "Leaving a promise without a catch"
+   ],
+   "examples": [
+    {
+     "title": "Combinators",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setTimeout as sleep } from 'node:timers/promises';\n\nconst ok = (v, ms) => sleep(ms, v);\nconst fail = (ms) => sleep(ms).then(() => { throw new Error('fail'); });\n\nconsole.log(await Promise.all([ok('a', 30), ok('b', 10)]));          // [ 'a', 'b' ]\nconsole.log(await Promise.race([ok('slow', 50), ok('fast', 10)]));   // fast\nconsole.log(await Promise.any([fail(5), ok('winner', 20)]));         // winner\n\nconst results = await Promise.allSettled([ok(1, 5), fail(5)]);\nconsole.log(results.map((r) => r.status));    // [ 'fulfilled', 'rejected' ]",
+     "explanation": "all keeps the order of the input array regardless of finishing order.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Promise.all vs Promise.allSettled?",
+     "a": "all rejects as soon as any promise rejects and returns only values on success. allSettled waits for every promise and reports each outcome, so one failure does not hide the other results."
+    },
+    {
+     "q": "What happens with an unhandled promise rejection in modern Node?",
+     "a": "Node emits unhandledRejection and, by default since v15, terminates the process with an error. Attach catch handlers or use try/catch with await."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-async-await",
+   "title": "async/await and Concurrency Patterns",
+   "level": "intermediate",
+   "summary": "Write asynchronous code that reads like synchronous code, and control parallelism, retries and timeouts.",
+   "description": "`async` functions always return a promise. Inside them, `await` pauses **that function** (not the whole program) until the promise settles. The event loop keeps serving other work in the meantime.\n\n### Error handling\nUse `try/catch/finally` around awaits. A rejected promise throws at the `await` line.\n\n### Sequential vs parallel\nSlow: `const a = await getA(); const b = await getB();` (sum of times).\nFast: `const [a, b] = await Promise.all([getA(), getB()]);` (the longer of the two).\n\n### await in loops\n`for (const id of ids) await load(id)` is **sequential**. `forEach(async ...)` does not wait at all. For parallel use `Promise.all(ids.map(load))`. For huge lists limit concurrency (batches, `p-limit`, or a small queue) so you do not open thousands of connections at once.\n\n### Top-level await\nAvailable in ES modules, so scripts can `await` directly without wrapping in `main()`.\n\n### Common patterns\n* **Timeout**: `Promise.race([work(), rejectAfter(ms)])`, better with `AbortSignal.timeout(ms)`\n* **Retry with backoff**: loop with `await sleep(2 ** attempt * 100)`\n* **Async iteration**: `for await (const chunk of stream)`\n* **Fire and forget**: call without await but always attach `.catch(log)`\n\n### Return await\nInside `try/catch` use `return await fn()`; without `await` a rejection escapes your catch.",
+   "keyPoints": [
+    "async functions always return promises",
+    "Use Promise.all for independent work; await sequentially only for dependent steps",
+    "forEach does not await its async callbacks",
+    "Limit concurrency for large batches",
+    "Use return await inside try/catch"
+   ],
+   "pitfalls": [
+    "Awaiting independent calls one by one (slow)",
+    "Using array.forEach(async ...) and expecting completion",
+    "Starting 10,000 parallel requests at once",
+    "Floating promises with no catch"
+   ],
+   "examples": [
+    {
+     "title": "Parallelism, limit and retry",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setTimeout as sleep } from 'node:timers/promises';\n\nconst load = async (id) => { await sleep(100); return id * 2; };\n\nconsole.time('sequential');\nfor (const id of [1, 2, 3]) await load(id);\nconsole.timeEnd('sequential');            // ~300ms\n\nconsole.time('parallel');\nconsole.log(await Promise.all([1, 2, 3].map(load)));   // [ 2, 4, 6 ]\nconsole.timeEnd('parallel');              // ~100ms\n\n// process in batches of 2 to cap concurrency\nconst ids = [1, 2, 3, 4, 5];\nconst out = [];\nfor (let i = 0; i < ids.length; i += 2) {\n  out.push(...await Promise.all(ids.slice(i, i + 2).map(load)));\n}\nconsole.log(out);                         // [ 2, 4, 6, 8, 10 ]\n\nasync function retry(fn, tries = 3) {\n  for (let n = 1; ; n++) {\n    try { return await fn(); }\n    catch (err) {\n      if (n === tries) throw err;\n      await sleep(2 ** n * 50);\n    }\n  }\n}",
+     "explanation": "Independent work should always be started together.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is array.forEach(async ...) a bug?",
+     "a": "forEach ignores the promises returned by the callback, so code after it runs before the async work completes and errors become unhandled. Use for...of with await, or Promise.all with map."
+    },
+    {
+     "q": "How do you limit concurrency?",
+     "a": "Process items in chunks with Promise.all, use a semaphore/queue, or a library such as p-limit or p-queue, so only N operations run at once."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-event-loop-phases",
+   "title": "The Event Loop in Depth",
+   "level": "advanced",
+   "summary": "The six libuv phases (timers, pending, idle/prepare, poll, check, close) and how Node decides what to run next.",
+   "description": "The **event loop** is what lets one thread handle thousands of concurrent tasks. After your main script finishes, Node enters the loop and keeps cycling through **phases**. Each phase has a queue of callbacks.\n\n### The phases in order\n1. **timers**: runs expired `setTimeout` / `setInterval` callbacks\n2. **pending callbacks**: some deferred system callbacks (e.g. certain TCP errors)\n3. **idle, prepare**: internal use\n4. **poll**: retrieves new I/O events and runs their callbacks (file reads, sockets, HTTP). If nothing is queued it may **wait here** for I/O (but not past the next timer, and not if `setImmediate` callbacks are waiting)\n5. **check**: runs `setImmediate` callbacks\n6. **close callbacks**: e.g. `socket.on('close')`\n\nBetween **every callback** (since Node 11), Node drains the `process.nextTick` queue and then the promise microtask queue.\n\n### Who does the real work?\n* Network I/O uses the OS (epoll, kqueue, IOCP): no extra threads\n* File system, DNS lookup, crypto, zlib use the **libuv thread pool** (4 threads by default, `UV_THREADPOOL_SIZE` up to 1024)\n* Results are delivered back to the loop as callbacks\n\n### The loop ends when nothing is left\nNo pending timers, handles, requests or servers: the process exits. An open server or `setInterval` keeps it alive.\n\n### Blocking the loop\nAny long synchronous work in a callback delays **everything**: timers fire late, requests stall. Typical culprits: large `JSON.parse`, regex catastrophes, sync fs/crypto, big loops.\n\n### Quick intuition\ntimers → poll (I/O) → check (setImmediate) → close, repeated forever, with microtasks drained after each callback.",
+   "keyPoints": [
+    "Phases: timers, pending, idle/prepare, poll, check, close",
+    "nextTick and promise microtasks run between callbacks",
+    "Network I/O is OS-driven; files, DNS, crypto, zlib use the 4-thread pool",
+    "Long synchronous code blocks every phase",
+    "The process exits when no work remains"
+   ],
+   "pitfalls": [
+    "Assuming the thread pool handles network sockets",
+    "Running CPU-heavy work in a callback and freezing the loop",
+    "Thinking setTimeout(fn, 0) runs immediately"
+   ],
+   "examples": [
+    {
+     "title": "Order inside an I/O callback",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const fs = require('node:fs');\n\nfs.readFile(__filename, () => {\n  setTimeout(() => console.log('timeout'), 0);\n  setImmediate(() => console.log('immediate'));\n  process.nextTick(() => console.log('nextTick'));\n  Promise.resolve().then(() => console.log('promise'));\n});",
+     "explanation": "Save as a .cjs file. We are in the poll phase, so the next phase is check.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "nextTick\npromise\nimmediate\ntimeout",
+     "explanation": "Microtasks first, then setImmediate (check phase), then the timer on the next loop iteration.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the phases of the Node.js event loop.",
+     "a": "timers (setTimeout/setInterval), pending callbacks, idle/prepare, poll (I/O), check (setImmediate) and close callbacks. After each callback, Node drains process.nextTick and then promise microtasks. The loop repeats until there is nothing left to do."
+    },
+    {
+     "q": "What uses the libuv thread pool?",
+     "a": "fs operations, dns.lookup, crypto functions such as pbkdf2/scrypt/randomBytes, and zlib. Sockets and most network I/O use the operating system's non-blocking mechanisms instead."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-nexttick-microtasks",
+   "title": "nextTick vs Microtasks vs setImmediate",
+   "level": "advanced",
+   "summary": "The precise execution order of synchronous code, nextTick, promises, timers and setImmediate.",
+   "description": "Several APIs let you \"run this soon\". Their order is a classic interview topic.\n\n### The priority order\n1. **Synchronous code** of the current script\n2. **`process.nextTick` queue**\n3. **Promise microtasks** (`.then`, `await` continuations, `queueMicrotask`)\n4. **Macrotasks** in event loop phases: timers, I/O callbacks, `setImmediate`\n\nAfter each macrotask callback, Node drains nextTick first and then the microtask queue, and repeats until both are empty.\n\n### Details\n* `nextTick` is Node-specific and runs before promise callbacks (in CommonJS). In an **ES module** the top-level code itself runs as a microtask, so promise callbacks queued there run **before** nextTick callbacks. Inside later callbacks (timers, I/O) the CommonJS order applies.\n* `setTimeout(fn, 0)` vs `setImmediate(fn)` in the main module is **not deterministic** (depends on process speed). Inside an I/O callback `setImmediate` always wins.\n* `setImmediate` runs in the check phase after poll; `setTimeout` runs in the timers phase.\n\n### Starvation\nA recursive `process.nextTick` (or endless microtasks) never lets the loop move to I/O or timers, freezing the program. `setImmediate` recursion is safe because the loop runs between calls.\n\n### Use cases\n* `nextTick`: emit an event after the constructor returns, so listeners can attach\n* `setImmediate`: yield to I/O in a long computation, split work into chunks\n* `queueMicrotask`: schedule small follow-up work\n\n### await and ordering\n`await x` continues in a microtask, so code after `await` runs before any timer.",
+   "keyPoints": [
+    "Order: sync, nextTick, promise microtasks, then timers/I/O/setImmediate",
+    "setTimeout 0 vs setImmediate is nondeterministic in the main module",
+    "Inside I/O callbacks setImmediate runs before timers",
+    "Recursive nextTick can starve I/O",
+    "ES module top-level code runs promise callbacks before nextTick"
+   ],
+   "pitfalls": [
+    "Relying on setTimeout 0 versus setImmediate order outside I/O",
+    "Recursive nextTick or microtask loops that never yield"
+   ],
+   "examples": [
+    {
+     "title": "The classic order puzzle",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// order.cjs\nconsole.log('1 sync start');\nsetTimeout(() => console.log('6 timeout'), 0);\nsetImmediate(() => console.log('7 immediate'));\nprocess.nextTick(() => console.log('3 nextTick'));\nPromise.resolve().then(() => console.log('4 promise'));\nqueueMicrotask(() => console.log('5 queueMicrotask'));\nconsole.log('2 sync end');",
+     "explanation": "Lines 6 and 7 can swap in the main module; 1-5 never change in CommonJS.",
+     "lang": "javascript"
+    },
+    {
+     "title": "async/await ordering",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// await.cjs\nasync function a() { console.log('a1'); await b(); console.log('a2'); }\nasync function b() { console.log('b'); }\n\nconsole.log('s');\na();\nnew Promise((res) => { console.log('p'); res(); })\n  .then(() => console.log('then1'))\n  .then(() => console.log('then2'));\nprocess.nextTick(() => console.log('tick'));\nconsole.log('e');\n// s, a1, b, p, e, tick, a2, then1, then2",
+     "explanation": "Code after await behaves like a then callback, so it runs after synchronous code and after nextTick.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Output order of nextTick, Promise.then and setTimeout?",
+     "a": "Synchronous code first, then nextTick callbacks, then promise callbacks (microtasks), then timers and other macrotasks. So nextTick runs before then, and then runs before setTimeout 0."
+    },
+    {
+     "q": "Why can process.nextTick be dangerous?",
+     "a": "Its queue is drained completely before the event loop continues. If callbacks keep scheduling more nextTicks, I/O and timers never run (starvation)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-streams-basics",
+   "title": "Streams: Readable, Writable, Transform",
+   "level": "intermediate",
+   "summary": "Process data in chunks instead of loading it all: the four stream types, modes and async iteration.",
+   "description": "A **stream** processes data piece by piece, so you can handle files larger than memory and start sending output before all input has arrived. Streams are everywhere in Node: `fs`, `http` requests/responses, `net` sockets, `zlib`, `process.stdin/stdout`.\n\n### Four kinds\n| Type | Direction | Examples |\n|---|---|---|\n| **Readable** | source | `fs.createReadStream`, `http.IncomingMessage`, `process.stdin` |\n| **Writable** | destination | `fs.createWriteStream`, `http.ServerResponse`, `process.stdout` |\n| **Duplex** | both, independent | TCP socket |\n| **Transform** | Duplex that modifies data | `zlib.createGzip()`, crypto ciphers |\n\n### Reading from a Readable\n* Async iterator (best): `for await (const chunk of readable) { ... }`\n* Events: `'data'`, `'end'`, `'error'`, `'close'`\n* `readable.pipe(writable)` (older) or `pipeline()` (preferred)\n\n### Writing\n`writable.write(chunk)` returns a boolean. `writable.end()` finishes the stream and fires `'finish'`.\n\n### Chunk types\nChunks are `Buffer` (or strings with an encoding). With `objectMode: true` chunks can be any JS value, handy for parsing pipelines.\n\n### Create your own\n`new Transform({ transform(chunk, enc, cb) { cb(null, chunk.toString().toUpperCase()); } })` or with an async generator: `Readable.from(asyncGenerator())`.\n\n### Web Streams\nNode also implements the browser `ReadableStream` API (used by `fetch` bodies). Convert with `Readable.fromWeb` and `Readable.toWeb`.\n\n### Why it matters\nCopying a 4 GB file with `readFile` needs 4 GB of RAM. A stream needs roughly 64 KB at a time.",
+   "keyPoints": [
+    "Streams process data in chunks, keeping memory low",
+    "Four types: Readable, Writable, Duplex, Transform",
+    "for await..of is the cleanest way to consume a Readable",
+    "Chunks are Buffers unless objectMode or encoding is set",
+    "Always handle the error event (or use pipeline)"
+   ],
+   "pitfalls": [
+    "Loading entire files with readFile when a stream would do",
+    "Forgetting an 'error' listener on a stream",
+    "Treating each 'data' chunk as a complete line or JSON document"
+   ],
+   "examples": [
+    {
+     "title": "Upper-case transform",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { Transform, Readable } from 'node:stream';\nimport { pipeline } from 'node:stream/promises';\n\nconst upper = new Transform({\n  transform(chunk, _enc, cb) {\n    cb(null, chunk.toString().toUpperCase());\n  },\n});\n\nawait pipeline(\n  Readable.from(['hello ', 'streams ', 'world\\n']),\n  upper,\n  process.stdout,\n);\n// HELLO STREAMS WORLD",
+     "explanation": "Readable.from turns any iterable into a stream.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Count bytes of a big file",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createReadStream } from 'node:fs';\n\nlet bytes = 0;\nfor await (const chunk of createReadStream('big.iso')) {\n  bytes += chunk.length;          // each chunk is a Buffer (~64 KB)\n}\nconsole.log(bytes, 'bytes, memory stayed small');",
+     "explanation": "Only one chunk is held in memory at a time.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the four types of streams?",
+     "a": "Readable (data source), Writable (destination), Duplex (both ways, like a socket) and Transform (a duplex that changes data as it passes, like gzip)."
+    },
+    {
+     "q": "Why use streams instead of readFile?",
+     "a": "Streams process data in small chunks, so memory use stays constant for any file size and processing can start before the whole input is available, improving latency and scalability."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-backpressure-pipeline",
+   "title": "Backpressure and pipeline",
+   "level": "advanced",
+   "summary": "How streams slow a fast producer for a slow consumer, and why pipeline beats pipe for error handling.",
+   "description": "If a source produces data faster than the destination can consume it (a fast disk and a slow network client), the extra data piles up in memory. **Backpressure** is the mechanism that tells the producer to pause.\n\n### How it works\nEvery stream has an internal buffer limited by `highWaterMark` (16 KB default, 64 KB for fs streams, 16 objects in objectMode).\n* `writable.write(chunk)` returns **`false`** when the buffer is full\n* Stop writing and wait for the `'drain'` event\n* `readable.pause()` and `resume()` control the flow on the reading side\n\nHand-written version:\n`if (!res.write(chunk)) { readable.pause(); res.once('drain', () => readable.resume()); }`\n\n### pipe handles it, but...\n`readable.pipe(writable)` applies backpressure automatically but has weak error handling: if one stream errors, the others are **not destroyed** and file descriptors leak.\n\n### Use pipeline\n`stream.pipeline(a, b, c, cb)` or the promise version `await pipeline(a, b, c)` from `node:stream/promises`:\n* Connects the streams with backpressure\n* On any error, **destroys all** streams and reports the error once\n* Resolves when the last stream finishes\n* Accepts async generator functions in the middle as transforms\n\n### Async generators as transforms\n`await pipeline(source, async function* (chunks) { for await (const c of chunks) yield c.toString().toUpperCase(); }, destination)`\n\n### Compose and finished\n`stream.compose()` joins streams into a single duplex. `stream.finished()` (or `finished` promise) waits for a stream to end or fail.\n\n### Diagnosing memory growth\nIf memory grows steadily while piping, someone is writing without respecting `drain` (for example a loop calling `write` hundreds of thousands of times).",
+   "keyPoints": [
+    "write() returning false means pause until 'drain'",
+    "highWaterMark sets the buffer size threshold",
+    "pipe() does not clean up on error; pipeline() does",
+    "Async generator functions can act as transforms inside pipeline",
+    "Ignoring backpressure is a classic memory leak"
+   ],
+   "pitfalls": [
+    "Ignoring the return value of write() in loops",
+    "Using pipe() for production code without error handling",
+    "Writing to a response after the client disconnected"
+   ],
+   "examples": [
+    {
+     "title": "Respecting backpressure by hand",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createWriteStream } from 'node:fs';\nimport { once } from 'node:events';\n\nconst out = createWriteStream('big.txt');\n\nfor (let i = 0; i < 1_000_000; i++) {\n  const ok = out.write(`line ${i}\\n`);\n  if (!ok) await once(out, 'drain');     // wait until the buffer empties\n}\nout.end();\nawait once(out, 'finish');\nconsole.log('written');",
+     "explanation": "Without the drain wait, hundreds of MB of lines would queue up in memory.",
+     "lang": "javascript"
+    },
+    {
+     "title": "pipeline with gzip and a generator",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createReadStream, createWriteStream } from 'node:fs';\nimport { createGzip } from 'node:zlib';\nimport { pipeline } from 'node:stream/promises';\n\ntry {\n  await pipeline(\n    createReadStream('access.log'),\n    async function* (source) {\n      for await (const chunk of source) {\n        yield chunk.toString().replaceAll('password=', 'password=***');\n      }\n    },\n    createGzip(),\n    createWriteStream('access.log.gz'),\n  );\n  console.log('done');\n} catch (err) {\n  console.error('pipeline failed:', err.code ?? err.message);\n}",
+     "explanation": "Any failure in any step destroys every stream and ends up in the catch block.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is backpressure?",
+     "a": "A flow-control mechanism: when a consumer cannot keep up, write() returns false and the producer must pause until the 'drain' event, preventing unbounded memory use. pipe and pipeline handle it for you."
+    },
+    {
+     "q": "Why prefer stream.pipeline over .pipe()?",
+     "a": "pipeline forwards errors from any stream, destroys all streams to avoid leaks and gives a single callback or promise for completion, whereas pipe leaves the other streams open when one fails."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-abort-controller",
+   "title": "AbortController and Cancellation",
+   "level": "intermediate",
+   "summary": "Cancel fetch, timers, streams, child processes and your own async work with AbortSignal, including timeouts.",
+   "description": "**`AbortController`** is the standard way to cancel asynchronous operations. The same API exists in browsers.\n\n### Parts\n* `const ac = new AbortController()`\n* `ac.signal` is an `AbortSignal` you pass to cancellable APIs\n* `ac.abort(reason?)` triggers cancellation; the signal's `aborted` becomes `true` and an `abort` event fires\n\n### Who accepts a signal?\n`fetch`, `fs.readFile` / `fs.watch` / `writeFile`, `timers/promises`, `child_process`, `events.once`, `stream.pipeline`, `http.request`, `readline`, `net`, `dns/promises`, and many libraries (axios, undici, database drivers).\n\n### Handy helpers\n* `AbortSignal.timeout(ms)` aborts automatically after a delay (rejects with `TimeoutError`)\n* `AbortSignal.any([s1, s2])` aborts when any signal aborts (user cancel **or** timeout)\n* `signal.throwIfAborted()` checks inside your own loops\n\n### Cancelled operations reject\nThey reject with an `AbortError` (`err.name === 'AbortError'`). Treat that as expected, not as a failure to log loudly.\n\n### Make your own functions cancellable\nAccept `{ signal }` as an option, check `signal.aborted` between steps, listen with `signal.addEventListener('abort', cleanup, { once: true })` and pass the signal on to the APIs you call.\n\n### Use cases in servers\nCancel database queries and upstream requests when the client disconnects; enforce per-request timeouts; stop watchers and background loops during shutdown.",
+   "keyPoints": [
+    "AbortController creates a signal that you pass to async APIs",
+    "AbortSignal.timeout(ms) is a one-line timeout",
+    "AbortSignal.any combines multiple cancellation sources",
+    "Cancelled operations reject with AbortError",
+    "Pass the signal down through your own functions"
+   ],
+   "pitfalls": [
+    "Treating AbortError as a real failure and alerting on it",
+    "Creating a signal but never passing it to the operation",
+    "Forgetting to clean up listeners in custom cancellable code"
+   ],
+   "examples": [
+    {
+     "title": "Timeout for fetch and sleeping",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setTimeout as sleep } from 'node:timers/promises';\n\n// 1. built-in timeout\ntry {\n  await fetch('https://example.com/slow', { signal: AbortSignal.timeout(2000) });\n} catch (err) {\n  console.log(err.name);          // TimeoutError (printed only if the server takes longer than 2 s)\n}\n\n// 2. manual cancel\nconst ac = new AbortController();\nsetTimeout(() => ac.abort(), 100);\ntry {\n  await sleep(5000, null, { signal: ac.signal });\n} catch (err) {\n  console.log(err.name);          // AbortError\n}",
+     "explanation": "The sleep ends after about 100 ms instead of 5 seconds.",
+     "lang": "javascript"
+    },
+    {
+     "title": "A cancellable function",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "async function processAll(items, { signal } = {}) {\n  const done = [];\n  for (const item of items) {\n    signal?.throwIfAborted();          // stop between steps\n    await new Promise((r) => setTimeout(r, 50));\n    done.push(item);\n  }\n  return done;\n}\n\nconst ac = new AbortController();\nsetTimeout(() => ac.abort(), 120);\nprocessAll([1, 2, 3, 4, 5], { signal: ac.signal })\n  .catch((e) => console.log('stopped:', e.name));   // stopped: AbortError",
+     "explanation": "throwIfAborted throws an AbortError automatically.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you add a timeout to a fetch request?",
+     "a": "Pass signal: AbortSignal.timeout(ms) to fetch. If the time passes before the response, the promise rejects with a TimeoutError."
+    },
+    {
+     "q": "Why accept an AbortSignal in your own async functions?",
+     "a": "It lets callers cancel the work (timeouts, user navigation, shutdown), frees resources early and integrates with the rest of Node's APIs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-async-errors",
+   "title": "Error Handling in Async Code",
+   "level": "intermediate",
+   "summary": "Handle rejections, uncaught exceptions and operational errors correctly so one bug does not silently corrupt your server.",
+   "description": "### Two kinds of errors\n* **Operational errors**: expected runtime problems (network down, file missing, invalid input, DB timeout). Handle and respond.\n* **Programmer errors**: bugs (`undefined is not a function`). Fix the code; the safest reaction is to log and restart.\n\n### Rules for promises and async/await\n1. Every promise chain ends with `.catch()` or sits inside `try/catch` with `await`.\n2. Return or await promises; a \"floating\" promise's error becomes an `unhandledRejection`.\n3. Throw `Error` objects (they have stack traces), never strings. Use `new Error('msg', { cause: err })` to keep the original error.\n4. In a `Promise.all` all other promises keep running even though the first rejection settles the result.\n\n### Global safety nets (last resort)\n`process.on('unhandledRejection', ...)` and `process.on('uncaughtException', ...)`. After an uncaught exception the process state is unknown. **Log and exit**, and let a process manager (PM2, Docker, Kubernetes) restart it. Do not keep running.\n\n### Callbacks and event emitters\nErrors in callbacks are passed as the first argument. Emitters need an `'error'` listener. `try/catch` around them does nothing.\n\n### Custom error classes\nCreate `class AppError extends Error { constructor(msg, status) { super(msg); this.status = status; } }` so you can map errors to HTTP status codes in a central handler.\n\n### Express\nExpress 5 forwards rejected promises from async handlers to the error middleware automatically. In Express 4 you must wrap handlers or call `next(err)`.\n\n### Never swallow errors\nAn empty `catch {}` hides bugs. Log at least and decide: retry, return a friendly error or rethrow.",
+   "keyPoints": [
+    "Distinguish operational errors (handle) from programmer errors (fix and restart)",
+    "Always catch awaited promises or end chains with catch",
+    "Throw Error objects and use the cause option",
+    "After uncaughtException: log and exit, let a supervisor restart",
+    "Custom error classes make HTTP mapping easy"
+   ],
+   "pitfalls": [
+    "Empty catch blocks",
+    "Continuing after an uncaughtException",
+    "Throwing strings or plain objects",
+    "Async Express 4 handlers without error forwarding"
+   ],
+   "examples": [
+    {
+     "title": "Custom errors and cause",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "class AppError extends Error {\n  constructor(message, status = 500, options) {\n    super(message, options);\n    this.name = 'AppError';\n    this.status = status;\n  }\n}\n\nasync function getUser(id) {\n  try {\n    return await db.find(id);                       // pretend this throws\n  } catch (err) {\n    throw new AppError('User lookup failed', 502, { cause: err });\n  }\n}\n\nprocess.on('unhandledRejection', (reason) => {\n  console.error('unhandledRejection', reason);\n  process.exitCode = 1;\n  setTimeout(() => process.exit(1), 500).unref();   // let logs flush\n});",
+     "explanation": "The cause chain keeps the original database error attached for debugging.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between operational and programmer errors?",
+     "a": "Operational errors come from the environment (timeouts, bad input, missing file) and can be handled gracefully. Programmer errors are bugs in the code; the process state may be inconsistent, so you log and restart."
+    },
+    {
+     "q": "What should you do in an uncaughtException handler?",
+     "a": "Log the error, close resources if possible and exit with a non-zero code. Rely on a supervisor (PM2, systemd, Docker, Kubernetes) to restart; continuing can leave the app in a corrupt state."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-blocking-event-loop",
+   "title": "Not Blocking the Event Loop",
+   "level": "advanced",
+   "summary": "Recognise CPU-heavy synchronous code that freezes your server and break it up, offload it or stream it.",
+   "description": "One slow synchronous task freezes **every connected client**, because there is only one JavaScript thread. A healthy Node service keeps each callback short (a few milliseconds).\n\n### Typical blockers\n* Sync APIs in handlers: `readFileSync`, `execSync`, `pbkdf2Sync`, `zlib.gzipSync`\n* Big loops, sorting millions of items, heavy recursion\n* `JSON.parse` / `JSON.stringify` on very large payloads\n* **ReDoS**: a regular expression with catastrophic backtracking on user input\n* Large `Buffer` and string operations, `replace` on huge text\n\n### Symptoms\nHigh latency for all routes, health checks timing out, timers firing late, CPU at 100% on one core. Measure with `monitorEventLoopDelay` or `clinic doctor`.\n\n### Strategies\n| Strategy | How |\n|---|---|\n| Partition | Process in chunks and yield with `await setImmediate()` between chunks |\n| Offload | `worker_threads` pool (piscina), or another service |\n| Stream | Parse big payloads incrementally (stream-json, ndjson) |\n| Use async APIs | `fs.promises`, `crypto.pbkdf2` (thread pool) |\n| Limit input | Max body size, safe regexes (`safe-regex`, RE2) |\n| Queue | Move heavy jobs to a background worker (BullMQ) |\n\n### Fairness trick\n`import { setImmediate as yieldLoop } from 'node:timers/promises'` then `await yieldLoop()` every N iterations lets pending I/O run.\n\n### Rule of thumb\nIf a task takes more than about 50 ms of pure CPU, do not run it directly on the request path.",
+   "keyPoints": [
+    "One long synchronous task delays all requests",
+    "ReDoS and big JSON parsing are common hidden blockers",
+    "Chunk the work and yield with setImmediate",
+    "Offload CPU work to worker threads or a job queue",
+    "Measure event loop delay in production"
+   ],
+   "pitfalls": [
+    "Using sync crypto or fs calls inside handlers",
+    "Accepting unbounded request bodies",
+    "Writing regexes with nested quantifiers on user input"
+   ],
+   "examples": [
+    {
+     "title": "Chunking a long loop",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setImmediate as yieldLoop } from 'node:timers/promises';\n\nfunction isPrime(n) {\n  for (let i = 2; i * i <= n; i++) if (n % i === 0) return false;\n  return n > 1;\n}\n\nasync function countPrimes(limit) {\n  let count = 0;\n  for (let i = 0; i < limit; i++) {\n    if (isPrime(i)) count++;\n    if (i % 50_000 === 0) await yieldLoop();   // let other work run\n  }\n  return count;\n}\n\nconst ticker = setInterval(() => process.stdout.write('.'), 20);\nconsole.log('\\nprimes:', await countPrimes(2_000_000));\nclearInterval(ticker);",
+     "explanation": "Without the yield the dots would not print until the calculation ends.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you find out that the event loop is blocked?",
+     "a": "Watch event loop delay or utilisation (perf_hooks), look for slow responses across all routes and profile with --cpu-prof or clinic. Timers firing much later than scheduled are a symptom."
+    },
+    {
+     "q": "What is ReDoS?",
+     "a": "Regular expression Denial of Service: a pattern with nested or ambiguous quantifiers takes exponential time on crafted input, blocking the single thread. Avoid such patterns, limit input size or use a safe engine like RE2."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-graceful-shutdown-basics",
+   "title": "Graceful Shutdown",
+   "level": "intermediate",
+   "summary": "Handle SIGTERM and SIGINT by stopping new connections, finishing in-flight work and closing resources before exiting.",
+   "description": "When you deploy, scale down or press Ctrl+C, the operating system or orchestrator sends a signal. If you just die, in-flight requests get cut, database transactions are lost and queues can be left half processed. **Graceful shutdown** means finishing cleanly.\n\n### Steps\n1. Listen for `SIGTERM` (Docker, Kubernetes, PM2, systemd) and `SIGINT` (Ctrl+C).\n2. Mark the app as **not ready** (health check returns 503) so load balancers stop sending traffic.\n3. Stop accepting new connections: `server.close()` (waits for existing ones to end).\n4. Finish or abort in-flight work; use a **deadline** (for example 10 seconds).\n5. Close databases, Redis, queues, file handles.\n6. Exit with code `0`; if the deadline passes, force exit with code `1`.\n\n### Keep-alive connections\n`server.close()` waits for idle keep-alive sockets. Use `server.closeIdleConnections()` and `server.closeAllConnections()` (Node 18.2+) or set a timer to force close.\n\n### Kubernetes details\nDefault grace period is 30 seconds between SIGTERM and SIGKILL. Add a small `preStop` sleep so the endpoint is removed from the load balancer first. Docker: use `CMD [\"node\", \"server.js\"]` (exec form) so Node is PID 1 and receives the signal; `npm start` often swallows signals.\n\n### Run shutdown once\nGuard with a flag, because a user can press Ctrl+C twice or two signals can arrive.\n\n### Test it\nStart the server, send a long request, then `kill -TERM <pid>` and verify it still completes.",
+   "keyPoints": [
+    "Handle SIGTERM and SIGINT",
+    "server.close() stops new connections but waits for current ones",
+    "Use a timeout to force exit if shutdown hangs",
+    "Close DB, Redis and queues after the server stops",
+    "Run Node as PID 1 in Docker to receive signals"
+   ],
+   "pitfalls": [
+    "Not handling signals at all (requests dropped on deploy)",
+    "Starting the app through npm start in Docker, which does not forward SIGTERM",
+    "Calling process.exit() before connections are closed"
+   ],
+   "examples": [
+    {
+     "title": "Shutdown handler",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nconst server = http.createServer((req, res) => {\n  setTimeout(() => res.end('done\\n'), 2000);      // slow request\n});\nserver.listen(3000, () => console.log('listening, pid', process.pid));\n\nlet shuttingDown = false;\nasync function shutdown(signal) {\n  if (shuttingDown) return;\n  shuttingDown = true;\n  console.log(`${signal} received, closing...`);\n\n  const force = setTimeout(() => {\n    console.error('forced exit');\n    process.exit(1);\n  }, 10_000);\n  force.unref();\n\n  server.close(async (err) => {\n    // await db.close(); await redis.quit();\n    console.log('closed cleanly');\n    process.exit(err ? 1 : 0);\n  });\n  server.closeIdleConnections();\n}\n\nprocess.on('SIGTERM', () => shutdown('SIGTERM'));\nprocess.on('SIGINT', () => shutdown('SIGINT'));",
+     "explanation": "A request in progress when you press Ctrl+C still receives \"done\" before the server exits.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why implement graceful shutdown?",
+     "a": "To avoid dropping in-flight requests and corrupting data during deploys or scaling: stop accepting new work, finish current work, close connections and then exit."
+    },
+    {
+     "q": "Why might SIGTERM not reach a Node app in Docker?",
+     "a": "If the container runs npm start or a shell script as PID 1, that wrapper may not forward signals. Use the exec form CMD [\"node\", \"server.js\"] (or tini / --init) so Node itself receives the signal."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

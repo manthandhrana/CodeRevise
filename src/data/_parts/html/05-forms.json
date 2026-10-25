@@ -1,0 +1,353 @@
+{
+ "id": "html-forms",
+ "title": "Forms & User Input",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "html-form-basics",
+   "title": "Forms: form, label, input & Submitting",
+   "level": "beginner",
+   "summary": "The form element collects user input; label and name make controls usable and submittable.",
+   "description": "A **form** collects data from the user and sends it to a server (or handles it with JavaScript). It is the basis of logins, search boxes, checkouts and contact pages.\n\n### Core pieces\n- `<form action=\"/submit\" method=\"post\">` - the container. `action` is the URL that receives the data; `method` is `get` (data in the URL, for searches) or `post` (data in the request body, for sensitive or large data).\n- `<label for=\"email\">` - a caption **linked** to a control by id. Clicking the label focuses the input, and screen readers announce it. Labels are essential for accessibility.\n- `<input id=\"email\" name=\"email\">` - a control. The **`name`** is the key under which the value is sent; an input without a name is **not submitted**.\n- `<button type=\"submit\">` or `<input type=\"submit\">` - sends the form.\n\n### Two ways to link a label\n```html\n<label for=\"user\">Username</label>\n<input id=\"user\" name=\"user\">\n\n<label>Username <input name=\"user\"></label>   <!-- wrapping -->\n```\n\n### Form flow\n1. User fills controls.\n2. On submit the browser validates (see validation topic).\n3. The browser sends `name=value` pairs to `action` and loads the response - unless JavaScript calls `event.preventDefault()`.\n\n### Button types\n`type=\"submit\"` (default inside forms), `type=\"reset\"`, `type=\"button\"` (does nothing by itself - use for JS actions).",
+   "keyPoints": [
+    "action = where to send; method = get or post.",
+    "Every control needs a name to be submitted.",
+    "label for=\"id\" links text to a control; always provide labels.",
+    "button type defaults to submit inside a form.",
+    "Use preventDefault() when handling submit in JavaScript."
+   ],
+   "pitfalls": [
+    "Inputs without name attributes - the value is never sent.",
+    "Using placeholder instead of a label.",
+    "A button inside a form defaults to submit, accidentally submitting the form."
+   ],
+   "examples": [
+    {
+     "title": "A simple contact form",
+     "language": "web",
+     "html": "<form action=\"/submit\" method=\"post\">\n  <div>\n    <label for=\"username\">Username</label>\n    <input type=\"text\" id=\"username\" name=\"username\" placeholder=\"e.g. vinod\">\n  </div>\n  <div>\n    <label for=\"email\">Email</label>\n    <input type=\"email\" id=\"email\" name=\"email\">\n  </div>\n  <div>\n    <label for=\"msg\">Message</label>\n    <textarea id=\"msg\" name=\"message\" rows=\"3\"></textarea>\n  </div>\n  <button type=\"submit\">Send</button>\n</form>\n<h4>Data that would be sent:</h4>\n<pre id=\"out\">(submit the form)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});",
+     "explanation": "JavaScript stops the real submission and prints the name=value pairs instead."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between GET and POST?",
+     "a": "GET appends data to the URL (visible, bookmarkable, for searches); POST sends data in the request body (for sensitive or large data and changes on the server)."
+    },
+    {
+     "q": "Why is the name attribute important on inputs?",
+     "a": "The name is the key in the submitted data; controls without a name are not sent."
+    },
+    {
+     "q": "Why use label elements?",
+     "a": "They give inputs accessible names, enlarge the click target and improve usability."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/form.html"
+  },
+  {
+   "id": "html-input-types-text",
+   "title": "Text-like Input Types",
+   "level": "beginner",
+   "summary": "text, password, email, number, tel, url and search give the right keyboard and validation.",
+   "description": "The `<input>` element changes behaviour with its `type` attribute. Choosing the correct type gives you free validation and the correct mobile keyboard.\n\n| type | Use | Notes |\n|---|---|---|\n| `text` | Single line text | default |\n| `password` | Secret text | characters hidden |\n| `email` | Email address | validates @ format, email keyboard |\n| `number` | Numbers | `min`, `max`, `step`, spinner |\n| `tel` | Phone numbers | numeric keypad, no format validation |\n| `url` | Web address | must be a valid absolute URL |\n| `search` | Search query | may show a clear (x) button |\n\n### Useful attributes\n- `placeholder` - hint text (never a substitute for a label).\n- `value` - default value.\n- `min` / `max` / `step` - numeric range.\n- `minlength` / `maxlength` - text length.\n- `autocomplete` - help the browser autofill: `email`, `username`, `current-password`, `new-password`.\n- `inputmode` - choose the virtual keyboard (`numeric`, `decimal`, `email`...).\n\n### Number vs tel\nUse `type=\"number\"` for quantities you add or compare. Use `type=\"tel\"` (or text + pattern) for IDs, phone numbers and OTPs - you do not want a spinner and mathematical behaviour.\n\n### Security\nA password field only **hides the characters**. Always send passwords over HTTPS and never store them in plain text.",
+   "keyPoints": [
+    "type chooses control behaviour, validation and mobile keyboard.",
+    "email, url, number validate automatically on submit.",
+    "Use tel (not number) for phone numbers and codes.",
+    "placeholder is a hint, not a label.",
+    "Set autocomplete tokens to help password managers."
+   ],
+   "pitfalls": [
+    "Using type=\"number\" for phone numbers or credit cards.",
+    "Relying on placeholder as the only label.",
+    "Disabling paste or autocomplete on password fields."
+   ],
+   "examples": [
+    {
+     "title": "Text-like types in one form",
+     "language": "web",
+     "html": "<form>\n  <div><label for=\"p\">Password</label><input type=\"password\" id=\"p\" name=\"password\" autocomplete=\"new-password\"></div>\n  <div><label for=\"e\">Email</label><input type=\"email\" id=\"e\" name=\"email\" placeholder=\"you@example.com\"></div>\n  <div><label for=\"n\">Number of subjects (1-5)</label><input type=\"number\" id=\"n\" name=\"subjects\" min=\"1\" max=\"5\" value=\"1\"></div>\n  <div><label for=\"t\">Phone</label><input type=\"tel\" id=\"t\" name=\"phone\" placeholder=\"+91 98765 43210\"></div>\n  <div><label for=\"u\">Website</label><input type=\"url\" id=\"u\" name=\"website\" placeholder=\"https://\"></div>\n  <div><label for=\"s\">Search</label><input type=\"search\" id=\"s\" name=\"q\" placeholder=\"Search...\"></div>\n  <button>Submit</button>\n</form>\n<pre id=\"out\">(try an invalid email or a number above 5)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});",
+     "explanation": "Invalid values are blocked by the browser before the submit event fires."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the benefit of type=\"email\" over type=\"text\"?",
+     "a": "Built-in format validation, an email-friendly keyboard on mobile and autofill support."
+    },
+    {
+     "q": "Why is type=\"number\" a poor choice for phone numbers?",
+     "a": "It adds spinners, strips leading zeros and rejects characters like + or spaces. Use tel or text with pattern."
+    },
+    {
+     "q": "Does type=\"password\" encrypt the data?",
+     "a": "No, it only masks the characters on screen. Use HTTPS to protect data in transit."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/form.html"
+  },
+  {
+   "id": "html-choice-controls",
+   "title": "Radio, Checkbox, Select & Datalist",
+   "level": "beginner",
+   "summary": "Let users choose from options: one of many (radio, select), many (checkbox), or suggestions (datalist).",
+   "description": "### Radio buttons\nChoose **exactly one** option from a group. Radios are grouped by sharing the same **`name`**. Each needs its own `value`.\n\n```html\n<input type=\"radio\" id=\"m\" name=\"gender\" value=\"male\"> <label for=\"m\">Male</label>\n<input type=\"radio\" id=\"f\" name=\"gender\" value=\"female\"> <label for=\"f\">Female</label>\n```\n\n### Checkboxes\nChoose **any number** (zero, one or many). Checked ones are submitted. Use `checked` for a default. Checkboxes sharing a name submit multiple values.\n\n### select + option\nA drop-down list. `<option value=\"..\">` holds the value; `<optgroup label=\"..\">` groups options; `multiple` allows multi-select; `size` shows a list box.\n\n### datalist\n`<input list=\"countries\">` plus `<datalist id=\"countries\">` gives **suggestions** while typing - but the user may still type something else.\n\n| | select | datalist |\n|---|---|---|\n| Free text allowed | No | Yes |\n| Must pick from list | Yes | No |\n| Best for | fixed choice | suggestions |\n\n### Accessibility tips\n- Wrap related radios/checkboxes in a `<fieldset>` with a `<legend>` (see next topic).\n- Always connect each choice to a label so the text is clickable.\n- For long lists of yes/no choices consider a checkbox group; for 2 mutually exclusive options a radio group.",
+   "keyPoints": [
+    "Radios with the same name form one group; only one selected.",
+    "Checkboxes allow multiple selections.",
+    "select = fixed list; datalist = suggestions with free text.",
+    "Use optgroup to group long option lists.",
+    "Each radio/checkbox needs its own label."
+   ],
+   "pitfalls": [
+    "Giving radios different name values - they will not exclude each other.",
+    "Forgetting value on options so text is sent instead.",
+    "Making placeholder-like first option required without disabled/empty value."
+   ],
+   "examples": [
+    {
+     "title": "All choice controls",
+     "language": "web",
+     "html": "<form>\n  <div>\n    <b>Gender</b><br>\n    <input type=\"radio\" id=\"m\" name=\"gender\" value=\"male\" checked> <label for=\"m\" style=\"display:inline\">Male</label>\n    <input type=\"radio\" id=\"f\" name=\"gender\" value=\"female\"> <label for=\"f\" style=\"display:inline\">Female</label>\n  </div>\n  <div>\n    <b>Hobbies</b><br>\n    <label style=\"display:inline\"><input type=\"checkbox\" name=\"hobby\" value=\"music\" checked> Music</label>\n    <label style=\"display:inline\"><input type=\"checkbox\" name=\"hobby\" value=\"sports\"> Sports</label>\n    <label style=\"display:inline\"><input type=\"checkbox\" name=\"hobby\" value=\"coding\"> Coding</label>\n  </div>\n  <div>\n    <label for=\"c\">Favourite country (select)</label>\n    <select id=\"c\" name=\"country\">\n      <option value=\"\">-- choose --</option>\n      <optgroup label=\"Asia\"><option value=\"in\">India</option><option value=\"jp\">Japan</option></optgroup>\n      <optgroup label=\"Europe\"><option value=\"uk\">UK</option><option value=\"fr\">France</option></optgroup>\n    </select>\n  </div>\n  <div>\n    <label for=\"d\">Pick or type a country (datalist)</label>\n    <input id=\"d\" name=\"country2\" list=\"cl\">\n    <datalist id=\"cl\"><option value=\"USA\"><option value=\"Canada\"><option value=\"UK\"></datalist>\n  </div>\n  <button>Submit</button>\n</form>\n<pre id=\"out\">(submit to see selections)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you group radio buttons?",
+     "a": "Give them the same name attribute; the browser allows only one of them to be selected."
+    },
+    {
+     "q": "Select vs datalist?",
+     "a": "select forces a choice from the list; datalist offers suggestions but still allows free text."
+    },
+    {
+     "q": "How do you let a select accept several values?",
+     "a": "Add the multiple attribute to select (and use name with the values submitted as multiple entries)."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/form.html"
+  },
+  {
+   "id": "html-date-special-inputs",
+   "title": "Date, Time, Color, Range, File & Hidden Inputs",
+   "level": "intermediate",
+   "summary": "Built-in pickers: date, time, month, week, datetime-local, color, range, file and hidden.",
+   "description": "HTML5 added many input types that show native pickers, so you rarely need a JavaScript date library for simple forms.\n\n| type | Control | Submitted value format |\n|---|---|---|\n| `date` | Calendar picker | `2026-10-14` |\n| `time` | Time picker | `14:30` |\n| `datetime-local` | Date + time | `2026-10-14T14:30` |\n| `month` | Month & year | `2026-10` |\n| `week` | Week of year | `2026-W42` |\n| `color` | Colour chooser | `#e34c26` |\n| `range` | Slider | a number |\n| `file` | File upload | file(s) |\n| `hidden` | Invisible value | any string |\n\n### Constraints\n`min`, `max`, `step` work on date/time/number/range. Example: `<input type=\"date\" min=\"2026-01-01\">`.\n\n### file\n- `accept=\".pdf,image/*\"` filters selectable types.\n- `multiple` allows many files.\n- `capture` hints the camera on mobile.\n- The form needs `enctype=\"multipart/form-data\"` and `method=\"post\"` to upload.\n\n### range\nHas no visible value by default; show it with `<output>` and a few lines of JS.\n\n### hidden\nSends data the user does not see (a CSRF token, a record id). It is **not secure** - users can edit it in DevTools.\n\n### Browser support\nAll modern browsers support these pickers, but their UI differs. The submitted value format is always the same.",
+   "keyPoints": [
+    "date, time, month, week and datetime-local give native pickers.",
+    "Submitted values use fixed ISO-style formats.",
+    "range needs output/JS to display its value.",
+    "file uploads need method=post and multipart/form-data.",
+    "hidden inputs are not secret - never trust them."
+   ],
+   "pitfalls": [
+    "Using type=\"date\" values assuming a local format like DD/MM/YYYY.",
+    "Forgetting enctype for file upload so only the file name is sent.",
+    "Putting sensitive data in hidden inputs."
+   ],
+   "examples": [
+    {
+     "title": "Pickers, slider and colour",
+     "language": "web",
+     "html": "<form>\n  <div><label for=\"bd\">Birth date</label><input type=\"date\" id=\"bd\" name=\"birthdate\" value=\"2000-01-01\"></div>\n  <div><label for=\"tm\">Appointment time</label><input type=\"time\" id=\"tm\" name=\"time\" value=\"09:30\"></div>\n  <div><label for=\"dt\">Meeting (date+time)</label><input type=\"datetime-local\" id=\"dt\" name=\"meeting\"></div>\n  <div><label for=\"mo\">Month</label><input type=\"month\" id=\"mo\" name=\"month\"></div>\n  <div><label for=\"wk\">Vacation week</label><input type=\"week\" id=\"wk\" name=\"week\"></div>\n  <div><label for=\"co\">Favourite colour</label><input type=\"color\" id=\"co\" name=\"color\" value=\"#e34c26\"></div>\n  <div><label for=\"vol\">Volume: <span id=\"v\">80</span></label>\n    <input type=\"range\" id=\"vol\" name=\"volume\" min=\"0\" max=\"100\" value=\"80\"></div>\n  <div><label for=\"fl\">Upload a file</label><input type=\"file\" id=\"fl\" name=\"upload\" accept=\"image/*,.pdf\"></div>\n  <input type=\"hidden\" name=\"token\" value=\"abc123\">\n  <button>Submit</button>\n</form>\n<pre id=\"out\">(submit to see values)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});\ndocument.getElementById('vol').addEventListener('input', function (e) {\n  document.getElementById('v').textContent = e.target.value;\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What format does input type=\"date\" submit?",
+     "a": "ISO format YYYY-MM-DD, regardless of the display format in the picker."
+    },
+    {
+     "q": "What is needed to upload files with a form?",
+     "a": "method=\"post\", enctype=\"multipart/form-data\" and an input type=\"file\"."
+    },
+    {
+     "q": "Is a hidden input secure?",
+     "a": "No. It is only invisible; users can see and change it with DevTools, so always validate on the server."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/advancedform.html"
+  },
+  {
+   "id": "html-textarea-button-fieldset",
+   "title": "textarea, button & fieldset/legend",
+   "level": "beginner",
+   "summary": "Multi-line text, proper buttons and grouping related controls with fieldset and legend.",
+   "description": "### textarea\nMulti-line text input. Unlike `<input>` it has a closing tag and its default text goes **between** the tags.\n\n```html\n<textarea name=\"msg\" rows=\"5\" cols=\"40\" maxlength=\"300\" placeholder=\"Your message\"></textarea>\n```\n\n- `rows` / `cols` set initial size (or use CSS `width`/`height`).\n- `wrap`, `maxlength`, `readonly`, `required` are supported.\n- Whitespace inside the tags is preserved, so avoid indenting the content.\n\n### button vs input\n| | `<button>` | `<input type=\"submit\">` |\n|---|---|---|\n| Content | any HTML (icons, text) | only the `value` text |\n| Types | submit, reset, button | submit, reset, button |\n\nPrefer `<button>`: it is more flexible. Always set `type` explicitly (`type=\"button\"` for non-submitting buttons).\n\n### fieldset and legend\n`<fieldset>` groups related controls; `<legend>` is its caption. Assistive tech reads the legend before each control inside, which is critical for radio groups (\"Gender, Male radio button\").\n\n```html\n<fieldset>\n  <legend>Contact Info</legend>\n  ...controls...\n</fieldset>\n```\n\nA `disabled` attribute on the fieldset disables **all** controls inside at once. Browsers draw a border by default; style it with CSS.",
+   "keyPoints": [
+    "textarea is multi-line; its default text goes between the tags.",
+    "button can hold HTML; set its type explicitly.",
+    "fieldset groups controls; legend is the group caption.",
+    "disabled on a fieldset disables all its controls."
+   ],
+   "pitfalls": [
+    "Indenting textarea content - the spaces become part of the value.",
+    "Leaving button without type inside a form.",
+    "Skipping fieldset/legend for radio groups."
+   ],
+   "examples": [
+    {
+     "title": "Grouped contact form",
+     "language": "web",
+     "html": "<form>\n  <fieldset>\n    <legend>Contact Info</legend>\n    <div><label for=\"un\">Username</label><input type=\"text\" id=\"un\" name=\"username\"></div>\n    <div><label for=\"em\">Email</label><input type=\"email\" id=\"em\" name=\"email\"></div>\n    <div><label for=\"ms\">Message</label><textarea id=\"ms\" name=\"message\" rows=\"3\" maxlength=\"120\">Hello!</textarea></div>\n    <button type=\"submit\">Send &#9993;</button>\n    <button type=\"reset\">Reset</button>\n  </fieldset>\n</form>\n<pre id=\"out\">(submit)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}\nfieldset{border:2px solid #e34c26;border-radius:8px}\nlegend{font-weight:bold;color:#e34c26;padding:0 6px}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use fieldset and legend?",
+     "a": "They semantically group related controls and give the group an accessible name, announced by screen readers."
+    },
+    {
+     "q": "Difference between button and input type=\"submit\"?",
+     "a": "button can contain rich HTML content; input submit only shows its value text. Both submit the form."
+    },
+    {
+     "q": "How do you set default text in a textarea?",
+     "a": "Place it between the opening and closing tags (there is no value attribute)."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/advancedform.html"
+  },
+  {
+   "id": "html-form-validation",
+   "title": "Built-in Form Validation",
+   "level": "intermediate",
+   "summary": "required, pattern, min/max, minlength and the Constraint Validation API validate without JavaScript.",
+   "description": "HTML5 can validate forms **before** submitting - no JavaScript required. When a value is invalid the browser blocks submission and shows a message.\n\n### Validation attributes\n| Attribute | Checks |\n|---|---|\n| `required` | Value must not be empty |\n| `pattern=\"regex\"` | Value must match the regular expression |\n| `min` / `max` | Numeric/date range |\n| `minlength` / `maxlength` | Text length |\n| `step` | Allowed increments |\n| `type=\"email\" / \"url\"` | Format |\n| `multiple` | With email/file for lists |\n\n```html\n<input type=\"text\" name=\"zip\" pattern=\"[0-9]{6}\" title=\"6 digit PIN code\" required>\n```\nThe `title` becomes part of the message when a pattern fails.\n\n### CSS pseudo-classes\n`:valid`, `:invalid`, `:required`, `:optional`, `:user-invalid` let you style states. Prefer `:user-invalid` (only after interaction) so fields are not red on page load.\n\n### Constraint Validation API\n- `input.validity` - a ValidityState (`valueMissing`, `typeMismatch`, `patternMismatch`...).\n- `input.setCustomValidity(\"msg\")` - set your own message (empty string clears it).\n- `form.checkValidity()` / `reportValidity()`.\n\n### novalidate\n`<form novalidate>` switches the browser validation off so you can use your own JS validation.\n\n### Never trust the client\nBrowser validation is a **convenience**. Always validate again on the server.",
+   "keyPoints": [
+    "required, pattern, min, max, minlength, maxlength validate natively.",
+    "Use title to explain pattern requirements.",
+    ":invalid / :user-invalid style invalid fields.",
+    "setCustomValidity() customises messages.",
+    "Server-side validation is always necessary."
+   ],
+   "pitfalls": [
+    "Relying only on client-side validation for security.",
+    "Forgetting to clear setCustomValidity(\"\") - field stays invalid.",
+    "Styling :invalid on page load so everything looks like an error."
+   ],
+   "examples": [
+    {
+     "title": "Native validation + custom message",
+     "language": "web",
+     "html": "<form id=\"f\">\n  <div><label for=\"e\">Email (required)</label><input type=\"email\" id=\"e\" name=\"email\" required></div>\n  <div><label for=\"z\">PIN code (6 digits)</label>\n    <input id=\"z\" name=\"pin\" pattern=\"[0-9]{6}\" title=\"Enter exactly 6 digits\" required></div>\n  <div><label for=\"a\">Age (18-60)</label><input type=\"number\" id=\"a\" name=\"age\" min=\"18\" max=\"60\" required></div>\n  <div><label for=\"p\">Password (min 6 chars)</label><input type=\"password\" id=\"p\" name=\"pw\" minlength=\"6\" required></div>\n  <button>Register</button>\n</form>\n<pre id=\"out\">(submit with invalid values to see the browser messages)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}\ninput:user-invalid{border:2px solid crimson}\ninput:valid{border-color:seagreen}",
+     "js": "var pin = document.getElementById('z');\npin.addEventListener('input', function () {\n  pin.setCustomValidity(/^[0-9]{6}$/.test(pin.value) ? '' : 'PIN must be 6 digits like 560001');\n});\ndocument.getElementById('f').addEventListener('submit', function (e) {\n  e.preventDefault();\n  document.getElementById('out').textContent = 'Valid! Form would be sent now.';\n});",
+     "explanation": "The submit handler only runs when all constraints pass."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you validate a form without JavaScript?",
+     "a": "Use attributes such as required, pattern, min, max, minlength and type=email/url/number."
+    },
+    {
+     "q": "How do you disable browser validation?",
+     "a": "Add novalidate to the form (or formnovalidate to a submit button)."
+    },
+    {
+     "q": "Why is client-side validation not enough?",
+     "a": "Users can bypass or edit it with DevTools or direct requests; the server must validate again."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/attr.html"
+  },
+  {
+   "id": "html-form-attributes",
+   "title": "Form & Input Attributes: autocomplete, readonly, disabled...",
+   "level": "intermediate",
+   "summary": "autofocus, autocomplete, readonly vs disabled, form, multiple, enctype and other attributes explained.",
+   "description": "Beyond type and name, many attributes fine-tune how controls behave.\n\n### On inputs\n| Attribute | Effect |\n|---|---|\n| `value` | Initial value |\n| `placeholder` | Hint text shown when empty |\n| `autofocus` | Focus on page load (use sparingly) |\n| `autocomplete` | `on` / `off` / tokens like `email`, `one-time-code` |\n| `readonly` | Cannot edit, **is submitted**, can be focused |\n| `disabled` | Cannot edit or focus, **not submitted**, greyed |\n| `required` | Must be filled |\n| `size` | Visible width in characters |\n| `list` | Link to a datalist |\n| `form` | Associate with a form by id even outside it |\n| `multiple` | Several files/emails |\n| `accept` | File type filter |\n\n### readonly vs disabled\nThis is a classic interview question: **readonly** values are submitted and focusable; **disabled** values are not submitted at all.\n\n### On the form\n- `action`, `method`, `enctype` (`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`).\n- `target` - where to show the response.\n- `autocomplete`, `novalidate`, `accept-charset`, `name`.\n\n### On submit buttons\n`formaction`, `formmethod`, `formtarget`, `formnovalidate` override the form's settings for that button - handy for \"Save draft\" vs \"Publish\".",
+   "keyPoints": [
+    "readonly is submitted and focusable; disabled is not submitted.",
+    "autocomplete tokens help password managers and autofill.",
+    "The form attribute links a control to a form elsewhere.",
+    "formaction etc. let buttons override form settings.",
+    "enctype multipart/form-data is required for file upload."
+   ],
+   "pitfalls": [
+    "Using disabled and expecting the value to be sent.",
+    "autocomplete=\"off\" on login fields - frustrates password managers.",
+    "Multiple autofocus attributes - only one wins."
+   ],
+   "examples": [
+    {
+     "title": "readonly vs disabled",
+     "language": "web",
+     "html": "<form>\n  <div><label for=\"a\">readonly (will be submitted)</label><input id=\"a\" name=\"ro\" value=\"I can be copied\" readonly></div>\n  <div><label for=\"b\">disabled (will NOT be submitted)</label><input id=\"b\" name=\"dis\" value=\"I am skipped\" disabled></div>\n  <div><label for=\"c\">normal</label><input id=\"c\" name=\"normal\" value=\"hello\" autocomplete=\"off\" autofocus></div>\n  <button type=\"submit\">Save</button>\n  <button type=\"submit\" formnovalidate>Save draft</button>\n</form>\n<pre id=\"out\">(submit and compare which names appear)</pre>",
+     "css": "body{font-family:sans-serif;max-width:480px}\nform div{margin:10px 0}\nlabel{display:block;font-weight:bold;margin-bottom:3px}\ninput:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{padding:6px;width:100%;box-sizing:border-box}\nbutton,input[type=submit]{padding:8px 14px;cursor:pointer}\npre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "var f = document.querySelector('form');\nf.addEventListener('submit', function (e) {\n  e.preventDefault();\n  var data = new FormData(f), lines = [];\n  data.forEach(function (v, k) { lines.push(k + ' = ' + (v && v.name !== undefined ? v.name : v)); });\n  document.getElementById('out').textContent = lines.join('\\n') || '(nothing)';\n});",
+     "explanation": "The output lists ro and normal but not dis."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between readonly and disabled?",
+     "a": "readonly fields can be focused and are submitted but not editable; disabled fields cannot be interacted with and are not submitted."
+    },
+    {
+     "q": "What does the form attribute on an input do?",
+     "a": "It associates the control with the form whose id is given, even if the input is outside that form element."
+    },
+    {
+     "q": "What are formaction and formmethod?",
+     "a": "Attributes on a submit button that override the form action and method for that button only."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/attr.html"
+  },
+  {
+   "id": "html-output-progress-meter",
+   "title": "output, progress & meter",
+   "level": "intermediate",
+   "summary": "Show calculation results, task progress and gauge values with built-in elements.",
+   "description": "Three small elements display values and are often forgotten.\n\n### output\n`<output>` shows the **result of a calculation or user action**. Use `for=\"id1 id2\"` to list the inputs it depends on and `name` so it can be part of the form.\n\n```html\n<form oninput=\"sum.value = Number(a.value) + Number(b.value)\">\n  <input type=\"number\" id=\"a\" value=\"3\"> +\n  <input type=\"number\" id=\"b\" value=\"4\"> =\n  <output name=\"sum\" for=\"a b\">7</output>\n</form>\n```\n\nScreen readers announce changes (it has an implicit `role=\"status\"`).\n\n### progress\n`<progress value=\"70\" max=\"100\">70%</progress>` shows **task completion**. Without a `value` it becomes an *indeterminate* spinner/bar (loading). The inner text is fallback.\n\n### meter\n`<meter>` shows a **scalar value within a known range** - disk usage, a score, battery. Not for progress!\n\n| Attribute | Meaning |\n|---|---|\n| `min`, `max` | Range |\n| `value` | Current |\n| `low`, `high` | Thresholds |\n| `optimum` | Ideal value |\n\nThe browser colours the bar (green / yellow / red) based on these thresholds.\n\n### progress vs meter\n- Progress: something is *being done* (upload 40%).\n- Meter: a *measurement* (7 of 10 stars, 80% disk used).\n\nThe course's project page uses `<progress>` elements for skill levels - technically a `meter` would be more accurate there.",
+   "keyPoints": [
+    "output shows a calculated result and is announced to screen readers.",
+    "progress = task completion; no value = indeterminate.",
+    "meter = a measurement in a range with low/high/optimum.",
+    "Always give an accessible label for progress and meter."
+   ],
+   "pitfalls": [
+    "Using progress for static values like skill levels.",
+    "Using meter without min/max understanding (defaults 0-1).",
+    "Forgetting to connect a label via for/id."
+   ],
+   "examples": [
+    {
+     "title": "output, progress and meter",
+     "language": "web",
+     "html": "<form id=\"calc\">\n  <input type=\"number\" id=\"a\" value=\"3\"> +\n  <input type=\"number\" id=\"b\" value=\"4\"> =\n  <output id=\"sum\" for=\"a b\">7</output>\n</form>\n<p><label for=\"up\">Upload progress:</label>\n<progress id=\"up\" value=\"40\" max=\"100\">40%</progress></p>\n<p><label for=\"disk\">Disk used:</label>\n<meter id=\"disk\" min=\"0\" max=\"100\" low=\"50\" high=\"80\" optimum=\"20\" value=\"85\">85%</meter></p>\n<p><label for=\"sc\">Quiz score:</label>\n<meter id=\"sc\" min=\"0\" max=\"10\" low=\"4\" high=\"7\" optimum=\"10\" value=\"8\">8 / 10</meter></p>",
+     "css": "body{font-family:sans-serif} progress,meter{width:200px;height:20px} input{width:60px;padding:4px}",
+     "js": "var a = document.getElementById('a'), b = document.getElementById('b'), s = document.getElementById('sum');\nfunction calc() { s.value = Number(a.value) + Number(b.value); }\na.addEventListener('input', calc); b.addEventListener('input', calc);\nvar up = document.getElementById('up');\nvar t = setInterval(function () { up.value = up.value >= 100 ? 0 : Number(up.value) + 5; }, 400);",
+     "explanation": "The meter bar colour changes with low/high/optimum."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between progress and meter?",
+     "a": "progress shows how far a task has advanced; meter shows a measurement within a known range (such as disk usage)."
+    },
+    {
+     "q": "What is the output element for?",
+     "a": "To display the result of a calculation or user action; it can reference its inputs via the for attribute and is announced by assistive tech."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/main_project/index.html"
+  }
+ ]
+}

@@ -1,0 +1,491 @@
+{
+ "id": "react-state-hooks-basics",
+ "title": "State and Core Hooks",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "react-usestate",
+   "title": "useState: Adding State",
+   "level": "beginner",
+   "summary": "useState gives a component memory; calling its setter re-renders with the new value.",
+   "description": "Normal local variables reset on every render and changing them does not update the screen. **State** solves both problems: it is remembered between renders and changing it tells React to render again.\n\n```jsx\nconst [count, setCount] = useState(0);\n```\n\n`useState(initial)` returns an array of two items: the **current value** and a **setter function**. Array destructuring lets you name them freely (`[value, setValue]`).\n\n### How it behaves\n\n- The initial value is used only on the **first** render.\n- Calling `setCount(5)` schedules a re-render. The new value is available in the **next** render, not on the next line.\n- If the new value is identical (`Object.is`) to the old one, React skips the re-render.\n- Each component instance has its **own** state. Two `<Counter />` elements do not share a count.\n- State is tied to the component's position in the tree. If the component unmounts, state is lost.\n\n### Lazy initial state\n\nIf computing the initial value is expensive, pass a function: `useState(() => readFromStorage())`. React calls it only once.\n\n### What belongs in state?\n\nOnly values that change over time **and** affect what is rendered. Values you can compute from other state or props should not be state. Values that change but do not affect the UI (timer ids, previous values) belong in a `ref`.",
+   "keyPoints": [
+    "State persists between renders; local variables do not",
+    "const [value, setValue] = useState(initial)",
+    "Setting state schedules a re-render; value updates on the next render",
+    "Pass a function to useState for lazy (expensive) initial values",
+    "Each component instance owns its state"
+   ],
+   "pitfalls": [
+    "Expecting the variable to change immediately after calling the setter.",
+    "Calling a hook conditionally or inside loops.",
+    "useState(readStorage()) runs the read on every render; use useState(() => readStorage())."
+   ],
+   "examples": [
+    {
+     "title": "Counter and toggle",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }\nbutton { margin-right: 8px; padding: 6px 12px; }",
+     "code": "function App() {\n  const [count, setCount] = useState(0);\n  const [on, setOn] = useState(false);\n\n  function handleClick() {\n    setCount(count + 1);\n    console.log(\"still the old value here:\", count);\n  }\n\n  return (\n    <div>\n      <p>Count: {count}</p>\n      <button onClick={handleClick}>Add</button>\n      <button onClick={() => setOn(!on)}>{on ? \"ON\" : \"OFF\"}</button>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use state instead of a normal variable?",
+     "a": "A normal variable resets every render and does not trigger a re-render. State persists and updating it re-renders the component."
+    },
+    {
+     "q": "Why does console.log(count) right after setCount show the old value?",
+     "a": "State is a snapshot for that render. The setter only schedules a new render in which count will have the new value."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-state-updates",
+   "title": "Functional Updates and Batching",
+   "level": "beginner",
+   "summary": "Use the updater form when the next state depends on the previous one; React batches multiple updates into one render.",
+   "description": "Inside one render, `count` is a fixed **snapshot**. So this does not add 3:\n\n```jsx\nsetCount(count + 1);\nsetCount(count + 1);\nsetCount(count + 1); // count is 0 in all three -> result 1\n```\n\n### Functional (updater) form\n\nPass a function that receives the latest pending state:\n\n```jsx\nsetCount(c => c + 1);\nsetCount(c => c + 1);\nsetCount(c => c + 1); // result 3\n```\n\nUse this form whenever the new value is calculated **from the previous value**, especially in effects, timers and async callbacks, where the closure may hold a stale value.\n\n### Batching\n\nReact groups multiple state updates inside the same event into **one re-render**. Since React 18 this is **automatic batching** everywhere: event handlers, timeouts, promises and native events. You can rely on fewer renders without any extra code.\n\n### Updater rules\n\n- The updater function must be **pure** (no side effects, no mutation). In development React may call it twice.\n- If you pass a value that depends on nothing else (`setName(\"Asha\")`), the plain form is fine.\n- To force a synchronous DOM update (rare) you can use `flushSync` from `react-dom`.",
+   "keyPoints": [
+    "State inside a render is a snapshot",
+    "Use setX(prev => next) when depending on previous state",
+    "React batches updates into a single render (automatic batching in 18+)",
+    "Updater functions must be pure"
+   ],
+   "pitfalls": [
+    "Calling setCount(count + 1) three times and expecting +3.",
+    "Using stale state inside setInterval callbacks; use the updater form."
+   ],
+   "examples": [
+    {
+     "title": "Three updates: wrong vs right",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }\nbutton { margin-left: 8px; }",
+     "code": "function App() {\n  const [a, setA] = useState(0);\n  const [b, setB] = useState(0);\n  console.log(\"render\");\n\n  function wrong() {\n    setA(a + 1);\n    setA(a + 1);\n    setA(a + 1);\n  }\n  function right() {\n    setB((n) => n + 1);\n    setB((n) => n + 1);\n    setB((n) => n + 1);\n  }\n  return (\n    <div>\n      <p>Direct: {a} <button onClick={wrong}>+3 (wrong)</button></p>\n      <p>Updater: {b} <button onClick={right}>+3 (right)</button></p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When should you use the functional form of a state setter?",
+     "a": "When the new state is computed from the previous state, or when the setter is called from a closure that may hold a stale value such as a timer."
+    },
+    {
+     "q": "What is automatic batching?",
+     "a": "React 18 groups multiple state updates, even inside promises, timeouts and native handlers, into one re-render."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-state-immutability",
+   "title": "Updating Objects and Arrays Immutably",
+   "level": "beginner",
+   "summary": "Never mutate state; create a new object or array so React can see the change.",
+   "description": "React decides whether to re-render by comparing the old and new state with `Object.is`. If you mutate an object or array in place, the reference stays the same, so React sees \"no change\" and may skip the update. Therefore state must be treated as **read-only**: always make a copy.\n\n### Objects\n\nUse the spread operator and override the changed key:\n\n```jsx\nsetUser({ ...user, age: user.age + 1 });\n// nested\nsetUser({ ...user, address: { ...user.address, city: \"Pune\" } });\n```\n\n### Arrays\n\n| Goal | Avoid (mutates) | Use (returns new) |\n| --- | --- | --- |\n| add | `push`, `unshift` | `[...arr, x]`, `[x, ...arr]` |\n| remove | `splice`, `pop` | `arr.filter(i => i.id !== id)` |\n| replace | `arr[i] = x` | `arr.map(i => i.id === id ? {...i, ...} : i)` |\n| sort/reverse | `sort`, `reverse` | `[...arr].sort()`, `toSorted()` |\n\n### Deep nesting\n\nDeeply nested updates become verbose. Keep state **flat** where possible, or use a helper such as **Immer** (`use-immer`, or Redux Toolkit which includes it) so you can write \"mutating\" code that is applied immutably.\n\n### Why immutability?\n\nIt makes change detection cheap, enables `memo`, time-travel debugging, and avoids hard-to-trace bugs where two parts of the app share the same object.",
+   "keyPoints": [
+    "Always copy before changing: spread, map, filter, slice",
+    "Avoid push/splice/sort/reverse directly on state",
+    "Update nested objects by copying each level",
+    "Keep state flat; use Immer for deep structures",
+    "React compares references, so new reference = change"
+   ],
+   "pitfalls": [
+    "state.items.push(x); setState(state) - same reference, no re-render.",
+    "Shallow copying but still mutating a nested object."
+   ],
+   "examples": [
+    {
+     "title": "Add, toggle and remove without mutation",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }",
+     "code": "function App() {\n  const [todos, setTodos] = useState([\n    { id: 1, text: \"Learn JSX\", done: true },\n    { id: 2, text: \"Learn state\", done: false },\n  ]);\n  const [nextId, setNextId] = useState(3);\n\n  const add = () => {\n    setTodos([...todos, { id: nextId, text: \"Task \" + nextId, done: false }]);\n    setNextId(nextId + 1);\n  };\n  const toggle = (id) =>\n    setTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));\n  const remove = (id) => setTodos(todos.filter((t) => t.id !== id));\n\n  return (\n    <div>\n      <button onClick={add}>Add task</button>\n      <ul>\n        {todos.map((t) => (\n          <li key={t.id}>\n            <span\n              onClick={() => toggle(t.id)}\n              style={{ textDecoration: t.done ? \"line-through\" : \"none\", cursor: \"pointer\" }}\n            >\n              {t.text}\n            </span>{\" \"}\n            <button onClick={() => remove(t.id)}>x</button>\n          </li>\n        ))}\n      </ul>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is mutating state a bug in React?",
+     "a": "React uses reference comparison to detect changes. A mutated object keeps the same reference, so React may not re-render and other code sharing the object sees surprising changes."
+    },
+    {
+     "q": "How do you remove an item from an array in state?",
+     "a": "Use filter to create a new array without it: setItems(items.filter(i => i.id !== id))."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-controlled-inputs",
+   "title": "Controlled Inputs and Forms",
+   "level": "beginner",
+   "summary": "In a controlled input, React state is the single source of truth for the value.",
+   "description": "A **controlled component** is a form element whose `value` is driven by state and whose changes are reported through `onChange`. The DOM never holds a value that React does not know about.\n\n```jsx\nconst [name, setName] = useState(\"\");\n<input value={name} onChange={e => setName(e.target.value)} />\n```\n\n### Why control inputs?\n\n- Validate or format as the user types (uppercase, trim, limit).\n- Disable submit until the form is valid.\n- Reset or prefill the form by changing state.\n- Show the current value elsewhere on the page.\n\n### Different input types\n\n| Element | Value prop | Read from |\n| --- | --- | --- |\n| text, textarea, select | `value` | `e.target.value` |\n| checkbox | `checked` | `e.target.checked` |\n| radio | `checked` | `e.target.value` |\n| file | uncontrolled only | `e.target.files` |\n\n### One handler for many fields\n\nGive inputs a `name` and use a single handler with a computed key: `setForm({ ...form, [e.target.name]: e.target.value })`.\n\n### Controlled vs uncontrolled\n\nUncontrolled inputs use `defaultValue` and read the value with a `ref` or `FormData` on submit. They are simpler and cause fewer re-renders. Controlled inputs are better when you need live validation. Never switch an input between the two (React warns).",
+   "keyPoints": [
+    "value + onChange = controlled input",
+    "Checkboxes use checked, not value",
+    "One handler with [e.target.name] can drive many fields",
+    "Always call e.preventDefault() in onSubmit",
+    "Do not give value={undefined} then a string later"
+   ],
+   "pitfalls": [
+    "Setting value without onChange makes the input read-only.",
+    "Initial state undefined or null causes the uncontrolled-to-controlled warning; start with \"\"."
+   ],
+   "examples": [
+    {
+     "title": "Sign-up form with one handler",
+     "language": "react",
+     "css": "form { display: flex; flex-direction: column; gap: 8px; max-width: 260px; font-family: sans-serif; padding: 12px; }\ninput, select, button { padding: 6px; }",
+     "code": "function App() {\n  const [form, setForm] = useState({ name: \"\", email: \"\", newsletter: false, role: \"student\" });\n  const [submitted, setSubmitted] = useState(null);\n\n  function handleChange(e) {\n    const { name, value, type, checked } = e.target;\n    setForm({ ...form, [name]: type === \"checkbox\" ? checked : value });\n  }\n  function handleSubmit(e) {\n    e.preventDefault();\n    setSubmitted(form);\n  }\n  return (\n    <form onSubmit={handleSubmit}>\n      <input name=\"name\" value={form.name} onChange={handleChange} placeholder=\"Name\" />\n      <input name=\"email\" value={form.email} onChange={handleChange} placeholder=\"Email\" />\n      <select name=\"role\" value={form.role} onChange={handleChange}>\n        <option value=\"student\">Student</option>\n        <option value=\"developer\">Developer</option>\n      </select>\n      <label>\n        <input type=\"checkbox\" name=\"newsletter\" checked={form.newsletter} onChange={handleChange} /> Newsletter\n      </label>\n      <button type=\"submit\">Submit</button>\n      {submitted && <pre>{JSON.stringify(submitted, null, 2)}</pre>}\n    </form>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a controlled component?",
+     "a": "A form element whose value is stored in React state and updated via onChange, making React the single source of truth."
+    },
+    {
+     "q": "When would you choose an uncontrolled input?",
+     "a": "For simple forms where you only need the value on submit, or with file inputs, using a ref or FormData to read it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-lifting-state",
+   "title": "Lifting State Up",
+   "level": "beginner",
+   "summary": "When two components need the same data, move the state to their closest common parent and pass it down.",
+   "description": "Sometimes two sibling components must reflect the same changing data, for example a temperature in Celsius and Fahrenheit, or a filter input and a result list. Siblings cannot talk to each other directly. The solution is to **lift state up**: move it to their nearest common ancestor.\n\n### The recipe\n\n1. Remove the state from the children.\n2. Declare the state in the parent.\n3. Pass the value **down** as a prop.\n4. Pass a **setter callback** down (an `onChange` prop) so children can request updates.\n\nThe children become **controlled components**: they display what the parent tells them and notify the parent on change.\n\n### Single source of truth\n\nEvery piece of data should live in exactly one component. Other components receive it as props. If you find two states that must be kept equal with an effect, you almost certainly need to lift one.\n\n### When lifting gets painful\n\nIf state is lifted very high and passed through many layers (**prop drilling**), consider Context, composition (passing JSX as `children`), or a state library. Do not use them preemptively; lift only as far as needed.\n\n### Data flow\n\nProps flow down, events flow up. This one-way flow makes it easy to find who owns a piece of data.",
+   "keyPoints": [
+    "Share state by moving it to the closest common parent",
+    "Pass value down and onChange callbacks down",
+    "Children become controlled components",
+    "One piece of data, one owner",
+    "If prop drilling hurts, try composition or Context"
+   ],
+   "pitfalls": [
+    "Duplicating the same state in two components and syncing with useEffect.",
+    "Lifting state higher than necessary, causing needless re-renders."
+   ],
+   "examples": [
+    {
+     "title": "Two inputs sharing one value",
+     "language": "react",
+     "css": "",
+     "code": "function Celsius({ value, onChange }) {\n  return <label>Celsius: <input type=\"number\" value={value} onChange={(e) => onChange(e.target.value)} /></label>;\n}\nfunction Fahrenheit({ value, onChange }) {\n  return <label>Fahrenheit: <input type=\"number\" value={value} onChange={(e) => onChange(e.target.value)} /></label>;\n}\n\nfunction App() {\n  const [celsius, setCelsius] = useState(\"0\");\n  const fahrenheit = celsius === \"\" ? \"\" : String(Math.round((Number(celsius) * 9) / 5 + 32));\n\n  function fromF(f) {\n    setCelsius(f === \"\" ? \"\" : String(Math.round(((Number(f) - 32) * 5) / 9)));\n  }\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12, display: \"grid\", gap: 8 }}>\n      <Celsius value={celsius} onChange={setCelsius} />\n      <Fahrenheit value={fahrenheit} onChange={fromF} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does \"lifting state up\" mean?",
+     "a": "Moving shared state to the nearest common parent so multiple children can read it as props and update it via callbacks."
+    },
+    {
+     "q": "What is prop drilling and how do you avoid it?",
+     "a": "Passing props through many layers that do not use them. Avoid it with composition, Context, or a state management library."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-derived-state",
+   "title": "Derived State and Choosing State",
+   "level": "beginner",
+   "summary": "Compute values from existing state during render instead of storing duplicates.",
+   "description": "**Derived state** is data you can calculate from other state or props. The rule: **do not store it in state; compute it during render.**\n\n### Bad pattern\n\n```jsx\nconst [items, setItems] = useState([]);\nconst [count, setCount] = useState(0);   // duplicate!\nuseEffect(() => setCount(items.length), [items]);\n```\n\nThis renders twice, can show a stale count for one frame, and forgets to sync in some code path.\n\n### Good pattern\n\n```jsx\nconst [items, setItems] = useState([]);\nconst count = items.length;\nconst done = items.filter(i => i.done).length;\n```\n\n### Principles for structuring state\n\n- **Group related state** that always changes together into one object or reducer.\n- **Avoid contradictions**: use `status: \"idle\" | \"loading\" | \"error\"` instead of `isLoading` and `isError` booleans that can both be true.\n- **Avoid redundant state**: if you can calculate it, calculate it.\n- **Avoid duplication**: store a selected item's `id`, not a copy of the whole object, so edits stay in sync.\n- **Avoid deeply nested state**: flatten it.\n\n### Expensive calculations\n\nIf a derivation is slow, wrap it in `useMemo`. Measure first; most derivations are cheap.\n\n### Copying props into state\n\n`useState(props.value)` only uses the prop on the first render. If the prop should keep driving the UI, do not copy it. Use a `key` to reset state when identity changes.",
+   "keyPoints": [
+    "If it can be computed from state/props, do not store it",
+    "Compute during render; useMemo only if it is slow",
+    "Prefer a status string over multiple conflicting booleans",
+    "Store ids, not copies of objects",
+    "Copying a prop into state ignores later prop changes"
+   ],
+   "pitfalls": [
+    "Syncing derived values with useEffect + setState (extra renders, bugs).",
+    "Storing the selected object and forgetting to update it when the list changes."
+   ],
+   "examples": [
+    {
+     "title": "Derived totals, no extra state",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [items, setItems] = useState([\n    { id: 1, name: \"Pen\", price: 10, qty: 2 },\n    { id: 2, name: \"Book\", price: 150, qty: 1 },\n  ]);\n  const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);\n  const count = items.reduce((sum, i) => sum + i.qty, 0);\n\n  const change = (id, d) =>\n    setItems(items.map((i) => (i.id === id ? { ...i, qty: Math.max(0, i.qty + d) } : i)));\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      {items.map((i) => (\n        <p key={i.id}>\n          {i.name} x {i.qty}{\" \"}\n          <button onClick={() => change(i.id, -1)}>-</button>\n          <button onClick={() => change(i.id, 1)}>+</button>\n        </p>\n      ))}\n      <hr />\n      <b>{count} items, total Rs. {total}</b>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is derived state and why avoid storing it?",
+     "a": "Values computable from other state or props. Storing them duplicates data and risks inconsistency and extra renders, so compute them in render instead."
+    },
+    {
+     "q": "Why prefer a status string to several booleans?",
+     "a": "It makes impossible combinations (loading and error at once) unrepresentable."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-useeffect-basics",
+   "title": "useEffect: Running Side Effects",
+   "level": "beginner",
+   "summary": "useEffect runs code after render to sync your component with something outside React.",
+   "description": "A **side effect** is anything that reaches outside the component's pure render calculation: fetching data, setting up a subscription, changing `document.title`, starting a timer, or touching a non-React widget. `useEffect` runs such code **after** React has painted the screen.\n\n```jsx\nuseEffect(() => {\n  document.title = `Count: ${count}`;\n}, [count]);\n```\n\n### The dependency array\n\n| Form | When the effect runs |\n| --- | --- |\n| `useEffect(fn)` | after **every** render |\n| `useEffect(fn, [])` | once after mount (and cleanup on unmount) |\n| `useEffect(fn, [a, b])` | after mount and whenever `a` or `b` changed |\n\nReact compares dependencies with `Object.is`. **Every reactive value used inside the effect** (props, state, functions defined in the component) must be listed. The `react-hooks/exhaustive-deps` ESLint rule enforces this.\n\n### Think in synchronization\n\nDo not think \"run on mount / update\". Think: \"While these values are what they are, keep this outside thing in sync with them\". When a dependency changes, React cleans up the old effect and re-synchronizes.\n\n### You might not need an effect\n\nDo not use effects for: transforming data for render (compute it), responding to user events (use the handler), or resetting state when a prop changes (use `key`). Effects are for syncing with external systems.",
+   "keyPoints": [
+    "Effects run after render/paint",
+    "Dependency array controls when it re-runs",
+    "List every reactive value the effect reads",
+    "[] means once on mount, not \"never update\"",
+    "Use effects only to sync with external systems"
+   ],
+   "pitfalls": [
+    "Missing dependencies leads to stale closures.",
+    "Using an effect to compute data that could be calculated in render.",
+    "Object/array/function dependencies created inline run the effect every render."
+   ],
+   "examples": [
+    {
+     "title": "Syncing document.title and a clock",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [count, setCount] = useState(0);\n  const [name, setName] = useState(\"\");\n\n  useEffect(() => {\n    document.title = \"Clicked \" + count + \" times\";\n    console.log(\"title effect ran, count =\", count);\n  }, [count]);\n\n  useEffect(() => {\n    console.log(\"mounted once\");\n  }, []);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setCount(count + 1)}>Clicked {count}</button>\n      <br /><br />\n      <input value={name} onChange={(e) => setName(e.target.value)} placeholder=\"typing does not re-run the title effect\" />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does an empty dependency array mean?",
+     "a": "The effect runs once after the first render (and its cleanup runs on unmount). It must not use any reactive values."
+    },
+    {
+     "q": "Which things should NOT be done in useEffect?",
+     "a": "Deriving data for rendering, handling user events, and resetting state on prop change; these belong in render, event handlers and keys respectively."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-effect-cleanup",
+   "title": "Effect Cleanup",
+   "level": "intermediate",
+   "summary": "Return a cleanup function to undo what the effect set up: timers, listeners, subscriptions.",
+   "description": "An effect can return a function. React calls it **before the effect runs again** and **when the component unmounts**. This is where you undo the setup so nothing leaks.\n\n```jsx\nuseEffect(() => {\n  const id = setInterval(tick, 1000);\n  return () => clearInterval(id);\n}, []);\n```\n\n### Typical cleanups\n\n- `clearInterval` / `clearTimeout`\n- `removeEventListener`\n- `socket.close()` / `unsubscribe()`\n- `controller.abort()` for fetch\n- Destroying third-party widgets (maps, charts)\n\n### Order of events\n\nOn a dependency change: React runs the **old cleanup**, then the **new effect**. On unmount: only the cleanup. Cleanup closes over the values from the render that created the effect, so it always cleans up the right thing.\n\n### Why it matters\n\nWithout cleanup you get duplicate listeners, memory leaks, and \"state update on an unmounted component\" bugs. In development with `StrictMode`, React deliberately runs setup, cleanup, setup on mount to expose missing cleanups.\n\n### Writing symmetrical effects\n\nGood effects are symmetrical: whatever setup does, cleanup undoes. If cleanup is hard to write, the effect may be doing too much or may belong in an event handler.",
+   "keyPoints": [
+    "Return a function to clean up",
+    "Runs before the next effect and on unmount",
+    "Setup and cleanup should mirror each other",
+    "Required for timers, listeners, subscriptions, fetch abort",
+    "StrictMode double-invokes effects to reveal missing cleanup"
+   ],
+   "pitfalls": [
+    "Adding window listeners without removing them, so handlers pile up.",
+    "Using setInterval with state inside and no updater function or dependency."
+   ],
+   "examples": [
+    {
+     "title": "Timer and window listener with cleanup",
+     "language": "react",
+     "css": "",
+     "code": "function Clock() {\n  const [seconds, setSeconds] = useState(0);\n  useEffect(() => {\n    const id = setInterval(() => setSeconds((s) => s + 1), 1000);\n    return () => clearInterval(id);\n  }, []);\n  return <p>Seconds: {seconds}</p>;\n}\n\nfunction Resize() {\n  const [w, setW] = useState(window.innerWidth);\n  useEffect(() => {\n    const onResize = () => setW(window.innerWidth);\n    window.addEventListener(\"resize\", onResize);\n    return () => window.removeEventListener(\"resize\", onResize);\n  }, []);\n  return <p>Window width: {w}px</p>;\n}\n\nfunction App() {\n  const [show, setShow] = useState(true);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setShow(!show)}>{show ? \"Unmount\" : \"Mount\"} clock</button>\n      {show && <Clock />}\n      <Resize />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When does the cleanup function run?",
+     "a": "Before the effect re-runs because of changed dependencies, and when the component unmounts."
+    },
+    {
+     "q": "What happens if you forget to clear an interval?",
+     "a": "It keeps firing after unmount, leaks memory, and can try to update state of an unmounted component or duplicate timers."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-effect-fetching",
+   "title": "Fetching Data in useEffect (and Race Conditions)",
+   "level": "intermediate",
+   "summary": "Fetch inside an effect with loading and error state, and ignore stale responses with a flag or AbortController.",
+   "description": "Fetching data on the client is a classic effect: sync the component with a server. A safe pattern keeps three pieces of state (data, loading, error) and cleans up when the request is no longer wanted.\n\n### The race condition\n\nIf `userId` changes from 1 to 2 quickly, request 1 may finish **after** request 2 and overwrite the screen with outdated data. Fix with an `ignore` flag in the cleanup:\n\n```jsx\nuseEffect(() => {\n  let ignore = false;\n  setLoading(true);\n  fetchUser(userId).then(u => { if (!ignore) { setUser(u); setLoading(false); } });\n  return () => { ignore = true; };\n}, [userId]);\n```\n\nWith real `fetch`, prefer `AbortController`: `controller.abort()` in cleanup cancels the request, and you ignore `AbortError`.\n\n### Checklist\n\n- Handle **loading**, **error** and **empty** states.\n- Put `userId` (anything used inside) in the dependency array.\n- Cleanup stale requests.\n- Do not make the effect callback `async` - it must return a cleanup function or nothing; define an async function inside instead.\n\n### Better tools\n\nHand-written fetch effects miss caching, retries, deduplication and refetching. For real apps use **TanStack Query**, SWR, or framework data loaders. Keep the manual version for learning and tiny cases.",
+   "keyPoints": [
+    "Track data, loading and error state",
+    "Cleanup with an ignore flag or AbortController",
+    "Never pass an async function directly to useEffect",
+    "Include every variable used in the request as a dependency",
+    "For production apps prefer TanStack Query / SWR"
+   ],
+   "pitfalls": [
+    "Not handling out-of-order responses (race condition).",
+    "Forgetting to set loading to true when the id changes.",
+    "Ignoring errors, leaving an infinite spinner."
+   ],
+   "examples": [
+    {
+     "title": "Simulated fetch with race protection",
+     "language": "react",
+     "css": "",
+     "code": "// Fake API: user 1 is slow (900ms), others fast (300ms)\nfunction fakeFetchUser(id) {\n  return new Promise((resolve, reject) => {\n    setTimeout(() => {\n      if (id === 3) reject(new Error(\"User 3 not found\"));\n      else resolve({ id, name: \"User #\" + id });\n    }, id === 1 ? 900 : 300);\n  });\n}\n\nfunction Profile({ id }) {\n  const [state, setState] = useState({ status: \"loading\", user: null, error: null });\n\n  useEffect(() => {\n    let ignore = false;\n    setState({ status: \"loading\", user: null, error: null });\n    fakeFetchUser(id)\n      .then((user) => { if (!ignore) setState({ status: \"success\", user, error: null }); })\n      .catch((err) => { if (!ignore) setState({ status: \"error\", user: null, error: err.message }); });\n    return () => { ignore = true; };\n  }, [id]);\n\n  if (state.status === \"loading\") return <p>Loading user {id}...</p>;\n  if (state.status === \"error\") return <p style={{ color: \"crimson\" }}>{state.error}</p>;\n  return <p>Loaded: <b>{state.user.name}</b></p>;\n}\n\nfunction App() {\n  const [id, setId] = useState(1);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      {[1, 2, 3].map((n) => (\n        <button key={n} onClick={() => setId(n)} style={{ marginRight: 6 }}>User {n}</button>\n      ))}\n      <Profile id={id} />\n    </div>\n  );\n}",
+     "explanation": "Click the buttons quickly; only the latest user is shown."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a race condition in data fetching?",
+     "a": "When responses return out of order and an older response overwrites newer data. Fix by ignoring stale results with a flag or aborting the request in cleanup."
+    },
+    {
+     "q": "Why can't useEffect take an async function?",
+     "a": "An async function returns a Promise, but effects must return either nothing or a cleanup function. Define and call an async function inside the effect."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-strictmode",
+   "title": "StrictMode and Double Invocation",
+   "level": "intermediate",
+   "summary": "In development StrictMode runs renders and effects twice to expose impure code and missing cleanup.",
+   "description": "`<StrictMode>` is a development-only wrapper that helps you find bugs early. It has **no effect on production builds**.\n\n### What it does (React 18/19)\n\n- **Re-renders components twice** to detect impure rendering. Your component should give the same output both times.\n- **Runs effects twice on mount**: setup, cleanup, setup again. This simulates a component being unmounted and remounted, which React may do for features like Offscreen and fast refresh.\n- **Re-runs ref callbacks** (React 19).\n- Warns about deprecated APIs.\n\n### Why does my effect run twice?\n\nThat is the most common question. It is not a bug in React. It is a test: if your effect, cleanup and re-setup leave the app in a correct state, your effect is resilient. If you see duplicated network calls, duplicated listeners or a doubled counter, it reveals a missing cleanup.\n\n### How to fix real problems\n\n- Add proper **cleanup** (abort fetch, remove listener, close socket).\n- Keep render **pure**: do not mutate variables outside the component, do not push to a global array in render.\n- For one-time app initialization (not per component) put the code outside the component at module level.\n- Do not \"fix\" it by removing StrictMode or using a `ref` flag to skip the second run; that hides the bug.\n\n### Production\n\nThe double invocation never happens in the production build, so users see a single run.",
+   "keyPoints": [
+    "StrictMode is development only",
+    "Components render twice; effects mount, unmount, mount again",
+    "It exposes impure render and missing cleanup",
+    "Fix the cause with cleanup, do not remove StrictMode",
+    "No double run in production"
+   ],
+   "pitfalls": [
+    "Using a ref flag to skip the second effect run instead of fixing cleanup.",
+    "Mutating module-level variables during render."
+   ],
+   "examples": [
+    {
+     "title": "See the mount-cleanup-mount sequence",
+     "language": "react",
+     "css": "",
+     "code": "function Logger() {\n  useEffect(() => {\n    console.log(\"effect: setup\");\n    return () => console.log(\"effect: cleanup\");\n  }, []);\n  console.log(\"render\");\n  return <p>Open the console tab and watch the order.</p>;\n}\n\nfunction App() {\n  return (\n    <StrictMode>\n      <Logger />\n    </StrictMode>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does my useEffect run twice in development?",
+     "a": "StrictMode intentionally mounts, unmounts and re-mounts components to check that your effects clean up correctly. It does not happen in production."
+    },
+    {
+     "q": "Should you remove StrictMode to stop double effects?",
+     "a": "No. Fix the effect by adding cleanup or making the logic idempotent."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-useref",
+   "title": "useRef: Mutable Values Without Re-rendering",
+   "level": "intermediate",
+   "summary": "useRef stores a mutable value that persists across renders and does not trigger a re-render when changed.",
+   "description": "`useRef(initial)` returns a plain object `{ current: initial }` that React keeps the **same object** across renders. You can read and write `ref.current` freely. Unlike state, **changing a ref does not re-render** the component.\n\n### When to use a ref\n\n- Keep **timer ids** (`intervalRef.current = setInterval(...)`).\n- Store **previous values** (`prevRef.current = value` in an effect).\n- Count renders, track \"is mounted\", hold the latest callback.\n- Keep any value that is **not needed for rendering output**.\n- Hold **DOM nodes** (next topic).\n\n### Ref vs state\n\n| | State | Ref |\n| --- | --- | --- |\n| Re-render on change | yes | no |\n| Persists across renders | yes | yes |\n| Can be read during render | yes | avoid |\n| Mutable directly | no | yes |\n\n### Rules\n\n- Do not read or write `ref.current` **during rendering** (except for lazy initialization), because it makes the component impure and unpredictable. Use it in event handlers and effects.\n- If the screen should change when a value changes, it belongs in state.\n- Refs are the \"escape hatch\" for stepping outside React's data flow; use them sparingly.",
+   "keyPoints": [
+    "ref.current persists across renders",
+    "Changing a ref does not re-render",
+    "Good for timer ids, previous values and non-visual data",
+    "Avoid reading/writing refs during render",
+    "If the UI must update, use state instead"
+   ],
+   "pitfalls": [
+    "Storing displayed data in a ref and wondering why the UI does not update.",
+    "Reading ref.current in render to compute output."
+   ],
+   "examples": [
+    {
+     "title": "Stopwatch id in a ref and previous value tracker",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [ticks, setTicks] = useState(0);\n  const [running, setRunning] = useState(false);\n  const idRef = useRef(null);\n  const prevRef = useRef(0);\n\n  useEffect(() => {\n    prevRef.current = ticks;\n  });\n\n  function start() {\n    if (idRef.current) return;\n    setRunning(true);\n    idRef.current = setInterval(() => setTicks((t) => t + 1), 200);\n  }\n  function stop() {\n    clearInterval(idRef.current);\n    idRef.current = null;\n    setRunning(false);\n  }\n  useEffect(() => () => clearInterval(idRef.current), []);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>Now: {ticks} | Previous render: {prevRef.current}</p>\n      <button onClick={start} disabled={running}>Start</button>\n      <button onClick={stop} disabled={!running}>Stop</button>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How is useRef different from useState?",
+     "a": "Both persist across renders, but updating a ref does not trigger a re-render and a ref is directly mutable."
+    },
+    {
+     "q": "Why not read ref.current during render?",
+     "a": "Because it can change without React knowing, making render impure and giving inconsistent output."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-dom-refs",
+   "title": "Accessing the DOM with Refs",
+   "level": "intermediate",
+   "summary": "Attach a ref to an element to focus, scroll, measure or integrate with non-React libraries.",
+   "description": "Sometimes you must talk to the DOM directly: focus an input, scroll to an element, play a video, measure a size or hook up a third-party library. Create a ref and pass it to the `ref` attribute of a JSX element.\n\n```jsx\nconst inputRef = useRef(null);\nuseEffect(() => inputRef.current.focus(), []);\nreturn <input ref={inputRef} />;\n```\n\nReact sets `inputRef.current` to the DOM node after it is mounted, and back to `null` when unmounted. So the node is available in **effects and event handlers**, not during the first render.\n\n### Common uses\n\n- `focus()`, `select()`, `blur()`\n- `scrollIntoView()`\n- `video.play()` / `pause()`\n- Measuring with `getBoundingClientRect()`\n- Integrating charts, maps, editors\n\n### Callback refs\n\n`ref={node => {...}}` is called with the node on mount and `null` on unmount. Useful for dynamic lists or measuring when a node appears. Since React 19 callback refs may return a cleanup function.\n\n### Refs to components\n\nRef is a normal prop in React 19 function components. In React 18 you must wrap the child in `forwardRef` to expose a DOM node of the child.\n\n### Do not overuse\n\nDo not use refs to change what React manages (adding classes, setting text). Let state drive the DOM; use refs only for imperative actions that cannot be expressed as props.",
+   "keyPoints": [
+    "useRef(null) + ref={myRef} gives the DOM node in .current",
+    "The node exists after mount (effects/handlers)",
+    "Use for focus, scroll, media, measuring, integrations",
+    "Callback refs run on mount and unmount",
+    "Do not use refs for things state can express"
+   ],
+   "pitfalls": [
+    "Accessing ref.current in render when it is still null.",
+    "Manually editing DOM nodes React renders, causing conflicts."
+   ],
+   "examples": [
+    {
+     "title": "Focus input and scroll to bottom",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const inputRef = useRef(null);\n  const endRef = useRef(null);\n  const [lines, setLines] = useState([\"Line 1\", \"Line 2\", \"Line 3\", \"Line 4\", \"Line 5\", \"Line 6\"]);\n\n  useEffect(() => {\n    inputRef.current.focus();\n  }, []);\n\n  function addLine(e) {\n    e.preventDefault();\n    const v = inputRef.current.value.trim();\n    if (!v) return;\n    setLines((l) => [...l, v]);\n    inputRef.current.value = \"\";\n    inputRef.current.focus();\n  }\n  useEffect(() => {\n    endRef.current.scrollIntoView({ block: \"nearest\" });\n  }, [lines]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <div style={{ height: 90, overflow: \"auto\", border: \"1px solid #ccc\", padding: 6 }}>\n        {lines.map((l, i) => <div key={i}>{l}</div>)}\n        <div ref={endRef} />\n      </div>\n      <form onSubmit={addLine}>\n        <input ref={inputRef} placeholder=\"Add a line\" />\n        <button>Add</button>\n      </form>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When is ref.current available?",
+     "a": "After the component mounts, so inside effects and event handlers. During the first render it is null."
+    },
+    {
+     "q": "How do you focus an input on mount?",
+     "a": "Create a ref, attach it to the input and call ref.current.focus() inside a useEffect with an empty dependency array (or use autoFocus)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-rules-of-hooks",
+   "title": "Rules of Hooks",
+   "level": "beginner",
+   "summary": "Call hooks only at the top level of function components or custom hooks, in the same order every render.",
+   "description": "Hooks are functions whose names start with `use`: `useState`, `useEffect`, `useContext` and so on. React identifies each hook by its **call order** in the component, not by name. That is why there are two strict rules.\n\n### The two rules\n\n1. **Only call hooks at the top level.** Not inside `if`, loops, nested functions, `try/catch` blocks, or after an early `return`.\n2. **Only call hooks from React functions.** Function components or other custom hooks (functions starting with `use`). Never from regular JS functions or class components.\n\n### Why order matters\n\nReact stores hook state in a linked list attached to the component. On every render it walks the list in order. If one render skips a hook, all following hooks read the wrong slot and state gets mixed up.\n\n### Fixing conditional hooks\n\n```jsx\n// Wrong\nif (user) { const [x, setX] = useState(0); }\n\n// Right: call hook always, condition inside\nconst [x, setX] = useState(0);\nif (!user) return null;\n```\n\nPut early returns **after** all hooks, or move the conditional part into its own child component.\n\n### Tooling\n\nInstall `eslint-plugin-react-hooks`. It enforces `rules-of-hooks` and `exhaustive-deps`. Vite templates include it. In React 19 the new `use` API is the exception: it can be called conditionally.",
+   "keyPoints": [
+    "Hooks start with use and run in the same order every render",
+    "Call at top level, never in conditions, loops or nested functions",
+    "Only in function components or custom hooks",
+    "Early returns must come after all hooks",
+    "ESLint plugin react-hooks catches violations"
+   ],
+   "pitfalls": [
+    "Placing a hook after if (!data) return null;.",
+    "Calling a hook inside event handlers or callbacks."
+   ],
+   "examples": [
+    {
+     "title": "Correct vs wrong placement",
+     "language": "react",
+     "css": "",
+     "code": "function Profile({ user }) {\n  // Always call hooks first, unconditionally\n  const [editing, setEditing] = useState(false);\n  const label = useMemo(() => (user ? user.name.toUpperCase() : \"\"), [user]);\n\n  // Early return only AFTER the hooks\n  if (!user) return <p>No user</p>;\n\n  return (\n    <div>\n      <b>{label}</b>{\" \"}\n      <button onClick={() => setEditing(!editing)}>{editing ? \"Done\" : \"Edit\"}</button>\n    </div>\n  );\n}\n\nfunction App() {\n  const [user, setUser] = useState(null);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setUser(user ? null : { name: \"Asha\" })}>Toggle user</button>\n      <Profile user={user} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why can't hooks be called conditionally?",
+     "a": "React tracks hooks by their call order. A conditional call changes the order between renders and state ends up in the wrong slots."
+    },
+    {
+     "q": "What is a custom hook?",
+     "a": "A function whose name starts with use that calls other hooks to share stateful logic between components."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

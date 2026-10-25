@@ -1,0 +1,639 @@
+{
+ "id": "py-scraping",
+ "title": "Web Scraping",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-scraping-ethics-robots",
+   "title": "Scraping Basics, Ethics and robots.txt",
+   "level": "beginner",
+   "summary": "What web scraping is, when it is allowed, and how to respect robots.txt and site rules.",
+   "description": "**Web scraping** means fetching web pages with a program and extracting the data you need (prices, headlines, listings). Typical uses are price comparison, research datasets, monitoring and lead generation.\n\n### The scraping pipeline\n1. **Fetch** the page (HTTP request or a browser).\n2. **Parse** the HTML (or JSON) into a structure.\n3. **Extract** the fields you want.\n4. **Store** them (CSV, JSON, database).\n\n### Before you scrape: ethics and legality\n- Check whether the site has an **official API** or downloadable dataset; that is always better.\n- Read the **Terms of Service**; some sites forbid automated access.\n- Respect **`robots.txt`** (`https://site.com/robots.txt`), which lists paths crawlers should avoid and sometimes a `Crawl-delay`. It is not a security feature, but ignoring it is bad practice.\n- Do not overload servers: add delays, limit concurrency, cache pages.\n- Identify yourself with a meaningful `User-Agent` where appropriate.\n- Never scrape private or login-protected personal data, and be careful with copyrighted content and personal information (GDPR and similar laws).\n- Do not bypass paywalls or CAPTCHAs.\n\n### Good citizen checklist\nCache responses on disk while developing so you do not hit the server repeatedly, scrape off-peak, back off when you get 429 or 5xx responses and stop if asked.\n\nPython's standard library includes `urllib.robotparser`, which answers \"is this URL allowed for my bot?\".",
+   "keyPoints": [
+    "Prefer official APIs over scraping",
+    "Read robots.txt and the Terms of Service first",
+    "Throttle requests and cache while developing",
+    "Do not collect personal or protected data carelessly",
+    "Fetch, parse, extract, store is the basic pipeline"
+   ],
+   "pitfalls": [
+    "Hammering a server with rapid parallel requests",
+    "Assuming public means free to reuse commercially",
+    "Ignoring robots.txt and getting your IP blocked"
+   ],
+   "examples": [
+    {
+     "title": "Check robots.txt rules with the standard library",
+     "language": "python",
+     "code": "from urllib.robotparser import RobotFileParser\n\nrobots_txt = \"\"\"\nUser-agent: *\nDisallow: /admin/\nDisallow: /search\nCrawl-delay: 5\n\nUser-agent: BadBot\nDisallow: /\n\"\"\"\n\nrp = RobotFileParser()\nrp.parse(robots_txt.splitlines())\n\nprint(rp.can_fetch(\"MyScraper\", \"https://shop.test/products/1\"))\nprint(rp.can_fetch(\"MyScraper\", \"https://shop.test/admin/users\"))\nprint(rp.can_fetch(\"BadBot\", \"https://shop.test/products/1\"))\nprint(\"crawl delay:\", rp.crawl_delay(\"MyScraper\"))",
+     "explanation": "In real code use rp.set_url(\".../robots.txt\") then rp.read() to download the file."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is web scraping legal?",
+     "a": "It depends on the site terms, the type of data, copyright, privacy laws and jurisdiction. Public data is often scrapable, but you must respect terms, avoid personal data abuse and not harm the service."
+    },
+    {
+     "q": "What is robots.txt?",
+     "a": "A text file at the site root where owners declare which paths bots may or may not crawl, and sometimes a crawl delay. It is a convention, not enforcement."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-http-basics",
+   "title": "HTTP Basics for Scrapers",
+   "level": "beginner",
+   "summary": "Requests, responses, methods, status codes, headers and URLs: the protocol you scrape over.",
+   "description": "Scraping is just automating what a browser does over **HTTP**. Understanding it makes debugging much easier.\n\n### Request\n- **Method**: `GET` (fetch), `POST` (send data), also `PUT`, `DELETE`, `HEAD`.\n- **URL**: scheme, host, path, query string (`?q=python&page=2`), fragment.\n- **Headers**: metadata such as `User-Agent`, `Accept`, `Cookie`, `Referer`.\n- **Body**: form data or JSON for POST.\n\n### Response\n- **Status code**: `200` OK, `301/302` redirect, `403` forbidden (often bot detection), `404` not found, `429` too many requests, `500+` server errors.\n- **Headers**: `Content-Type`, `Set-Cookie`, `Retry-After`.\n- **Body**: HTML, JSON, images, etc.\n\n### Useful URL tools\n`urllib.parse` splits and builds URLs: `urlparse`, `urljoin` (turn relative links absolute), `urlencode`, `parse_qs`.\n\n### Statelessness and cookies\nHTTP is stateless; sites keep you \"logged in\" by sending a **cookie** which the client returns on every request.\n\n### Inspecting traffic\nOpen your browser **DevTools -> Network** tab. You can see exactly which request returns the data, its headers and payload; this is the single most useful scraping skill, because often the data comes from a hidden JSON endpoint.\n\n### HTTPS and timeouts\nAlways set a **timeout**; a request without one can hang forever.",
+   "keyPoints": [
+    "GET fetches, POST sends data",
+    "2xx success, 3xx redirect, 4xx client error, 5xx server error",
+    "Headers carry User-Agent, cookies and content type",
+    "Use urljoin to resolve relative links",
+    "DevTools Network tab shows the real requests"
+   ],
+   "pitfalls": [
+    "Not setting a timeout",
+    "Building URLs by string concatenation instead of urlencode",
+    "Ignoring 403/429 and retrying immediately"
+   ],
+   "examples": [
+    {
+     "title": "Working with URLs",
+     "language": "python",
+     "code": "from urllib.parse import urlparse, urljoin, urlencode, parse_qs\n\nurl = \"https://shop.test/products/list?category=books&page=2#top\"\nparts = urlparse(url)\nprint(parts.scheme, parts.netloc, parts.path)\nprint(parse_qs(parts.query))\n\nprint(urljoin(\"https://shop.test/products/list\", \"item-5.html\"))\nprint(urljoin(\"https://shop.test/products/list\", \"/cart\"))\n\nparams = {\"q\": \"python web scraping\", \"page\": 3}\nprint(\"https://shop.test/search?\" + urlencode(params))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does status code 429 mean?",
+     "a": "Too Many Requests: you are being rate limited. Slow down and respect the Retry-After header."
+    },
+    {
+     "q": "Why does a scraper often get 403 while the browser works?",
+     "a": "The server detects non-browser traffic from missing or unusual headers, cookies, TLS fingerprint or IP reputation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-requests",
+   "title": "The requests Library",
+   "level": "beginner",
+   "summary": "Fetch pages and APIs with requests: GET, params, headers, timeouts, errors and JSON.",
+   "description": "`requests` is the most popular HTTP client for Python. Install with `pip install requests`.\n\n### Core usage\n```python\nimport requests\n\nr = requests.get(\"https://example.com\", timeout=10)\nr.status_code      # 200\nr.text             # decoded HTML string\nr.content          # raw bytes\nr.json()           # parsed JSON\nr.headers          # response headers\nr.url              # final URL after redirects\nr.raise_for_status()  # raises HTTPError for 4xx/5xx\n```\n\n### Passing data\n- Query string: `requests.get(url, params={\"q\": \"python\"})`\n- Headers: `headers={\"User-Agent\": \"...\"}`\n- Form POST: `requests.post(url, data={...})`\n- JSON POST: `requests.post(url, json={...})`\n- Files: `files={\"file\": open(\"a.png\", \"rb\")}`\n\n### Error handling\nNetwork failures raise `requests.exceptions.RequestException` subclasses (`Timeout`, `ConnectionError`, `HTTPError`). Wrap calls in `try/except` and **always pass `timeout=`**.\n\n### Retries\nMount an `HTTPAdapter` with `urllib3.util.Retry` on a `Session` to retry automatically with backoff on 429/5xx.\n\n### Encoding\n`r.encoding` is guessed from headers; if text looks garbled set `r.encoding = r.apparent_encoding`.\n\n### Limits\n`requests` is synchronous and does not run JavaScript. For many concurrent requests use threads or `httpx`/`aiohttp`; for JavaScript pages use a browser tool.",
+   "keyPoints": [
+    "requests.get(url, params=, headers=, timeout=)",
+    "raise_for_status() turns HTTP errors into exceptions",
+    "r.json() parses JSON; r.text is the decoded body",
+    "Always set a timeout",
+    "It does not execute JavaScript"
+   ],
+   "pitfalls": [
+    "No timeout, so the script hangs forever",
+    "Treating a 200 response as valid data without checking the content",
+    "Using r.text when the response is binary"
+   ],
+   "examples": [
+    {
+     "title": "GET with error handling",
+     "language": "text",
+     "code": "import requests\n\nURL = \"https://quotes.toscrape.com/\"\nHEADERS = {\"User-Agent\": \"Mozilla/5.0 (compatible; CodeReviseBot/1.0)\"}\n\ntry:\n    r = requests.get(URL, headers=HEADERS, timeout=10)\n    r.raise_for_status()\nexcept requests.exceptions.Timeout:\n    print(\"timed out\")\nexcept requests.exceptions.HTTPError as e:\n    print(\"bad status:\", e)\nexcept requests.exceptions.RequestException as e:\n    print(\"network problem:\", e)\nelse:\n    print(r.status_code, r.headers[\"Content-Type\"])\n    print(len(r.text), \"characters of HTML\")",
+     "explanation": ""
+    },
+    {
+     "title": "Retries with backoff",
+     "language": "text",
+     "code": "import requests\nfrom requests.adapters import HTTPAdapter\nfrom urllib3.util.retry import Retry\n\nsession = requests.Session()\nretry = Retry(\n    total=3,\n    backoff_factor=1,                      # 1s, 2s, 4s\n    status_forcelist=[429, 500, 502, 503, 504],\n)\nsession.mount(\"https://\", HTTPAdapter(max_retries=retry))\nresp = session.get(\"https://httpbin.org/status/200\", timeout=10)\nprint(resp.status_code)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why must you pass timeout to requests?",
+     "a": "requests has no default timeout, so a stalled connection can block your program indefinitely."
+    },
+    {
+     "q": "Difference between r.text and r.content?",
+     "a": "text is the body decoded to a str using the detected encoding; content is the raw bytes, needed for images and files."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-beautifulsoup",
+   "title": "BeautifulSoup: Parsing HTML",
+   "level": "beginner",
+   "summary": "Parse HTML into a tree and find tags with find, find_all, attributes and navigation.",
+   "description": "**BeautifulSoup** (package `beautifulsoup4`, import `bs4`) turns messy HTML into a navigable tree. It is forgiving of broken markup and perfect for small to medium scraping jobs.\n\n```bash\npip install requests beautifulsoup4 lxml\n```\n\n### Creating the soup\n```python\nfrom bs4 import BeautifulSoup\nsoup = BeautifulSoup(html, \"lxml\")      # or \"html.parser\" (built in)\n```\n`lxml` is faster; `html.parser` needs no extra install.\n\n### Finding elements\n- `soup.find(\"h1\")` first match or `None`.\n- `soup.find_all(\"a\", class_=\"link\", limit=10)` list of matches.\n- Filters: `id=\"x\"`, `class_=\"y\"` (note underscore), `attrs={\"data-id\": \"5\"}`, `string=re.compile(...)`.\n- Navigation: `.parent`, `.children`, `.next_sibling`, `.find_next(\"p\")`.\n\n### Reading data\n- `tag.get_text(strip=True)` or `.text` for text.\n- `tag[\"href\"]` or `tag.get(\"href\")` for attributes (use `get` to avoid `KeyError`).\n- `tag.attrs` dict of all attributes.\n\n### Defensive extraction\nElements often vanish. Check for `None` before calling methods:\n```python\nprice_tag = item.find(\"span\", class_=\"price\")\nprice = price_tag.get_text(strip=True) if price_tag else None\n```\n\n### Remember\nBeautifulSoup only sees the HTML the server sent. If data is missing, it is probably rendered by JavaScript (see the JS-rendered pages topic).",
+   "keyPoints": [
+    "BeautifulSoup(html, \"lxml\") builds the tree",
+    "find returns one tag or None; find_all returns a list",
+    "Use class_ (with underscore) to filter by CSS class",
+    "tag.get_text(strip=True) and tag.get(\"attr\") extract data",
+    "Always guard against missing elements"
+   ],
+   "pitfalls": [
+    "Calling .text on None when an element is missing",
+    "Using the wrong parser name or forgetting to install lxml",
+    "Expecting JavaScript-generated content to appear"
+   ],
+   "examples": [
+    {
+     "title": "Parse and extract",
+     "language": "text",
+     "code": "from bs4 import BeautifulSoup\n\nhtml = \"\"\"\n<div class=\"product\" data-id=\"1\">\n  <h2 class=\"title\">Python Book</h2>\n  <span class=\"price\">Rs 499</span>\n  <a href=\"/p/1\">Details</a>\n</div>\n<div class=\"product\" data-id=\"2\">\n  <h2 class=\"title\">Flask Guide</h2>\n  <a href=\"/p/2\">Details</a>\n</div>\n\"\"\"\n\nsoup = BeautifulSoup(html, \"html.parser\")\nfor item in soup.find_all(\"div\", class_=\"product\"):\n    title = item.find(\"h2\", class_=\"title\").get_text(strip=True)\n    price_tag = item.find(\"span\", class_=\"price\")\n    price = price_tag.get_text(strip=True) if price_tag else \"n/a\"\n    link = item.find(\"a\")[\"href\"]\n    print(item[\"data-id\"], title, price, link)",
+     "explanation": "Output: 1 Python Book Rs 499 /p/1 then 2 Flask Guide n/a /p/2."
+    }
+   ],
+   "interview": [
+    {
+     "q": "find vs find_all?",
+     "a": "find returns the first matching element or None; find_all returns a list of all matches."
+    },
+    {
+     "q": "Which parser should you use with BeautifulSoup?",
+     "a": "lxml for speed, html.parser if you want no dependency, html5lib for the most browser-like parsing of very broken HTML."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-css-selectors",
+   "title": "CSS Selectors in Scraping",
+   "level": "beginner",
+   "summary": "Use select() and select_one() to target elements with the same selectors you know from CSS.",
+   "description": "If you know CSS you already know how to locate elements. BeautifulSoup's `select()` and `select_one()` accept **CSS selectors**, which are often shorter and more readable than chained `find` calls. Scrapy, Playwright, Selenium and `parsel` use the same syntax.\n\n### Selector cheat sheet\n| Selector | Meaning |\n|---|---|\n| `p` | all `<p>` |\n| `.price` | class `price` |\n| `#main` | id `main` |\n| `div.card > h2` | `h2` direct child of `div.card` |\n| `ul li a` | any `a` inside `li` inside `ul` |\n| `a[href]` | has `href` |\n| `a[href^=\"http\"]` | href starts with |\n| `a[href$=\".pdf\"]` | href ends with |\n| `a[href*=\"product\"]` | href contains |\n| `li:nth-child(2)` | second child |\n| `h2 + p` | `p` immediately after `h2` |\n| `h2, h3` | either |\n\n### BeautifulSoup\n```python\nsoup.select(\"div.product h2.title\")     # list\nsoup.select_one(\"li.next a\")            # first or None\n[a[\"href\"] for a in soup.select(\"a[href]\")]\n```\n\n### Scrapy / parsel\nScrapy adds pseudo-elements: `::text` and `::attr(href)`, with `.get()` and `.getall()`.\n```python\nresponse.css(\"div.quote span.text::text\").getall()\n```\n\n### Tips\n- Prefer stable hooks (ids, semantic classes, `data-*` attributes) over deep positional selectors; layout changes break `div > div > div:nth-child(3)`.\n- Test selectors live in DevTools: `document.querySelectorAll(\"...\")` in the console.",
+   "keyPoints": [
+    "select() returns a list, select_one() returns one element or None",
+    "Same syntax as CSS: ., #, >, space, [attr]",
+    "Scrapy adds ::text and ::attr(name)",
+    "Prefer stable classes and data attributes",
+    "Test selectors in the browser console first"
+   ],
+   "pitfalls": [
+    "Very long positional selectors that break on small layout changes",
+    "Forgetting select() returns a list even for one match",
+    "Using utility class names generated at build time (they change)"
+   ],
+   "examples": [
+    {
+     "title": "CSS selectors with BeautifulSoup",
+     "language": "text",
+     "code": "from bs4 import BeautifulSoup\n\nhtml = \"\"\"\n<ul class=\"books\">\n  <li class=\"book\"><a href=\"/b/1.html\" title=\"Alpha\">Alpha</a><p class=\"price\">10.5</p></li>\n  <li class=\"book\"><a href=\"/b/2.pdf\" title=\"Beta\">Beta</a><p class=\"price\">8.0</p></li>\n</ul>\n<nav><li class=\"next\"><a href=\"page-2.html\">next</a></li></nav>\n\"\"\"\nsoup = BeautifulSoup(html, \"html.parser\")\n\ntitles = [a[\"title\"] for a in soup.select(\"ul.books li.book > a\")]\nprices = [float(p.text) for p in soup.select(\"li.book p.price\")]\npdfs = soup.select('a[href$=\".pdf\"]')\nnext_link = soup.select_one(\"li.next a\")\n\nprint(titles, prices)\nprint(len(pdfs), next_link[\"href\"] if next_link else None)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When prefer CSS selectors over XPath?",
+     "a": "For most cases: they are shorter and familiar. XPath is needed for upward navigation (parent/ancestor) and text-based conditions."
+    },
+    {
+     "q": "How do you get an attribute with a CSS selector in Scrapy?",
+     "a": "Use the ::attr(name) pseudo-element, e.g. response.css(\"a::attr(href)\").getall()."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-lxml-xpath",
+   "title": "lxml and XPath",
+   "level": "intermediate",
+   "summary": "Query HTML with XPath expressions for powerful and fast extraction.",
+   "description": "**lxml** is a fast C-based parser. Its main strength is **XPath**, a query language for navigating a document tree. XPath can do things CSS cannot: select by text, walk to parents and ancestors, and use functions and conditions.\n\n```python\nfrom lxml import html\ntree = html.fromstring(page_html)\ntitles = tree.xpath(\"//h2[@class='title']/text()\")\n```\n\n### XPath essentials\n| Expression | Meaning |\n|---|---|\n| `//a` | all `a` anywhere |\n| `/html/body/div` | absolute path |\n| `//div[@id='main']` | attribute equals |\n| `//a/@href` | attribute value |\n| `//p/text()` | text nodes |\n| `//li[1]` | first li (1-based) |\n| `//a[contains(@href, 'product')]` | contains |\n| `//a[starts-with(@href, 'http')]` | starts with |\n| `//span[text()='Price']/following-sibling::span` | relative move |\n| `//td/..` | parent |\n| `//*[@class and @id]` | any element with both |\n\n### Return types\n`xpath()` always returns a **list**: elements, strings or numbers depending on the expression.\n\n### Relative XPath\nWhen looping over items, start the inner expression with a dot: `item.xpath(\".//span[@class='price']/text()\")`. Without the dot it searches the whole document.\n\n### Class matching\n`@class='card'` matches only the exact attribute value. For multi-class elements use `contains(concat(' ', normalize-space(@class), ' '), ' card ')`.\n\n### Where else\nScrapy: `response.xpath(...)`. Selenium: `By.XPATH`. Playwright: `page.locator(\"xpath=...\")`.",
+   "keyPoints": [
+    "XPath can use text, parents and functions that CSS cannot",
+    "xpath() returns a list",
+    "Use .// when searching inside an element",
+    "XPath indexes start at 1",
+    "contains(), starts-with() and normalize-space() are the workhorses"
+   ],
+   "pitfalls": [
+    "Forgetting the leading dot in a relative expression",
+    "Using 0-based indexes",
+    "Exact @class match failing when an element has several classes"
+   ],
+   "examples": [
+    {
+     "title": "XPath extraction",
+     "language": "text",
+     "code": "from lxml import html\n\npage = \"\"\"\n<table>\n  <tr><td>Name</td><td class=\"v\">Laptop</td></tr>\n  <tr><td>Price</td><td class=\"v\">52,000</td></tr>\n</table>\n<ul>\n  <li class=\"item hot\"><a href=\"/a\">First</a></li>\n  <li class=\"item\"><a href=\"/b\">Second</a></li>\n</ul>\n\"\"\"\ntree = html.fromstring(page)\n\nprice = tree.xpath(\"//td[text()='Price']/following-sibling::td/text()\")\nprint(price)                                        # ['52,000']\n\nfor li in tree.xpath(\"//li[contains(@class, 'item')]\"):\n    text = li.xpath(\"string(.//a)\")\n    href = li.xpath(\".//a/@href\")[0]\n    print(text, href)\n\nprint(tree.xpath(\"//li[1]/a/@href\"))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When is XPath better than CSS selectors?",
+     "a": "When you need to select by text content, walk up to a parent or ancestor, or use position and functions in conditions."
+    },
+    {
+     "q": "Why do XPath expressions inside a loop start with a dot?",
+     "a": "The dot makes the path relative to the current element; without it the expression searches from the document root."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-pagination",
+   "title": "Pagination and Crawling Multiple Pages",
+   "level": "intermediate",
+   "summary": "Walk through numbered pages, next links, offsets and infinite scroll while staying polite.",
+   "description": "Real sites split results over many pages. There are a few common patterns.\n\n### 1. Numbered URLs\n`https://site.com/list?page=1`, `/page/2/`. Loop while pages return results:\n```python\npage = 1\nwhile True:\n    items = scrape(f\"{BASE}?page={page}\")\n    if not items:\n        break\n    page += 1\n```\n\n### 2. \"Next\" link\nFind the next-page anchor and follow it until it disappears. This is robust because you do not need to know the page count. Always convert relative hrefs with `urljoin`.\n\n### 3. Offset / limit APIs\n`?offset=40&limit=20`. Increase `offset` by `limit` until the response is empty or fewer than `limit` items arrive.\n\n### 4. Infinite scroll / \"load more\"\nThe page loads data from a background JSON request. Open DevTools -> Network -> Fetch/XHR, scroll and copy that endpoint; then paginate the API directly. If that is impossible, drive a browser and scroll.\n\n### 5. Cursor-based\nThe response contains `next_cursor` or `has_next`; pass it into the next request.\n\n### Safety rules\n- Add `time.sleep(1)` or random delay between pages.\n- Set a **maximum page** limit to avoid infinite loops.\n- Track visited URLs in a `set` to avoid cycles.\n- Save progress so you can resume after failure.\n- Deduplicate items by a stable id.",
+   "keyPoints": [
+    "Detect the pattern: page numbers, next link, offset or cursor",
+    "Follow the next link instead of guessing the page count",
+    "Resolve relative URLs with urljoin",
+    "Add delays, a page cap and a visited set",
+    "Infinite scroll usually hides a JSON API"
+   ],
+   "pitfalls": [
+    "Endless loops when the site keeps returning the last page",
+    "Skipping urljoin and breaking on relative links",
+    "No delay between pages"
+   ],
+   "examples": [
+    {
+     "title": "Follow the next link",
+     "language": "text",
+     "code": "import time\nimport requests\nfrom urllib.parse import urljoin\nfrom bs4 import BeautifulSoup\n\ndef crawl(start_url, max_pages=5):\n    url, seen, results = start_url, set(), []\n    while url and url not in seen and len(seen) < max_pages:\n        seen.add(url)\n        r = requests.get(url, timeout=10)\n        r.raise_for_status()\n        soup = BeautifulSoup(r.text, \"lxml\")\n        for q in soup.select(\"div.quote\"):\n            results.append({\n                \"text\": q.select_one(\"span.text\").get_text(strip=True),\n                \"author\": q.select_one(\"small.author\").get_text(strip=True),\n            })\n        nxt = soup.select_one(\"li.next > a\")\n        url = urljoin(url, nxt[\"href\"]) if nxt else None\n        time.sleep(1)                          # be polite\n    return results\n\ndata = crawl(\"https://quotes.toscrape.com/\")\nprint(len(data), data[0])",
+     "explanation": ""
+    },
+    {
+     "title": "Page numbers with a stop condition",
+     "language": "python",
+     "code": "def list_urls(base, last_page):\n    return [f\"{base}?page={n}\" for n in range(1, last_page + 1)]\n\npages = list_urls(\"https://shop.test/products\", 3)\nprint(pages)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you handle infinite scroll pages?",
+     "a": "Find the XHR/fetch request that loads more data in the Network tab and call that API with increasing page, offset or cursor values; otherwise scroll with a browser automation tool."
+    },
+    {
+     "q": "How do you avoid infinite crawling loops?",
+     "a": "Keep a set of visited URLs, cap the maximum number of pages and stop when a page yields no new items."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-sessions-cookies-headers",
+   "title": "Sessions, Cookies and Headers",
+   "level": "intermediate",
+   "summary": "Maintain state across requests, log in, reuse connections and send realistic headers.",
+   "description": "### Why sessions?\nA `requests.Session` keeps **cookies** and default headers across requests and reuses TCP connections, which is faster. It is how you stay logged in and behave like one browser visitor.\n\n```python\ns = requests.Session()\ns.headers.update({\"User-Agent\": \"Mozilla/5.0 ...\", \"Accept-Language\": \"en-US,en;q=0.9\"})\ns.get(home_url)                               # receives cookies\ns.post(login_url, data={\"user\": \"a\", \"pw\": \"b\"})\ns.get(profile_url)                            # cookie sent automatically\n```\n\n### Cookies\n`s.cookies.get_dict()` shows them. You can set your own: `s.cookies.set(\"sessionid\", \"abc\")`. If a site shows content only after login, copy the cookie from DevTools for a quick test (only for your own account).\n\n### Headers worth setting\n- `User-Agent`: the default `python-requests/x.y` is often blocked.\n- `Accept`, `Accept-Language`: look like a browser.\n- `Referer`: some sites check where the click came from.\n- `Authorization`: tokens for APIs (`Bearer <token>`).\n- `X-Requested-With: XMLHttpRequest` for some AJAX endpoints.\n\n### CSRF tokens\nLogin forms often include a hidden `csrf` input. Load the form page first, extract the token with BeautifulSoup and send it with the POST.\n\n### Authentication types\nBasic (`auth=(\"user\", \"pass\")`), token/Bearer headers, cookies from form login, and OAuth for official APIs.\n\nOnly log in with your own accounts and where the terms allow it.",
+   "keyPoints": [
+    "Session persists cookies and headers",
+    "Set a realistic User-Agent and Accept headers",
+    "Fetch the login page first to get CSRF tokens",
+    "Use Authorization headers for API tokens",
+    "Sessions also reuse connections for speed"
+   ],
+   "pitfalls": [
+    "Using the default python-requests User-Agent",
+    "Forgetting the hidden CSRF field on login",
+    "Hard-coding secrets in code instead of environment variables"
+   ],
+   "examples": [
+    {
+     "title": "Login with a session",
+     "language": "text",
+     "code": "import os\nimport requests\nfrom bs4 import BeautifulSoup\n\nBASE = \"https://quotes.toscrape.com\"\ns = requests.Session()\ns.headers.update({\"User-Agent\": \"Mozilla/5.0 (compatible; CodeReviseBot/1.0)\"})\n\nlogin_page = s.get(f\"{BASE}/login\", timeout=10)\nsoup = BeautifulSoup(login_page.text, \"lxml\")\ntoken = soup.select_one(\"input[name=csrf_token]\")[\"value\"]\n\nresp = s.post(f\"{BASE}/login\", timeout=10, data={\n    \"csrf_token\": token,\n    \"username\": os.environ[\"SITE_USER\"],\n    \"password\": os.environ[\"SITE_PASS\"],\n})\nprint(resp.status_code, \"Logout\" in resp.text)\nprint(s.cookies.get_dict())\n\npage = s.get(f\"{BASE}/\", timeout=10)      # still logged in",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use requests.Session?",
+     "a": "It keeps cookies and headers between calls and reuses connections, so you can stay logged in and run faster."
+    },
+    {
+     "q": "What is a CSRF token and how does it affect scrapers?",
+     "a": "A hidden random value tied to the session that the server expects in form posts; scrapers must fetch the form first and send the token back."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-api-vs-scraping",
+   "title": "APIs vs Scraping and JavaScript-Rendered Pages",
+   "level": "intermediate",
+   "summary": "Prefer APIs and hidden JSON endpoints; know why HTML is sometimes empty and how to handle it.",
+   "description": "### Official APIs first\nAn API returns structured JSON designed for programs: stable, fast and legally clearer. Check the site footer or docs for \"API\", \"developers\" or \"RSS\". With APIs you deal with **keys, rate limits and pagination** instead of HTML.\n\n| | API | HTML scraping |\n|---|---|---|\n| Stability | high, versioned | breaks on redesign |\n| Speed | fast, small payload | heavier |\n| Data shape | clean JSON | you must parse |\n| Permission | explicit | grey area |\n\n### Why is my HTML empty?\nMany modern sites (React, Vue, Angular) send a nearly empty HTML shell and build the page in the browser with JavaScript. `requests` only gets the shell. \"View Source\" shows what `requests` sees; \"Inspect Element\" shows the rendered DOM.\n\n### Three ways to handle JS-rendered pages\n1. **Find the hidden API (best).** DevTools -> Network -> Fetch/XHR. Reload the page, look for JSON responses, then call that URL with `requests`. It is fast and returns clean data.\n2. **Look for embedded JSON.** Many pages ship data in `<script id=\"__NEXT_DATA__\">` or `application/ld+json`. Parse it with `json.loads`.\n3. **Use a real browser.** Selenium or Playwright execute the JavaScript and give you the final HTML. Slower and heavier, so use only when 1 and 2 fail.\n\n### Headless browsers and rendering services\nBrowsers can run **headless** (no window). Hosted rendering services also exist, but they cost money and add latency.",
+   "keyPoints": [
+    "Prefer official APIs, then hidden JSON endpoints",
+    "View Source is what requests sees; Inspect is the rendered DOM",
+    "Check for embedded JSON in script tags",
+    "Use Selenium or Playwright only when needed",
+    "APIs have keys, rate limits and pagination"
+   ],
+   "pitfalls": [
+    "Parsing HTML when a clean JSON endpoint exists",
+    "Using a full browser for every site by default",
+    "Copying a short-lived token from DevTools into long-term code"
+   ],
+   "examples": [
+    {
+     "title": "Call the JSON endpoint behind a page",
+     "language": "text",
+     "code": "import requests\n\n# Found in DevTools -> Network -> Fetch/XHR while scrolling the page\nAPI = \"https://quotes.toscrape.com/api/quotes\"\n\npage, quotes = 1, []\nwhile True:\n    r = requests.get(API, params={\"page\": page}, timeout=10)\n    r.raise_for_status()\n    data = r.json()\n    quotes.extend(data[\"quotes\"])\n    if not data[\"has_next\"]:\n        break\n    page += 1\n\nprint(len(quotes))\nprint(quotes[0][\"author\"][\"name\"], \"-\", quotes[0][\"text\"][:40])",
+     "explanation": ""
+    },
+    {
+     "title": "Read JSON embedded in the HTML",
+     "language": "text",
+     "code": "import json\nimport requests\nfrom bs4 import BeautifulSoup\n\nhtml = requests.get(\"https://example.shop/product/42\", timeout=10).text\nsoup = BeautifulSoup(html, \"lxml\")\n\ntag = soup.find(\"script\", type=\"application/ld+json\")\nif tag:\n    product = json.loads(tag.string)\n    print(product[\"name\"], product[\"offers\"][\"price\"])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "requests returns empty HTML for a page that looks full in the browser. Why?",
+     "a": "The content is rendered client-side by JavaScript. Fetch the underlying XHR/JSON endpoint, read embedded JSON, or use a headless browser."
+    },
+    {
+     "q": "Why is an API better than scraping?",
+     "a": "Stable structured data, faster, lighter and explicitly permitted, so far less maintenance than HTML parsing."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-selenium",
+   "title": "Selenium Browser Automation",
+   "level": "intermediate",
+   "summary": "Drive a real browser to click, type, wait and scrape JavaScript-heavy pages.",
+   "description": "**Selenium** controls a real browser (Chrome, Firefox, Edge) from Python. Because the browser executes JavaScript, you can scrape anything a user can see, fill in forms, click buttons and take screenshots. It is also widely used for UI testing.\n\n```bash\npip install selenium\n```\nSelenium 4.6+ includes **Selenium Manager**, which downloads the matching browser driver automatically.\n\n### Basic flow\n```python\ndriver = webdriver.Chrome(options=opts)\ndriver.get(url)\nelements = driver.find_elements(By.CSS_SELECTOR, \".quote\")\ndriver.quit()\n```\n\n### Locators\n`By.ID`, `By.CSS_SELECTOR`, `By.XPATH`, `By.NAME`, `By.CLASS_NAME`, `By.LINK_TEXT`. `find_element` returns one (raises `NoSuchElementException`), `find_elements` returns a list (possibly empty).\n\n### Waiting (very important)\nPages load asynchronously, so use **explicit waits** instead of `time.sleep`:\n```python\nWebDriverWait(driver, 10).until(\n    EC.presence_of_element_located((By.CSS_SELECTOR, \".quote\"))\n)\n```\nOther conditions: `visibility_of_element_located`, `element_to_be_clickable`.\n\n### Actions\n`element.click()`, `send_keys(\"text\")`, `element.text`, `get_attribute(\"href\")`, `driver.execute_script(\"window.scrollTo(0, document.body.scrollHeight)\")` for infinite scroll, `driver.page_source` to hand HTML to BeautifulSoup.\n\n### Headless\n`--headless=new` runs without a window. Always call `driver.quit()` in a `finally` block to avoid orphan browser processes.",
+   "keyPoints": [
+    "Selenium controls a real browser and runs JavaScript",
+    "Use explicit waits (WebDriverWait) instead of sleep",
+    "find_element raises if missing; find_elements returns a list",
+    "driver.page_source can feed BeautifulSoup",
+    "Always quit the driver in finally"
+   ],
+   "pitfalls": [
+    "Using time.sleep instead of waiting for a condition",
+    "Leaving browser processes running after errors",
+    "Using Selenium for pages that have a simple JSON API"
+   ],
+   "examples": [
+    {
+     "title": "Scrape a JS-rendered page",
+     "language": "text",
+     "code": "from selenium import webdriver\nfrom selenium.webdriver.common.by import By\nfrom selenium.webdriver.support.ui import WebDriverWait\nfrom selenium.webdriver.support import expected_conditions as EC\n\nopts = webdriver.ChromeOptions()\nopts.add_argument(\"--headless=new\")\nopts.add_argument(\"--window-size=1280,900\")\n\ndriver = webdriver.Chrome(options=opts)\ntry:\n    driver.get(\"https://quotes.toscrape.com/js/\")\n    WebDriverWait(driver, 10).until(\n        EC.presence_of_element_located((By.CSS_SELECTOR, \"div.quote\"))\n    )\n    for q in driver.find_elements(By.CSS_SELECTOR, \"div.quote\"):\n        text = q.find_element(By.CSS_SELECTOR, \"span.text\").text\n        author = q.find_element(By.CSS_SELECTOR, \"small.author\").text\n        print(author, \"-\", text[:50])\n\n    nxt = driver.find_elements(By.CSS_SELECTOR, \"li.next a\")\n    if nxt:\n        nxt[0].click()\nfinally:\n    driver.quit()",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use explicit waits?",
+     "a": "They wait only until a condition is true (up to a timeout), making scripts both faster and more reliable than fixed sleeps."
+    },
+    {
+     "q": "When would you choose Selenium over requests?",
+     "a": "When the content needs JavaScript execution, user interaction (clicks, forms, scrolling) or complex login flows."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-playwright",
+   "title": "Playwright for Python",
+   "level": "intermediate",
+   "summary": "A modern, fast browser automation library with auto-waiting, great selectors and network control.",
+   "description": "**Playwright** (from Microsoft) automates Chromium, Firefox and WebKit. Compared with Selenium it has **auto-waiting** (actions wait until elements are ready), a cleaner API, built-in tracing and easy interception of network requests. It has sync and async Python APIs.\n\n```bash\npip install playwright\nplaywright install chromium\n```\n\n### Sync API\n```python\nfrom playwright.sync_api import sync_playwright\n\nwith sync_playwright() as p:\n    browser = p.chromium.launch(headless=True)\n    page = browser.new_page()\n    page.goto(\"https://quotes.toscrape.com/js/\")\n    page.wait_for_selector(\"div.quote\")\n    print(page.locator(\"span.text\").all_inner_texts())\n    browser.close()\n```\n\n### Locators\n`page.locator(\"css=...\")`, `page.get_by_text(\"Next\")`, `page.get_by_role(\"button\", name=\"Login\")`, `page.get_by_placeholder(...)`. Locators are lazy and re-evaluated on each action, which makes scripts stable.\n\n### Actions\n`click()`, `fill(\"text\")`, `press(\"Enter\")`, `select_option()`, `inner_text()`, `get_attribute(\"href\")`, `page.screenshot(path=\"a.png\")`, `page.content()` for the HTML.\n\n### Superpowers for scraping\n- **Intercept responses**: `page.on(\"response\", handler)` to capture the JSON API calls the page makes.\n- **Block resources**: `page.route(\"**/*.{png,jpg,css}\", lambda r: r.abort())` for speed.\n- **Browser contexts**: isolated profiles with their own cookies; `context.storage_state()` saves a login for reuse.\n- **Codegen**: `playwright codegen URL` records your clicks and writes the script.\n\nUse async (`async_playwright`) when scraping many pages concurrently.",
+   "keyPoints": [
+    "Auto-waiting makes scripts more reliable than Selenium sleeps",
+    "locator() is lazy and re-evaluated at each action",
+    "page.on(\"response\") captures background API calls",
+    "Block images/CSS with page.route for speed",
+    "storage_state saves cookies and logins"
+   ],
+   "pitfalls": [
+    "Forgetting playwright install to download browsers",
+    "Mixing sync and async APIs",
+    "Not closing the browser/context"
+   ],
+   "examples": [
+    {
+     "title": "Scrape with Playwright",
+     "language": "text",
+     "code": "from playwright.sync_api import sync_playwright\n\nrows = []\nwith sync_playwright() as p:\n    browser = p.chromium.launch(headless=True)\n    page = browser.new_page()\n    page.route(\"**/*.{png,jpg,jpeg,gif,css}\", lambda route: route.abort())\n\n    page.goto(\"https://quotes.toscrape.com/js/\")\n    while True:\n        page.wait_for_selector(\"div.quote\")\n        for q in page.locator(\"div.quote\").all():\n            rows.append({\n                \"text\": q.locator(\"span.text\").inner_text(),\n                \"author\": q.locator(\"small.author\").inner_text(),\n            })\n        next_btn = page.locator(\"li.next a\")\n        if next_btn.count() == 0:\n            break\n        next_btn.click()\n    browser.close()\n\nprint(len(rows), rows[0])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Playwright vs Selenium?",
+     "a": "Playwright has auto-waiting, faster execution, built-in network interception and multi-browser contexts; Selenium has a larger legacy ecosystem and language support."
+    },
+    {
+     "q": "How can Playwright help you avoid parsing HTML?",
+     "a": "By listening to page.on(\"response\") you can capture the JSON API responses the page itself fetches and use them directly."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-scrapy-spiders",
+   "title": "Scrapy: Spiders and Selectors",
+   "level": "advanced",
+   "summary": "A full crawling framework: projects, spiders, selectors, following links and exporting data.",
+   "description": "**Scrapy** is an asynchronous framework built for large crawls. It handles request scheduling, concurrency, retries, throttling, de-duplication, and exports, so you write only the extraction logic.\n\n```bash\npip install scrapy\nscrapy startproject bookscraper\ncd bookscraper\nscrapy genspider books books.toscrape.com\nscrapy crawl books -O books.json\n```\n\n### Project layout\n`spiders/` (your crawlers), `items.py`, `pipelines.py`, `middlewares.py`, `settings.py`.\n\n### Spider anatomy\n- `name`: unique spider name.\n- `start_urls`: where to begin.\n- `parse(self, response)`: callback receiving a response; `yield` dicts/Items to output and `yield` Requests to follow links.\n- `response.css()` and `response.xpath()` return selectors; `.get()` returns the first value and `.getall()` a list.\n- `response.follow(url_or_selector, callback)` follows links (handles relative URLs).\n\n### Useful features\n- `scrapy shell URL` to experiment interactively.\n- Feed exports to JSON, JSONL, CSV, XML with `-O file` (overwrite) or `-o` (append).\n- Spider arguments: `scrapy crawl books -a category=travel`.\n- `CrawlSpider` with `Rule`/`LinkExtractor` for site-wide crawling.\n- Built-in AutoThrottle, retry, cookies and HTTP cache.\n\n### When to choose Scrapy\nMany pages, structured pipelines, need for speed and robustness. For a one-off page, `requests` + BeautifulSoup is simpler.",
+   "keyPoints": [
+    "Spider = name + start_urls + parse callback",
+    "yield items for data and Requests to follow links",
+    "response.css/xpath with .get() and .getall()",
+    "response.follow handles relative URLs and pagination",
+    "scrapy crawl name -O out.json exports data"
+   ],
+   "pitfalls": [
+    "Using return instead of yield in parse",
+    "Not respecting ROBOTSTXT_OBEY and DOWNLOAD_DELAY",
+    "Selecting with .get() and forgetting it may return None"
+   ],
+   "examples": [
+    {
+     "title": "A complete spider",
+     "language": "text",
+     "code": "# bookscraper/spiders/books.py\nimport scrapy\n\nclass BooksSpider(scrapy.Spider):\n    name = \"books\"\n    allowed_domains = [\"books.toscrape.com\"]\n    start_urls = [\"https://books.toscrape.com/\"]\n\n    def parse(self, response):\n        for book in response.css(\"article.product_pod\"):\n            yield {\n                \"title\": book.css(\"h3 a::attr(title)\").get(),\n                \"price\": book.css(\"p.price_color::text\").get(),\n                \"rating\": book.css(\"p.star-rating::attr(class)\").get().split()[-1],\n                \"url\": response.urljoin(book.css(\"h3 a::attr(href)\").get()),\n            }\n\n        next_page = response.css(\"li.next a::attr(href)\").get()\n        if next_page:\n            yield response.follow(next_page, callback=self.parse)\n\n# run:  scrapy crawl books -O books.json",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is Scrapy fast?",
+     "a": "It is built on an asynchronous networking engine (Twisted/asyncio), so it keeps many requests in flight at once with built-in scheduling and throttling."
+    },
+    {
+     "q": "What is the difference between yield item and yield Request?",
+     "a": "Yielding a dict or Item sends data to the item pipeline and exporters; yielding a Request schedules another page to crawl with a callback."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-scrapy-pipelines-middlewares",
+   "title": "Scrapy: Items, Pipelines and Middlewares",
+   "level": "advanced",
+   "summary": "Clean and store scraped data with pipelines, and customise requests with middlewares and settings.",
+   "description": "### Items\nAn `Item` (or a `dataclass`) defines the fields your spider outputs. It adds structure and catches typos in field names.\n\n### Item pipelines\nAfter a spider yields an item it passes through the pipelines in order. Each pipeline can **clean**, **validate**, **drop**, **deduplicate** or **store** it.\n\n```python\nclass CleanPricePipeline:\n    def process_item(self, item, spider):\n        item[\"price\"] = float(item[\"price\"].replace(\"£\", \"\"))\n        return item\n```\nRaise `scrapy.exceptions.DropItem` to discard. Enable in `settings.py` with an order number (low runs first):\n```python\nITEM_PIPELINES = {\n    \"bookscraper.pipelines.CleanPricePipeline\": 300,\n    \"bookscraper.pipelines.SQLitePipeline\": 800,\n}\n```\n`open_spider` and `close_spider` hooks open and close resources such as DB connections. (Newer Scrapy versions pass fewer arguments; check your version's docs for the exact signatures.)\n\n### Middlewares\n- **Downloader middlewares** sit between engine and downloader: modify requests (headers, proxies) and responses (retry, decode). Methods: `process_request`, `process_response`, `process_exception`.\n- **Spider middlewares** sit between engine and spiders: filter or alter responses and results.\n\n### Key settings\n`ROBOTSTXT_OBEY`, `DOWNLOAD_DELAY`, `CONCURRENT_REQUESTS`, `AUTOTHROTTLE_ENABLED`, `USER_AGENT`, `RETRY_TIMES`, `HTTPCACHE_ENABLED`, `DEFAULT_REQUEST_HEADERS`, `FEEDS`.\n\nUse pipelines for data work and middlewares for request/response plumbing.",
+   "keyPoints": [
+    "Pipelines process each item in order of their number",
+    "DropItem discards bad items",
+    "open_spider/close_spider manage resources",
+    "Downloader middlewares modify requests and responses",
+    "Settings control politeness: delay, concurrency, AutoThrottle"
+   ],
+   "pitfalls": [
+    "Forgetting to enable the pipeline in ITEM_PIPELINES",
+    "Returning nothing from process_item (the item is lost)",
+    "Setting concurrency too high and getting blocked"
+   ],
+   "examples": [
+    {
+     "title": "SQLite pipeline and rotating User-Agent middleware",
+     "language": "text",
+     "code": "# pipelines.py\nimport sqlite3\nfrom scrapy.exceptions import DropItem\n\nclass SQLitePipeline:\n    def open_spider(self, spider):\n        self.conn = sqlite3.connect(\"books.db\")\n        self.conn.execute(\n            \"CREATE TABLE IF NOT EXISTS books (url TEXT PRIMARY KEY, title TEXT, price REAL)\"\n        )\n\n    def process_item(self, item, spider):\n        if not item.get(\"title\"):\n            raise DropItem(\"missing title\")\n        price = float(item[\"price\"].replace(\"£\", \"\"))\n        self.conn.execute(\n            \"INSERT OR REPLACE INTO books VALUES (?, ?, ?)\",\n            (item[\"url\"], item[\"title\"], price),\n        )\n        return item\n\n    def close_spider(self, spider):\n        self.conn.commit()\n        self.conn.close()\n\n# middlewares.py\nimport random\n\nclass RandomUserAgentMiddleware:\n    AGENTS = [\n        \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36\",\n        \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.0 Safari/605.1.15\",\n    ]\n    def process_request(self, request, spider):\n        request.headers[\"User-Agent\"] = random.choice(self.AGENTS)\n\n# settings.py\nITEM_PIPELINES = {\"bookscraper.pipelines.SQLitePipeline\": 300}\nDOWNLOADER_MIDDLEWARES = {\"bookscraper.middlewares.RandomUserAgentMiddleware\": 400}\nDOWNLOAD_DELAY = 1\nAUTOTHROTTLE_ENABLED = True",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an item pipeline used for?",
+     "a": "Post-processing scraped items: cleaning, validation, deduplication and saving to files or databases."
+    },
+    {
+     "q": "Difference between downloader and spider middleware?",
+     "a": "Downloader middleware handles requests/responses around the HTTP download (headers, proxies, retries); spider middleware handles the input to and output from spiders."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-scraping-saving-data",
+   "title": "Saving Scraped Data: CSV, JSON and Databases",
+   "level": "intermediate",
+   "summary": "Persist results to CSV, JSON lines, SQLite and other stores, and avoid duplicates.",
+   "description": "Scraped data is only useful once stored in a clean, queryable form.\n\n### CSV\nBest for flat tables and spreadsheets. Use `csv.DictWriter` and `newline=\"\"`, `encoding=\"utf-8\"` (or `utf-8-sig` so Excel shows non-English text correctly).\n\n### JSON / JSON Lines\nUse JSON for nested data. For large crawls prefer **JSON Lines** (`.jsonl`): one JSON object per line, appendable and streamable, so a crash does not corrupt the whole file.\n\n### SQLite\nA zero-setup SQL database in the standard library: perfect for scrapers. Use a **primary key or UNIQUE constraint** and `INSERT OR REPLACE` / `ON CONFLICT` to avoid duplicates when you re-run. Use parameterised queries (`?`) rather than string formatting.\n\n### Other stores\nPostgreSQL/MySQL via SQLAlchemy or psycopg, MongoDB for schemaless documents, pandas `to_csv`/`to_excel`/`to_sql` for analysis, cloud storage for large files.\n\n### Data cleaning checklist\n- Strip whitespace; normalise unicode.\n- Convert prices and dates to real types.\n- Handle missing values explicitly (`None`).\n- Add `scraped_at` timestamp and `source_url`.\n- De-duplicate by a stable id.\n\n### Scrapy\nBuilt-in feed exports write JSON/CSV with `-O`, and pipelines handle databases.\n\n### Habit\nWrite incrementally (append or commit every N rows) so that a failure at page 900 does not lose pages 1-899.",
+   "keyPoints": [
+    "CSV for flat tables, JSON Lines for streaming and large crawls",
+    "SQLite is a built-in, zero-setup store for scrapers",
+    "Use primary keys or UNIQUE to prevent duplicates",
+    "Use parameterised SQL queries",
+    "Save incrementally and add scraped_at/source_url"
+   ],
+   "pitfalls": [
+    "Writing everything at the end and losing data on a crash",
+    "Garbled non-English text from a missing encoding",
+    "Building SQL with f-strings (injection and quoting bugs)"
+   ],
+   "examples": [
+    {
+     "title": "Save to CSV, JSONL and SQLite",
+     "language": "text",
+     "code": "import csv\nimport json\nimport sqlite3\n\nrows = [\n    {\"url\": \"https://shop.test/1\", \"title\": \"Python Book\", \"price\": 499.0},\n    {\"url\": \"https://shop.test/2\", \"title\": \"Flask Guide\", \"price\": 349.5},\n]\n\nwith open(\"items.csv\", \"w\", newline=\"\", encoding=\"utf-8-sig\") as f:\n    w = csv.DictWriter(f, fieldnames=[\"url\", \"title\", \"price\"])\n    w.writeheader()\n    w.writerows(rows)\n\nwith open(\"items.jsonl\", \"a\", encoding=\"utf-8\") as f:\n    for row in rows:\n        f.write(json.dumps(row, ensure_ascii=False) + \"\\n\")\n\nconn = sqlite3.connect(\"items.db\")\nconn.execute(\"CREATE TABLE IF NOT EXISTS items (url TEXT PRIMARY KEY, title TEXT, price REAL)\")\nconn.executemany(\n    \"INSERT OR REPLACE INTO items (url, title, price) VALUES (:url, :title, :price)\", rows\n)\nconn.commit()\nprint(conn.execute(\"SELECT COUNT(*), AVG(price) FROM items\").fetchone())\nconn.close()",
+     "explanation": ""
+    },
+    {
+     "title": "SQLite in memory (runs here)",
+     "language": "python",
+     "code": "import sqlite3\n\nconn = sqlite3.connect(\":memory:\")\nconn.execute(\"CREATE TABLE items (url TEXT PRIMARY KEY, title TEXT, price REAL)\")\nrows = [(\"u1\", \"Book A\", 10.0), (\"u2\", \"Book B\", 15.5), (\"u1\", \"Book A (updated)\", 12.0)]\nconn.executemany(\"INSERT OR REPLACE INTO items VALUES (?, ?, ?)\", rows)\nfor row in conn.execute(\"SELECT * FROM items ORDER BY url\"):\n    print(row)\nprint(conn.execute(\"SELECT COUNT(*), SUM(price) FROM items\").fetchone())",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use JSON Lines for large scrapes?",
+     "a": "Each record is an independent line, so you can append safely, stream-process, and a crash cannot corrupt earlier records."
+    },
+    {
+     "q": "How do you avoid duplicate rows when re-running a scraper?",
+     "a": "Define a unique key (such as the URL or product id) and use INSERT OR REPLACE/ON CONFLICT or check existence before inserting."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-anti-bot",
+   "title": "Anti-Bot Basics and Staying Reliable",
+   "level": "advanced",
+   "summary": "Why sites block scrapers and the legitimate techniques for polite, resilient scraping.",
+   "description": "Sites protect themselves from abusive traffic using rate limits, IP reputation, header checks, cookies, JavaScript challenges and CAPTCHAs. The goal of this topic is to **make your scraper behave politely and robustly**, not to defeat security systems.\n\n### Why you get blocked\n- Too many requests too fast from one IP.\n- Missing or unusual headers (the default `python-requests` User-Agent).\n- No cookies / session behaviour like a real visitor.\n- Perfectly regular timing.\n- Datacenter IP addresses.\n\n### Polite and robust practices\n1. **Throttle**: delays between requests, random jitter, low concurrency.\n2. **Realistic headers**: a normal `User-Agent`, `Accept-Language`, `Referer`.\n3. **Use sessions** so cookies persist.\n4. **Exponential backoff** on 429/503; honour `Retry-After`.\n5. **Cache** responses and avoid re-fetching unchanged pages; use `If-None-Match`/ETag.\n6. **Incremental scraping**: only fetch new items.\n7. **Proxies**: rotate through legitimately obtained proxies when load must be spread.\n8. **Headless browsers** for sites that require JavaScript.\n9. **Monitoring**: log status codes and alert when the parse suddenly returns nothing.\n\n### CAPTCHAs and challenges\nA CAPTCHA is an explicit signal that automation is unwelcome. Respect it: look for an API, ask for permission or reduce your rate instead of circumventing it.\n\n### Reliability\nSites change. Write extractors that fail loudly (log and skip a field) and keep a few saved HTML fixtures for tests.",
+   "keyPoints": [
+    "Throttle, add jitter and keep concurrency low",
+    "Send realistic headers and keep a session",
+    "Back off exponentially on 429/5xx and honour Retry-After",
+    "Cache and scrape incrementally",
+    "Treat CAPTCHAs as a signal to stop or ask for API access"
+   ],
+   "pitfalls": [
+    "Rotating proxies to hide abusive volume",
+    "Retrying instantly in a tight loop",
+    "Silent failures that produce empty datasets"
+   ],
+   "examples": [
+    {
+     "title": "Polite request helper with backoff",
+     "language": "text",
+     "code": "import random\nimport time\nimport requests\n\nHEADERS = {\n    \"User-Agent\": \"Mozilla/5.0 (compatible; CodeReviseBot/1.0; +https://example.com/bot)\",\n    \"Accept-Language\": \"en-US,en;q=0.9\",\n}\n\ndef polite_get(session, url, max_tries=4):\n    for attempt in range(1, max_tries + 1):\n        time.sleep(random.uniform(1.0, 2.5))            # jitter between requests\n        try:\n            r = session.get(url, headers=HEADERS, timeout=15)\n        except requests.RequestException as exc:\n            print(\"network error:\", exc)\n        else:\n            if r.status_code == 200:\n                return r\n            if r.status_code in (429, 503):\n                wait = int(r.headers.get(\"Retry-After\", 2 ** attempt * 5))\n                print(f\"throttled, sleeping {wait}s\")\n                time.sleep(wait)\n                continue\n            r.raise_for_status()\n        time.sleep(2 ** attempt)\n    raise RuntimeError(f\"gave up on {url}\")\n\nwith requests.Session() as s:\n    page = polite_get(s, \"https://quotes.toscrape.com/\")\n    print(page.status_code)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is exponential backoff?",
+     "a": "Increasing the wait time after each failed attempt (for example 1s, 2s, 4s, 8s) so a struggling server is not hammered and temporary limits can expire."
+    },
+    {
+     "q": "How can you reduce the chance of getting blocked ethically?",
+     "a": "Slow down, use realistic headers and sessions, cache, honour robots.txt and rate-limit responses, and prefer official APIs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-scraper-walkthrough",
+   "title": "Complete Scraper Walkthrough",
+   "level": "advanced",
+   "summary": "Build an end-to-end scraper: inspect, fetch, parse, paginate, clean and save.",
+   "description": "Let us scrape every book from **books.toscrape.com**, a practice site built for learning. Follow these steps for any project.\n\n### 1. Inspect\nOpen the page in DevTools. Each book is an `article.product_pod`; the title is in `h3 a[title]`, the price in `p.price_color`, the rating is a class on `p.star-rating`, and the next page is `li.next a`.\n\n### 2. Plan the data\nFields: `title`, `price` (float), `rating` (1-5), `in_stock`, `url`. Output: CSV and SQLite.\n\n### 3. Build in small pieces\n- `fetch(url)` with a session, headers, timeout and delay.\n- `parse_list(html, page_url)` returns a list of dicts.\n- `crawl()` follows the next link with a page cap.\n- `save_csv(rows)`.\n\n### 4. Make it robust\nCheck status codes, guard for missing elements, use `urljoin`, deduplicate by URL and log progress.\n\n### 5. Run and verify\nCount rows against the number shown on the site (1000 books), spot-check a few values and re-run to confirm no duplicates are created.\n\n### Next steps\nConvert prices with `Decimal`, scrape each detail page for descriptions, schedule the job with cron/Task Scheduler, or port it to Scrapy for speed.",
+   "keyPoints": [
+    "Inspect first, then design fields and output",
+    "Separate fetch, parse, crawl and save functions",
+    "Add politeness, error handling and a page cap",
+    "Verify counts and spot-check data",
+    "Cleaning (types, whitespace) belongs in the parse step"
+   ],
+   "pitfalls": [
+    "Writing one giant script with no functions",
+    "Not validating the scraped row count",
+    "Skipping delays because the practice site never blocks"
+   ],
+   "examples": [
+    {
+     "title": "End-to-end books scraper",
+     "language": "text",
+     "code": "import csv\nimport time\nimport requests\nfrom urllib.parse import urljoin\nfrom bs4 import BeautifulSoup\n\nSTART = \"https://books.toscrape.com/\"\nHEADERS = {\"User-Agent\": \"Mozilla/5.0 (compatible; CodeReviseBot/1.0)\"}\nRATING = {\"One\": 1, \"Two\": 2, \"Three\": 3, \"Four\": 4, \"Five\": 5}\n\ndef fetch(session, url):\n    r = session.get(url, headers=HEADERS, timeout=15)\n    r.raise_for_status()\n    r.encoding = \"utf-8\"\n    return r.text\n\ndef parse_list(html, page_url):\n    soup = BeautifulSoup(html, \"lxml\")\n    rows = []\n    for card in soup.select(\"article.product_pod\"):\n        link = card.select_one(\"h3 a\")\n        rating_class = card.select_one(\"p.star-rating\")[\"class\"][1]\n        rows.append({\n            \"title\": link[\"title\"],\n            \"price\": float(card.select_one(\"p.price_color\").text.replace(\"£\", \"\")),\n            \"rating\": RATING[rating_class],\n            \"in_stock\": \"In stock\" in card.select_one(\"p.availability\").text,\n            \"url\": urljoin(page_url, link[\"href\"]),\n        })\n    nxt = soup.select_one(\"li.next a\")\n    return rows, urljoin(page_url, nxt[\"href\"]) if nxt else None\n\ndef crawl(max_pages=50):\n    rows, url, pages = [], START, 0\n    with requests.Session() as s:\n        while url and pages < max_pages:\n            html = fetch(s, url)\n            page_rows, url = parse_list(html, url)\n            rows.extend(page_rows)\n            pages += 1\n            print(f\"page {pages}: {len(rows)} books so far\")\n            time.sleep(0.5)\n    return rows\n\ndef save_csv(rows, path=\"books.csv\"):\n    with open(path, \"w\", newline=\"\", encoding=\"utf-8\") as f:\n        w = csv.DictWriter(f, fieldnames=list(rows[0]))\n        w.writeheader()\n        w.writerows(rows)\n\nif __name__ == \"__main__\":\n    data = crawl()\n    save_csv(data)\n    print(len(data), \"books saved; cheapest:\", min(data, key=lambda r: r[\"price\"])[\"title\"])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How would you structure a scraper for maintainability?",
+     "a": "Split fetching, parsing, crawling and storage into separate functions, keep selectors in one place, add logging and tests using saved HTML fixtures."
+    },
+    {
+     "q": "How do you verify a scraper worked?",
+     "a": "Compare record counts with the site, check for missing/duplicate values, sample a few rows manually and monitor for sudden drops after site changes."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

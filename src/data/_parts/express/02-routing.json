@@ -1,0 +1,234 @@
+{
+ "id": "express-routing",
+ "title": "Routing",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "express-routing-basics",
+   "title": "Routing Basics and Route Chaining",
+   "level": "beginner",
+   "summary": "A route connects an HTTP method and a path to a handler; app.route() chains several methods on one path.",
+   "description": "**Routing** decides which function answers a request. A route has three parts: an HTTP **method**, a **path** and one or more **handlers**.\n\n```\napp.METHOD(path, handler [, handler...])\n```\n\n`METHOD` can be `get`, `post`, `put`, `patch`, `delete`, `head`, `options` and others. `app.all(path, handler)` matches every method and `app.use(path, handler)` matches every method and any path that *starts with* the prefix (used for middleware).\n\n### How matching works\nExpress checks routes **top to bottom** and runs the first handler that matches. A handler either ends the response or calls `next()` to continue looking. Paths are matched case-insensitively and a trailing slash is ignored by default.\n\n### Multiple handlers\nYou can pass several functions (or arrays of functions) to one route. They run in order, which is how route-level middleware such as `auth` works: `app.get('/me', auth, getMe)`.\n\n### Route chaining with `app.route()`\nWhen several methods share one path, `app.route('/books')` avoids repeating the path (fewer typos) and keeps the REST resource together:\n\n```js\napp.route('/books')\n  .get(listBooks)\n  .post(createBook)\n```\n\nThe same exists on routers: `router.route('/:id').get(...).put(...).delete(...)`.\n\n### Responding\nEach handler must end the cycle with `res.send`, `res.json`, `res.sendStatus`, `res.redirect` and so on, or call `next()`. Prefer `return res.status(...).json(...)` when an early exit is possible so code below it does not run.",
+   "keyPoints": [
+    "Route = method + path + handler(s); first match wins",
+    "`app.all` matches every method; `app.use` matches any path under a prefix",
+    "Several handlers can be passed to one route; they run in order",
+    "`app.route(path)` chains `.get().post().delete()` on one path"
+   ],
+   "pitfalls": [
+    "Calling `res.send` and then continuing code without `return`",
+    "Defining a catch-all route (`app.all('*')`-style) before specific routes",
+    "Confusing `app.use('/api')` (prefix match) with `app.get('/api')` (exact path)"
+   ],
+   "examples": [
+    {
+     "title": "Basic routes and chaining",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\napp.use(express.json())\n\nconst books = [{ id: 1, title: 'Clean Code' }]\n\n// chained: one path, many methods\napp.route('/books')\n  .get((req, res) => res.json(books))\n  .post((req, res) => {\n    const book = { id: books.length + 1, title: req.body.title }\n    books.push(book)\n    res.status(201).json(book)\n  })\n\n// all methods on a path\napp.all('/ping', (req, res) => res.send(`pong via ${req.method}`))\n\n// two handlers on one route\nconst logIt = (req, res, next) => { console.log('hit', req.originalUrl); next() }\napp.get('/about', logIt, (req, res) => res.send('About page'))\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Try it",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/books\n# [{\"id\":1,\"title\":\"Clean Code\"}]\ncurl -X POST localhost:3000/books -H \"Content-Type: application/json\" -d '{\"title\":\"Refactoring\"}'\n# {\"id\":2,\"title\":\"Refactoring\"}\ncurl -X DELETE localhost:3000/ping\n# pong via DELETE",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between app.use and app.get?",
+     "a": "app.get matches only GET requests on an exact path; app.use matches all methods and any path beginning with the prefix, and is used for middleware."
+    },
+    {
+     "q": "Why use app.route()?",
+     "a": "It groups handlers for different methods on the same path in one place, reducing duplication and typos."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-route-params-query",
+   "title": "Route Params and Query Strings",
+   "level": "beginner",
+   "summary": "Read dynamic parts of the URL with req.params and optional filters with req.query.",
+   "description": "There are two ways to send small pieces of data in a URL.\n\n### Route parameters (`req.params`)\nDefine them with a colon: `/users/:id`. A request to `/users/42` gives `req.params.id === '42'`. Params are always **strings**, so convert with `Number()` when needed. Use them to *identify a resource*.\n\n```js\napp.get('/users/:userId/posts/:postId', handler)\n// /users/7/posts/99 -> { userId: '7', postId: '99' }\n```\n\nA param matches one path segment (anything except `/`). Optional segments use braces in Express 5: `/books{/:id}`.\n\n### Query strings (`req.query`)\nEverything after `?` is parsed: `/search?q=node&page=2` gives `{ q: 'node', page: '2' }`. Use query strings for *optional filters, sorting and pagination*. Values are strings (or arrays when repeated: `?tag=a&tag=b`).\n\n### Express 5 query parser change\nIn v4 the default parser was `qs` (\"extended\"), so `?a[b]=1` became `{ a: { b: '1' } }`. In Express 5 the default is **simple**, which keeps the key literally (`'a[b]'`). To restore nested parsing call `app.set('query parser', 'extended')`. Also, `req.query` is now a getter, so you cannot reassign it (middleware that tried `req.query = sanitized` must copy into another property).\n\n### `app.param()`\n`app.param('id', fn)` runs once for every route containing `:id`, useful for loading a document and attaching it to `req`.\n\n### Validation\nNever trust params or query: validate type and range before using them in a database query.",
+   "keyPoints": [
+    "`/items/:id` -> `req.params.id` (always a string)",
+    "`?page=2&limit=10` -> `req.query` (strings or arrays)",
+    "Express 5: default query parser is `simple`; `req.query` is read-only",
+    "Optional segment syntax in v5: `/books{/:id}`",
+    "`app.param('id', fn)` preloads a resource for routes with `:id`"
+   ],
+   "pitfalls": [
+    "Comparing `req.params.id === 1` (string vs number)",
+    "Relying on nested query objects (`a[b]=1`) without enabling the extended parser",
+    "Passing raw query values into a database query (injection risk)"
+   ],
+   "examples": [
+    {
+     "title": "Params, query and defaults",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\napp.get('/users/:id', (req, res) => {\n  const id = Number(req.params.id)\n  if (!Number.isInteger(id)) return res.status(400).json({ error: 'id must be a number' })\n  res.json({ id, query: req.query })\n})\n\napp.get('/search', (req, res) => {\n  const { q = '', page = '1', limit = '10' } = req.query\n  res.json({ q, page: Number(page), limit: Number(limit) })\n})\n\n// optional param (Express 5 syntax)\napp.get('/books{/:id}', (req, res) => {\n  res.json({ id: req.params.id ?? null })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Results",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl \"localhost:3000/users/42?lang=en\"\n# {\"id\":42,\"query\":{\"lang\":\"en\"}}\ncurl \"localhost:3000/users/abc\"\n# {\"error\":\"id must be a number\"}\ncurl \"localhost:3000/search?q=node&page=2\"\n# {\"q\":\"node\",\"page\":2,\"limit\":10}\ncurl localhost:3000/books\n# {\"id\":null}\ncurl localhost:3000/books/7\n# {\"id\":\"7\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Params vs query - when to use which?",
+     "a": "Params identify a specific resource in the path (/users/42); query strings carry optional modifiers such as filters, sort and pagination."
+    },
+    {
+     "q": "What changed about req.query in Express 5?",
+     "a": "It is a getter (not assignable) and the default parser is \"simple\", so nested bracket syntax is no longer expanded unless you set 'query parser' to 'extended'."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-route-patterns",
+   "title": "Wildcards, Regex and Path Patterns (Express 5)",
+   "level": "intermediate",
+   "summary": "Express 5 uses path-to-regexp v8: named wildcards, braces for optional parts and no inline regex.",
+   "description": "Express 5 upgraded to **path-to-regexp v8**, which makes route strings stricter and safer (it prevents ReDoS-prone patterns). Old v4 patterns often need a small rewrite.\n\n### What changed\n| Need | Express 4 | Express 5 |\n|---|---|---|\n| Match anything | `/*` | `/*splat` |\n| Match anything incl. root | `/*` | `/{*splat}` |\n| Optional segment | `/books/:id?` | `/books{/:id}` |\n| Optional char | `/ab?cd` | `/a{b}cd` |\n| One-or-more | `/:id+` | `/*id` |\n| Inline regex in param | `/:id(\\\\d+)` | **not supported** |\n\n### Wildcards\n`/files/*splat` matches `/files/a/b/c.txt` and `req.params.splat` is an **array** of segments: `['a','b','c.txt']`. Join with `/` to rebuild the path. A bare `*` without a name throws an error at startup.\n\n### Regex\nYou can still pass a real `RegExp` object as the path: `app.get(/.*fly$/, handler)`. Capture groups are available as `req.params[0]`. For validating params, check inside the handler (or with `app.param`) rather than in the path string.\n\n### Reserved characters\n`( ) [ ] ? + !` must be escaped with a backslash if you want them literally, because they are used by the syntax.\n\n### Tip\nWhen migrating a v4 app and the server crashes at startup with `PathError: Missing parameter name`, a route string is using old wildcard syntax.",
+   "keyPoints": [
+    "Wildcards must be named: `/files/*splat` (value is an array)",
+    "Optional parts use braces: `/books{/:id}`",
+    "Inline param regex like `/:id(\\d+)` was removed - validate in code",
+    "Real `RegExp` objects are still allowed as paths",
+    "Unnamed `*` throws `PathError` at startup in v5"
+   ],
+   "pitfalls": [
+    "Copying v4 patterns such as `app.get('*', ...)` or `/:id?` into a v5 app",
+    "Forgetting `/*splat` does not match the bare `/files` path; use `/files{/*splat}`"
+   ],
+   "examples": [
+    {
+     "title": "Wildcards, optional and regex",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\n// named wildcard -> array\napp.get('/files/*splat', (req, res) => {\n  res.json({ path: req.params.splat.join('/') })\n})\n\n// optional segment\napp.get('/books{/:id}', (req, res) => res.json({ id: req.params.id ?? 'all' }))\n\n// RegExp path: anything ending with \"fly\"\napp.get(/.*fly$/, (req, res) => res.send('ends with fly'))\n\n// validate the param in code instead of inline regex\napp.get('/orders/:id', (req, res, next) => {\n  if (!/^\\d+$/.test(req.params.id)) return next('route')\n  res.json({ order: Number(req.params.id) })\n})\n\n// catch-all for unknown URLs (v5 syntax)\napp.get('/{*splat}', (req, res) => res.status(404).send('no such page'))\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/files/a/b/c.txt   # {\"path\":\"a/b/c.txt\"}\ncurl localhost:3000/books             # {\"id\":\"all\"}\ncurl localhost:3000/butterfly         # ends with fly\ncurl localhost:3000/orders/12         # {\"order\":12}\ncurl localhost:3000/orders/xyz        # no such page",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you write a catch-all route in Express 5?",
+     "a": "Use a plain app.use((req, res) => ...) placed last, or a named wildcard route such as app.get('/{*splat}', ...); a bare '*' is invalid in v5."
+    },
+    {
+     "q": "Can you put a regex inside a route parameter in v5?",
+     "a": "No. Inline regex like /:id(\\d+) was removed; pass a RegExp as the whole path or validate the value in the handler."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-router-modular",
+   "title": "express.Router and Versioned APIs",
+   "level": "intermediate",
+   "summary": "Split routes into modules with express.Router and mount them under prefixes such as /api/v1.",
+   "description": "As an app grows, one file full of routes becomes unmanageable. **`express.Router()`** creates a mini application with its own routes and middleware that you mount under a prefix.\n\n### Pattern\n1. Create `routes/users.js`, build a router, define routes relative to the mount point (`router.get('/')`, `router.get('/:id')`), and `export default router`.\n2. In `app.js`, mount it: `app.use('/api/v1/users', usersRouter)`.\n\nThe router sees only the part of the URL after the mount path, which is why it defines `'/'` not `'/users'`. Use `req.originalUrl` if you need the full URL and `req.baseUrl` for the mount prefix.\n\n### Router-level middleware\n`router.use(auth)` applies only to that router. This is a clean way to protect a whole group of routes: mount `adminRouter` behind `requireAdmin`.\n\n### Nested routers and `mergeParams`\nA child router does not see parent params unless created with `express.Router({ mergeParams: true })`. Needed for `/posts/:postId/comments`.\n\n### Versioning the API\nPut the version in the URL: `/api/v1/...`. When you must make a breaking change, create `routes/v2/` and mount it at `/api/v2`, keeping v1 alive for old clients. Other options are a header (`Accept: application/vnd.app.v2+json`) or a query param; URL versioning is the simplest and most common.\n\n### Router options\n`caseSensitive`, `strict` (trailing slash) and `mergeParams` can be passed when creating a router.",
+   "keyPoints": [
+    "`const router = express.Router(); ...; export default router`",
+    "Mount with `app.use('/prefix', router)`; inside the router paths are relative",
+    "`router.use(mw)` scopes middleware to that group",
+    "Use `Router({ mergeParams: true })` to read parent params in nested routers",
+    "Version with `/api/v1`, `/api/v2` mount points"
+   ],
+   "pitfalls": [
+    "Defining `router.get('/users')` and mounting at `/users` too (URL becomes `/users/users`)",
+    "Reading `req.params.postId` in a child router without `mergeParams`",
+    "Registering the router after the 404 handler"
+   ],
+   "examples": [
+    {
+     "title": "Users router and versioned mount",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/routes/users.js\nimport { Router } from 'express'\nconst router = Router()\n\nconst users = [{ id: 1, name: 'Asha' }, { id: 2, name: 'Ravi' }]\n\nrouter.get('/', (req, res) => res.json(users))\nrouter.get('/:id', (req, res) => {\n  const user = users.find((u) => u.id === Number(req.params.id))\n  if (!user) return res.status(404).json({ error: 'User not found' })\n  res.json(user)\n})\n\nexport default router\n\n// ## src/routes/index.js\nimport { Router } from 'express'\nimport users from './users.js'\n\nconst v1 = Router()\nv1.use('/users', users)\n\nexport default v1\n\n// ## src/app.js\nimport express from 'express'\nimport v1 from './routes/index.js'\n\nconst app = express()\napp.use('/api/v1', v1)\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Nested router with mergeParams",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express, { Router } from 'express'\nconst app = express()\n\nconst comments = Router({ mergeParams: true })\ncomments.get('/', (req, res) => {\n  res.json({ postId: req.params.postId, comments: [] })\n})\n\nconst posts = Router()\nposts.use('/:postId/comments', comments)\n\napp.use('/posts', posts)\n// GET /posts/5/comments -> {\"postId\":\"5\",\"comments\":[]}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use express.Router?",
+     "a": "It modularises routes into separate files and lets you attach middleware to a group of routes under one mount path."
+    },
+    {
+     "q": "How do you version an API in Express?",
+     "a": "Commonly by mounting separate routers under /api/v1 and /api/v2, so old clients keep working while new behaviour ships in v2."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-route-order-404",
+   "title": "Route Order and 404 Handlers",
+   "level": "beginner",
+   "summary": "Order of registration decides what runs; put a catch-all 404 handler after every route.",
+   "description": "Express walks through the stack of middleware and routes **in the order they were registered**, and the first one that ends the response wins. This single rule explains many \"why is my route not working\" bugs.\n\n### Specific before general\n```js\napp.get('/users/me', getMe)      // must come first\napp.get('/users/:id', getUser)   // otherwise \"me\" is treated as an id\n```\nIf the order were reversed, a request to `/users/me` would run `getUser` with `id = 'me'`.\n\n### Middleware before routes\nParsers (`express.json()`), CORS and logging middleware must be registered **before** the routes that need them. A route registered above `express.json()` will see `req.body === undefined`.\n\n### The 404 handler\nIf no route matches, Express falls back to a default HTML \"Cannot GET /path\" page. Replace it with your own JSON handler placed **after all routes** but **before the error handler**:\n\n```js\napp.use((req, res) => {\n  res.status(404).json({ error: `Route ${req.method} ${req.originalUrl} not found` })\n})\n```\n\nIt has only three parameters, so Express treats it as a normal middleware, not an error handler.\n\n### Order recap\n1. Global middleware (security, logging, parsers)\n2. Routes / routers\n3. 404 handler\n4. Error-handling middleware (4 args)\n\n### Method mismatch\nA request such as `POST /users` when only `GET /users` exists also falls to the 404 handler. Return 405 + `Allow` header only if you want to be strict.",
+   "keyPoints": [
+    "First matching handler that responds wins",
+    "Register specific routes before parameterised ones",
+    "Parsers and CORS go before routes",
+    "404 handler goes after routes; error handler goes last"
+   ],
+   "pitfalls": [
+    "Placing `app.use(notFound)` above your routes - everything becomes 404",
+    "Putting the error handler before routes, so it never sees their errors",
+    "Forgetting to return JSON from the 404 handler in an API (default is HTML)"
+   ],
+   "examples": [
+    {
+     "title": "Order in practice",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\napp.use(express.json())                         // 1. parsers first\n\napp.get('/users/me', (req, res) => res.json({ me: true }))      // 2. specific\napp.get('/users/:id', (req, res) => res.json({ id: req.params.id })) // 3. general\n\napp.use((req, res) => {                         // 4. 404 after routes\n  res.status(404).json({ error: `Cannot ${req.method} ${req.originalUrl}` })\n})\n\napp.use((err, req, res, next) => {              // 5. error handler last\n  res.status(err.status || 500).json({ error: err.message })\n})\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Results",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/users/me      # {\"me\":true}\ncurl localhost:3000/users/5       # {\"id\":\"5\"}\ncurl localhost:3000/nothing       # {\"error\":\"Cannot GET /nothing\"}\ncurl -X POST localhost:3000/users/5   # {\"error\":\"Cannot POST /users/5\"}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does /users/me return the wrong handler?",
+     "a": "Because /users/:id was registered before /users/me; Express matches the first route, so specific routes must be declared first."
+    },
+    {
+     "q": "Where should the 404 handler go?",
+     "a": "After all routes and routers but before the error-handling middleware, as a normal 3-argument middleware that sends a 404 response."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

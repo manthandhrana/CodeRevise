@@ -1,0 +1,223 @@
+{
+ "id": "css-architecture-section",
+ "title": "Architecture, Performance and Quality",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "css-architecture",
+   "title": "CSS Architecture: BEM, Utility-first and Organisation",
+   "level": "advanced",
+   "summary": "Naming and structuring CSS so large projects stay predictable: BEM, OOCSS, utility classes, file layout.",
+   "description": "As projects grow, CSS becomes hard to maintain unless you follow a convention.\n\n### BEM (Block, Element, Modifier)\n- **Block**: standalone component - `.card`\n- **Element**: part of a block - `.card__title`\n- **Modifier**: variation or state - `.card--featured`, `.btn--large`\n\n```html\n<article class=\"card card--featured\">\n  <h2 class=\"card__title\">Title</h2>\n  <a class=\"card__link btn btn--large\">Read</a>\n</article>\n```\nBenefits: flat selectors with the same specificity (0,1,0), no deep nesting, names tell what an element is.\n\n### Utility-first (Tailwind style)\nMany small single-purpose classes composed in HTML: `.flex .p-4 .text-center`. Fast to build, consistent design scale, no naming. Downsides: long class lists and HTML noise (mitigated with components).\n\n### OOCSS and SMACSS\n- **OOCSS**: separate structure from skin; reuse objects (`.btn` + `.btn-primary`).\n- **SMACSS**: categories: base, layout, module, state, theme.\n\n### ITCSS - ordering by specificity\nSettings -> Tools -> Generic (reset) -> Elements -> Objects -> Components -> Utilities. Modern equivalent: **@layer**.\n\n### Practical file organisation\n```text\nstyles/\n  tokens.css        (custom properties)\n  reset.css\n  base.css          (typography, body)\n  layout.css        (container, grid)\n  components/       (button.css, card.css)\n  utilities.css\n```\nThe final project in this course used sections: base rules, theme variables, layout, reusable modules, then page-specific parts and media queries.\n\n### Rules of thumb\n1. Style with classes, avoid ids and tag-qualified selectors.\n2. Keep specificity low and flat.\n3. One component = one block of CSS.\n4. Use tokens (variables) for all colors and spacing.\n5. Delete unused CSS regularly.",
+   "keyPoints": [
+    "BEM: .block__element--modifier",
+    "Flat, low-specificity class selectors",
+    "Utility-first composes small single-purpose classes",
+    "Organise: tokens, reset, base, layout, components, utilities",
+    "Use @layer to formalise the order"
+   ],
+   "pitfalls": [
+    "Deep selector chains copying the DOM (.a .b .c .d)",
+    "Mixing several naming conventions in one project",
+    "Using !important to fix architecture problems"
+   ],
+   "examples": [
+    {
+     "title": "BEM card",
+     "language": "web",
+     "html": "<article class=\"card card--featured\"><h2 class=\"card__title\">BEM Card</h2><p class=\"card__text\">Flat class names, no nesting needed.</p><a href=\"#\" class=\"card__link btn btn--large\">Read more</a></article>",
+     "css": ".card { max-width: 300px; padding: 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-family: sans-serif; }\n.card--featured { border-color: gold; background: #fffbeb; }\n.card__title { margin: 0 0 6px; font-size: 18px; }\n.card__text { margin: 0 0 12px; color: #475569; }\n.btn { display: inline-block; padding: 6px 12px; background: #2965f1; color: #fff; text-decoration: none; border-radius: 6px; }\n.btn--large { padding: 10px 22px; font-size: 16px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Utility classes",
+     "language": "web",
+     "html": "<div class=\"flex gap-2 p-4 bg-slate rounded\"><span class=\"chip\">utility</span><span class=\"chip\">first</span><span class=\"chip bg-blue\">CSS</span></div>",
+     "css": ".flex { display: flex; } .gap-2 { gap: .5rem; } .p-4 { padding: 1rem; }\n.rounded { border-radius: 10px; } .bg-slate { background: #e2e8f0; } .bg-blue { background: #2965f1 !important; color: #fff; }\n.chip { background: #fff; padding: 4px 10px; border-radius: 999px; font: 13px sans-serif; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is BEM?",
+     "a": "A naming convention: Block (component), Element (part: block__element) and Modifier (variant: block--modifier), producing flat, predictable, reusable selectors."
+    },
+    {
+     "q": "Utility-first CSS vs BEM?",
+     "a": "Utility-first composes many single-purpose classes in markup (fast, consistent); BEM writes semantic component classes and keeps markup clean but needs naming effort."
+    },
+    {
+     "q": "How do you keep CSS maintainable at scale?",
+     "a": "Use a naming convention, low specificity, design tokens, layers/file organisation, component-scoped styles and remove dead code."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/final_project/css/style.css"
+  },
+  {
+   "id": "css-performance",
+   "title": "CSS Performance: will-change, contain, Critical CSS",
+   "level": "advanced",
+   "summary": "Write fast CSS: cheap animations, containment, content-visibility, critical CSS and smaller files.",
+   "description": "CSS performance has two sides: **loading** (file size, render blocking) and **runtime** (layout, paint, composite).\n\n### Loading\n- CSS is **render-blocking**: the browser will not paint until it has the CSS in the head.\n- **Critical CSS**: inline the small amount of CSS needed for above-the-fold content in a `<style>` and load the rest asynchronously.\n- Minify, compress (gzip/brotli), remove unused CSS (PurgeCSS), avoid huge frameworks you barely use.\n- Avoid `@import` chains; use `<link>` and `preload` for key fonts.\n\n### The rendering pipeline\nStyle -> Layout -> Paint -> Composite.\n- Changing **width, height, top, left, margin** triggers layout (expensive).\n- Changing **color, background, box-shadow** triggers paint.\n- Changing **transform and opacity** can skip layout and paint (composite only). Animate these.\n\n### will-change\nHints the browser to prepare a layer: `will-change: transform;`. Use it **sparingly and temporarily** (e.g. on hover/just before animating). Too many layers consume memory.\n\n### contain\n`contain: layout paint style;` or `contain: content;` tells the browser a subtree does not affect the outside, so work can be skipped. `container-type` implies containment.\n\n### content-visibility\n`content-visibility: auto;` on offscreen sections skips their rendering until near the viewport. Pair with `contain-intrinsic-size: auto 500px;` to avoid scrollbar jumps.\n\n### Selector performance\nModern browsers match selectors right-to-left and fast; selector length is rarely a bottleneck. Focus on DOM size, layout thrashing and heavy effects (blur, large shadows, filters).\n\n### Checklist\n1. Animate transform/opacity.\n2. Avoid transition: all.\n3. Limit expensive filters and fixed backgrounds.\n4. Use content-visibility for long pages.\n5. Measure with DevTools Performance and Lighthouse.",
+   "keyPoints": [
+    "CSS in <head> is render-blocking; inline critical CSS",
+    "Animate transform and opacity, not layout properties",
+    "will-change: use sparingly and temporarily",
+    "contain and content-visibility reduce rendering work",
+    "Measure with DevTools / Lighthouse before optimising"
+   ],
+   "pitfalls": [
+    "Putting will-change on everything (memory and GPU cost)",
+    "Animating width/height/top/left on many elements",
+    "Huge blur and box-shadow radii on large animated elements"
+   ],
+   "examples": [
+    {
+     "title": "Cheap vs expensive animation",
+     "language": "web",
+     "html": "<div class=\"lane\"><div class=\"ball good\"></div></div><div class=\"lane\"><div class=\"ball bad\"></div></div><p class=\"note\">top: uses transform (composite). bottom: animates margin-left (layout).</p>",
+     "css": ".lane { width: 100%; height: 36px; background: #e2e8f0; margin-bottom: 6px; position: relative; }\n.ball { width: 30px; height: 30px; margin: 3px; border-radius: 50%; position: absolute; left: 0; }\n.good { background: #16a34a; animation: moveT 2s ease-in-out infinite alternate; will-change: transform; }\n.bad { background: #e11d48; animation: moveM 2s ease-in-out infinite alternate; }\n@keyframes moveT { to { transform: translateX(260px); } }\n@keyframes moveM { to { left: 260px; } }\n.note { font: 12px sans-serif; color: #475569; }",
+     "js": "",
+     "code": "",
+     "explanation": "Both look similar; the green one is far cheaper at scale because it only needs compositing."
+    },
+    {
+     "title": "Critical CSS and async load pattern",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "<style>/* critical, above-the-fold CSS inlined here */</style>\n<link rel=\"preload\" href=\"/css/main.css\" as=\"style\" onload=\"this.onload=null;this.rel='stylesheet'\">\n<noscript><link rel=\"stylesheet\" href=\"/css/main.css\"></noscript>",
+     "explanation": "Inline critical CSS and load the full stylesheet without blocking first paint."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Which CSS properties are cheapest to animate?",
+     "a": "transform and opacity, because they can be handled by the compositor without triggering layout or paint."
+    },
+    {
+     "q": "What is critical CSS?",
+     "a": "The minimal CSS required to render above-the-fold content, inlined in the HTML so first paint is not blocked by a large external stylesheet."
+    },
+    {
+     "q": "What does will-change do and when should you avoid it?",
+     "a": "It hints that a property will change so the browser can optimise ahead; overusing it wastes memory, so apply only to elements about to animate."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-debugging",
+   "title": "Debugging CSS: DevTools and Common Bugs",
+   "level": "intermediate",
+   "summary": "A practical routine for finding why a style is not applied or a layout breaks.",
+   "description": "Most CSS bugs have a handful of causes. Use a repeatable routine.\n\n### 1. Use DevTools (F12)\n- **Elements / Inspect**: select the element, see the **Styles** pane. Crossed-out declarations are overridden; a yellow warning icon means invalid or unsupported.\n- **Computed**: final values and which rule won.\n- **Box model diagram**: margin/border/padding/content sizes.\n- **Layout tab**: overlays for Flexbox and Grid lines and gaps.\n- Toggle states: **:hov** panel to force :hover/:focus/:active.\n- Edit values live; use arrow keys to nudge numbers.\n\n### 2. The checklist\n| Symptom | Likely cause |\n|---|---|\n| Style not applied | typo, wrong selector, lower specificity, later rule overrides, wrong file path |\n| Element overflows | box-sizing, fixed widths, long text, 100vw with scrollbar |\n| z-index ignored | not positioned or trapped in a stacking context |\n| Cannot center | parent has no height, wrong axis, margin auto without width |\n| Margin \"leaks\" | margin collapsing |\n| Flex item does not shrink | min-width: auto (add min-width: 0) |\n| sticky not sticky | overflow on ancestor or missing top |\n| Gap under image | inline image baseline (use display: block) |\n\n### 3. Quick tricks\n- Outline everything: `* { outline: 1px solid rgba(255,0,0,.4); }`\n- Temporarily set a background color to see the real box.\n- Comment out half the CSS (bisect) to find the culprit.\n- Validate: invalid syntax silently drops the whole declaration - check for missing semicolons or braces.\n- Check the cache: hard refresh (Ctrl+Shift+R).\n\n### 4. Prevent bugs\nUse a linter (stylelint), consistent naming, `box-sizing: border-box`, and avoid !important.",
+   "keyPoints": [
+    "Inspect > Styles/Computed/Box model is your main tool",
+    "Crossed-out rule = overridden; warning icon = invalid",
+    "Force :hover/:focus in DevTools to debug states",
+    "Outline all elements to visualise boxes",
+    "Bisect by commenting out blocks"
+   ],
+   "pitfalls": [
+    "Editing CSS and forgetting to hard refresh the cached file",
+    "A single missing brace breaking all following rules",
+    "Debugging by adding !important instead of finding the cause"
+   ],
+   "examples": [
+    {
+     "title": "Outline trick",
+     "language": "web",
+     "html": "<div class=\"a\"><div class=\"b\">B</div><p>Paragraph <span>span</span></p></div>",
+     "css": "* { outline: 1px solid rgba(220, 38, 38, .6); }\n.a { padding: 12px; font-family: sans-serif; }\n.b { width: 80px; margin: 10px 0; }\n/* the outline does not change layout, so you can see every box */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Common bug: collapsing margin",
+     "language": "web",
+     "html": "<div class=\"parent\"><p class=\"child\">I have margin-top: 40px</p></div>",
+     "css": ".parent { background: #fde68a; font-family: sans-serif; }\n.child { margin-top: 40px; background: #fff; }\n/* fix: .parent { display: flow-root; } or padding-top: 1px */",
+     "js": "",
+     "code": "",
+     "explanation": "The child margin escapes the parent, so the yellow box does not move down. Add display: flow-root to the parent to contain it."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Your CSS rule is not applying. How do you debug it?",
+     "a": "Inspect the element, see if the rule is listed or crossed out (overridden), check selector spelling, specificity and source order, confirm the file loads, and look for syntax errors above it."
+    },
+    {
+     "q": "How can you see the box-model sizes of an element?",
+     "a": "Select it in DevTools and open the Computed pane to see the colored margin/border/padding/content diagram."
+    },
+    {
+     "q": "How do you force a :hover state for debugging?",
+     "a": "In DevTools Styles pane, use the :hov toggle to force :hover, :active, :focus or :visited."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-accessibility",
+   "title": "Accessible CSS: Focus, Contrast and Reduced Motion",
+   "level": "intermediate",
+   "summary": "Make styles inclusive: visible focus, enough contrast, readable sizing and motion preferences.",
+   "description": "CSS decisions directly affect accessibility.\n\n### Focus styles\nKeyboard users need to see where they are. Never remove outlines without a replacement.\n\n```css\n:focus-visible { outline: 3px solid #2965f1; outline-offset: 3px; }\n```\n`:focus-visible` shows rings for keyboard use only.\n\n### Contrast\nWCAG AA: **4.5:1** for normal text, **3:1** for large text and UI components. Check with DevTools color picker.\n\n### Respect user preferences\n```css\n@media (prefers-reduced-motion: reduce) {\n  *, *::before, *::after {\n    animation-duration: .01ms !important;\n    animation-iteration-count: 1 !important;\n    transition-duration: .01ms !important;\n    scroll-behavior: auto !important;\n  }\n}\n@media (prefers-contrast: more) { :root { --border: #000; } }\n@media (forced-colors: active) { .btn { border: 1px solid ButtonText; } }\n```\n\n### Visually hidden text (sr-only)\n```css\n.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;\n  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }\n```\n\n### Other points\n- Use **rem** so text can scale; do not disable zoom.\n- Do not rely on color alone (add icons/text).\n- Tap targets >= 44x44px.\n- `display: none` / `visibility: hidden` hide from assistive tech; opacity does not.\n- Do not put important text in `::before` content.\n- Keep line-height >= 1.5 for body text.",
+   "keyPoints": [
+    ":focus-visible gives clear keyboard focus rings",
+    "Contrast 4.5:1 for text, 3:1 for large text/UI",
+    "prefers-reduced-motion disables heavy animation",
+    "sr-only pattern hides text visually but keeps it for screen readers",
+    "Never remove outlines without replacement"
+   ],
+   "pitfalls": [
+    "outline: none on everything",
+    "Conveying information only with color",
+    "Animations that cannot be disabled (vestibular issues)"
+   ],
+   "examples": [
+    {
+     "title": "Focus ring and sr-only",
+     "language": "web",
+     "html": "<button class=\"btn\"><span aria-hidden=\"true\">🔍</span><span class=\"sr-only\">Search</span></button> <a href=\"#\" class=\"link\">Tab to focus me</a>",
+     "css": ".btn { font-size: 20px; padding: 8px 14px; border: 2px solid #0f172a; background: #fff; border-radius: 8px; }\n.btn:focus-visible, .link:focus-visible { outline: 3px solid #2965f1; outline-offset: 3px; }\n.link { font: 16px sans-serif; margin-left: 12px; }\n.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Reduced motion",
+     "language": "web",
+     "html": "<div class=\"m\">Moves unless you prefer reduced motion</div>",
+     "css": ".m { width: 120px; padding: 12px; background: #7c3aed; color: #fff; font: 13px sans-serif; animation: slide 1.4s ease-in-out infinite alternate; }\n@keyframes slide { to { transform: translateX(160px); } }\n@media (prefers-reduced-motion: reduce) { .m { animation: none; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is :focus-visible?",
+     "a": "A pseudo-class that matches focus only when the browser decides a visible indicator helps, usually keyboard focus, so you can style focus rings without showing them on mouse clicks."
+    },
+    {
+     "q": "What is prefers-reduced-motion?",
+     "a": "A media feature that tells you the user asked the OS to minimise motion; use it to disable or simplify animations."
+    },
+    {
+     "q": "What contrast ratio does WCAG AA require for normal text?",
+     "a": "4.5:1 (3:1 for large text and UI components)."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

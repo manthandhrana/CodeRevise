@@ -1,0 +1,335 @@
+{
+ "id": "css-box-model-spacing",
+ "title": "Box Model and Spacing",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "css-box-model",
+   "title": "The Box Model",
+   "level": "beginner",
+   "summary": "Every element is a box made of content, padding, border and margin.",
+   "description": "In CSS **every element is a rectangular box**. The box model describes the layers of that box from the inside out:\n\n1. **Content** - the text, image or children.\n2. **Padding** - space between the content and the border (inside the box, shows the background).\n3. **Border** - the line around the padding.\n4. **Margin** - transparent space outside the border that separates the element from its neighbours.\n\n### Size calculation (default `content-box`)\n`width` and `height` set only the **content** area. The visible size is:\n\n```text\ntotal width = width + padding-left + padding-right + border-left + border-right\n```\n\nFor example, `width: 800px; padding: 50px; border: 20px solid;` gives a box that occupies **940px** horizontally (800 + 100 + 40). Margin is added on top of this for spacing, but it is not part of the box background.\n\n### Block vs inline boxes\n- **Block** boxes take the full available width and start on a new line, and respect all four margins/paddings and width/height.\n- **Inline** boxes flow in a line; width/height are ignored and vertical margins have no effect.\n\n### Inspecting the box\nOpen DevTools, pick an element and look at the **Box Model diagram** in the Computed tab: it shows the content, padding, border and margin values in different colors. This is the fastest way to debug unexpected spacing.\n\n### Why it matters\nAlmost every layout bug (\"why is it 20px too wide?\", \"why does it overflow?\") comes from forgetting that padding and border are added to width. The next topic (`box-sizing`) fixes this.",
+   "keyPoints": [
+    "Box = content + padding + border + margin",
+    "Default content-box: width/height are only the content",
+    "Padding shows the element background; margin is always transparent",
+    "Inline elements ignore width/height and vertical margins",
+    "Use DevTools box-model diagram to debug spacing"
+   ],
+   "pitfalls": [
+    "Adding padding to a width: 100% element and causing horizontal overflow",
+    "Expecting background color to fill the margin area",
+    "Applying width/height to a plain inline <span>"
+   ],
+   "examples": [
+    {
+     "title": "Visualise the layers",
+     "language": "web",
+     "html": "<div class=\"margin-zone\">\n  <div class=\"box\">Content<br><small>width 200px</small></div>\n</div>",
+     "css": ".margin-zone { background: repeating-linear-gradient(45deg,#fde68a,#fde68a 6px,#fff 6px,#fff 12px); display: inline-block; padding: 30px; }\n.box { width: 200px; background: #0f2c59; color: #fff; padding: 30px; border: 15px solid #337ccf; font-family: sans-serif; text-align: center; }",
+     "js": "",
+     "code": "",
+     "explanation": "Yellow stripes = margin area (simulated with a wrapper), solid blue = border, dark blue = padding + content."
+    },
+    {
+     "title": "Total width math",
+     "language": "web",
+     "html": "<div class=\"a\">800 + 2x50 padding + 2x20 border = 940px</div>",
+     "css": ".a { width: 400px; padding: 25px; border: 10px solid tomato; background: #ffe; font-family: sans-serif; }\n/* real width on screen = 400 + 50 + 20 = 470px */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Explain the CSS box model.",
+     "a": "Each element is a box with content, padding, border and margin layers. width/height apply to the content box by default; padding and border are added around it and margin sits outside."
+    },
+    {
+     "q": "Do inline elements respect width and height?",
+     "a": "No. Width/height and vertical margins are ignored on non-replaced inline elements; use inline-block or block."
+    },
+    {
+     "q": "Is margin part of the element's size?",
+     "a": "No. Margin is outside the border, is transparent and is not painted with the background, but it affects the space the element takes in layout."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/box-model/index.html, box-model/style.css"
+  },
+  {
+   "id": "css-box-sizing",
+   "title": "box-sizing and CSS Reset",
+   "level": "beginner",
+   "summary": "border-box makes width include padding and border; a reset gives a predictable starting point.",
+   "description": "`box-sizing` controls what `width` and `height` mean.\n\n| Value | width applies to | 300px wide + 20px padding + 5px border |\n|---|---|---|\n| `content-box` (default) | content only | 350px on screen |\n| `border-box` | content + padding + border | **300px** on screen |\n\n`border-box` is far easier to reason about: the number you write is the size you get. That is why almost every project starts with:\n\n```css\n*,\n*::before,\n*::after {\n  box-sizing: border-box;\n}\n```\n\n### Inherit pattern (friendly to third-party widgets)\n```css\nhtml { box-sizing: border-box; }\n*, *::before, *::after { box-sizing: inherit; }\n```\n\n### What is a CSS reset?\nBrowsers ship default styles (body margin 8px, h1 margins, list bullets). A **reset** removes or normalises them so you start from the same baseline in every browser.\n\n- **Classic reset**: `* { margin: 0; padding: 0; box-sizing: border-box; }` (used in the source course).\n- **Normalize.css**: keeps useful defaults but fixes inconsistencies.\n- **Modern reset**: small and opinionated, e.g. `img { max-width: 100%; display: block; }`, `body { line-height: 1.5; }`, form controls `font: inherit;`.\n\n### Tips\n- Do not reset `*` margin if you rely on default heading spacing - then your own spacing rules must replace them.\n- A tiny reset is usually enough. Do not copy huge resets without understanding them.",
+   "keyPoints": [
+    "content-box (default): width excludes padding/border",
+    "border-box: width includes padding and border - preferred",
+    "*, *::before, *::after { box-sizing: border-box } is the standard rule",
+    "A reset normalises browser default styles",
+    "Keep resets small: margin, box-sizing, img, form font"
+   ],
+   "pitfalls": [
+    "Forgetting ::before and ::after in the universal selector",
+    "Using border-box and then being surprised that padding shrinks the content area",
+    "Copying a giant reset that removes focus outlines (hurts accessibility)"
+   ],
+   "examples": [
+    {
+     "title": "content-box vs border-box",
+     "language": "web",
+     "html": "<div class=\"b content\">content-box 300px</div>\n<div class=\"b border\">border-box 300px</div>",
+     "css": ".b { width: 300px; padding: 20px; border: 5px solid #1e3a8a; margin-bottom: 10px; font-family: sans-serif; background: #dbeafe; }\n.content { box-sizing: content-box; }  /* 350px wide */\n.border  { box-sizing: border-box; }   /* 300px wide */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Mini reset",
+     "language": "web",
+     "html": "<h1>Title</h1><p>Paragraph</p><img alt=\"demo\" width=\"300\" height=\"60\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Crect width='300' height='60' fill='%236a11cb'/%3E%3C/svg%3E\">",
+     "css": "*, *::before, *::after { box-sizing: border-box; }\n* { margin: 0; }\nbody { font: 16px/1.5 sans-serif; padding: 12px; }\nimg { max-width: 100%; display: block; }\nh1 { margin-bottom: 8px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the purpose of box-sizing?",
+     "a": "It sets whether width/height include padding and border (border-box) or only content (content-box, default)."
+    },
+    {
+     "q": "How do you apply border-box to every element?",
+     "a": "*, *::before, *::after { box-sizing: border-box; } (the universal selector does not include pseudo-elements, so list them)."
+    },
+    {
+     "q": "Why use a CSS reset?",
+     "a": "Browsers have different default margins and styles. A reset gives a consistent baseline so layouts look the same everywhere."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/box-model/style.css"
+  },
+  {
+   "id": "css-margin",
+   "title": "Margin",
+   "level": "beginner",
+   "summary": "Space outside an element: shorthand, auto centering, negative margins and margin collapsing.",
+   "description": "**Margin** creates space *outside* the border. It pushes neighbouring elements away.\n\n### Shorthand\n| Values | Meaning |\n|---|---|\n| `margin: 10px` | all sides |\n| `margin: 10px 20px` | top/bottom, left/right |\n| `margin: 10px 20px 30px` | top, left/right, bottom |\n| `margin: 10px 20px 30px 40px` | top, right, bottom, left (clockwise) |\n\nIndividual sides: `margin-top`, `margin-right`, `margin-bottom`, `margin-left`.\n\n### margin: auto\nOn a block element with a set `width`, `margin: 0 auto;` centers it horizontally. Inside flex/grid, auto margins absorb free space (`margin-left: auto` pushes an item to the right).\n\n### Negative margins\nAllowed. They pull an element toward or over its neighbours - useful for overlaps and gutter tricks, but use sparingly.\n\n### Margin collapsing\nVertical margins of **adjacent block siblings** collapse into the **larger one** (not the sum). A parent and its first/last child can collapse too if there is no padding, border or clearfix between them. Collapsing does **not** happen in flex or grid containers, with floats, absolutely positioned elements or `overflow` other than visible.\n\nWays to avoid surprises:\n- use one-direction spacing (only `margin-bottom` or use `gap`),\n- add `padding` or `border` to the parent,\n- use `display: flow-root` on the parent.\n\n### Logical margins\n`margin-inline` and `margin-block` adapt to writing direction (see Logical Properties).",
+   "keyPoints": [
+    "Margin is outside the border; always transparent",
+    "Shorthand order is clockwise: top, right, bottom, left",
+    "margin: 0 auto centers a block with a width",
+    "Adjacent vertical margins collapse to the larger value",
+    "gap in flex/grid is cleaner than margins between items"
+   ],
+   "pitfalls": [
+    "Child margin-top \"leaking\" out of the parent due to collapsing",
+    "margin: auto not centering because the element has no width",
+    "Horizontal auto margin does not vertically center a block in normal flow"
+   ],
+   "examples": [
+    {
+     "title": "Margin shorthand & auto",
+     "language": "web",
+     "html": "<div class=\"c\">margin: 0 auto</div>\n<div class=\"c second\">margin: 20px 60px 0 auto</div>",
+     "css": "body { font-family: sans-serif; background: #f1f5f9; }\n.c { width: 300px; background: #5e9de9; color: #fff; padding: 14px; margin: 0 auto; }\n.second { background: #3cd3ad; margin: 20px 60px 0 auto; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Margin collapsing",
+     "language": "web",
+     "html": "<div class=\"a\">A - margin-bottom: 40px</div>\n<div class=\"b\">B - margin-top: 60px</div>\n<p class=\"note\">Gap between A and B is 60px (the larger), not 100px.</p>",
+     "css": "body { font-family: sans-serif; }\n.a, .b { background: #fcd34d; padding: 10px; }\n.a { margin-bottom: 40px; }\n.b { margin-top: 60px; background: #86efac; }\n.note { font-size: 13px; color: #555; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is margin collapsing?",
+     "a": "When vertical margins of adjacent block elements (or parent and child) meet, they combine into a single margin equal to the largest one instead of adding up."
+    },
+    {
+     "q": "How do you center a block element horizontally?",
+     "a": "Give it a width and set margin-left and margin-right to auto (margin: 0 auto)."
+    },
+    {
+     "q": "Can margins be negative?",
+     "a": "Yes. Negative margins pull the element toward neighbours or make it overlap them."
+    },
+    {
+     "q": "Which situations prevent margin collapse?",
+     "a": "Flex/grid items, floats, absolutely positioned boxes, inline-block, and parents that establish a new block formatting context (display: flow-root, overflow: auto)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/box-model/margin/index.html, margin/style.css"
+  },
+  {
+   "id": "css-padding",
+   "title": "Padding",
+   "level": "beginner",
+   "summary": "Space inside the border: shorthand, buttons and cards, and why negative padding does not exist.",
+   "description": "**Padding** is the space between the content and the border, *inside* the element. The element's background and background image extend under the padding.\n\n### Shorthand (same as margin)\n- `padding: 10px;` all sides\n- `padding: 5px 10px;` vertical | horizontal\n- `padding: 1px 2px 2px;` top | horizontal | bottom\n- `padding: 5px 1px 0 2px;` top | right | bottom | left\n\nIndividual: `padding-top`, `padding-right`, `padding-bottom`, `padding-left`.\n\n### Differences from margin\n| | padding | margin |\n|---|---|---|\n| Location | inside border | outside border |\n| Background | painted | transparent |\n| Negative values | **not allowed** | allowed |\n| auto | not allowed | allowed |\n| Collapses | never | vertical margins can |\n| Clickable area | yes (part of element) | no |\n\n### Typical uses\n- Buttons: `padding: 12px 36px;` gives a comfortable click area.\n- Cards and panels: `padding: 24px;` separates text from the edge.\n- Making inline links bigger tap targets (`display: inline-block; padding: ...`).\n\n### Percentages\nPercentage padding is relative to the **width** of the containing block - even for top/bottom. This enables the classic aspect-ratio hack (`padding-top: 56.25%` for 16:9), now replaced by `aspect-ratio`.\n\n### Tip\nWith `box-sizing: border-box` padding shrinks the content inside the declared width instead of growing the box.",
+   "keyPoints": [
+    "Padding is inside the border and shows the background",
+    "Shorthand follows the same 1-2-3-4 value rules as margin",
+    "Negative padding is invalid",
+    "Percent padding is based on container width",
+    "Padding enlarges clickable/tappable area"
+   ],
+   "pitfalls": [
+    "Using a negative padding value (ignored)",
+    "Padding making a 100% wide box overflow when box-sizing is content-box",
+    "Using margin instead of padding for button size so only the text is clickable"
+   ],
+   "examples": [
+    {
+     "title": "Button padding",
+     "language": "web",
+     "html": "<a href=\"#\" class=\"btn small\">Small</a>\n<a href=\"#\" class=\"btn big\">Big padding</a>",
+     "css": ".btn { display: inline-block; background: #2965f1; color: #fff; text-decoration: none; font-family: sans-serif; border-radius: 6px; }\n.small { padding: 4px 8px; }\n.big { padding: 16px 40px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Padding vs margin visual",
+     "language": "web",
+     "html": "<div class=\"wrap\">\n  <div class=\"pad\">padding 30px</div>\n  <div class=\"mar\">margin 30px</div>\n</div>",
+     "css": ".wrap { background: #e2e8f0; font-family: sans-serif; }\n.pad, .mar { background: #38bdf8; color: #fff; border: 2px solid #0369a1; }\n.pad { padding: 30px; }\n.mar { margin: 30px; }",
+     "js": "",
+     "code": "",
+     "explanation": "Padding grows the colored box; margin leaves the colored box the same size and moves it away."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you set padding with shorthand?",
+     "a": "One to four values: all; vertical horizontal; top horizontal bottom; top right bottom left."
+    },
+    {
+     "q": "Can padding be negative?",
+     "a": "No, negative padding is invalid. Use negative margin or position/transform instead."
+    },
+    {
+     "q": "Padding vs margin?",
+     "a": "Padding is inside the border and takes the background; margin is outside, transparent and can collapse."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/box-model/padding/index.html, padding/style.css"
+  },
+  {
+   "id": "css-borders",
+   "title": "Borders, Radius and Outline",
+   "level": "beginner",
+   "summary": "border shorthand, individual sides, border-radius shapes and the outline property.",
+   "description": "### Border shorthand\n`border: <width> <style> <color>;` for example `border: 2px solid #333;`.\n\nIndividual properties: `border-width`, `border-style`, `border-color`. Per side: `border-top`, `border-right`, `border-bottom`, `border-left` and even `border-top-width` etc.\n\n**Styles**: `none`, `hidden`, `solid`, `dashed`, `dotted`, `double`, `groove`, `ridge`, `inset`, `outset`. Without a style the border does not show!\n\nMultiple values follow the usual clockwise rule: `border-style: dotted solid;` (top/bottom dotted, left/right solid).\n\n### border-radius\nRounds the corners.\n\n- `border-radius: 10px;` all corners\n- `border-radius: 10px 20%;` top-left+bottom-right | top-right+bottom-left\n- `border-radius: 15px 5px 10px 20px;` TL | TR | BR | BL\n- `border-radius: 50%;` circle (on a square) or ellipse\n- `border-radius: 999px;` pill shape\n- Elliptical: `border-radius: 100% 0 / 100% 0;` horizontal / vertical radii\n\n### Logical border shorthands\n`border-inline` (left+right) and `border-block` (top+bottom) are newer shorthands: `border-block: 5px solid red;`.\n\n### outline\n`outline` draws a line **outside** the border, does not take space and does not follow border-radius in older browsers. Perfect for focus rings: `outline: 3px solid #2965f1; outline-offset: 2px;`.\n\n### Other border tricks\n- Triangles with zero-size box and transparent borders.\n- `border-image` for gradient or image borders.\n- Gradient borders: `border: 4px solid transparent; background: linear-gradient(...) border-box;`.",
+   "keyPoints": [
+    "border: width style color - style is mandatory",
+    "border-radius: 50% makes circles; 999px makes pills",
+    "Each side and each property can be set independently",
+    "outline does not affect layout and is ideal for focus rings",
+    "border-inline / border-block are logical shorthands"
+   ],
+   "pitfalls": [
+    "Writing border: 2px red without a style (nothing renders)",
+    "Removing outline: none without a replacement focus style",
+    "Expecting border-radius to clip overflowing children (needs overflow: hidden)"
+   ],
+   "examples": [
+    {
+     "title": "Border styles",
+     "language": "web",
+     "html": "<div class=\"grid\">\n  <div style=\"border-style:solid\">solid</div>\n  <div style=\"border-style:dashed\">dashed</div>\n  <div style=\"border-style:dotted\">dotted</div>\n  <div style=\"border-style:double\">double</div>\n  <div style=\"border-style:groove\">groove</div>\n  <div style=\"border-style:ridge\">ridge</div>\n</div>",
+     "css": ".grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-family: sans-serif; }\n.grid div { border-width: 6px; border-color: #003180; padding: 16px; text-align: center; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Radius shapes",
+     "language": "web",
+     "html": "<div class=\"shapes\"><i class=\"s1\"></i><i class=\"s2\"></i><i class=\"s3\"></i><i class=\"s4\"></i></div>",
+     "css": ".shapes { display: flex; gap: 14px; align-items: center; }\ni { display: block; background: linear-gradient(to right top,#051937,#004d7a,#008793,#00bf72,#a8eb12); width: 90px; height: 90px; }\n.s1 { border-radius: 10px; }\n.s2 { border-radius: 50%; }\n.s3 { width: 150px; border-radius: 999px; }\n.s4 { border-radius: 100% 0% 100% 0% / 100% 0% 100% 0%; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you make a circle with CSS?",
+     "a": "Give a square element equal width and height and set border-radius: 50%."
+    },
+    {
+     "q": "Difference between border and outline?",
+     "a": "Border is part of the box model and takes layout space; outline is drawn outside the border, takes no space and is commonly used for focus indication."
+    },
+    {
+     "q": "Why does my border not appear?",
+     "a": "The border-style is none by default; you must set a style like solid."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/box-model/borders/index.html, borders/style.css"
+  },
+  {
+   "id": "css-overflow",
+   "title": "Overflow",
+   "level": "beginner",
+   "summary": "Control what happens when content is bigger than its box: visible, hidden, scroll, auto and clip.",
+   "description": "When content does not fit in its box it **overflows**. The `overflow` property decides what the browser does.\n\n| Value | Behaviour |\n|---|---|\n| `visible` | default; content spills outside the box |\n| `hidden` | extra content is clipped, no scrollbars (but can still scroll programmatically) |\n| `scroll` | scrollbars are always shown |\n| `auto` | scrollbars only when needed - the usual choice |\n| `clip` | like hidden but no scrolling at all and no new formatting context |\n\nControl each axis: `overflow-x` and `overflow-y`. If one is not `visible`, the other cannot stay visible (it becomes `auto`).\n\n### Common patterns\n- **Scrollable panel**: fixed `height` / `max-height` + `overflow-y: auto`.\n- **Horizontal scroller**: `overflow-x: auto; white-space: nowrap;` (as in the source demo).\n- **Clipping children to rounded corners**: `border-radius` + `overflow: hidden`.\n- **Clearing floats / containing margins**: `overflow: auto` or better `display: flow-root`.\n\n### Text overflow\n```css\n.truncate {\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;   /* adds ... */\n}\n```\nMulti-line clamp: `display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;` (also standard `line-clamp` is arriving).\n\n### Nice scrolling extras\n- `scroll-behavior: smooth;`\n- `overscroll-behavior: contain;` to stop scroll chaining\n- `scrollbar-gutter: stable;` to avoid layout shift\n- `scrollbar-width: thin;`",
+   "keyPoints": [
+    "visible (default), hidden, scroll, auto, clip",
+    "auto shows scrollbars only when content overflows",
+    "overflow-x / overflow-y control axes separately",
+    "Ellipsis needs nowrap + overflow hidden + text-overflow",
+    "overflow other than visible creates a block formatting context"
+   ],
+   "pitfalls": [
+    "overflow: hidden cutting off box-shadows or dropdowns of children",
+    "position: sticky stops working inside an ancestor with overflow hidden/auto",
+    "Using scroll instead of auto and showing empty scrollbars on desktop"
+   ],
+   "examples": [
+    {
+     "title": "Scrollable box",
+     "language": "web",
+     "html": "<div class=\"box\"><p>Discover a world of possibilities with this comprehensive CSS course. Dive into real-world interview questions to boost your job prospects. Unlock the secrets of CSS with invaluable tips and tricks. Engage in dynamic learning, showcase your creativity with captivating animation projects and take on the ultimate challenge: a fully responsive website project. Elevate your web presence with SEO insights and performance testing.</p></div>",
+     "css": ".box { width: 320px; height: 120px; border: 4px solid #9eb384; padding: 10px; overflow-y: auto; font-family: sans-serif; line-height: 1.6; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Ellipsis truncation",
+     "language": "web",
+     "html": "<p class=\"one\">This is a very long single line title that will be cut with three dots</p>\n<p class=\"three\">This paragraph is clamped to two lines. This paragraph is clamped to two lines. This paragraph is clamped to two lines. This paragraph is clamped to two lines. This paragraph is clamped to two lines.</p>",
+     "css": "p { width: 260px; font-family: sans-serif; background: #f1f5f9; padding: 8px; }\n.one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.three { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between overflow: auto and scroll?",
+     "a": "scroll always shows scrollbars; auto shows them only when content actually overflows."
+    },
+    {
+     "q": "How do you create a single line text ellipsis?",
+     "a": "white-space: nowrap; overflow: hidden; text-overflow: ellipsis; and a constrained width."
+    },
+    {
+     "q": "How to make a box scroll only horizontally?",
+     "a": "overflow-x: auto; overflow-y: hidden; (usually with white-space: nowrap or a flex row)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/overflow/index.html, overflow/style.css"
+  }
+ ]
+}

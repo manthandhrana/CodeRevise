@@ -1,0 +1,378 @@
+{
+ "id": "react-patterns",
+ "title": "Component Patterns",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-composition-vs-inheritance",
+   "title": "Composition vs Inheritance",
+   "level": "intermediate",
+   "summary": "React favors building components by combining them (props, children, slots) rather than extending classes.",
+   "description": "In classical OOP, you might reuse code by creating `class SpecialButton extends Button`. React's recommendation is the opposite: **use composition**. Facebook has thousands of components and found no case that required component inheritance.\n\n### Composition tools\n\n1. **Containment** - a generic component renders `props.children`: `Card`, `Modal`, `Layout`.\n2. **Specialization** - a \"specific\" component renders a \"generic\" one with preset props: `<DangerButton>` renders `<Button variant=\"danger\" />`.\n3. **Slots** - pass JSX through named props: `<Layout sidebar={<Nav />} content={<Feed />} />`.\n4. **Custom hooks** - share logic (not UI).\n5. **Context** - share data without drilling.\n\n### Why composition wins\n\n- **Explicit data flow:** you see which props go in.\n- **Flexible:** change markup at the call site without editing the library component.\n- **No fragile base-class problem:** changing a base class cannot silently break children.\n- **Easy to test.**\n\n### Anti-pattern: boolean prop explosion\n\n`<Button primary large rounded outline icon loading />` grows endlessly. Prefer variants (`variant=\"primary\"`) or composition (`<Button><Icon/> Save</Button>`).\n\n### Sharing non-UI logic\n\nIf you want to reuse a function, import it. If you want to reuse stateful logic, write a custom hook. Neither needs inheritance.",
+   "keyPoints": [
+    "Use props, children and slots to reuse UI",
+    "Specialize by rendering a generic component with preset props",
+    "Custom hooks share logic; plain modules share functions",
+    "Avoid boolean prop explosion; use variants",
+    "Inheritance between components is almost never needed"
+   ],
+   "pitfalls": [
+    "Creating deep class hierarchies of components.",
+    "Adding a new boolean prop for every design tweak."
+   ],
+   "examples": [
+    {
+     "title": "Specialization with slots",
+     "language": "react",
+     "css": ".dialog { border: 1px solid #ccc; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; max-width: 280px; }",
+     "code": "function Dialog({ title, message, actions, children }) {\n  return (\n    <div className=\"dialog\">\n      <h3>{title}</h3>\n      <p>{message}</p>\n      {children}\n      <div className=\"actions\">{actions}</div>\n    </div>\n  );\n}\n\nfunction WelcomeDialog() {\n  return (\n    <Dialog\n      title=\"Welcome\"\n      message=\"Thank you for visiting.\"\n      actions={<button>Got it</button>}\n    />\n  );\n}\nfunction ConfirmDelete({ name }) {\n  return (\n    <Dialog\n      title=\"Delete?\"\n      message={\"Delete \" + name + \" permanently?\"}\n      actions={<><button>Cancel</button> <button style={{ color: \"crimson\" }}>Delete</button></>}\n    >\n      <small>This cannot be undone.</small>\n    </Dialog>\n  );\n}\n\nfunction App() {\n  return <div style={{ fontFamily: \"sans-serif\", padding: 12 }}><WelcomeDialog /><ConfirmDelete name=\"report.pdf\" /></div>;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does React prefer composition over inheritance?",
+     "a": "Composition via props, children and slots is explicit and flexible, while inheritance couples components and has not been needed in large React codebases."
+    },
+    {
+     "q": "How do you share logic between components without inheritance?",
+     "a": "Extract it to a custom hook (stateful logic) or a plain utility function."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-render-props",
+   "title": "Render Props",
+   "level": "intermediate",
+   "summary": "A component takes a function prop (or children as a function) and calls it to decide what to render.",
+   "description": "A **render prop** is a prop whose value is a function that returns JSX. The component owns some logic or state and lets the caller decide how to display it.\n\n```jsx\n<MouseTracker render={({ x, y }) => <p>{x}, {y}</p>} />\n// or, children as a function\n<MouseTracker>{({ x, y }) => <p>{x}, {y}</p>}</MouseTracker>\n```\n\n### How it works\n\n`MouseTracker` keeps state for the position and, inside its own render, returns `props.render(position)`. The caller supplies the markup. This separates **what data** from **how it looks**.\n\n### Why it existed\n\nBefore hooks, render props (and HOCs) were the main way to share stateful logic. Libraries such as React Router (`<Route render>`), Downshift, Formik (`<Field>`), and React Spring used them.\n\n### Today\n\nMost logic-sharing cases are now handled by **custom hooks**, which are simpler and avoid nesting (\"wrapper hell\"). Render props are still useful when:\n\n- The shared component also **renders DOM** (virtual list, tooltip, autocomplete) and the caller must customize each item: `renderItem={(item) => ...}`.\n- You need to pass data into a **subtree** that a hook cannot reach.\n- A library API wants flexible output.\n\n### Tips\n\n- The render function runs every render; avoid expensive work inside.\n- If the render prop creates inline functions, memoized children might still re-render.",
+   "keyPoints": [
+    "Function prop that returns JSX",
+    "children can also be a function (\"function as child\")",
+    "Separates logic/data from presentation",
+    "Mostly replaced by custom hooks for pure logic",
+    "Still great for renderItem-style customization"
+   ],
+   "pitfalls": [
+    "Callback hell: deeply nested render props are hard to read.",
+    "Expecting memo to help when the render prop is an inline function."
+   ],
+   "examples": [
+    {
+     "title": "List with renderItem",
+     "language": "react",
+     "css": "",
+     "code": "function List({ items, renderItem, empty = <p>Nothing here</p> }) {\n  if (items.length === 0) return empty;\n  return <ul>{items.map((item, i) => <li key={item.id}>{renderItem(item, i)}</li>)}</ul>;\n}\n\nfunction Toggle({ children }) {\n  const [on, setOn] = useState(false);\n  return children({ on, toggle: () => setOn(!on) });\n}\n\nfunction App() {\n  const fruits = [{ id: 1, name: \"Apple\" }, { id: 2, name: \"Banana\" }];\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <List items={fruits} renderItem={(f, i) => <b>{i + 1}. {f.name}</b>} />\n      <List items={[]} renderItem={() => null} />\n      <Toggle>\n        {({ on, toggle }) => <button onClick={toggle}>Light is {on ? \"ON\" : \"OFF\"}</button>}\n      </Toggle>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the render props pattern?",
+     "a": "Passing a function prop that a component calls to know what to render, so the component supplies logic and the caller supplies UI."
+    },
+    {
+     "q": "Why are custom hooks preferred over render props now?",
+     "a": "Hooks share logic without extra nesting or wrapper components and read like normal code."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-hoc",
+   "title": "Higher-Order Components (HOC)",
+   "level": "advanced",
+   "summary": "A HOC is a function that takes a component and returns a new, enhanced component.",
+   "description": "A **higher-order component** is a function `withX(Component)` that returns a new component adding behavior. It is function composition applied to components.\n\n```jsx\nfunction withLoading(Wrapped) {\n  return function WithLoading({ loading, ...props }) {\n    if (loading) return <p>Loading...</p>;\n    return <Wrapped {...props} />;\n  };\n}\nconst UserListWithLoading = withLoading(UserList);\n```\n\n### Real-world HOCs\n\n`connect()` in old Redux, `withRouter` in old React Router, `React.memo` (a built-in HOC), `withAuth(Page)`, `styled(Button)`.\n\n### Rules for writing good HOCs\n\n- **Do not mutate** the wrapped component; wrap it.\n- **Pass through** all unrelated props with `{...props}`.\n- **Never create HOCs inside render** - a new component type each render remounts the tree and loses state.\n- Set a **`displayName`** (e.g. `withLoading(UserList)`) for DevTools.\n- **Static methods and refs** are not forwarded automatically (use `forwardRef`, `hoist-non-react-statics`).\n- Compose several HOCs with a `compose` helper.\n\n### Downsides\n\n- \"Wrapper hell\" in DevTools.\n- Prop name collisions between HOCs.\n- Harder to follow data flow and to type with TypeScript.\n\n### Today\n\nHooks replaced most use cases. HOCs still appear in legacy code, libraries, and for cross-cutting concerns like auth guards, error boundary wrappers, and analytics.",
+   "keyPoints": [
+    "HOC = function(Component) -> Component",
+    "Do not mutate; pass through props",
+    "Never create a HOC inside render",
+    "Set displayName for debugging",
+    "Hooks replaced most HOC use cases"
+   ],
+   "pitfalls": [
+    "Calling withX(Component) inside a component body, which remounts every render.",
+    "Losing refs or static properties on the wrapped component."
+   ],
+   "examples": [
+    {
+     "title": "withHoverHighlight HOC",
+     "language": "react",
+     "css": "",
+     "code": "function withHover(Wrapped) {\n  function WithHover(props) {\n    const [hover, setHover] = useState(false);\n    return (\n      <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>\n        <Wrapped {...props} hover={hover} />\n      </div>\n    );\n  }\n  WithHover.displayName = \"withHover(\" + (Wrapped.displayName || Wrapped.name) + \")\";\n  return WithHover;\n}\n\nfunction Card({ title, hover }) {\n  return (\n    <div style={{ padding: 14, border: \"2px solid\", borderColor: hover ? \"#0ea5e9\" : \"#ccc\", borderRadius: 8, transition: \".2s\" }}>\n      {title} {hover && \"(hovering)\"}\n    </div>\n  );\n}\nconst HoverCard = withHover(Card); // created OUTSIDE the component\n\nfunction App() {\n  return <div style={{ fontFamily: \"sans-serif\", padding: 12 }}><HoverCard title=\"Move your mouse here\" /></div>;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a higher-order component?",
+     "a": "A function that takes a component and returns a new component with extra props or behavior, without modifying the original."
+    },
+    {
+     "q": "Why must HOCs not be created inside render?",
+     "a": "Each render would create a new component type, so React would unmount and remount the subtree and lose its state."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-compound-components",
+   "title": "Compound Components",
+   "level": "advanced",
+   "summary": "A set of components that work together and share implicit state, like select and option.",
+   "description": "HTML has natural compound elements: `<select>` and `<option>`, `<table>` with `<tr>` and `<td>`. In React, a **compound component** pattern gives you the same expressive, flexible API for your own widgets: Tabs, Accordion, Menu, Dropdown.\n\n```jsx\n<Tabs defaultValue=\"a\">\n  <Tabs.List>\n    <Tabs.Tab value=\"a\">One</Tabs.Tab>\n    <Tabs.Tab value=\"b\">Two</Tabs.Tab>\n  </Tabs.List>\n  <Tabs.Panel value=\"a\">First</Tabs.Panel>\n  <Tabs.Panel value=\"b\">Second</Tabs.Panel>\n</Tabs>\n```\n\n### How it is built\n\nThe parent (`Tabs`) holds the state and shares it with its sub-components through **Context**. Children read state from context, so the user does not pass props manually and the layout can be reordered or wrapped freely.\n\n### Benefits\n\n- **Flexible markup** - the consumer controls structure and order.\n- **Clean API** - fewer props, no config arrays.\n- **Encapsulated state** - the internal logic is hidden.\n- Used by Radix UI, Headless UI, Reach UI, Chakra, MUI.\n\n### Implementation tips\n\n- Use `createContext` and a custom hook that throws when used outside the parent.\n- Attach children as static properties: `Tabs.Tab = Tab`.\n- Make accessibility part of the pattern: ARIA roles and keyboard handling.\n- Support controlled mode (`value` + `onValueChange`) and uncontrolled (`defaultValue`).",
+   "keyPoints": [
+    "Parent shares state with children through Context",
+    "Consumer arranges the sub-components freely",
+    "Attach parts as Tabs.Tab / Tabs.Panel",
+    "Throw if a sub-component is used outside its parent",
+    "Used by Radix UI, Headless UI and design systems"
+   ],
+   "pitfalls": [
+    "Using React.Children.map + cloneElement, which breaks when wrapped.",
+    "Skipping ARIA roles and keyboard support in widgets."
+   ],
+   "examples": [
+    {
+     "title": "Tabs as compound components",
+     "language": "react",
+     "css": "",
+     "code": "const TabsCtx = createContext(null);\n\nfunction Tabs({ defaultValue, children }) {\n  const [value, setValue] = useState(defaultValue);\n  return <TabsCtx.Provider value={{ value, setValue }}>{children}</TabsCtx.Provider>;\n}\nfunction useTabs() {\n  const c = useContext(TabsCtx);\n  if (!c) throw new Error(\"Tabs.* must be used inside <Tabs>\");\n  return c;\n}\nTabs.List = function List({ children }) {\n  return <div role=\"tablist\" style={{ display: \"flex\", gap: 4, borderBottom: \"1px solid #ccc\" }}>{children}</div>;\n};\nTabs.Tab = function Tab({ value, children }) {\n  const { value: active, setValue } = useTabs();\n  const on = active === value;\n  return (\n    <button role=\"tab\" aria-selected={on} onClick={() => setValue(value)}\n      style={{ padding: \"6px 12px\", border: 0, borderBottom: on ? \"3px solid #0ea5e9\" : \"3px solid transparent\", background: \"none\", cursor: \"pointer\" }}>\n      {children}\n    </button>\n  );\n};\nTabs.Panel = function Panel({ value, children }) {\n  const { value: active } = useTabs();\n  return active === value ? <div role=\"tabpanel\" style={{ padding: 10 }}>{children}</div> : null;\n};\n\nfunction App() {\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <Tabs defaultValue=\"a\">\n        <Tabs.List>\n          <Tabs.Tab value=\"a\">React</Tabs.Tab>\n          <Tabs.Tab value=\"b\">Vue</Tabs.Tab>\n        </Tabs.List>\n        <Tabs.Panel value=\"a\">React is a UI library.</Tabs.Panel>\n        <Tabs.Panel value=\"b\">Vue is a progressive framework.</Tabs.Panel>\n      </Tabs>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the compound components pattern?",
+     "a": "A group of components that share implicit state via Context so the consumer can compose them flexibly, like Tabs, Tabs.List, Tabs.Tab and Tabs.Panel."
+    },
+    {
+     "q": "Why use Context rather than cloneElement for compound components?",
+     "a": "Context works even when children are wrapped in other elements or fragments, whereas cloneElement only reaches direct children."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-controlled-uncontrolled",
+   "title": "Controlled vs Uncontrolled Components",
+   "level": "intermediate",
+   "summary": "Controlled components get their value from props/state; uncontrolled ones keep it internally in the DOM or their own state.",
+   "description": "This concept applies to inputs **and** to any reusable component with a value (toggle, tabs, accordion, modal open state).\n\n### Controlled\n\nThe parent owns the state and passes `value` plus `onChange`. The component is a pure view of props.\n\n- Single source of truth in React.\n- Easy validation, formatting, syncing and resetting.\n- More code and re-renders.\n\n### Uncontrolled\n\nThe component (or the DOM) holds its own state. You set an initial value with `defaultValue` / `defaultOpen` and read the result with a ref, `FormData`, or an `onChange` notification.\n\n- Less code, fewer renders.\n- Harder to reset or validate live.\n\n### Supporting both in your own component\n\nGood library components (Radix, MUI) accept both: if the `value` prop is given they are controlled, otherwise they manage internal state.\n\n```jsx\nfunction useControllable(value, defaultValue, onChange) {\n  const [inner, setInner] = useState(defaultValue);\n  const controlled = value !== undefined;\n  const current = controlled ? value : inner;\n  const set = (v) => { if (!controlled) setInner(v); onChange?.(v); };\n  return [current, set];\n}\n```\n\n### Choosing\n\nUse **uncontrolled** with `FormData` for simple submit-only forms. Use **controlled** when the UI reacts to the value while typing or when other components depend on it.\n\n### Never mix\n\nSwitching between the two for the same element (value going from `undefined` to a string) triggers a warning and bugs.",
+   "keyPoints": [
+    "Controlled: value + onChange from the parent",
+    "Uncontrolled: defaultValue and internal state",
+    "Library components often support both modes",
+    "FormData is great for simple uncontrolled forms",
+    "Do not switch modes during the lifetime of a component"
+   ],
+   "pitfalls": [
+    "Passing value={undefined} initially and a string later.",
+    "Making every input controlled when the value is only needed on submit."
+   ],
+   "examples": [
+    {
+     "title": "Same widget in both modes",
+     "language": "react",
+     "css": "",
+     "code": "function useControllable(value, defaultValue, onChange) {\n  const [inner, setInner] = useState(defaultValue);\n  const controlled = value !== undefined;\n  const current = controlled ? value : inner;\n  const set = (v) => {\n    if (!controlled) setInner(v);\n    if (onChange) onChange(v);\n  };\n  return [current, set];\n}\n\nfunction Stepper({ value, defaultValue = 0, onChange }) {\n  const [n, setN] = useControllable(value, defaultValue, onChange);\n  return (\n    <span>\n      <button onClick={() => setN(n - 1)}>-</button> {n} <button onClick={() => setN(n + 1)}>+</button>\n    </span>\n  );\n}\n\nfunction App() {\n  const [v, setV] = useState(5);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>Uncontrolled: <Stepper defaultValue={2} /></p>\n      <p>Controlled: <Stepper value={v} onChange={setV} /> parent knows: {v}</p>\n      <button onClick={() => setV(0)}>Parent resets controlled to 0</button>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Controlled vs uncontrolled components?",
+     "a": "Controlled components get their value and change handler from the parent state; uncontrolled components manage their own state internally and are read via refs or callbacks."
+    },
+    {
+     "q": "Can a component support both modes?",
+     "a": "Yes. If the value prop is defined it is controlled; otherwise it uses internal state initialized from defaultValue."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-container-presentational",
+   "title": "Container and Presentational Components",
+   "level": "intermediate",
+   "summary": "Separate components that know how things look from components that know how data is loaded and managed.",
+   "description": "A classic way to organize components:\n\n- **Presentational components** care about *how things look*. They receive data and callbacks via props, rarely have state (only UI state), and are easy to reuse and test (or document in Storybook).\n- **Container components** care about *how things work*: fetching, state, calling APIs, connecting to Redux. They render presentational components and pass data down.\n\n### Example\n\n`UserList` (presentational) renders `users` it is given. `UserListContainer` fetches the users and passes them in.\n\n### Modern take\n\nDan Abramov, who popularized the idea, later said you do not have to follow it strictly. **Hooks** let you separate logic without separate container components: put the logic in a custom hook (`useUsers`) and call it in the same component or a thin parent. The *principle* remains useful: keep rendering code free of data-fetching details.\n\n### Benefits\n\n- **Reusability** - the same view with different data sources.\n- **Testing** - test the view with plain props, mock the hook separately.\n- **Design system friendly** - dumb components can live in a UI library.\n- **Cleaner components** - less mixing of concerns.\n\n### Guidelines\n\n- Presentational components should not import API clients or stores.\n- Pass data as props; pass actions as callbacks.\n- Do not split just for the sake of it; a tiny component that fetches and renders is fine.",
+   "keyPoints": [
+    "Presentational: how it looks (props in, JSX out)",
+    "Container: how it works (data, state, side effects)",
+    "Custom hooks can replace container components",
+    "Easier reuse, testing and Storybook stories",
+    "Do not over-split small components"
+   ],
+   "pitfalls": [
+    "Mixing API calls and heavy markup in one huge component.",
+    "Making presentational components import global stores."
+   ],
+   "examples": [
+    {
+     "title": "Presentational list + container hook",
+     "language": "react",
+     "css": "",
+     "code": "// presentational: knows nothing about where data comes from\nfunction UserList({ users, loading, onSelect }) {\n  if (loading) return <p>Loading...</p>;\n  return (\n    <ul>\n      {users.map((u) => (\n        <li key={u.id}><button onClick={() => onSelect(u)}>{u.name}</button></li>\n      ))}\n    </ul>\n  );\n}\n\n// logic lives in a hook (the modern \"container\")\nfunction useUsers() {\n  const [users, setUsers] = useState([]);\n  const [loading, setLoading] = useState(true);\n  useEffect(() => {\n    const t = setTimeout(() => {\n      setUsers([{ id: 1, name: \"Asha\" }, { id: 2, name: \"Ravi\" }]);\n      setLoading(false);\n    }, 500);\n    return () => clearTimeout(t);\n  }, []);\n  return { users, loading };\n}\n\nfunction App() {\n  const { users, loading } = useUsers();\n  const [picked, setPicked] = useState(null);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <UserList users={users} loading={loading} onSelect={setPicked} />\n      {picked && <p>Selected: <b>{picked.name}</b></p>}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Container vs presentational components?",
+     "a": "Containers handle data and logic; presentational components just render props. This separation improves reuse and testing."
+    },
+    {
+     "q": "How have hooks changed this pattern?",
+     "a": "Logic can be extracted into custom hooks, so you often don't need separate container components."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-portals",
+   "title": "Portals",
+   "level": "intermediate",
+   "summary": "createPortal renders children into a different DOM node while keeping them in the same React tree.",
+   "description": "Sometimes a component must visually escape its parent: modals, tooltips, dropdowns, toasts. If the parent has `overflow: hidden`, `transform` or a low `z-index`, a child cannot overlay everything. **Portals** render children into another DOM node, typically `document.body`.\n\n```jsx\nimport { createPortal } from \"react-dom\";\n\nfunction Modal({ children }) {\n  return createPortal(<div className=\"overlay\">{children}</div>, document.body);\n}\n```\n\n### Key behaviors\n\n- **Events bubble through the React tree**, not the DOM tree. A click inside a portal still bubbles to React parents (useful, but surprising).\n- **Context works** through portals - they are still children of the provider.\n- State and lifecycle are the same as any child.\n- Only the physical DOM location changes.\n\n### Typical use: accessible modal\n\n1. Render into `document.body` via portal.\n2. Add `role=\"dialog\"` and `aria-modal=\"true\"`.\n3. Move focus into the dialog and **trap focus**; restore focus on close.\n4. Close on **Escape** and overlay click.\n5. Lock body scroll.\n\nThe native `<dialog>` element with `showModal()` also solves much of this, and is rendered in the top layer without a portal.\n\n### Notes\n\nIn a runnable preview, `document.body` is fine. In SSR, wait until mounted before using `document`.",
+   "keyPoints": [
+    "createPortal(children, domNode)",
+    "Same React tree, different DOM location",
+    "Events bubble through React parents; context still works",
+    "Use for modals, tooltips, toasts, dropdowns",
+    "Remember focus trap, Escape key and aria attributes"
+   ],
+   "pitfalls": [
+    "Forgetting stacking contexts and z-index even with portals.",
+    "Using document.body during server rendering."
+   ],
+   "examples": [
+    {
+     "title": "Modal via portal",
+     "language": "react",
+     "css": ".overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: grid; place-items: center; font-family: sans-serif; }\n.dialog { background: #fff; padding: 16px 20px; border-radius: 10px; min-width: 240px; }",
+     "code": "function Modal({ open, onClose, title, children }) {\n  useEffect(() => {\n    if (!open) return;\n    const onKey = (e) => e.key === \"Escape\" && onClose();\n    document.addEventListener(\"keydown\", onKey);\n    return () => document.removeEventListener(\"keydown\", onKey);\n  }, [open, onClose]);\n\n  if (!open) return null;\n  return ReactDOM.createPortal(\n    <div className=\"overlay\" onClick={onClose}>\n      <div className=\"dialog\" role=\"dialog\" aria-modal=\"true\" aria-label={title} onClick={(e) => e.stopPropagation()}>\n        <h3>{title}</h3>\n        {children}\n        <button onClick={onClose}>Close</button>\n      </div>\n    </div>,\n    document.body\n  );\n}\n\nfunction App() {\n  const [open, setOpen] = useState(false);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12, overflow: \"hidden\", height: 60 }}>\n      <button onClick={() => setOpen(true)}>Open modal</button>\n      <Modal open={open} onClose={() => setOpen(false)} title=\"Hello\">\n        <p>I am rendered into document.body. Press Escape to close.</p>\n      </Modal>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a portal in React?",
+     "a": "A way to render children into a DOM node outside the parent's DOM hierarchy while keeping them in the same React tree."
+    },
+    {
+     "q": "Do events bubble from a portal to its React parent?",
+     "a": "Yes. Events bubble according to the React component tree, not the DOM tree."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-error-boundaries",
+   "title": "Error Boundaries",
+   "level": "intermediate",
+   "summary": "Catch rendering errors in a subtree and show a fallback UI instead of a blank screen.",
+   "description": "If a component throws an error while rendering, React unmounts the **entire tree** by default, leaving a white screen. An **error boundary** catches errors from its children and renders a fallback.\n\n### What they catch\n\n- Errors during **rendering**\n- Errors in **lifecycle methods**\n- Errors in **constructors** of children\n\n### What they do NOT catch\n\n- Errors in **event handlers** (use try/catch)\n- **Async** code (setTimeout, promises, fetch)\n- **Server-side rendering** errors\n- Errors thrown in the boundary itself\n\n### Class component required\n\nThere is still no hook for it. A boundary uses `static getDerivedStateFromError(error)` to switch to a fallback and `componentDidCatch(error, info)` to log. Most teams use the **`react-error-boundary`** library, which gives `ErrorBoundary`, `fallbackRender`, `resetKeys` and `useErrorBoundary` (to forward async errors).\n\n### Where to place them\n\n- One around the whole app (last resort).\n- Around risky or independent widgets (charts, comments) so a failure does not take the page down.\n- Around each route.\n\n### Recovery\n\nOffer a \"Try again\" button that resets the boundary state, or use `resetKeys` so it resets when props change.\n\n### Logging\n\nSend errors and component stacks to Sentry or similar from `componentDidCatch`.",
+   "keyPoints": [
+    "Catches render/lifecycle errors in descendants",
+    "Does not catch event handler, async or SSR errors",
+    "Must be a class (or use react-error-boundary)",
+    "Place at app, route and widget level",
+    "Provide reset and report errors to a logging service"
+   ],
+   "pitfalls": [
+    "Expecting an error boundary to catch errors thrown inside onClick.",
+    "One boundary at the root only, so a tiny widget crash hides everything."
+   ],
+   "examples": [
+    {
+     "title": "Class error boundary with retry",
+     "language": "react",
+     "css": "",
+     "code": "class ErrorBoundary extends React.Component {\n  constructor(props) {\n    super(props);\n    this.state = { error: null };\n  }\n  static getDerivedStateFromError(error) {\n    return { error };\n  }\n  componentDidCatch(error, info) {\n    console.log(\"Logged:\", error.message);\n  }\n  render() {\n    if (this.state.error) {\n      return (\n        <div style={{ color: \"crimson\" }}>\n          <p>Something went wrong: {this.state.error.message}</p>\n          <button onClick={() => this.setState({ error: null })}>Try again</button>\n        </div>\n      );\n    }\n    return this.props.children;\n  }\n}\n\nfunction Bomb({ explode }) {\n  if (explode) throw new Error(\"Boom from child\");\n  return <p>All fine.</p>;\n}\n\nfunction App() {\n  const [explode, setExplode] = useState(false);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setExplode(true)}>Trigger error</button>\n      <ErrorBoundary key={String(explode)}>\n        <Bomb explode={explode} />\n      </ErrorBoundary>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What errors do error boundaries not catch?",
+     "a": "Errors in event handlers, asynchronous code, server-side rendering and errors thrown by the boundary itself."
+    },
+    {
+     "q": "How do you implement an error boundary?",
+     "a": "With a class component defining getDerivedStateFromError and/or componentDidCatch, or with the react-error-boundary library."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-suspense-lazy",
+   "title": "Suspense and React.lazy: Code Splitting",
+   "level": "intermediate",
+   "summary": "lazy loads a component only when needed, and Suspense shows a fallback while it loads.",
+   "description": "By default, a bundler puts your whole app in one JavaScript file. **Code splitting** breaks it into chunks that load on demand, making the first page load faster.\n\n### React.lazy\n\n```jsx\nconst Settings = lazy(() => import(\"./Settings\"));\n```\n\n`lazy` takes a function that returns a dynamic `import()` promise resolving to a module with a **default export**. The component is downloaded the first time it renders.\n\n### Suspense\n\n`<Suspense fallback={<Spinner />}>` shows the fallback while any child below it is \"suspended\" (waiting for a lazy component, or data from a Suspense-enabled source).\n\n```jsx\n<Suspense fallback={<p>Loading...</p>}>\n  <Settings />\n</Suspense>\n```\n\n### Where to split\n\n- **Routes** (most common): each page is a chunk.\n- **Heavy, rarely-used UI**: charts, rich text editors, modals, admin panels.\n- **Libraries** used on a single screen.\n\n### Tips\n\n- Place Suspense boundaries thoughtfully; several smaller ones give a better UX than one global spinner.\n- Combine with an **error boundary** to handle chunk loading failures (offline, new deploy).\n- Preload on hover or intent: call the import function early.\n- Use `startTransition` when switching to avoid hiding already-visible UI.\n- Named exports need an adapter: `.then(m => ({ default: m.Chart }))`.",
+   "keyPoints": [
+    "lazy(() => import(...)) defers loading a component",
+    "Suspense shows a fallback while loading",
+    "Split by routes and heavy features",
+    "Wrap with error boundary for failed chunks",
+    "lazy expects a default export"
+   ],
+   "pitfalls": [
+    "Lazy-loading tiny components, adding more requests than it saves.",
+    "No Suspense ancestor, causing an error when a lazy component renders."
+   ],
+   "examples": [
+    {
+     "title": "Lazy component with simulated delay",
+     "language": "react",
+     "css": "",
+     "code": "const HeavyChart = lazy(\n  () =>\n    new Promise((resolve) =>\n      setTimeout(\n        () =>\n          resolve({\n            default: function HeavyChart() {\n              return <div style={{ padding: 10, background: \"#e0f2fe\" }}>Chart loaded!</div>;\n            },\n          }),\n        800\n      )\n    )\n);\n\nfunction App() {\n  const [show, setShow] = useState(false);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setShow(true)}>Load chart</button>\n      {show && (\n        <Suspense fallback={<p>Loading chart...</p>}>\n          <HeavyChart />\n        </Suspense>\n      )}\n    </div>\n  );\n}",
+     "explanation": "The import is simulated with a promise; in a real app use import()."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does React.lazy do?",
+     "a": "It defers loading a component's code until it is first rendered, using a dynamic import, enabling code splitting."
+    },
+    {
+     "q": "Why wrap lazy components in Suspense?",
+     "a": "Suspense provides the fallback UI shown while the component's code is loading; without it React throws."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-state-machines",
+   "title": "State Machines and Status-based UI",
+   "level": "advanced",
+   "summary": "Model UI as explicit states and transitions to prevent impossible combinations.",
+   "description": "Many bugs come from boolean soup: `isLoading`, `isError`, `isSuccess`, `isSubmitting` can all become `true` at once even though only one makes sense. A **finite state machine** says: the UI is in exactly **one state** at a time, and only certain **events** move it to another state.\n\n### Example: fetch machine\n\n```\nidle --FETCH--> loading --RESOLVE--> success\n                  |  \\--REJECT--> error --RETRY--> loading\n```\n\n### In plain React\n\nUse a single `status` string and a `useReducer` where each state only handles allowed events.\n\n```jsx\nfunction reducer(state, event) {\n  switch (state.status) {\n    case \"idle\":    return event.type === \"FETCH\" ? { status: \"loading\" } : state;\n    case \"loading\": return event.type === \"RESOLVE\" ? { status: \"success\", data: event.data }\n                         : event.type === \"REJECT\" ? { status: \"error\", error: event.error } : state;\n    case \"error\":   return event.type === \"RETRY\" ? { status: \"loading\" } : state;\n    default: return state;\n  }\n}\n```\n\n### Benefits\n\n- **Impossible states become impossible.**\n- Easy to draw, review and test.\n- Clear places to put side effects (entering \"loading\" triggers the request).\n\n### Tools\n\n**XState** (with `@xstate/react`) provides full machines, statecharts, guards, actors and visualizers. Use it for wizards, checkout flows, media players and complex forms. For small cases a reducer is enough.\n\n### Discriminated unions\n\nIn TypeScript model states as a union keyed by `status`, so `data` only exists in `success`.",
+   "keyPoints": [
+    "UI is in exactly one state at a time",
+    "Events trigger allowed transitions only",
+    "Replace multiple booleans with a status value",
+    "useReducer is a lightweight state machine",
+    "XState for complex flows"
+   ],
+   "pitfalls": [
+    "Using isLoading and isError booleans that can both be true.",
+    "Reacting to events in states where they make no sense."
+   ],
+   "examples": [
+    {
+     "title": "Fetch state machine with reducer",
+     "language": "react",
+     "css": "",
+     "code": "function reducer(state, event) {\n  switch (state.status) {\n    case \"idle\":\n      return event.type === \"FETCH\" ? { status: \"loading\" } : state;\n    case \"loading\":\n      if (event.type === \"RESOLVE\") return { status: \"success\", data: event.data };\n      if (event.type === \"REJECT\") return { status: \"error\", error: event.error };\n      return state;\n    case \"success\":\n    case \"error\":\n      return event.type === \"FETCH\" ? { status: \"loading\" } : state;\n    default:\n      return state;\n  }\n}\n\nfunction App() {\n  const [state, dispatch] = useReducer(reducer, { status: \"idle\" });\n  const attempt = useRef(0);\n\n  useEffect(() => {\n    if (state.status !== \"loading\") return;\n    const t = setTimeout(() => {\n      attempt.current += 1;\n      if (attempt.current % 2 === 1) dispatch({ type: \"REJECT\", error: \"Network down\" });\n      else dispatch({ type: \"RESOLVE\", data: \"Here is your data\" });\n    }, 600);\n    return () => clearTimeout(t);\n  }, [state.status]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <p>Status: <b>{state.status}</b></p>\n      <button onClick={() => dispatch({ type: \"FETCH\" })} disabled={state.status === \"loading\"}>\n        {state.status === \"error\" ? \"Retry\" : \"Fetch\"}\n      </button>\n      {state.status === \"success\" && <p>{state.data}</p>}\n      {state.status === \"error\" && <p style={{ color: \"crimson\" }}>{state.error}</p>}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why model UI as a state machine?",
+     "a": "It makes impossible states unrepresentable, clarifies transitions, and makes behaviour easier to test and reason about."
+    },
+    {
+     "q": "How can useReducer act as a state machine?",
+     "a": "Switch first on the current status and then on the event type, so each state only handles events that are valid for it."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

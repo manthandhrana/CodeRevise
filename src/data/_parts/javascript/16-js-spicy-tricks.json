@@ -1,0 +1,536 @@
+{
+  "id": "js-spicy-tricks",
+  "title": "Spicy Tricks and One-liners",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-trick-array-recipes",
+      "title": "Array One-liners: swap, dedupe, range, chunk, zip, flatten, shuffle",
+      "level": "intermediate",
+      "summary": "Battle-tested array recipes you can paste anywhere: swapping, unique values, ranges, chunks, zipping and a correct shuffle.",
+      "description": "These small recipes appear in almost every codebase and interview. Each one is a few characters long but rests on a core feature.\n\n| Task | Recipe |\n|---|---|\n| Swap two variables | `[a, b] = [b, a]` |\n| Swap array items | `[arr[i], arr[j]] = [arr[j], arr[i]]` |\n| Unique values | `[...new Set(arr)]` |\n| Range 0..n-1 | `Array.from({ length: n }, (_, i) => i)` |\n| Range with step | `Array.from({ length: Math.ceil((end - start) / step) }, (_, i) => start + i * step)` |\n| Chunk into groups | `Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n))` |\n| Zip arrays | `a.map((x, i) => [x, b[i]])` |\n| Flatten one level | `arr.flat()` |\n| Flatten deep | `arr.flat(Infinity)` |\n| Last element | `arr.at(-1)` |\n| Remove falsy values | `arr.filter(Boolean)` |\n| Sum / max | `arr.reduce((s, n) => s + n, 0)`, `Math.max(...arr)` |\n| Count occurrences | `arr.reduce((m, x) => (m[x] = (m[x] || 0) + 1, m), {})` |\n| Intersection | `a.filter(x => new Set(b).has(x))` |\n| Fill with copies | `Array.from({ length: 3 }, () => [])` (not `fill([])`!) |\n\n### Fisher-Yates shuffle\nThe correct, unbiased shuffle walks from the end and swaps each element with a random earlier-or-same index. The popular `arr.sort(() => Math.random() - 0.5)` is **biased** and inconsistent because comparison functions must be consistent.\n\n### Why these work\n- `Set` keeps unique values by `SameValueZero` and preserves insertion order.\n- `Array.from` accepts any array-like (`{ length: n }`) plus a mapping function.\n- `Array(n).fill(x)` shares the same reference for objects; always create fresh ones with `Array.from`.",
+      "keyPoints": [
+        "[...new Set(arr)] dedupes primitives while keeping the first-seen order.",
+        "Array.from({ length: n }, fn) is the idiomatic way to generate sequences.",
+        "Never use sort(() => Math.random() - 0.5) to shuffle; use Fisher-Yates.",
+        "Array(n).fill([]) shares one array across all slots.",
+        "at(-1) reads the last item without computing length - 1."
+      ],
+      "pitfalls": [
+        "Set does not dedupe objects by value, only by reference.",
+        "Math.max(...bigArray) can exceed the argument limit; use reduce for huge arrays."
+      ],
+      "examples": [
+        {
+          "title": "Recipe collection",
+          "language": "javascript",
+          "code": "const range = (n) => Array.from({ length: n }, (_, i) => i);\nconst chunk = (a, n) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));\nconst zip = (...arrs) => arrs[0].map((_, i) => arrs.map(a => a[i]));\nconst shuffle = (src) => {\n  const a = [...src];\n  for (let i = a.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    [a[i], a[j]] = [a[j], a[i]];\n  }\n  return a;\n};\nconsole.log(range(5), chunk(range(7), 3));\nconsole.log(zip([1, 2, 3], ['a', 'b', 'c'], [true, false, true]));\nconsole.log([...new Set([3, 1, 3, 2, 1])], [0, 1, '', 'a', null].filter(Boolean));\nconsole.log([1, [2, [3, [4]]]].flat(Infinity), [10, 20, 30].at(-1));\nconst counts = 'banana'.split('').reduce((m, c) => (m[c] = (m[c] || 0) + 1, m), {});\nconsole.log(counts);\nconst s = shuffle(range(6));\nconsole.log(s.length, [...s].sort().join(''));\nconst bad = Array(2).fill([]); bad[0].push('x');\nconsole.log(bad);",
+          "explanation": "Run each recipe on small data."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is arr.sort(() => Math.random() - 0.5) a bad shuffle?",
+          "a": "The comparator is inconsistent, so the engine's sort algorithm produces a non-uniform permutation; Fisher-Yates gives every permutation equal probability."
+        },
+        {
+          "q": "How do you create an array of n independent empty arrays?",
+          "a": "Array.from({ length: n }, () => []), because fill([]) reuses a single array reference."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-object-recipes",
+      "title": "Object One-liners: groupBy, pick, omit, invert, map values",
+      "level": "intermediate",
+      "summary": "Everyday object transformations with entries, fromEntries, reduce and destructuring, including groupBy before Object.groupBy.",
+      "description": "Objects and arrays convert easily through `Object.entries` and `Object.fromEntries`, which makes most transformations one-liners.\n\n| Task | Recipe |\n|---|---|\n| Map values | `Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)]))` |\n| Filter keys | `Object.fromEntries(Object.entries(o).filter(([k, v]) => v != null))` |\n| Pick | `Object.fromEntries(keys.map(k => [k, o[k]]))` |\n| Omit | `const { secret, ...safe } = o` |\n| Invert | `Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]))` |\n| Group by | `arr.reduce((g, x) => ((g[f(x)] ??= []).push(x), g), {})` |\n| Index by id | `Object.fromEntries(arr.map(x => [x.id, x]))` |\n| Merge shallow | `{ ...a, ...b }` |\n| Merge deep | recursive function (no built-in) |\n| Defaults | `{ ...defaults, ...options }` |\n| Is empty? | `Object.keys(o).length === 0` |\n| Conditional prop | `{ a: 1, ...(flag && { b: 2 }) }` |\n| Count keys | `Object.keys(o).length` |\n| Entries sorted | `Object.entries(o).sort(([a], [b]) => a.localeCompare(b))` |\n\n### Notes\n- Spreading `false`, `null`, `undefined` into an object adds nothing, which enables the conditional property trick.\n- `??=` makes groupBy short: create the bucket only when missing.\n- Modern engines have `Object.groupBy(arr, fn)` returning a null-prototype object and `Map.groupBy` for non-string keys.\n- Integer-like keys are always ordered first and ascending; other keys keep insertion order.\n- Use `Object.hasOwn(o, k)` (not `o.hasOwnProperty`) for safe key checks.",
+      "keyPoints": [
+        "Object.fromEntries is the inverse of Object.entries and powers most transformations.",
+        "Rest in destructuring is the clean way to omit keys.",
+        "Spread of a falsy value into an object is a no-op, which allows conditional properties.",
+        "Group with reduce and ??= or use Object.groupBy where available.",
+        "Use Object.hasOwn for own-key checks."
+      ],
+      "pitfalls": [
+        "Objects only support string and symbol keys; use Map for object or number keys.",
+        "Spread and Object.assign produce shallow copies."
+      ],
+      "examples": [
+        {
+          "title": "Object toolbox",
+          "language": "javascript",
+          "code": "const prices = { apple: 1, pear: 2, fig: 3 };\nconst mapValues = (o, f) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, f(v)]));\nconst pick = (o, ...keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));\nconst omit = ({ ...copy }, ...keys) => (keys.forEach(k => delete copy[k]), copy);\nconst invert = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));\nconsole.log(mapValues(prices, v => v * 10), pick(prices, 'apple', 'nope'), omit(prices, 'fig'), invert(prices));\n\nconst people = [{ n: 'a', age: 20 }, { n: 'b', age: 30 }, { n: 'c', age: 20 }];\nconst groupBy = (arr, f) => arr.reduce((g, x) => ((g[f(x)] ??= []).push(x.n), g), {});\nconsole.log(groupBy(people, p => p.age));\nconsole.log(Object.groupBy(people, p => (p.age > 25 ? 'old' : 'young')));\nconst flag = false;\nconsole.log({ a: 1, ...(flag && { b: 2 }), ...{ c: 3 } });\nconsole.log(Object.fromEntries(people.map(p => [p.n, p])).b);\nconst { secret, ...safe } = { id: 1, secret: 'x', name: 'n' };\nconsole.log(safe);",
+          "explanation": "Map, pick, omit, invert, groupBy."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you remove a property immutably?",
+          "a": "Use rest destructuring: const { removed, ...rest } = obj, then use rest."
+        },
+        {
+          "q": "How can you add a property only when a condition holds?",
+          "a": "Spread a conditional: { ...base, ...(cond && { extra: 1 }) }, since spreading false adds nothing."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-deep-clone-equal",
+      "title": "Deep Clone and Deep Equal",
+      "level": "advanced",
+      "summary": "Compare structuredClone, JSON tricks and hand-written recursion for deep copying, and write a robust deepEqual.",
+      "description": "Spread and `Object.assign` only copy one level. For nested data you need a **deep** clone.\n\n### Options\n| Method | Handles | Fails on |\n|---|---|---|\n| `JSON.parse(JSON.stringify(x))` | plain data | `undefined`, functions, symbols, `Date` (becomes string), `Map`/`Set`, `NaN`/`Infinity`, cycles (throws) |\n| `structuredClone(x)` | Date, Map, Set, RegExp, typed arrays, Error, **cycles** | functions, DOM nodes, class methods/prototype (result is a plain object), getters (values copied) |\n| Hand-written recursion | anything you choose | need to handle cycles yourself |\n| Libraries (lodash `cloneDeep`) | most things | extra dependency |\n\n`structuredClone` is built into Node 17+ and all modern browsers, and is the best default.\n\n### Deep equality\n`===` compares references. A `deepEqual` needs to:\n1. Return `true` for identical references and use `Object.is` for primitives (so `NaN` equals `NaN`).\n2. Compare types and handle `null`.\n3. Compare arrays by length and items, objects by own key sets and values.\n4. Special-case `Date`, `Map`, `Set`, `RegExp` if you support them.\n\n### Cycles and performance\nTrack visited pairs in a `WeakMap` to avoid infinite recursion. For a quick one-off check in tests, comparing `JSON.stringify` output is fragile because key order matters.\n\n### Rule of thumb\n- Copying plain data: `structuredClone`.\n- Copying class instances: write a `clone()` method.\n- Immutable updates: copy only the path you change, using spread at each level, instead of cloning everything.",
+      "keyPoints": [
+        "structuredClone handles cycles, Dates, Maps, Sets; it rejects functions.",
+        "JSON cloning drops undefined, functions and converts Dates to strings.",
+        "A correct deepEqual uses Object.is for primitives and compares own keys recursively.",
+        "Copy only the changed path when updating immutable state.",
+        "Class instances lose their prototype in structuredClone."
+      ],
+      "pitfalls": [
+        "JSON round trip silently changes data instead of failing.",
+        "structuredClone throws DataCloneError for functions and symbols as values.",
+        "Comparing objects with JSON.stringify depends on key order."
+      ],
+      "examples": [
+        {
+          "title": "structuredClone vs JSON and a deepEqual",
+          "language": "javascript",
+          "code": "const src = { d: new Date(0), m: new Map([[1, 'a']]), s: new Set([1]), u: undefined, n: [1, { x: 2 }] };\nsrc.self = src;\nconst sc = structuredClone(src);\nconsole.log(sc.d instanceof Date, sc.m.get(1), sc.self === sc, sc !== src);\nconst viaJson = JSON.parse(JSON.stringify({ d: new Date(0), u: undefined, f() {}, n: NaN }));\nconsole.log(viaJson);\ntry { structuredClone({ f() {} }); } catch (e) { console.log(e.name); }\n\nfunction deepEqual(a, b, seen = new WeakMap()) {\n  if (Object.is(a, b)) return true;\n  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;\n  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;\n  if (seen.get(a) === b) return true;\n  seen.set(a, b);\n  if (a instanceof Date) return a.getTime() === b.getTime();\n  if (a instanceof Map || a instanceof Set) return deepEqual([...a], [...b], seen);\n  const ka = Reflect.ownKeys(a), kb = Reflect.ownKeys(b);\n  return ka.length === kb.length && ka.every(k => Object.hasOwn(b, k) && deepEqual(a[k], b[k], seen));\n}\nconsole.log(deepEqual({ a: [1, { b: NaN }] }, { a: [1, { b: NaN }] }), deepEqual({ a: 1 }, { a: 2 }));\nconsole.log(deepEqual(new Map([[1, { x: 1 }]]), new Map([[1, { x: 1 }]])));",
+          "explanation": "Dates, Maps, cycles, and recursion."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What are the limits of JSON.parse(JSON.stringify(obj)) for cloning?",
+          "a": "It drops undefined, functions and symbols, converts Dates to strings, turns NaN/Infinity into null, loses Map/Set contents and throws on cycles."
+        },
+        {
+          "q": "Why prefer structuredClone?",
+          "a": "It is built in, supports many types including cycles, and does not mangle data like the JSON trick."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-functional-utils",
+      "title": "Functional Utilities: pipe, compose, memoize, curry, once",
+      "level": "advanced",
+      "summary": "Tiny higher-order helpers you will reuse forever, implemented in a few lines each.",
+      "description": "Higher-order functions take or return functions. These five utilities cover most needs.\n\n### pipe and compose\n`pipe(f, g, h)(x)` runs left to right: `h(g(f(x)))`. `compose` runs right to left. Both are a `reduce` over functions:\n\n```js\nconst pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);\nconst compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x);\n```\n\n### memoize\nCaches results by arguments. Use a `Map` keyed by `JSON.stringify(args)` for a quick version (works for JSON-safe args), or a nested Map for object arguments. Only memoize **pure** functions, and consider cache size limits (an LRU) for long-lived processes.\n\n### curry\nTurns `f(a, b, c)` into `f(a)(b)(c)` while allowing partial groups such as `f(a, b)(c)`. Use `fn.length` to know when enough arguments have arrived. Note `fn.length` ignores default and rest parameters.\n\n### once\nRuns the function the first time and then returns the cached result forever. Useful for initialisation code and event handlers.\n\n### partial\n`partial(f, ...first)` returns `(...rest) => f(...first, ...rest)`; `f.bind(null, ...first)` does the same.\n\n### Other tricks\n- `const not = (f) => (...a) => !f(...a)` negates predicates.\n- `const tap = (fn) => (x) => (fn(x), x)` lets you inspect a pipeline.\n- `const unary = (f) => (x) => f(x)` fixes `['1','2','3'].map(parseInt)` surprises.",
+      "keyPoints": [
+        "pipe uses reduce left to right; compose uses reduceRight.",
+        "Memoize only pure functions and think about cache growth.",
+        "curry relies on fn.length, which ignores default and rest parameters.",
+        "once wraps a function so it runs a single time.",
+        "bind(null, ...args) provides built-in partial application."
+      ],
+      "pitfalls": [
+        "JSON.stringify keys for memoization fail with functions, undefined and cyclic args.",
+        "Memoizing impure functions returns stale results."
+      ],
+      "examples": [
+        {
+          "title": "Utility belt",
+          "language": "javascript",
+          "code": "const pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);\nconst compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x);\nconst add1 = (x) => x + 1, dbl = (x) => x * 2;\nconsole.log(pipe(add1, dbl)(5), compose(add1, dbl)(5));\n\nconst memoize = (fn) => { const cache = new Map(); return (...a) => { const k = JSON.stringify(a); if (!cache.has(k)) cache.set(k, fn(...a)); return cache.get(k); }; };\nlet calls = 0;\nconst slowSquare = memoize((n) => (calls++, n * n));\nslowSquare(9); slowSquare(9); slowSquare(3);\nconsole.log('calls:', calls);\n\nconst curry = (fn) => function curried(...args) { return args.length >= fn.length ? fn(...args) : (...more) => curried(...args, ...more); };\nconst vol = curry((l, w, h) => l * w * h);\nconsole.log(vol(2)(3)(4), vol(2, 3)(4), vol(2)(3, 4));\n\nconst once = (fn) => { let done = false, val; return (...a) => (done ? val : (done = true, val = fn(...a))); };\nconst init = once(() => { console.log('init!'); return 42; });\nconsole.log(init(), init());\nconsole.log(['1', '2', '3'].map(parseInt), ['1', '2', '3'].map(Number));",
+          "explanation": "pipe, compose, memoize, curry, once."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between pipe and compose?",
+          "a": "pipe applies functions left to right, compose applies them right to left."
+        },
+        {
+          "q": "What is a memoize function safe for?",
+          "a": "Pure functions only, because the cache returns earlier results for the same arguments regardless of changed external state."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-promise-recipes",
+      "title": "Promise Recipes: sleep, retry, timeout, concurrency limit, safe JSON",
+      "level": "advanced",
+      "summary": "Reusable async helpers: delay, retry with backoff, timeout race, limited parallelism, and parse JSON without throwing.",
+      "description": "Promises compose well, so most async utilities are tiny.\n\n### sleep\n```js\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n```\n\n### timeout\nRace the work against a timer: `Promise.race([work, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))])`. The loser keeps running; use `AbortController` to actually cancel network work. Always clear the timer to avoid keeping Node alive.\n\n### retry with backoff\nLoop `for (attempt...)`, `await` the call in `try`, and `sleep(base * 2 ** attempt)` in `catch`. Add random jitter in real systems and retry only on retryable errors.\n\n### Concurrency limit\n`Promise.all(items.map(fn))` starts everything at once. To limit to N at a time, create N worker loops that pull from a shared queue/index:\n\n```js\nasync function pool(items, limit, fn) {\n  const results = []; let i = 0;\n  await Promise.all(Array.from({ length: limit }, async () => {\n    while (i < items.length) { const idx = i++; results[idx] = await fn(items[idx]); }\n  }));\n  return results;\n}\n```\n\n### Sequential vs parallel\n- Sequential: `for (const x of xs) await f(x)`.\n- Parallel: `await Promise.all(xs.map(f))`.\n- `reduce` chaining is the same as sequential but harder to read.\n\n### Safe JSON parse\n`const safeParse = (s, fallback = null) => { try { return JSON.parse(s); } catch { return fallback; } }`.\n\n### Other\n- `Promise.allSettled` collects every result without short-circuiting.\n- `Promise.withResolvers()` exposes `resolve`/`reject` outside the executor.\n- Wrap callbacks: `util.promisify` in Node or a manual `new Promise`.",
+      "keyPoints": [
+        "Promise.race with a timer implements timeout but does not cancel the work.",
+        "Use worker loops over a shared index to cap concurrency.",
+        "Retry with exponential backoff and jitter; only retry transient failures.",
+        "Promise.all fails fast; allSettled never rejects.",
+        "Wrap JSON.parse in try/catch to avoid crashes from bad input."
+      ],
+      "pitfalls": [
+        "forEach with async callbacks does not wait; use for...of or Promise.all with map.",
+        "A forgotten setTimeout from a timeout race can keep a Node process alive."
+      ],
+      "examples": [
+        {
+          "title": "sleep, timeout, retry and pool",
+          "language": "javascript",
+          "code": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst withTimeout = (p, ms) => {\n  let t;\n  const timer = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('timeout')), ms); });\n  return Promise.race([p, timer]).finally(() => clearTimeout(t));\n};\nasync function retry(fn, tries = 3, base = 5) {\n  for (let i = 0; ; i++) {\n    try { return await fn(i); } catch (e) { if (i >= tries - 1) throw e; await sleep(base * 2 ** i); }\n  }\n}\nasync function pool(items, limit, fn) {\n  const out = []; let next = 0, active = 0, peak = 0;\n  await Promise.all(Array.from({ length: limit }, async () => {\n    while (next < items.length) {\n      const i = next++; active++; peak = Math.max(peak, active);\n      out[i] = await fn(items[i]); active--;\n    }\n  }));\n  return { out, peak };\n}\nconst safeParse = (s, fallback = null) => { try { return JSON.parse(s); } catch { return fallback; } };\n(async () => {\n  console.log(await withTimeout(sleep(5).then(() => 'fast'), 50));\n  console.log(await withTimeout(sleep(100), 10).catch(e => e.message));\n  console.log(await retry(async (i) => { if (i < 2) throw new Error('fail' + i); return 'ok after ' + i; }));\n  console.log(await pool([1, 2, 3, 4, 5], 2, async (n) => { await sleep(5); return n * n; }));\n  console.log(safeParse('{bad'), safeParse('{\"a\":1}'), safeParse('x', 'dflt'));\n})();",
+          "explanation": "Short delays keep it fast."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you run async tasks with a concurrency limit of 3?",
+          "a": "Start 3 worker loops that each pull the next item from a shared index until done, and await Promise.all of the workers."
+        },
+        {
+          "q": "Does Promise.race cancel the slower promise?",
+          "a": "No. The slower one keeps running; use AbortController to cancel the underlying work."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-short-circuit",
+      "title": "Short-circuit, Truthiness and Optional Chaining Tricks",
+      "level": "intermediate",
+      "summary": "Idioms that use && || ?? ?. and truthiness to write less code, and when they hurt readability.",
+      "description": "Logical operators return one of their **operands**, not a boolean. That enables compact idioms.\n\n| Idiom | Meaning |\n|---|---|\n| `a \\|\\| b` | `a` if truthy, else `b` (default) |\n| `a ?? b` | `a` unless `null`/`undefined` |\n| `a && b` | `b` if `a` truthy, else `a` (guard) |\n| `cond && doIt()` | call only when `cond` truthy |\n| `!!x` or `Boolean(x)` | convert to boolean |\n| `+x` | convert to number (`+'42'` is 42, `+''` is 0) |\n| `` `${x}` `` / `x + ''` | convert to string |\n| `~~x` / `x \\| 0` | truncate to int32 |\n| `x ?.y ?.[0] ?? 'dflt'` | safe deep read with default |\n| `arr?.length > 0` | false when arr missing (comparison with undefined is false) |\n| `typeof x === 'function' && x()` | call if function |\n| `fn?.()` | call if defined |\n| `a ||= b`, `a &&= b`, `a ??= b` | conditional assignment |\n| `const { a = 1 } = obj ?? {}` | destructure possibly null object |\n| `void 0` | reliable `undefined` |\n| `if (!(key in obj))` | existence check including inherited keys |\n\n### The eight falsy values\n`false`, `0`, `-0`, `0n`, `''`, `null`, `undefined` and `NaN` (plus the legacy `document.all` in browsers). Everything else is truthy, including `'0'`, `'false'`, `[]` and `{}`.\n\n### React-style conditional pitfall\n`count && <Item />` renders `0` when `count` is `0`. Use `count > 0 && ...` or a ternary.\n\n### When not to\nChained short-circuit expressions hurt readability when they contain side effects. Prefer `if` for statements; use the idioms for values.",
+      "keyPoints": [
+        "&& and || return operands, not booleans.",
+        "Use ?? instead of || when 0, '' and false are valid.",
+        "Unary + is the shortest string-to-number conversion.",
+        "The falsy values are false, 0, -0, 0n, '', null, undefined, NaN.",
+        "Optional chaining plus ?? gives safe reads with defaults."
+      ],
+      "pitfalls": [
+        "cond && value yields 0 or '' when cond is a falsy number or string.",
+        "~~x and x | 0 break for values beyond 32-bit range."
+      ],
+      "examples": [
+        {
+          "title": "Idioms in action",
+          "language": "javascript",
+          "code": "const cfg = { retries: 0, name: '', nested: { list: [] } };\nconsole.log(cfg.retries || 3, cfg.retries ?? 3, cfg.name || 'anon', cfg.name ?? 'anon');\nconsole.log(cfg.nested?.list?.[0] ?? 'none', cfg.missing?.deep ?? 'none');\nconsole.log(+'42', +'', +'abc', +true, +[], +{}, -'5');\nconsole.log(!!'0', !!'', !![] , !!{} , !!NaN);\nconsole.log(~~7.9, 7.9 | 0, ~~-7.9, Math.trunc(-7.9), 2 ** 32 | 0);\nconst items = [];\nconsole.log(items.length && 'has items');   // 0 leaks out!\nconsole.log(items.length > 0 && 'has items');\nconst log = []; const add = (m) => log.push(m);\ntrue && add('ran'); false && add('skipped'); null ?? add('nullish');\nconsole.log(log, void 0);\nconst f = undefined;\nconsole.log(f?.(), typeof f === 'function' && f());",
+          "explanation": "Printing the results of each trick."
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does 0 || 'x' return and how would you keep the 0?",
+          "a": "'x'. Use the nullish operator: 0 ?? 'x' returns 0."
+        },
+        {
+          "q": "Name the falsy values.",
+          "a": "false, 0, -0, 0n, empty string, null, undefined and NaN."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-bitwise",
+      "title": "Bitwise Tricks and Flags",
+      "level": "advanced",
+      "summary": "Use bitwise operators for integer truncation, parity, powers of two, flags/permissions and tiny hash functions.",
+      "description": "JavaScript bitwise operators convert operands to **32-bit signed integers**, operate, and return a signed 32-bit result (except `>>>` which returns unsigned).\n\n| Operator | Meaning | Trick |\n|---|---|---|\n| `a & b` | AND | test a bit: `n & 1` is odd |\n| `a \\| b` | OR | set a bit: `flags \\| FLAG` |\n| `a ^ b` | XOR | toggle: `flags ^ FLAG`; swap without temp |\n| `~a` | NOT | `~indexOf(x)` is falsy only for `-1` |\n| `a << n` | shift left | `1 << n` is 2 to the power n (within 31) |\n| `a >> n` | arithmetic shift right | divide by 2^n, keeps sign |\n| `a >>> n` | unsigned shift right | `x >>> 0` converts to uint32 |\n\n### Common tricks\n- Parity: `n & 1` (1 for odd). Works for negative integers too.\n- Truncate: `x | 0` or `~~x` (only within +-2^31).\n- Power of two check: `n > 0 && (n & (n - 1)) === 0`.\n- Clear lowest set bit: `n & (n - 1)`; isolate it: `n & -n`.\n- Count set bits: loop `n &= n - 1`.\n- Swap: `a ^= b; b ^= a; a ^= b` (clearer with destructuring).\n- Midpoint: `(lo + hi) >>> 1` is safe from overflow in typed code.\n\n### Flags pattern\nGive each permission one bit (`READ = 1, WRITE = 2, EXEC = 4`). Combine with `|`, check with `(perm & WRITE) !== 0`, remove with `perm & ~WRITE`. Toggle with `^`.\n\n### Hash example\n`h = (h * 31 + code) | 0` keeps the hash inside int32 (use `Math.imul` for exact 32-bit multiplication).\n\n### Limits\nNumbers above 2^31 wrap around. Use `BigInt` (`&`, `|`, `<<`, `>>` work on BigInt too, but `>>>` does not) for wide values.",
+      "keyPoints": [
+        "Bitwise operators work on 32-bit signed integers.",
+        "n & 1 tests odd/even; n & (n - 1) clears the lowest set bit.",
+        "Use bit flags to pack many booleans into one number.",
+        "x >>> 0 converts to an unsigned 32-bit integer.",
+        "Math.imul does correct 32-bit multiplication."
+      ],
+      "pitfalls": [
+        "~~x and x | 0 return wrong results for numbers outside int32 range.",
+        "Precedence: n & 1 === 0 means n & (1 === 0); always use parentheses."
+      ],
+      "examples": [
+        {
+          "title": "Flags and bit tricks",
+          "language": "javascript",
+          "code": "const READ = 1, WRITE = 2, EXEC = 4;\nlet perm = READ | WRITE;\nconsole.log(perm, (perm & WRITE) !== 0, (perm & EXEC) !== 0);\nperm ^= EXEC;            // toggle on\nperm &= ~WRITE;          // remove\nconsole.log(perm.toString(2).padStart(3, '0'));\n\nconst isOdd = (n) => (n & 1) === 1;\nconst isPow2 = (n) => n > 0 && (n & (n - 1)) === 0;\nconsole.log(isOdd(7), isOdd(-3), isPow2(64), isPow2(65), 12 & -12);\nconst bits = (n) => { let c = 0; while (n) { n &= n - 1; c++; } return c; };\nconsole.log(bits(0b101101), 5 << 3, -16 >> 2, -1 >>> 0, 2 ** 31 | 0);\nconst hash = (s) => { let h = 0; for (const ch of s) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0; return h; };\nconsole.log(hash('hello'), ~'abc'.indexOf('z') ? 'found' : 'missing');\nconsole.log(0b1010n & 0b0110n, 1n << 70n);",
+          "explanation": "Permissions, parity, power of two, hash."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you check whether a number is a power of two?",
+          "a": "n > 0 && (n & (n - 1)) === 0, because powers of two have exactly one set bit."
+        },
+        {
+          "q": "What does >>> 0 do?",
+          "a": "It converts the value to an unsigned 32-bit integer."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-format-numbers-dates",
+      "title": "Formatting Numbers and Dates with Intl",
+      "level": "intermediate",
+      "summary": "Replace hand-rolled formatting with Intl: currency, compact numbers, percent, units, relative time, dates and lists.",
+      "description": "Hand-written formatting breaks for other locales. `Intl` (built into every modern runtime) does it correctly, and it is fast when you reuse the formatter object.\n\n| Need | Code |\n|---|---|\n| Thousands separators | `n.toLocaleString('en-US')` |\n| Currency | `new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)` |\n| Indian grouping | `n.toLocaleString('en-IN')` gives 12,34,567 |\n| Percent | `{ style: 'percent', maximumFractionDigits: 1 }` |\n| Compact | `{ notation: 'compact' }` gives 1.2K |\n| Units | `{ style: 'unit', unit: 'kilometer-per-hour' }` |\n| Fixed decimals | `n.toFixed(2)` (returns a string, rounds the binary value) |\n| Pad number | `String(n).padStart(2, '0')` |\n| Date | `new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(d)` |\n| Relative time | `new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-1, 'day')` gives yesterday |\n| List | `new Intl.ListFormat('en', { type: 'conjunction' }).format(arr)` |\n| Plural | `new Intl.PluralRules('en').select(n)` |\n| Time zone | `{ timeZone: 'Asia/Kolkata' }` option |\n\n### Date tricks\n- ISO string: `d.toISOString()`; date only: `.slice(0, 10)`.\n- Add days: `d.setDate(d.getDate() + n)` (handles month rollover).\n- Days between: `Math.round((b - a) / 864e5)` (DST can shift an hour).\n- Last day of month: `new Date(y, m + 1, 0).getDate()`.\n- Timestamp: `Date.now()`; end of day: `d.setHours(23, 59, 59, 999)`.\n- `new Date('2024-01-05')` parses as **UTC**, while `new Date(2024, 0, 5)` is **local**.\n\n### Tips\nPass `'en-US'` (a fixed locale) in tests so output is deterministic, and reuse formatters in loops.",
+      "keyPoints": [
+        "Intl formatters handle grouping, currency, units and plurals for every locale.",
+        "toFixed returns a string and can look wrong due to binary floating point.",
+        "Date-only ISO strings parse as UTC, while component constructors use local time.",
+        "Reuse Intl objects instead of calling toLocaleString in hot loops.",
+        "Fix the locale in tests for stable output."
+      ],
+      "pitfalls": [
+        "(1.005).toFixed(2) is '1.00' because 1.005 is stored slightly lower.",
+        "Month index is zero-based in new Date(y, m, d).",
+        "Subtracting dates across DST gives days that are not exactly 24 hours."
+      ],
+      "examples": [
+        {
+          "title": "Intl and date helpers",
+          "language": "javascript",
+          "code": "const n = 1234567.891;\nconsole.log(n.toLocaleString('en-US'), n.toLocaleString('en-IN'), n.toLocaleString('de-DE'));\nconsole.log(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(1234.5));\nconsole.log(new Intl.NumberFormat('en', { notation: 'compact' }).format(1234567));\nconsole.log(new Intl.NumberFormat('en', { style: 'percent', maximumFractionDigits: 1 }).format(0.4567));\nconsole.log(new Intl.RelativeTimeFormat('en', { numeric: 'auto' }).format(-1, 'day'));\nconsole.log(new Intl.ListFormat('en', { type: 'conjunction' }).format(['a', 'b', 'c']));\nconsole.log(new Intl.PluralRules('en').select(1), new Intl.PluralRules('en').select(2));\nconst d = new Date(Date.UTC(2024, 0, 31, 12));\nconsole.log(new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(d));\nconsole.log(d.toISOString().slice(0, 10), new Date(Date.UTC(2024, 2, 0)).getUTCDate());\nconst a = Date.UTC(2024, 0, 1), b = Date.UTC(2024, 2, 1);\nconsole.log(Math.round((b - a) / 864e5), (1.005).toFixed(2), String(7).padStart(2, '0'));",
+          "explanation": "All output uses fixed locales."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why use Intl.NumberFormat instead of regex-based comma insertion?",
+          "a": "Intl handles locale rules such as different separators and grouping (for example 12,34,567 in en-IN) and currencies correctly."
+        },
+        {
+          "q": "What is the date parsing gotcha with ISO strings?",
+          "a": "Date-only ISO strings like '2024-01-05' are treated as UTC, whereas new Date(2024, 0, 5) uses local time, which can shift the displayed day."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-string-recipes",
+      "title": "String Recipes: slugify, case, truncate, mask, count, reverse",
+      "level": "intermediate",
+      "summary": "Handy string helpers: slugify, title case, truncate with ellipsis, mask card numbers, count words, safe reversal and escaping regex input.",
+      "description": "Most text helpers combine `replace`, `split`, `map`, `join` and regex. Here are the ones you will actually reuse.\n\n| Task | Recipe |\n|---|---|\n| Capitalize | `s[0].toUpperCase() + s.slice(1)` |\n| Title case | `s.replace(/\\b\\w/g, c => c.toUpperCase())` |\n| camelCase from kebab | `s.replace(/-(\\w)/g, (_, c) => c.toUpperCase())` |\n| kebab from camel | `s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()` |\n| Slugify | normalize, strip diacritics, lowercase, replace non-alphanumerics with `-` |\n| Truncate | `s.length > n ? s.slice(0, n - 1) + '...' : s` |\n| Mask | `s.slice(-4).padStart(s.length, '*')` |\n| Reverse | `[...s].reverse().join('')` (handles surrogate pairs) |\n| Palindrome | clean the string, compare with its reverse |\n| Count words | `s.trim().split(/\\s+/).filter(Boolean).length` |\n| Repeat | `'ab'.repeat(3)` |\n| Pad | `padStart`, `padEnd` |\n| Replace all | `s.replaceAll('a', 'b')` |\n| Escape for regex | `s.replace(/[.*+?^${}()\\|[\\]\\\\]/g, '\\\\$&')` |\n| Template without code | `tpl.replace(/\\{(\\w+)\\}/g, (_, k) => data[k] ?? '')` |\n| Char frequency | `[...s].reduce((m, c) => m.set(c, (m.get(c) ?? 0) + 1), new Map())` |\n\n### Slugify details\n`s.normalize('NFD').replace(/[̀-ͯ]/g, '')` strips accent marks. Then lowercase, replace runs of non-alphanumerics with a single hyphen and trim hyphens from the ends.\n\n### Unicode cautions\n`.length` counts UTF-16 code units; emoji take 2. Spread (`[...s]`) iterates by code point, but even that does not group combined characters. Use `Intl.Segmenter` for user-visible characters (grapheme clusters).",
+      "keyPoints": [
+        "split/map/join and replace with a callback solve most text tasks.",
+        "normalize('NFD') plus a combining-mark regex removes accents.",
+        "[...str] respects code points; Intl.Segmenter respects visible characters.",
+        "replaceAll avoids the need for a global regex for literal replacements.",
+        "Escape user input before building a RegExp from it."
+      ],
+      "pitfalls": [
+        "s.split('').reverse() breaks emoji and other surrogate pairs.",
+        "String length counts UTF-16 units, so emoji count as 2."
+      ],
+      "examples": [
+        {
+          "title": "String helper set",
+          "language": "javascript",
+          "code": "const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');\nconst capitalize = (s) => s && s[0].toUpperCase() + s.slice(1);\nconst title = (s) => s.replace(/\\b\\w/g, (c) => c.toUpperCase());\nconst camel = (s) => s.replace(/[-_\\s]+(\\w)/g, (_, c) => c.toUpperCase());\nconst kebab = (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();\nconst truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);\nconst mask = (s, keep = 4) => s.slice(-keep).padStart(s.length, '*');\nconst escapeRe = (s) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\nconsole.log(slugify('  Héllo, Wörld! 2024  '), capitalize('hello'), title('the quick fox'));\nconsole.log(camel('make-it_camel case'), kebab('someVariableName'));\nconsole.log(truncate('JavaScript is fun', 10), mask('4111111111111111'));\nconsole.log('a.b'.replace(new RegExp(escapeRe('.'), 'g'), '-'));\nconsole.log([...'ab😀'].reverse().join(''), 'ab😀'.length, [...'ab😀'].length);\nconsole.log('hello world foo'.split(/\\s+/).length, 'a-b-c'.replaceAll('-', '+'));\nconst tpl = 'Hi {name}, you are {age}';\nconsole.log(tpl.replace(/\\{(\\w+)\\}/g, (_, k) => ({ name: 'Ann', age: 30 })[k] ?? ''));\nconsole.log([...new Intl.Segmenter('en', { granularity: 'grapheme' }).segment('éa')].length);",
+          "explanation": "Slug, case conversion, truncate and mask."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is str.split('').reverse().join('') unsafe?",
+          "a": "split('') splits UTF-16 code units, so emoji and other surrogate pairs get broken; spread or Array.from keeps code points together."
+        },
+        {
+          "q": "How do you remove accents from a string?",
+          "a": "Normalize to NFD and strip the combining marks range with a regex such as /[̀-ͯ]/g."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-dom-url-helpers",
+      "title": "DOM and URL Helpers: delegation, qs, URLSearchParams",
+      "level": "intermediate",
+      "summary": "Small DOM helpers and URL/URLSearchParams tricks, with a runnable event-delegation demo.",
+      "description": "### Handy DOM helpers\n```js\nconst $  = (sel, root = document) => root.querySelector(sel);\nconst $$ = (sel, root = document) => [...root.querySelectorAll(sel)];\nconst on = (el, ev, fn, opts) => (el.addEventListener(ev, fn, opts), () => el.removeEventListener(ev, fn, opts));\n```\n- `on` returns an unsubscribe function, which keeps cleanup tidy.\n- Create elements: `Object.assign(document.createElement('li'), { textContent: 'x', className: 'item' })`.\n- Build many nodes at once with `el.append(...nodes)` or `replaceChildren(...nodes)`.\n- `el.closest('.card')` finds the nearest ancestor (or itself) matching a selector.\n- `el.classList.toggle('on', condition)` sets a class by boolean.\n- `el.dataset.userId` reads `data-user-id`.\n- `document.createDocumentFragment()` batches insertions.\n- `{ once: true }` auto-removes a listener; `{ passive: true }` speeds scrolling.\n\n### Event delegation\nAttach one listener to a parent and use `event.target.closest(selector)` to find the real item. It works for items added later and scales to thousands of elements.\n\n### URL tricks\n| Task | Code |\n|---|---|\n| Parse | `const u = new URL('https://x.com/a?b=1#h')` |\n| Read query | `u.searchParams.get('b')` |\n| Build query | `new URLSearchParams({ q: 'a b', page: 2 }).toString()` gives `q=a+b&page=2` |\n| Query to object | `Object.fromEntries(new URL(location).searchParams)` |\n| Resolve relative | `new URL('../x', base).href` |\n| Multiple values | `params.getAll('tag')`, `params.append('tag', 'x')` |\n| Encode | `encodeURIComponent(value)` for single components |\n\nNever build URLs by string concatenation with user input.",
+      "keyPoints": [
+        "Event delegation uses one parent listener plus event.target.closest().",
+        "URLSearchParams safely encodes and parses query strings.",
+        "on() helpers that return an unsubscribe function simplify cleanup.",
+        "classList.toggle accepts a second boolean argument.",
+        "Use fragments or replaceChildren to batch DOM updates."
+      ],
+      "pitfalls": [
+        "event.target may be a child element of the item; use closest() instead of comparing directly.",
+        "URLSearchParams encodes spaces as + while encodeURIComponent uses %20."
+      ],
+      "examples": [
+        {
+          "title": "Event delegation with dynamic items",
+          "language": "web",
+          "html": "<button id=\"add\">Add item</button>\n<ul id=\"list\"></ul>\n<p id=\"out\">Click an item...</p>",
+          "css": "body{font-family:sans-serif} li{padding:6px 10px;margin:4px 0;background:#eef;cursor:pointer;border-radius:6px;list-style:none}\nli.done{text-decoration:line-through;opacity:.6} li span.x{float:right;color:crimson}",
+          "js": "const $ = (s, r = document) => r.querySelector(s);\nconst list = $('#list');\nlet n = 0;\nconst addItem = () => {\n  n++;\n  const li = Object.assign(document.createElement('li'), { innerHTML: `Task ${n} <span class=\"x\" data-del>x</span>` });\n  li.dataset.id = n;\n  list.append(li);\n};\naddItem(); addItem();\n$('#add').addEventListener('click', addItem);\nlist.addEventListener('click', (e) => {\n  const del = e.target.closest('[data-del]');\n  const li = e.target.closest('li');\n  if (!li || !list.contains(li)) return;\n  if (del) { li.remove(); $('#out').textContent = 'Deleted ' + li.dataset.id; return; }\n  li.classList.toggle('done');\n  $('#out').textContent = 'Toggled ' + li.dataset.id;\n});",
+          "explanation": "Click a list item; new items work without new listeners."
+        },
+        {
+          "title": "URL and URLSearchParams",
+          "language": "javascript",
+          "code": "const u = new URL('https://shop.test/items?tag=a&tag=b&page=2#top');\nconsole.log(u.hostname, u.pathname, u.hash, u.searchParams.get('page'), u.searchParams.getAll('tag'));\nu.searchParams.set('page', 3);\nu.searchParams.append('q', 'hello world & more');\nconsole.log(u.href);\nconsole.log(new URLSearchParams({ q: 'a b', n: 1 }).toString());\nconsole.log(Object.fromEntries(new URL('http://x.test/?a=1&b=2').searchParams));\nconsole.log(new URL('../up?z=1', 'http://x.test/a/b/c').href);\nconsole.log(encodeURIComponent('a b&c'), decodeURIComponent('%E2%9C%93'));",
+          "explanation": "Works in browsers and Node."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why use event delegation?",
+          "a": "One listener on a parent handles all current and future children, saving memory and handling dynamically added elements."
+        },
+        {
+          "q": "Why use URLSearchParams instead of string concatenation?",
+          "a": "It encodes keys and values correctly and avoids injection and malformed-URL bugs."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-proxy-weakref",
+      "title": "Proxy Tricks, WeakRef and FinalizationRegistry",
+      "level": "advanced",
+      "summary": "Practical Proxy patterns (defaults, validation, negative indices, observable) and the rarely-needed WeakRef/FinalizationRegistry.",
+      "description": "### Proxy tricks\nA `Proxy` wraps an object and intercepts operations (`get`, `set`, `has`, `deleteProperty`, `apply`, ...). Always forward with `Reflect` so default behaviour stays correct.\n\n| Trick | Trap |\n|---|---|\n| Default values for missing keys | `get` returns `0` or `[]` when missing |\n| Validation | `set` throws on bad data |\n| Negative array indices | `get` converts `-1` to `length - 1` |\n| Read-only view | `set` and `deleteProperty` return `false` or throw |\n| Hide private-looking keys | `has`, `ownKeys`, `get` filter `_x` |\n| Logging / tracing | log inside every trap |\n| Observable / reactive | `set` notifies subscribers (the idea behind Vue 3) |\n| Auto-vivification | `get` creates nested objects on demand |\n| Function wrapping | `apply` trap for timing or memoization |\n\n### WeakRef\n`new WeakRef(obj)` holds an object **without preventing garbage collection**. `ref.deref()` returns the object or `undefined` if it was collected. Useful for caches of large derived data. The language gives **no guarantee** when (or if) collection happens, so never depend on it for correctness.\n\n### FinalizationRegistry\n`registry.register(target, heldValue)` asks for a callback after `target` is collected. Callbacks may run late or never (also not at process exit), so use them only for optional cleanup such as freeing external caches. Use `try/finally`, `using` or explicit `close()` for real resources.\n\n### Related weak structures\n`WeakMap` and `WeakSet` hold keys weakly and are the better tool for per-object metadata (private data, memoisation keyed by object).",
+      "keyPoints": [
+        "Always forward unhandled operations to Reflect inside Proxy traps.",
+        "Proxies enable defaults, validation, negative indices and reactivity.",
+        "WeakRef.deref() may return undefined at any time after the target is unreachable.",
+        "FinalizationRegistry callbacks are best-effort and not guaranteed to run.",
+        "Prefer WeakMap for per-object data."
+      ],
+      "pitfalls": [
+        "A proxy is not equal (===) to its target, which can confuse identity checks.",
+        "Built-ins with internal slots (Map, Date) break if you call methods through a proxy without binding to the target.",
+        "Never rely on garbage collection timing for program logic."
+      ],
+      "examples": [
+        {
+          "title": "Practical Proxy patterns",
+          "language": "javascript",
+          "code": "const withDefault = (target, dflt) => new Proxy(target, { get: (t, k, r) => (k in t ? Reflect.get(t, k, r) : dflt()) });\nconst counts = withDefault({}, () => 0);\ncounts.a += 1; counts.a += 1;\nconsole.log(counts.a, counts.zzz);\n\nconst validated = new Proxy({}, {\n  set(t, k, v) {\n    if (k === 'age' && !Number.isInteger(v)) throw new TypeError('age must be int');\n    return Reflect.set(t, k, v);\n  },\n});\nvalidated.age = 5;\ntry { validated.age = 'x'; } catch (e) { console.log(e.message, validated.age); }\n\nconst neg = (arr) => new Proxy(arr, { get: (t, k, r) => Reflect.get(t, typeof k === 'string' && /^-\\d+$/.test(k) ? t.length + +k : k, r) });\nconsole.log(neg([10, 20, 30])[-1]);\n\nconst observable = (obj, cb) => new Proxy(obj, { set(t, k, v, r) { const old = t[k]; const ok = Reflect.set(t, k, v, r); cb(k, old, v); return ok; } });\nconst state = observable({ n: 0 }, (k, o, v) => console.log(`${k}: ${o} -> ${v}`));\nstate.n++; state.n++;\n\nconst obj = { big: 1 };\nconst ref = new WeakRef(obj);\nconsole.log(ref.deref() === obj);\nconst fr = new FinalizationRegistry((v) => console.log('collected', v));\nfr.register(obj, 'obj-token');",
+          "explanation": "Defaults, validation, negative index, observable."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why use Reflect inside Proxy traps?",
+          "a": "Reflect performs the default operation with correct receiver semantics, so the proxy changes only what you intend."
+        },
+        {
+          "q": "Can you rely on FinalizationRegistry callbacks?",
+          "a": "No. They are not guaranteed to run and may be delayed, so use them only for optional cleanup."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-trick-console-debug",
+      "title": "Console and Debugging Tricks",
+      "level": "beginner",
+      "summary": "Go beyond console.log with table, group, time, assert, dir, count, trace, styling and debugger, plus monkey-patching for tracing.",
+      "description": "The console has far more than `log`.\n\n| Method | Use |\n|---|---|\n| `console.table(arrayOrObject, [cols])` | print rows as a table |\n| `console.group(label)` / `groupEnd()` | indent related logs; `groupCollapsed` hides them |\n| `console.time(label)` / `timeEnd` / `timeLog` | measure elapsed time |\n| `console.count(label)` / `countReset` | count how many times a line runs |\n| `console.assert(cond, ...msg)` | log only when `cond` is false |\n| `console.dir(obj, { depth: null })` | inspect deeply (Node) or browse properties (browser) |\n| `console.trace()` | print the call stack |\n| `console.error` / `warn` / `info` | levels, `error` goes to stderr in Node |\n| `console.log('%c styled', 'color:red')` | CSS styling in browsers |\n| `console.log('%s is %d', 'x', 5)` | printf-style substitution (`%o %O %j %i %f`) |\n| `console.log({ a, b })` | shorthand to print variable **names** with values |\n\n### Debugging tricks\n- `debugger;` pauses execution when DevTools is open.\n- Conditional breakpoints and logpoints in DevTools avoid editing code.\n- `console.log(JSON.stringify(x, null, 2))` pretty-prints; `structuredClone(x)` logs a snapshot before later mutation.\n- **Monkey-patch** to trace: wrap a function and log calls, then restore it:\n\n```js\nconst orig = obj.method;\nobj.method = function (...args) { console.log('call', args); return orig.apply(this, args); };\n```\n- Wrap `fetch` or `Array.prototype.push` temporarily to find who calls it (add `console.trace()`).\n- `new Error().stack` gives a stack string anywhere.\n- Node: `node --inspect-brk`, `node --watch`, `node --trace-warnings`.\n- Browser: `copy(obj)` in DevTools console copies a value, `$0` is the selected element, `monitorEvents(el)` logs events.",
+      "keyPoints": [
+        "console.table, group, time, count and assert make logs structured and quicker to scan.",
+        "console.log({ x }) prints the variable name with its value.",
+        "debugger statements and DevTools logpoints replace noisy log lines.",
+        "Monkey-patch a method to trace callers, then restore the original.",
+        "Log a cloned snapshot when objects mutate later."
+      ],
+      "pitfalls": [
+        "Logging a live object in the browser shows its current state when expanded, not the state at log time.",
+        "Leaving debugger statements or heavy logging in production hurts performance and leaks data."
+      ],
+      "examples": [
+        {
+          "title": "console toolbox",
+          "language": "javascript",
+          "code": "const users = [{ id: 1, name: 'Ann', role: 'admin' }, { id: 2, name: 'Bob', role: 'user' }];\nconsole.table(users, ['id', 'name']);\nconsole.group('Outer');\nconsole.log('inside group');\nconsole.group('Inner');\nconsole.log('deeper');\nconsole.groupEnd();\nconsole.groupEnd();\nconst total = 3, label = 'x';\nconsole.log({ total, label });\nconsole.log('%s has %d items (%i%%)', 'cart', 3, 50);\nconsole.count('hit'); console.count('hit'); console.countReset('hit'); console.count('hit');\nconsole.assert(1 === 1, 'not printed');\nconsole.dir({ a: { b: { c: { d: 1 } } } }, { depth: null });\nconst obj = { add(a, b) { return a + b; } };\nconst orig = obj.add;\nobj.add = function (...args) { console.log('add called with', args); return orig.apply(this, args); };\nconsole.log(obj.add(2, 3));\nobj.add = orig;",
+          "explanation": "Runs in Node and browsers."
+        }
+      ],
+      "interview": [
+        {
+          "q": "How can you log a variable together with its name?",
+          "a": "Wrap it in an object literal shorthand: console.log({ myVar })."
+        },
+        {
+          "q": "How do you trace who calls a function without editing it?",
+          "a": "Monkey-patch the function to call console.trace() or log arguments, then delegate to the original."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-wat-numbers",
+      "title": "WAT Quirks I: Numbers, NaN, typeof and parseInt",
+      "level": "intermediate",
+      "summary": "Why 0.1 + 0.2 isn't 0.3, NaN !== NaN, typeof null is object, parseInt('08') and other number oddities, explained.",
+      "description": "These \"wat\" moments are not bugs; each follows a clear rule.\n\n| Expression | Result | Why |\n|---|---|---|\n| `0.1 + 0.2` | `0.30000000000000004` | IEEE 754 binary floating point cannot store 0.1 exactly |\n| `0.1 + 0.2 === 0.3` | `false` | compare with `Math.abs(a - b) < Number.EPSILON` |\n| `NaN === NaN` | `false` | NaN is not equal to anything; use `Number.isNaN` or `Object.is` |\n| `typeof NaN` | `'number'` | NaN is a number value meaning \"invalid\" |\n| `typeof null` | `'object'` | a first-version bug kept for compatibility |\n| `typeof undeclared` | `'undefined'` | `typeof` never throws for undeclared names |\n| `typeof class {}` | `'function'` | classes are functions |\n| `parseInt('08')` | `8` | modern engines use base 10 (old ones treated 0-prefix as octal) |\n| `parseInt('0x1f')` | `31` | prefix 0x switches to hex |\n| `['1','2','3'].map(parseInt)` | `[1, NaN, NaN]` | map passes the index as the radix |\n| `parseInt(0.0000005)` | `5` | number is converted to string `'5e-7'` first |\n| `9007199254740993` | `9007199254740992` | integers above 2^53 lose precision (use BigInt) |\n| `-0 === 0` | `true` | but `Object.is(-0, 0)` is `false`; `1 / -0` is `-Infinity` |\n| `Math.max()` | `-Infinity` | identity element for max |\n| `Math.min() > Math.max()` | `true` | follows from the line above |\n| `[10, 9, 1].sort()` | `[1, 10, 9]` | default sort compares strings |\n| `0 === -0`, `Number.MIN_VALUE > 0` | both `true` | MIN_VALUE is the smallest **positive** value |\n\n### How to cope\n- Money: store integer cents or use a decimal library.\n- Floats: round for display (`toFixed`, `Intl`) and compare with an epsilon.\n- Always pass the radix: `parseInt(s, 10)`, or use `Number(s)` / `parseFloat`.\n- Sort numbers with `(a, b) => a - b`.",
+      "keyPoints": [
+        "0.1 + 0.2 differs from 0.3 because of binary floating point representation.",
+        "NaN is the only value not equal to itself; use Number.isNaN.",
+        "typeof null is the historic 'object'.",
+        "map(parseInt) fails because the index becomes the radix argument.",
+        "Default sort() converts items to strings."
+      ],
+      "pitfalls": [
+        "Global isNaN('abc') coerces and returns true; Number.isNaN does not coerce.",
+        "Number.EPSILON comparisons need scaling for large magnitudes."
+      ],
+      "examples": [
+        {
+          "title": "Number oddities",
+          "language": "javascript",
+          "code": "console.log(0.1 + 0.2, 0.1 + 0.2 === 0.3, Math.abs(0.1 + 0.2 - 0.3) < Number.EPSILON);\nconsole.log(NaN === NaN, Number.isNaN(NaN), Object.is(NaN, NaN), isNaN('abc'), Number.isNaN('abc'));\nconsole.log(typeof NaN, typeof null, typeof undeclaredName, typeof class {}, typeof 1n, typeof Symbol());\nconsole.log(parseInt('08'), parseInt('0x1f'), parseInt('12px'), parseInt(''), parseInt(0.0000005));\nconsole.log(['1', '2', '3'].map(parseInt), ['10', '10', '10'].map(parseInt));\nconsole.log(9007199254740993, 2 ** 53 + 1, 9007199254740993n);\nconsole.log(-0 === 0, Object.is(-0, 0), 1 / -0, Math.max(), Math.min());\nconsole.log([10, 9, 1].sort(), [10, 9, 1].sort((a, b) => a - b));\nconsole.log(Number.MIN_VALUE > 0, Number.MAX_SAFE_INTEGER, (0.1 * 3).toFixed(2), 0.1 * 3);",
+          "explanation": "Predict, then run."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is 0.1 + 0.2 not 0.3?",
+          "a": "Numbers are binary IEEE 754 doubles; 0.1 and 0.2 cannot be represented exactly, so the sum has a tiny error. Compare with an epsilon or use integers."
+        },
+        {
+          "q": "Why does ['1','2','3'].map(parseInt) return [1, NaN, NaN]?",
+          "a": "map passes (value, index) and parseInt treats the index as the radix, so '2' is parsed in base 1 and '3' in base 2, both invalid."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-wat-coercion",
+      "title": "WAT Quirks II: Coercion, == Table and Plus Operator",
+      "level": "intermediate",
+      "summary": "Explains [] + {}, [1,2,3] + [4], '5' - 2, the loose equality table and the conversion algorithm behind them.",
+      "description": "Most JavaScript \"wat\" results come from two rules: **`+` concatenates if either side becomes a string**, and **objects convert to primitives** through `valueOf()` then `toString()` (or `Symbol.toPrimitive`).\n\n### The conversion steps\n1. For `+`, both operands become primitives first.\n2. Arrays become strings via `join(',')`: `[]` is `''`, `[1,2,3]` is `'1,2,3'`.\n3. Plain objects become `'[object Object]'`.\n4. If either primitive is a string, concatenate; otherwise add as numbers.\n5. Other arithmetic operators (`- * /`) always convert to numbers.\n\n| Expression | Result |\n|---|---|\n| `[] + []` | `''` |\n| `[] + {}` | `'[object Object]'` |\n| `{} + []` | `0` as a statement in a console (block + unary plus), `'[object Object]'` as an expression |\n| `[1,2,3] + [4]` | `'1,2,34'` |\n| `'5' + 3` / `'5' - 3` | `'53'` / `2` |\n| `true + true` | `2` |\n| `[] == false` | `true` (`[]` to `''` to `0`, `false` to `0`) |\n| `null == 0` | `false` (null only equals undefined) |\n| `null >= 0` | `true` (relational comparison converts null to 0) |\n| `undefined == null` | `true` |\n| `'' == 0`, `'0' == 0` | `true`, `true` |\n| `'' == '0'` | `false` (both strings, compared as text) |\n| `[0] == false` | `true` |\n| `NaN == NaN` | `false` |\n| `!!'false'` | `true` |\n\n### Loose equality `==` algorithm (short)\n- Same type: behaves like `===`.\n- `null`/`undefined`: equal only to each other.\n- Number vs string: string becomes number. Boolean: becomes number first.\n- Object vs primitive: object converts to primitive.\n\n### Advice\nUse `===` everywhere, with the one accepted exception `x == null` to test for both null and undefined.",
+      "keyPoints": [
+        "+ concatenates when either primitive operand is a string; - * / always use numbers.",
+        "Arrays convert via join, plain objects become [object Object].",
+        "== coerces; null == undefined but neither equals 0 or ''.",
+        "Relational operators (>=) coerce null to 0, so null >= 0 is true.",
+        "Prefer === except for the x == null idiom."
+      ],
+      "pitfalls": [
+        "{} + [] at the start of a statement is parsed as an empty block, giving different results than inside an expression.",
+        "[] == ![] is true even though it looks contradictory."
+      ],
+      "examples": [
+        {
+          "title": "Coercion table",
+          "language": "javascript",
+          "code": "console.log([] + [], [] + {}, [1, 2, 3] + [4], String({}));\nconsole.log('5' + 3, '5' - 3, true + true, [] * 2, [5] * 2, null + 1, undefined + 1);\nconsole.log([] == false, [] == ![], null == 0, null >= 0, undefined == null, null === undefined);\nconsole.log('' == 0, '0' == 0, '' == '0', [0] == false, NaN == NaN);\nconsole.log(1 + - + + + - + 1);\nconsole.log(('b' + 'a' + + 'a' + 'a').toLowerCase());\nconsole.log(typeof (1 / 0), [] instanceof Object, [] + null + 1, [1, 2] == '1,2');\nconst o = { valueOf() { return 10; }, toString() { return 'str'; } };\nconsole.log(o + 1, `${o}`, o * 2, String(o));",
+          "explanation": "Everything evaluated as expressions."
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is [] + {} equal to '[object Object]'?",
+          "a": "Both operands convert to strings: [] becomes '' and {} becomes '[object Object]', and + concatenates them."
+        },
+        {
+          "q": "Why is null >= 0 true but null == 0 false?",
+          "a": "Relational operators convert null to 0, while == has a special rule that null only equals undefined."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

@@ -1,0 +1,307 @@
+{
+  "id": "js-arrays",
+  "title": "Arrays",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-array-basics",
+      "title": "Array Basics and CRUD Methods",
+      "level": "beginner",
+      "summary": "Create arrays, read by index and add, remove or replace elements with push, pop, shift, unshift, splice and slice.",
+      "description": "An **array** is an ordered, zero-indexed list that can hold any mix of values. It is a special kind of object with a `length` property, so `typeof []` is `\"object\"` - use `Array.isArray()`.\n\n### Creating\n```js\nconst fruits = [\"apple\", \"orange\", \"banana\"]; // literal (preferred)\nconst empty = [];\nconst five = new Array(5);   // 5 empty slots (careful!)\nconst nums = Array.of(5);    // [5]\n```\n\n### Reading and writing\n`fruits[0]` is the first item, `fruits[fruits.length - 1]` the last, `fruits.at(-1)` also the last. Reading an index that does not exist gives `undefined`. Assigning `fruits[2] = \"mango\"` replaces an item.\n\n### Add / remove at the ends\n| Method | Effect | Returns |\n|---|---|---|\n| `push(x)` | add at end | new length |\n| `pop()` | remove last | removed item |\n| `unshift(x)` | add at start | new length |\n| `shift()` | remove first | removed item |\n\n### splice and slice\n- `splice(start, deleteCount, ...items)` **mutates**: remove/replace/insert anywhere and returns the removed items.\n- `slice(start, end)` **does not mutate**: returns a shallow copy of a portion (end is excluded).\n\n### Other basics\n`arr.length`, `concat`, `join(\", \")`, `indexOf`, `includes`, `reverse()` (mutates), spread `[...a, ...b]`.\n\nMutating methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) change the original array - important in React state, where you should create a new array instead.",
+      "keyPoints": [
+        "Arrays are zero-indexed objects with a length",
+        "push/pop work at the end, unshift/shift at the start",
+        "splice mutates and can insert, delete and replace",
+        "slice returns a copy and does not mutate",
+        "Use Array.isArray to detect arrays"
+      ],
+      "pitfalls": [
+        "new Array(3) creates empty slots, not three undefined values",
+        "Setting arr.length = 0 clears the array (also for other references)",
+        "Confusing splice (mutates) with slice (copy)"
+      ],
+      "examples": [
+        {
+          "title": "CRUD with push, pop and splice",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const fruits = [\"apple\", \"orange\", \"mango\", \"grapes\"];\nconsole.log(fruits.push(\"guava\"), fruits);\nconsole.log(fruits.pop(), fruits);\nconsole.log(fruits.unshift(\"kiwi\"), fruits);\nconsole.log(fruits.shift(), fruits);\n\nconst months = [\"Jan\", \"march\", \"April\", \"June\", \"July\"];\nmonths.splice(months.length, 0, \"Dec\");      // add at end\nmonths.splice(months.indexOf(\"march\"), 1, \"March\"); // replace\nconst removed = months.splice(months.indexOf(\"June\"), 1); // delete\nconsole.log(months, removed);\n\nconsole.log(months.slice(1, 3), months.at(-1));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between slice and splice?",
+          "a": "slice returns a shallow copy of part of the array and leaves the original untouched. splice changes the original array by removing, replacing or adding items and returns the removed items."
+        },
+        {
+          "q": "What does push return?",
+          "a": "The new length of the array."
+        },
+        {
+          "q": "How do you check whether a value is an array?",
+          "a": "Array.isArray(value). typeof returns \"object\" for arrays."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-array-iteration",
+      "title": "Iterating: forEach, map and for...of",
+      "level": "beginner",
+      "summary": "Loop over arrays with for...of or forEach, and transform every item into a new array with map.",
+      "description": "### forEach\nRuns a callback for each element, returns `undefined`. Use it for **side effects** such as logging or updating the DOM.\n\n```js\n[1, 2, 3].forEach((value, index, array) => console.log(index, value));\n```\n\n### map\nCreates a **new array** by applying a callback to every element. The original array is not changed and the length stays the same. Use it to **transform** data.\n\n```js\nconst doubled = [1, 2, 3].map((n) => n * 2); // [2, 4, 6]\n```\n\n### Key differences\n| | `forEach` | `map` |\n|---|---|---|\n| Returns | `undefined` | new array |\n| Chainable | no | yes |\n| Purpose | side effects | transformation |\n\n### Callback arguments\nEvery array callback receives `(element, index, array)`. Use only what you need.\n\n### Choosing\n- Need the result as an array: `map`.\n- Need to stop early: `for...of` with `break`, or `some`/`every`.\n- Need to `await` in order: `for...of`.\n\n### Chaining\nBecause `map` and `filter` return arrays, you can chain: `users.filter(isActive).map(toName)`.\n\n### Real example\nRendering a list in the UI is a `map` from data to HTML strings or elements.",
+      "keyPoints": [
+        "forEach returns undefined, map returns a new array",
+        "map keeps array length and does not mutate",
+        "Callbacks receive (element, index, array)",
+        "Chain map and filter for pipelines",
+        "forEach cannot be broken out of"
+      ],
+      "pitfalls": [
+        "Using map just for side effects creates a useless array",
+        "forEach(async fn) does not wait for the async work",
+        "A map callback without return fills the array with undefined"
+      ],
+      "examples": [
+        {
+          "title": "forEach vs map",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const numbers = [1, 2, 3, 4, 5];\n\nconst ret = numbers.forEach((n) => n * 2);\nconsole.log(\"forEach returns:\", ret);\n\nconst doubled = numbers.map((n) => n * 2);\nconsole.log(\"map returns:\", doubled, \"original:\", numbers);\n\nconst words = [\"APPLE\", \"banana\", \"Cherry\"];\nconsole.log(words.map((w) => w.toLowerCase()));\nconsole.log([\"ram\", \"vinod\"].map((n) => `Mr. ${n}`));\n\nconst evenSquares = numbers.filter((n) => n % 2 === 0).map((n) => n * n);\nconsole.log(evenSquares);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between forEach and map?",
+          "a": "forEach just runs a function for each item and returns undefined. map returns a new array of the callback results and can be chained."
+        },
+        {
+          "q": "Does map mutate the original array?",
+          "a": "No. It returns a new array of the same length; the original stays unchanged (unless your callback mutates the objects inside)."
+        },
+        {
+          "q": "Can you break out of a forEach loop?",
+          "a": "Not with break or return. Use a for loop, for...of, some or every instead."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-array-search-filter",
+      "title": "Searching and Filtering: find, filter, some, every",
+      "level": "beginner",
+      "summary": "Locate items with indexOf, includes and find, and select subsets with filter, some and every.",
+      "description": "### Searching for a value\n- `indexOf(x, from)` - first index or `-1`.\n- `lastIndexOf(x)` - last index or `-1`.\n- `includes(x)` - `true`/`false`. Handles `NaN` correctly, `indexOf` does not.\n\nThese use strict equality, so they are good for primitives only.\n\n### Searching with a condition\n- `find(cb)` - **first element** that passes, or `undefined`.\n- `findIndex(cb)` - its index, or `-1`.\n- `findLast(cb)` / `findLastIndex(cb)` (ES2023) - search from the end.\n\n### Filtering\n`filter(cb)` returns a **new array** with all elements for which `cb` returns truthy. Typical uses: remove an item from a cart, search boxes, keeping active users.\n\n```js\nconst cart = [1, 2, 3, 6, 5, 6];\ncart.filter((id) => id !== 6); // [1, 2, 3, 5]\n```\n\n### Boolean checks\n- `some(cb)` - at least one passes (stops early).\n- `every(cb)` - all pass (stops early; `[]` gives `true`).\n\n### Unique values\n`arr.filter((v, i, a) => a.indexOf(v) === i)` or `[...new Set(arr)]`.\n\n### Choosing\n| Need | Method |\n|---|---|\n| does it exist? | `includes` / `some` |\n| the item | `find` |\n| its position | `findIndex` / `indexOf` |\n| all matches | `filter` |\n| are all valid? | `every` |",
+      "keyPoints": [
+        "includes returns a boolean, indexOf returns a position",
+        "find returns the first match, filter returns all matches",
+        "some/every short-circuit and return booleans",
+        "findLast and findLastIndex search from the end",
+        "Set gives the quickest unique values"
+      ],
+      "pitfalls": [
+        "indexOf cannot find NaN, includes can",
+        "find returns undefined (not -1) when nothing matches",
+        "Objects are compared by reference in includes/indexOf"
+      ],
+      "examples": [
+        {
+          "title": "Search and filter products",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const products = [\n  { name: \"Laptop\", price: 1200 },\n  { name: \"Phone\", price: 800 },\n  { name: \"Tablet\", price: 300 },\n  { name: \"Smartwatch\", price: 150 },\n];\nconsole.log(products.filter((p) => p.price <= 500));\nconsole.log(products.find((p) => p.price > 700));\nconsole.log(products.findIndex((p) => p.name === \"Tablet\"));\nconsole.log(products.some((p) => p.price > 1000), products.every((p) => p.price > 200));\n\nconst nums = [1, 2, 3, 4, 6, 5, 6, 7];\nconsole.log(nums.indexOf(6), nums.lastIndexOf(6), nums.includes(9));\nconsole.log(nums.filter((v, i, a) => a.indexOf(v) === i));\nconsole.log([...new Set(nums)]);\nconsole.log([NaN].indexOf(NaN), [NaN].includes(NaN));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between find and filter?",
+          "a": "find returns only the first matching element (or undefined). filter returns a new array containing all matching elements (empty array if none)."
+        },
+        {
+          "q": "Difference between some and every?",
+          "a": "some is true if at least one element passes the test; every is true only if all elements pass."
+        },
+        {
+          "q": "How do you remove duplicates from an array?",
+          "a": "Use [...new Set(arr)] for primitives, or filter with indexOf for a manual approach."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-array-sort",
+      "title": "Sorting Arrays",
+      "level": "intermediate",
+      "summary": "sort() converts to strings by default, so pass a compare function for numbers and objects.",
+      "description": "`Array.prototype.sort()` sorts **in place** (mutates) and returns the same array.\n\n### Default behaviour\nWithout a compare function, items are converted to **strings** and compared by UTF-16 code. That is why `[10, 9, 1].sort()` gives `[1, 10, 9]`.\n\n### Compare function\n`sort((a, b) => ...)` must return:\n- **negative** number - `a` goes before `b`\n- **positive** number - `b` goes before `a`\n- **0** - keep order\n\n```js\nnums.sort((a, b) => a - b); // ascending\nnums.sort((a, b) => b - a); // descending\n```\n\n### Sorting objects and strings\n```js\nusers.sort((a, b) => a.age - b.age);\nnames.sort((a, b) => a.localeCompare(b)); // correct for accents and case\n```\n\n### Stable sort\nSince ES2019 `sort` is **stable**: equal elements keep their original relative order. Sort by one key and then another works as expected.\n\n### Non-mutating versions (ES2023)\n`toSorted()`, `toReversed()` return new arrays, so they are safe for React state.\n\n### Related\n`reverse()` mutates; `toReversed()` does not. To sort a copy in older code: `[...arr].sort(...)`.\n\n### Performance\nSorting is O(n log n). Do not sort inside a render loop for large arrays without memoising.",
+      "keyPoints": [
+        "sort mutates the array",
+        "Default sort is alphabetical by string value",
+        "Compare function returns negative, zero or positive",
+        "Use localeCompare for strings",
+        "toSorted returns a copy (ES2023)"
+      ],
+      "pitfalls": [
+        "[10, 9, 1].sort() does not sort numerically",
+        "Compare function returning a boolean does not work reliably",
+        "Sorting state arrays in place in React causes bugs"
+      ],
+      "examples": [
+        {
+          "title": "Numbers, strings and objects",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const nums = [10, 9, 1, 100, 25];\nconsole.log([...nums].sort());\nconsole.log([...nums].sort((a, b) => a - b));\nconsole.log([...nums].sort((a, b) => b - a));\n\nconst names = [\"éclair\", \"Banana\", \"apple\", \"Cherry\"];\nconsole.log([...names].sort());\nconsole.log([...names].sort((a, b) => a.localeCompare(b)));\n\nconst users = [\n  { name: \"Asha\", age: 31 },\n  { name: \"Ravi\", age: 22 },\n  { name: \"Meera\", age: 27 },\n];\nconsole.log(users.toSorted((a, b) => a.age - b.age).map((u) => u.name));\nconsole.log(users.map((u) => u.name));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does [10, 9, 1].sort() return [1, 10, 9]?",
+          "a": "The default sort converts elements to strings and compares them lexicographically, so \"10\" comes before \"9\"."
+        },
+        {
+          "q": "How do you sort numbers in descending order?",
+          "a": "arr.sort((a, b) => b - a)."
+        },
+        {
+          "q": "Does sort mutate the array?",
+          "a": "Yes, it sorts in place and returns the same array. Use toSorted() or copy first with [...arr] when you need the original."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-array-reduce",
+      "title": "reduce() Explained",
+      "level": "intermediate",
+      "summary": "reduce folds an array into a single value - sum, object, grouped data or even another array.",
+      "description": "`reduce` walks through the array, carrying an **accumulator** and returning a single result.\n\n```js\narray.reduce((accumulator, current, index, array) => {\n  return newAccumulator;\n}, initialValue);\n```\n\n### How it runs\n1. Start with `accumulator = initialValue`.\n2. For each element call the callback with `(accumulator, element)`.\n3. Whatever you return becomes the next accumulator.\n4. The final accumulator is the result.\n\nIf you omit `initialValue`, the first element is used as the accumulator and iteration starts at the second element. Calling `reduce` on an **empty array without an initial value throws a TypeError**. Always pass an initial value.\n\n### Typical uses\n- Sum, product, min, max.\n- Counting occurrences: `{ apple: 2, mango: 1 }`.\n- Grouping items by a key.\n- Converting an array to an object (`id -> item`).\n- Flattening arrays or building pipelines.\n\n### reduceRight\nSame but from right to left (used for function composition).\n\n### Readability tip\n`reduce` is powerful but can be hard to read. If a simple `map`/`filter`/`for...of` is clearer, use it. A good reducer is a **pure** function that returns a new accumulator (or mutates only its own fresh accumulator).",
+      "keyPoints": [
+        "Accumulator carries the result between iterations",
+        "Always provide an initial value",
+        "Return the accumulator every time",
+        "Can build numbers, objects or arrays",
+        "reduceRight goes from right to left"
+      ],
+      "pitfalls": [
+        "Forgetting to return the accumulator gives undefined on the next step",
+        "Empty array without initial value throws TypeError",
+        "Mutating the accumulator when it is the original input"
+      ],
+      "examples": [
+        {
+          "title": "Sum, count and group",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const prices = [100, 200, 300, 400, 500];\nconst total = prices.reduce((acc, p) => acc + p, 0);\nconsole.log(\"total:\", total);\n\nconst fruits = [\"apple\", \"mango\", \"apple\", \"banana\", \"mango\", \"apple\"];\nconst count = fruits.reduce((acc, f) => {\n  acc[f] = (acc[f] || 0) + 1;\n  return acc;\n}, {});\nconsole.log(count);\n\nconst people = [\n  { name: \"A\", city: \"Pune\" },\n  { name: \"B\", city: \"Delhi\" },\n  { name: \"C\", city: \"Pune\" },\n];\nconst byCity = people.reduce((acc, p) => {\n  (acc[p.city] ||= []).push(p.name);\n  return acc;\n}, {});\nconsole.log(byCity);\n\nconsole.log(Math.max(...prices), prices.reduce((a, b) => Math.max(a, b)));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What are the arguments of reduce?",
+          "a": "A callback (accumulator, currentValue, index, array) and an optional initial value for the accumulator."
+        },
+        {
+          "q": "What happens if you call reduce on an empty array without an initial value?",
+          "a": "It throws a TypeError: \"Reduce of empty array with no initial value\"."
+        },
+        {
+          "q": "How would you count the occurrences of each item using reduce?",
+          "a": "Start with an empty object and increment acc[item] = (acc[item] || 0) + 1 for every element, returning acc."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    },
+    {
+      "id": "js-array-modern-methods",
+      "title": "flat, flatMap, at, Array.from and Immutable Methods",
+      "level": "intermediate",
+      "summary": "Modern array helpers for flattening, negative indexing, creating arrays and non-mutating updates.",
+      "description": "Modern JavaScript added many helpful array methods.\n\n### Flattening\n- `flat(depth)` - flattens nested arrays one level by default; `flat(Infinity)` flattens fully.\n- `flatMap(cb)` - `map` followed by `flat(1)`. Great when each item maps to several items.\n\n### Access\n- `at(index)` (ES2022) - supports negative indexes: `arr.at(-1)` is the last item.\n\n### Creating arrays\n- `Array.from(iterable | arrayLike, mapFn)` - from a string, Set, NodeList or `{ length: 3 }`.\n- `Array.of(...items)`.\n- `new Array(3).fill(0)` - prefilled array.\n- `[...Array(5).keys()]` - `[0, 1, 2, 3, 4]`.\n\n### Immutable versions (ES2023)\nThese return a **new array** instead of mutating:\n| Mutating | Non-mutating |\n|---|---|\n| `reverse()` | `toReversed()` |\n| `sort()` | `toSorted()` |\n| `splice()` | `toSpliced()` |\n| `arr[i] = v` | `with(i, v)` |\n\nAlso `findLast()` and `findLastIndex()` (ES2023), `Object.groupBy()` / `Map.groupBy()` (ES2024) for grouping.\n\n### Other useful ones\n`join`, `concat`, `fill`, `copyWithin`, `entries`, `keys`, `values`, `Array.prototype.includes`.\n\nThese non-mutating methods fit perfectly with immutable state updates in React and Redux.",
+      "keyPoints": [
+        "flat and flatMap remove nesting",
+        "at(-1) reads from the end",
+        "Array.from converts iterables and array-likes",
+        "toSorted/toReversed/toSpliced/with return new arrays",
+        "Object.groupBy groups items by key (ES2024)"
+      ],
+      "pitfalls": [
+        "flat() only goes one level deep by default",
+        "Array(3).map(...) skips empty slots - use Array.from({length:3}, fn)",
+        "ES2023 methods need a recent browser/Node (Node 20+)"
+      ],
+      "examples": [
+        {
+          "title": "flat, flatMap, at and Array.from",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log([1, [2, [3, [4]]], 5].flat());\nconsole.log([1, [2, [3, [4]]], 5].flat(Infinity));\n\nconst sentences = [\"My name\", \"is vinod\", \"thapa\"];\nconsole.log(sentences.flatMap((s) => s.split(\" \")));\n\nconst arr = [1, 2, 4, 5, 6, 7];\nconsole.log(arr.at(-1), arr.at(0));\n\nconsole.log(Array.from(\"abc\"), Array.from({ length: 3 }, (_, i) => i * i));\nconsole.log([...new Set([3, 3, 4])]);"
+        },
+        {
+          "title": "Non-mutating methods (ES2023)",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const names = [\"vinod\", \"bahadur\", \"thapa\", \"kodyfier\"];\nconsole.log(names.toReversed(), names);\nconsole.log(names.toSorted(), names);\nconsole.log(names.toSpliced(1, 1, \"TT\"), names);\nconsole.log(names.with(2, \"THAPA\"), names);\n\nconst nums = [1, 2, 3, 4, 5, 6, 4];\nconsole.log(nums.findLast((n) => n > 4), nums.findLastIndex((n) => n === 4));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between map and flatMap?",
+          "a": "flatMap maps each element and then flattens the result by one level, so callbacks that return arrays produce a single flat array."
+        },
+        {
+          "q": "Why use arr.at(-1) instead of arr[arr.length - 1]?",
+          "a": "It is shorter and works with negative indexes counting from the end."
+        },
+        {
+          "q": "How do toSorted and with help in React?",
+          "a": "They return new arrays without mutating the original, which fits the immutable state update rule."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2019.js, JS-one-shot/ecmascripts/es2022.js, JS-one-shot/ecmascripts/es2023.js"
+    },
+    {
+      "id": "js-array-patterns",
+      "title": "Common Array Patterns and Interview Recipes",
+      "level": "intermediate",
+      "summary": "Reusable recipes: unique, chunk, group, intersect, rotate, remove, and quick statistics.",
+      "description": "These short recipes appear again and again in interviews and real projects. Learn the idea behind each one rather than memorising code.\n\n### Unique values\n`[...new Set(arr)]` - a Set stores each value once.\n\n### Chunk into groups\nSlice the array in steps of `size`:\n```js\nconst chunk = (arr, n) =>\n  Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));\n```\n\n### Group by a key\n`reduce` into an object of arrays, or `Object.groupBy(arr, fn)` in new engines.\n\n### Intersection / difference\n```js\nconst common = a.filter((x) => b.includes(x));\nconst onlyInA = a.filter((x) => !b.includes(x));\n```\nUse a `Set` of `b` for large arrays so lookup is O(1).\n\n### Remove an item immutably\n`arr.filter((x) => x.id !== id)`.\n\n### Update an item immutably\n`arr.map((x) => (x.id === id ? { ...x, done: true } : x))`.\n\n### Copy an array\n`[...arr]`, `arr.slice()`, `Array.from(arr)` - all shallow copies. Use `structuredClone(arr)` for a deep copy.\n\n### Swap and rotate\n`[a[0], a[1]] = [a[1], a[0]]` swaps. Rotate left: `[...a.slice(k), ...a.slice(0, k)]`.\n\n### Max / min\n`Math.max(...nums)` works until the array is huge; `reduce` has no argument limit.",
+      "keyPoints": [
+        "Set makes unique values and fast lookups",
+        "filter removes, map updates immutably",
+        "Shallow copy with spread; deep copy with structuredClone",
+        "reduce can group or count",
+        "Destructuring swaps two values"
+      ],
+      "pitfalls": [
+        "Spread copies are shallow - nested objects are still shared",
+        "includes inside filter is O(n^2) for large arrays",
+        "Math.max(...hugeArray) can throw a RangeError"
+      ],
+      "examples": [
+        {
+          "title": "Recipe collection",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const chunk = (arr, n) =>\n  Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));\nconsole.log(chunk([1, 2, 3, 4, 5, 6, 7], 3));\n\nconst a = [1, 2, 3, 4], b = [3, 4, 5];\nconst setB = new Set(b);\nconsole.log(\"common:\", a.filter((x) => setB.has(x)), \"only a:\", a.filter((x) => !setB.has(x)));\n\nconst todos = [{ id: 1, done: false }, { id: 2, done: false }];\nconst updated = todos.map((t) => (t.id === 2 ? { ...t, done: true } : t));\nconsole.log(updated, todos[1].done);\n\nconst rotate = (arr, k) => [...arr.slice(k), ...arr.slice(0, k)];\nconsole.log(rotate([1, 2, 3, 4, 5], 2));\n\nlet x = 1, y = 2;\n[x, y] = [y, x];\nconsole.log(x, y);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you find the common elements of two arrays?",
+          "a": "Put one array in a Set and filter the other with set.has(item). This is O(n + m)."
+        },
+        {
+          "q": "How do you update one object in an array without mutating it?",
+          "a": "Use map and return a new object for the matching item with spread: arr.map(x => x.id === id ? { ...x, ...changes } : x)."
+        },
+        {
+          "q": "How can you swap two variables without a temp variable?",
+          "a": "Use array destructuring: [a, b] = [b, a]."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

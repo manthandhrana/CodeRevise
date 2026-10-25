@@ -1,0 +1,351 @@
+{
+ "id": "node-deployment",
+ "title": "Deployment",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "node-production-checklist",
+   "title": "Production Readiness Checklist",
+   "level": "intermediate",
+   "summary": "What to configure before real users arrive: NODE_ENV, config, security, logging, limits, health and shutdown.",
+   "description": "\"It works on my machine\" is not production. Run through this checklist before every launch.\n\n### Runtime and config\n* Use an active **LTS** Node version, pinned (`.nvmrc`, `engines`, Docker tag)\n* Set `NODE_ENV=production` (Express and many libraries disable debug features and enable caching)\n* All configuration from **environment variables**; fail fast when something is missing\n* `npm ci --omit=dev` so devDependencies are not installed\n* Never run as root (in containers use the `node` user)\n\n### Security\n* HTTPS everywhere, HSTS, `helmet`, strict CORS allow-list\n* Secrets in a secret manager, never in git or images\n* Rate limiting, body size limits, input validation\n* `npm audit` clean (or accepted), dependencies updated\n* `trust proxy` configured behind a load balancer\n* Hide stack traces and `X-Powered-By`\n\n### Reliability\n* **Graceful shutdown** on SIGTERM\n* **Health endpoints** (`/health`, `/ready`)\n* Timeouts for every outgoing call (database, HTTP)\n* Process supervisor/orchestrator restarts crashes (PM2, systemd, Docker, Kubernetes)\n* Connection pools sized for your database limits\n* Uncaught exception and rejection handlers: log and exit\n\n### Observability\n* Structured logs to stdout with request ids\n* Error tracking (Sentry), metrics and uptime checks\n* Alerts for error rate, latency, memory and disk\n\n### Data\n* Database **migrations** are automated and tested\n* **Backups** exist and restoring has been practised\n* Indexes for the real queries\n\n### Performance\n* Compression (gzip/brotli, usually at the proxy), caching headers, a CDN for static files\n* Run on all cores (cluster/PM2/replicas)\n* Load tested at expected traffic\n\n### Release process\nCI runs lint and tests; deploys are automated, repeatable and **reversible** (rollback plan, previous image kept).",
+   "keyPoints": [
+    "Pin an LTS Node version and set NODE_ENV=production",
+    "Configuration and secrets come from the environment",
+    "Health checks, graceful shutdown and restarts make the app resilient",
+    "Structured logs, error tracking and alerts are mandatory",
+    "Automate migrations and test your backups and rollbacks"
+   ],
+   "pitfalls": [
+    "Deploying with NODE_ENV unset (development behaviour in production)",
+    "No timeouts on outgoing requests",
+    "Backups that were never restored in practice"
+   ],
+   "examples": [
+    {
+     "title": "Start-up guard rails",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// src/server.js\nimport { config } from './config.js';          // throws if required env vars are missing\nimport app from './app.js';\n\nif (config.isProd && config.jwtSecret.length < 32) {\n  throw new Error('JWT_SECRET must be at least 32 characters in production');\n}\n\nconst server = app.listen(config.port, '0.0.0.0', () => {\n  console.log(JSON.stringify({ msg: 'listening', port: config.port, env: config.env, node: process.version }));\n});\n\nserver.keepAliveTimeout = 65_000;   // longer than most load balancers' idle timeout (60s)\nserver.headersTimeout = 66_000;\nserver.requestTimeout = 30_000;\n\nprocess.on('unhandledRejection', (err) => { console.error(err); process.exit(1); });\nprocess.on('uncaughtException', (err) => { console.error(err); process.exit(1); });",
+     "explanation": "keepAliveTimeout above the load balancer idle timeout avoids sporadic 502 errors.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does NODE_ENV=production change?",
+     "a": "Libraries use it to enable optimisations and disable development behaviour: Express caches views and hides detailed errors, and many packages skip debug code. It is a convention, so your own code can also branch on it."
+    },
+    {
+     "q": "Why set keepAliveTimeout higher than the load balancer idle timeout?",
+     "a": "If Node closes an idle connection before the balancer does, the balancer may send a request on a connection that is just closing, causing intermittent 502 errors. Keeping Node's timeout larger avoids that race."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-docker",
+   "title": "Docker for Node.js",
+   "level": "intermediate",
+   "summary": "Package your app in a small, secure image: multi-stage builds, layer caching, non-root user, signals and compose.",
+   "description": "**Docker** packages your app with its exact runtime so it runs the same on every machine and server.\n\n### Key terms\n* **Image**: the read-only package (OS layer, Node, your code)\n* **Container**: a running instance of an image\n* **Dockerfile**: the build recipe; **.dockerignore** excludes files from the build context\n* **Compose**: define multi-container setups (app + database + redis)\n\n### Best practices\n1. **Small base**: `node:22-slim` or `node:22-alpine` (alpine uses musl; some native modules prefer slim)\n2. **Layer caching**: copy `package*.json` and run `npm ci` **before** copying source, so dependency layers are reused\n3. **Multi-stage build**: build (TypeScript, bundling) in one stage, copy only results into a lean runtime stage\n4. `npm ci --omit=dev` in the final stage\n5. **Run as non-root**: `USER node`\n6. `ENV NODE_ENV=production`\n7. Use the **exec form** `CMD [\"node\", \"server.js\"]` so Node is PID 1 and receives SIGTERM (not `npm start`)\n8. `HEALTHCHECK` or orchestrator probes\n9. `.dockerignore`: `node_modules`, `.git`, `.env`, logs, tests\n10. Pin versions; scan images (`docker scout`, Trivy)\n\n### Config and secrets\nPass settings at run time: `docker run --env-file .env -p 3000:3000 app`. Do not bake secrets into the image or `COPY .env`.\n\n### Useful commands\n`docker build -t shop-api .`, `docker run -p 3000:3000 shop-api`, `docker logs -f`, `docker compose up -d`, `docker exec -it <id> sh`.\n\n### Development\nCompose with a bind mount and `node --watch` gives live reload inside a container (`docker compose watch` also syncs files).",
+   "keyPoints": [
+    "Copy package files and install before copying source to use layer caching",
+    "Multi-stage builds keep images small",
+    "Run as the non-root node user with NODE_ENV=production",
+    "Use CMD in exec form so signals reach Node",
+    "Never bake secrets into images; use .dockerignore"
+   ],
+   "pitfalls": [
+    "COPY . . before npm ci (cache busted on every code change)",
+    "Using npm start as the container command (SIGTERM lost)",
+    "Running as root and shipping devDependencies"
+   ],
+   "examples": [
+    {
+     "title": "Dockerfile (multi-stage)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# syntax=docker/dockerfile:1\nFROM node:22-slim AS deps\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci --omit=dev\n\nFROM node:22-slim AS build\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nRUN npm run build            # tsc / bundler; remove if you have no build step\n\nFROM node:22-slim AS runtime\nENV NODE_ENV=production\nWORKDIR /app\nCOPY --from=deps  /app/node_modules ./node_modules\nCOPY --from=build /app/dist ./dist\nCOPY package.json ./\nUSER node\nEXPOSE 3000\nHEALTHCHECK --interval=30s --timeout=3s --start-period=10s \\\n  CMD node -e \"fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"\nCMD [\"node\", \"dist/server.js\"]",
+     "explanation": "The final image has production dependencies and compiled output only.",
+     "lang": "docker"
+    },
+    {
+     "title": ".dockerignore and docker-compose.yml",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# .dockerignore\nnode_modules\n.git\n.env\n*.log\ncoverage\ndist\n\n# docker-compose.yml\nservices:\n  api:\n    build: .\n    ports: [\"3000:3000\"]\n    env_file: .env\n    environment:\n      DATABASE_URL: postgres://app:secret@db:5432/shop\n    depends_on:\n      db:\n        condition: service_healthy\n    restart: unless-stopped\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_USER: app\n      POSTGRES_PASSWORD: secret\n      POSTGRES_DB: shop\n    volumes: [pgdata:/var/lib/postgresql/data]\n    healthcheck:\n      test: [\"CMD-SHELL\", \"pg_isready -U app -d shop\"]\n      interval: 5s\n      retries: 10\nvolumes:\n  pgdata:",
+     "explanation": "Inside the compose network the database host name is the service name db.",
+     "lang": "yaml"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why copy package.json before the source code in a Dockerfile?",
+     "a": "Docker caches each layer. Dependencies change rarely, so copying package files and running npm ci first lets Docker reuse that cached layer when only source files change, making rebuilds fast."
+    },
+    {
+     "q": "Why use CMD [\"node\", \"server.js\"] instead of npm start?",
+     "a": "Exec form makes Node the main process (PID 1) so it receives SIGTERM and can shut down gracefully. npm start adds a wrapper process that often does not forward signals."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-nginx-reverse-proxy",
+   "title": "nginx as a Reverse Proxy",
+   "level": "intermediate",
+   "summary": "Put nginx in front of Node for TLS, compression, static files, load balancing and WebSocket support.",
+   "description": "A **reverse proxy** sits between the internet and your Node app. Clients talk to nginx, and nginx forwards requests to Node on a private port.\n\n### Why use one\n* **TLS termination** and automatic certificates (certbot / Let's Encrypt)\n* Serves **static files** and caches far faster than Node\n* **Compression**, HTTP/2 and HTTP/3\n* **Load balancing** across several Node instances\n* Rate limiting, request size limits, security headers\n* Buffers slow clients so Node is not tied up (slowloris protection)\n* One server can host several apps by domain name\n\n### Typical config\nMap a domain to `http://127.0.0.1:3000`, forward the original host and client IP via headers, and redirect HTTP to HTTPS.\n\n### Headers Node needs\n`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`. In Express set `app.set('trust proxy', 1)` so `req.ip`, `req.protocol` and `Secure` cookies work.\n\n### WebSockets and SSE\nWebSockets need `proxy_http_version 1.1;` plus `Upgrade` and `Connection` headers. For server-sent events set `proxy_buffering off;` and a long `proxy_read_timeout`.\n\n### Operations\n`sudo nginx -t` tests the config, `sudo systemctl reload nginx` applies it without downtime. Logs are in `/var/log/nginx/`.\n\n### Alternatives\n**Caddy** (automatic HTTPS with a tiny config), **Traefik** (container aware), HAProxy, cloud load balancers (ALB), and platform routers on Render or Railway.",
+   "keyPoints": [
+    "nginx terminates TLS, serves static files and forwards the rest to Node",
+    "Pass X-Forwarded-* headers and enable trust proxy in Express",
+    "WebSockets require Upgrade headers; SSE needs buffering off",
+    "nginx -t before reload; use certbot for certificates",
+    "Caddy is a simpler alternative with automatic HTTPS"
+   ],
+   "pitfalls": [
+    "Forgetting trust proxy, so every client appears as 127.0.0.1",
+    "Missing WebSocket upgrade headers",
+    "Default 1 MB client_max_body_size blocking uploads"
+   ],
+   "examples": [
+    {
+     "title": "nginx server block",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# /etc/nginx/sites-available/myapp\nupstream node_app {\n    server 127.0.0.1:3000;\n    keepalive 32;\n}\n\nserver {\n    listen 80;\n    server_name example.com www.example.com;\n    return 301 https://example.com$request_uri;\n}\n\nserver {\n    listen 443 ssl http2;\n    server_name example.com;\n\n    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;\n    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;\n\n    client_max_body_size 10m;\n    gzip on;\n    gzip_types text/css application/javascript application/json image/svg+xml;\n\n    location /assets/ {                     # static files straight from disk\n        alias /var/www/myapp/public/assets/;\n        expires 1y;\n        add_header Cache-Control \"public, immutable\";\n    }\n\n    location / {\n        proxy_pass http://node_app;\n        proxy_http_version 1.1;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_set_header Upgrade $http_upgrade;       # WebSockets\n        proxy_set_header Connection \"upgrade\";\n    }\n}",
+     "explanation": "Enable with a symlink into sites-enabled, then run sudo nginx -t and sudo systemctl reload nginx.",
+     "lang": "text"
+    },
+    {
+     "title": "Certificates and Express setting",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "sudo apt install nginx certbot python3-certbot-nginx\nsudo certbot --nginx -d example.com -d www.example.com    # gets and renews certificates\nsudo nginx -t && sudo systemctl reload nginx\n\n# in your Node app\n# app.set('trust proxy', 1);",
+     "explanation": "certbot installs a timer that renews certificates automatically.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why run Node behind nginx?",
+     "a": "nginx handles TLS, static files, compression, buffering and load balancing efficiently, protects Node from slow clients and lets you run several apps and scale instances without exposing Node directly."
+    },
+    {
+     "q": "What breaks if you forget trust proxy?",
+     "a": "Express sees the proxy as the client: req.ip is 127.0.0.1, req.protocol is http, secure cookies are not set and IP-based rate limits treat all users as one."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-ci-cd",
+   "title": "CI/CD with GitHub Actions",
+   "level": "intermediate",
+   "summary": "Automate lint, test, build and deployment on every push, with secrets, caching and environments.",
+   "description": "**Continuous Integration** runs checks on every change; **Continuous Delivery/Deployment** ships passing builds automatically. Together they make releases boring and safe.\n\n### Stages of a Node pipeline\n1. **Install**: `npm ci` (with dependency cache)\n2. **Lint and typecheck**: `npm run lint`, `tsc --noEmit`\n3. **Test**: unit and integration tests, with service containers (Postgres, Redis) if needed\n4. **Audit**: `npm audit --omit=dev`\n5. **Build**: compile TypeScript or build a Docker image\n6. **Publish**: push the image to a registry (GHCR, Docker Hub, ECR)\n7. **Deploy**: SSH to a server, call a platform deploy hook, update Kubernetes\n8. **Smoke test**: hit `/health` after deployment; roll back on failure\n\n### GitHub Actions basics\nWorkflows are YAML files in `.github/workflows/`. Triggers: `push`, `pull_request`, `schedule`, `workflow_dispatch`. A **job** runs on a runner (`ubuntu-latest`) and consists of **steps** (`uses:` an action or `run:` a command). **Secrets** (Settings, Secrets) are exposed as `${{ secrets.NAME }}`. **Environments** add approvals for production.\n\n### Good practices\n* Protect `main`: require passing checks and reviews\n* Use the `matrix` strategy to test several Node versions\n* Cache with `actions/setup-node` (`cache: npm`)\n* Keep deployments **idempotent** and reversible; tag images with the git SHA\n* Never print secrets; grant jobs minimal permissions\n* Run deployments only from `main` (or tags), after tests pass\n\n### Hosting integrations\nRender, Railway, Vercel and Fly.io deploy on git push directly; Actions still handle tests before merging.",
+   "keyPoints": [
+    "CI runs lint, tests and builds on every push or pull request",
+    "CD deploys passing builds automatically and reversibly",
+    "Use secrets and environments for credentials and approvals",
+    "Tag Docker images with the commit SHA",
+    "Protect main with required status checks"
+   ],
+   "pitfalls": [
+    "Deploying without running tests",
+    "Echoing secrets in logs",
+    "Non-reversible deployments with no rollback plan"
+   ],
+   "examples": [
+    {
+     "title": "Test and deploy workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# .github/workflows/deploy.yml\nname: CI/CD\non:\n  push: { branches: [main] }\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    services:\n      postgres:\n        image: postgres:16\n        env: { POSTGRES_PASSWORD: test, POSTGRES_DB: app_test }\n        ports: ['5432:5432']\n        options: >-\n          --health-cmd \"pg_isready -U postgres\" --health-interval 5s --health-retries 10\n    env:\n      DATABASE_URL: postgres://postgres:test@localhost:5432/app_test\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 22, cache: npm }\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test\n      - run: npm audit --omit=dev --audit-level=high\n\n  deploy:\n    needs: test\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-latest\n    environment: production\n    steps:\n      - uses: actions/checkout@v4\n      - name: Deploy over SSH\n        uses: appleboy/ssh-action@v1\n        with:\n          host: ${{ secrets.SSH_HOST }}\n          username: deploy\n          key: ${{ secrets.SSH_KEY }}\n          script: |\n            cd /var/www/myapp\n            git pull origin main\n            npm ci --omit=dev\n            npm run migrate\n            pm2 reload ecosystem.config.cjs --env production\n      - name: Smoke test\n        run: curl --fail --retry 5 --retry-delay 3 https://example.com/health",
+     "explanation": "The deploy job runs only after tests pass on main, then verifies the live health endpoint.",
+     "lang": "yaml"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between continuous delivery and continuous deployment?",
+     "a": "Continuous delivery keeps every build ready to release but a person approves the production release. Continuous deployment releases every passing change to production automatically."
+    },
+    {
+     "q": "Why use npm ci in CI pipelines?",
+     "a": "It installs exactly what the lock file defines, fails if package.json and the lock file differ and starts from a clean node_modules, giving reproducible builds."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-hosting-options",
+   "title": "Hosting: Render, Railway, VPS and More",
+   "level": "beginner",
+   "summary": "Compare platform-as-a-service, containers and a plain VPS, and the steps to deploy to each.",
+   "description": "Where you host depends on budget, control and traffic.\n\n### Options\n| Type | Examples | Pros | Cons |\n|---|---|---|---|\n| **PaaS** | Render, Railway, Fly.io, Heroku, Koyeb | Deploy from git, HTTPS and scaling included | Costs grow, less control |\n| **Serverless / edge** | Vercel, AWS Lambda, Cloudflare Workers | Scale to zero, pay per use | Cold starts, execution limits, different model |\n| **Containers** | AWS ECS/Fargate, Google Cloud Run, Azure Container Apps | Portable, scalable | More concepts |\n| **Kubernetes** | EKS, GKE, DOKS | Powerful orchestration | Complex |\n| **VPS** | DigitalOcean, Hetzner, Linode, AWS EC2 | Cheap, full control | You manage OS, security, updates |\n\n### Deploying to a PaaS (Render/Railway)\n1. Push your code to GitHub\n2. Create a **Web Service** from the repository\n3. Build command `npm ci` (and `npm run build`), start command `npm start`\n4. Add **environment variables** in the dashboard (DATABASE_URL, JWT_SECRET)\n5. **Listen on `process.env.PORT`** and host `0.0.0.0`\n6. Add a managed database; set a health check path\n7. Every push to `main` redeploys\n\nFree tiers may sleep when idle (first request is slow) and have ephemeral disks: do not store uploads locally.\n\n### Deploying to a VPS\n1. Create a server, add an SSH key, disable password login\n2. Create a non-root user, enable a firewall (`ufw allow 22,80,443`)\n3. Install Node (nvm or NodeSource), nginx and certbot\n4. Clone the repo, `npm ci --omit=dev`, create the `.env`\n5. Run with PM2 or systemd; configure nginx; get TLS certificates\n6. Set up backups and updates (`unattended-upgrades`)\n\n### Databases\nUse managed databases (Neon, Supabase, MongoDB Atlas, PlanetScale, Render/Railway Postgres) so backups and updates are handled for you.",
+   "keyPoints": [
+    "PaaS (Render, Railway) is the fastest way to deploy from git",
+    "A VPS gives control but you manage security and updates",
+    "Always listen on process.env.PORT and 0.0.0.0",
+    "Use environment variables and managed databases",
+    "Do not rely on local disk for persistent data on PaaS"
+   ],
+   "pitfalls": [
+    "Hard-coding the port, so the platform health check fails",
+    "Binding to localhost only inside a container or PaaS",
+    "Storing uploads on ephemeral disks"
+   ],
+   "examples": [
+    {
+     "title": "Platform-ready start-up and scripts",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// server.js\nconst PORT = Number(process.env.PORT) || 3000;\napp.listen(PORT, '0.0.0.0', () => console.log(`listening on ${PORT}`));\n\n// package.json scripts\n// \"build\": \"tsc\",\n// \"start\": \"node dist/server.js\",\n// \"migrate\": \"prisma migrate deploy\"",
+     "explanation": "Platforms inject PORT and call npm run build then npm start.",
+     "lang": "javascript"
+    },
+    {
+     "title": "First-time VPS setup",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "ssh root@203.0.113.10\nadduser deploy && usermod -aG sudo deploy\nufw allow OpenSSH && ufw allow 80 && ufw allow 443 && ufw enable\n# as deploy user:\ncurl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs nginx\nsudo npm i -g pm2\ngit clone https://github.com/you/app.git && cd app && npm ci --omit=dev\ncp .env.example .env && nano .env\npm2 start ecosystem.config.cjs --env production && pm2 save && pm2 startup",
+     "explanation": "Then configure nginx and certbot as shown in the reverse proxy topic.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why must you read the port from process.env.PORT on platforms like Render?",
+     "a": "The platform assigns the port at runtime and routes traffic to it. If your app listens on a hard-coded port, the platform cannot reach it and the deploy fails health checks."
+    },
+    {
+     "q": "What are the downsides of a VPS compared to a PaaS?",
+     "a": "You must secure and patch the OS, set up TLS, process management, backups and monitoring yourself, which costs time but gives more control and a lower price at scale."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-monitoring",
+   "title": "Monitoring, Metrics and Error Tracking",
+   "level": "intermediate",
+   "summary": "See what production is doing: structured logs, metrics, uptime checks, error tracking (Sentry) and alerts.",
+   "description": "You cannot fix what you cannot see. Monitoring answers: **Is it up? Is it fast? What is failing? Who is affected?**\n\n### The three pillars\n| Pillar | What | Tools |\n|---|---|---|\n| **Logs** | Discrete events | pino to stdout, Loki, ELK, Datadog, CloudWatch, Better Stack |\n| **Metrics** | Numbers over time | Prometheus + Grafana, Datadog, `prom-client` |\n| **Traces** | A request's path across services | OpenTelemetry, Jaeger, Datadog APM |\n\n### What to measure (RED and USE)\n* **Rate**: requests per second\n* **Errors**: 5xx rate and error counts\n* **Duration**: latency percentiles (p50, p95, p99)\n* Resources: CPU, memory (`heapUsed`, RSS), **event loop lag**, open handles, DB pool usage, queue depth\n\n### Error tracking\n**Sentry** (or Rollbar, Bugsnag) captures exceptions with stack traces, request data, user and release version, groups duplicates and alerts you. Initialise it first in your app and add the Express error handler. Upload source maps for TypeScript or bundled code.\n\n### Uptime and alerts\nExternal pingers (UptimeRobot, Better Stack, Pingdom) call `/health` from outside. Alert on symptoms users feel: high error rate, high p95 latency, failing health checks, low disk, memory growth. Avoid alert fatigue: every alert should be actionable.\n\n### prom-client example idea\nExpose `GET /metrics` with a default metrics collector plus an `http_request_duration_seconds` histogram. Prometheus scrapes it; Grafana draws dashboards.\n\n### Release tracking\nTag errors with a version or git SHA so you see which deploy introduced a problem, and correlate logs with a **request id**.",
+   "keyPoints": [
+    "Logs, metrics and traces answer different questions",
+    "Track request rate, errors, latency percentiles and event loop lag",
+    "Sentry-style error tracking groups exceptions with context",
+    "External uptime checks plus actionable alerts",
+    "Tag releases and correlate by request id"
+   ],
+   "pitfalls": [
+    "Only monitoring CPU, ignoring latency and errors",
+    "Alerts that nobody acts on (alert fatigue)",
+    "No release or request id on errors"
+   ],
+   "examples": [
+    {
+     "title": "Prometheus metrics endpoint",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i prom-client\nimport client from 'prom-client';\n\nclient.collectDefaultMetrics();                        // CPU, memory, event loop lag, GC\n\nconst httpDuration = new client.Histogram({\n  name: 'http_request_duration_seconds',\n  help: 'HTTP request duration',\n  labelNames: ['method', 'route', 'status'],\n  buckets: [0.01, 0.05, 0.1, 0.3, 0.5, 1, 2, 5],\n});\n\napp.use((req, res, next) => {\n  const end = httpDuration.startTimer();\n  res.on('finish', () => end({ method: req.method, route: req.route?.path ?? 'unknown', status: res.statusCode }));\n  next();\n});\n\napp.get('/metrics', async (req, res) => {\n  res.set('Content-Type', client.register.contentType);\n  res.end(await client.register.metrics());\n});",
+     "explanation": "Use the route pattern (/users/:id), not the raw URL, as a label to avoid millions of label values.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Sentry setup",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// instrument.js - import FIRST (node --import ./instrument.js server.js)\nimport * as Sentry from '@sentry/node';\n\nSentry.init({\n  dsn: process.env.SENTRY_DSN,\n  environment: process.env.NODE_ENV,\n  release: process.env.GIT_SHA,\n  tracesSampleRate: 0.1,\n});\n\n// server.js, after the routes:\n// Sentry.setupExpressErrorHandler(app);\n// app.use(yourErrorHandler);",
+     "explanation": "Every unhandled error is sent to Sentry with the request context and release.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the three pillars of observability?",
+     "a": "Logs (events), metrics (aggregated numbers over time) and traces (the path of a single request through services). Together they let you detect, locate and understand problems."
+    },
+    {
+     "q": "Why is event loop lag a useful metric for Node?",
+     "a": "It shows how long callbacks wait because the single thread is busy. Rising lag means blocking code or CPU saturation, and it correlates with slow responses for all users."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-health-checks",
+   "title": "Health Checks and Zero-Downtime Deploys",
+   "level": "intermediate",
+   "summary": "Liveness and readiness endpoints, load balancer integration and rolling deploys that never drop requests.",
+   "description": "Load balancers and orchestrators need to know **whether to send traffic to an instance** and **whether to restart it**. Health endpoints answer.\n\n### Two kinds\n| Probe | Question | On failure |\n|---|---|---|\n| **Liveness** `/health` | Is the process alive and not stuck? | Restart the instance |\n| **Readiness** `/ready` | Can it serve traffic right now (DB connected, warmed up, not shutting down)? | Stop sending traffic, keep the process |\n\nKeep liveness **cheap and dependency free** (return 200). Checking the database in liveness can cause restart storms when the database blips. Readiness may check the database and cache with short timeouts.\n\n### Rolling deploy flow\n1. New instance starts and becomes **ready**\n2. Load balancer adds it to the pool\n3. Old instance receives SIGTERM, flips readiness to **503** and finishes in-flight requests (`server.close`)\n4. It exits; the next instance is replaced\n\nRepeat one by one. With PM2 use `pm2 reload`; with Kubernetes `RollingUpdate`; with Docker Compose use health checks and multiple replicas behind a proxy.\n\n### Kubernetes hints\n`livenessProbe`, `readinessProbe` and `startupProbe` with `httpGet`. `terminationGracePeriodSeconds` should exceed your shutdown deadline. A short `preStop` sleep (5 s) lets endpoints deregister first.\n\n### Database migrations\nMake schema changes **backward compatible** (expand, deploy, contract), so old and new versions run together during the rollout.\n\n### Version endpoint\n`/version` returns the git SHA, helping verify what is deployed.\n\n### Rollback\nKeep the previous image or release. Roll back first, debug later; make the rollback a single command.",
+   "keyPoints": [
+    "Liveness checks the process, readiness checks it can serve traffic",
+    "Keep liveness free of external dependencies",
+    "Flip readiness off on SIGTERM before closing the server",
+    "Rolling deploys replace instances one by one",
+    "Use backward-compatible migrations and keep a rollback path"
+   ],
+   "pitfalls": [
+    "Making the liveness probe depend on the database",
+    "Not failing readiness during shutdown, so traffic hits a closing server",
+    "Breaking migrations that old instances cannot tolerate"
+   ],
+   "examples": [
+    {
+     "title": "Health, readiness and shutdown",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "let shuttingDown = false;\n\napp.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));\n\napp.get('/ready', async (req, res) => {\n  if (shuttingDown) return res.status(503).json({ status: 'shutting-down' });\n  try {\n    await Promise.race([\n      pool.query('SELECT 1'),\n      new Promise((_, reject) => setTimeout(() => reject(new Error('db timeout')), 1000)),\n    ]);\n    res.json({ status: 'ready' });\n  } catch (err) {\n    res.status(503).json({ status: 'not-ready', reason: err.message });\n  }\n});\n\nconst server = app.listen(PORT, '0.0.0.0');\n\nprocess.on('SIGTERM', () => {\n  shuttingDown = true;                                // readiness now fails\n  setTimeout(() => {                                  // give the load balancer time to notice\n    server.close(async () => { await pool.end(); process.exit(0); });\n    server.closeIdleConnections();\n    setTimeout(() => process.exit(1), 10_000).unref();\n  }, 5000);\n});",
+     "explanation": "The 5-second delay lets the load balancer remove the instance before connections are closed.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Kubernetes probes",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "containers:\n  - name: api\n    image: ghcr.io/you/api:3f2b6c1\n    ports: [{ containerPort: 3000 }]\n    livenessProbe:\n      httpGet: { path: /health, port: 3000 }\n      periodSeconds: 10\n      failureThreshold: 3\n    readinessProbe:\n      httpGet: { path: /ready, port: 3000 }\n      periodSeconds: 5\n    lifecycle:\n      preStop:\n        exec: { command: [\"sleep\", \"5\"] }\nterminationGracePeriodSeconds: 30",
+     "explanation": "Kubernetes stops routing to the pod when readiness fails and restarts it when liveness fails repeatedly.",
+     "lang": "yaml"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Liveness vs readiness probe?",
+     "a": "Liveness tells the platform whether to restart a stuck process; readiness tells the load balancer whether to send traffic. A starting or shutting-down app can be live but not ready."
+    },
+    {
+     "q": "How do you deploy without dropping requests?",
+     "a": "Start new instances and wait for readiness, then drain old ones: fail readiness on SIGTERM, stop accepting connections, finish in-flight requests, then exit, repeating gradually (rolling update)."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

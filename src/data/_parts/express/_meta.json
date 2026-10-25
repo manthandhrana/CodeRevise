@@ -1,0 +1,7 @@
+{
+  "id": "express",
+  "title": "Express.js",
+  "tagline": "Build REST APIs and MERN backends with Node.js: from first route to production",
+  "description": "A from-scratch-to-hero Express 5 track: routing, middleware, request and response handling, error handling, MongoDB with Mongoose and PostgreSQL, authentication and authorization, validation and security, file uploads, real-time features, testing and deployment, connecting a React front end, eight complete projects and interview preparation. Examples use Express 5 and call out differences from v4.",
+  "color": "#475569"
+}

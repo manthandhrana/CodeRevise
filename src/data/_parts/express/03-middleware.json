@@ -1,0 +1,219 @@
+{
+ "id": "express-middleware",
+ "title": "Middleware",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "express-middleware-concept",
+   "title": "Middleware: The Pipeline and Its Types",
+   "level": "beginner",
+   "summary": "Middleware are functions with access to req, res and next that form the request pipeline; Express has five kinds.",
+   "description": "**Middleware** is a function with the signature `(req, res, next)`. It can read or change `req` and `res`, end the request, or call `next()` to hand control to the next function. Chain many of them and you get a **pipeline** - the heart of Express. In fact, route handlers are middleware too; they just usually end the response.\n\n```js\nfunction myMiddleware(req, res, next) {\n  // do something\n  next() // pass control on\n}\n```\n\n### The five types\n| Type | Where it is attached | Example |\n|---|---|---|\n| Application-level | `app.use(fn)` / `app.get(path, fn)` | logger, auth |\n| Router-level | `router.use(fn)` | admin-only routes |\n| Error-handling | `(err, req, res, next)` - 4 arguments | central error handler |\n| Built-in | shipped with Express | `express.json()`, `express.urlencoded()`, `express.static()` |\n| Third-party | npm packages | `cors`, `helmet`, `morgan`, `cookie-parser`, `compression` |\n\n### What a middleware can do\n1. Run any code.\n2. Modify `req` / `res` (e.g. `req.user = decoded`).\n3. End the cycle with `res.json()` (e.g. reject unauthenticated users).\n4. Call `next()` to continue, or `next(err)` to jump to error handling.\n\n### Scope\n`app.use(fn)` runs for every request. `app.use('/admin', fn)` runs only for URLs starting with `/admin`. `app.get('/x', fn, handler)` runs only for that route.\n\n### Mental model\nThink of an airport security line: passport check, baggage scan, boarding. Each step may let you pass (`next()`), stop you (`res.status(401)`), or raise an alarm (`next(err)`).",
+   "keyPoints": [
+    "Middleware signature is `(req, res, next)`; error middleware has four arguments",
+    "It must either end the response or call `next()`",
+    "Five kinds: application, router, error-handling, built-in, third-party",
+    "Scope with a path prefix, a router or an individual route",
+    "Route handlers are just the last middleware in the chain"
+   ],
+   "pitfalls": [
+    "Forgetting `next()` - the request hangs",
+    "Calling `next()` after already sending a response, which causes \"headers already sent\" errors",
+    "Defining error middleware with three arguments (Express then treats it as normal middleware)"
+   ],
+   "examples": [
+    {
+     "title": "Smallest middleware",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\n// application-level: runs for every request\napp.use((req, res, next) => {\n  req.requestTime = Date.now()\n  next()\n})\n\n// path-scoped\napp.use('/admin', (req, res, next) => {\n  console.log('admin area accessed')\n  next()\n})\n\napp.get('/', (req, res) => res.send(`Started at ${req.requestTime}`))\napp.get('/admin/stats', (req, res) => res.json({ users: 10 }))\n\napp.listen(3000)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is middleware in Express?",
+     "a": "A function (req, res, next) that runs between receiving a request and sending the response; it can modify req/res, end the request, or pass control with next()."
+    },
+    {
+     "q": "How does Express know a function is error-handling middleware?",
+     "a": "By its arity: it must declare exactly four parameters (err, req, res, next)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-builtin-middleware",
+   "title": "Built-in Middleware: json, urlencoded, static",
+   "level": "beginner",
+   "summary": "Use express.json, express.urlencoded and express.static to parse bodies and serve files.",
+   "description": "Express ships with a few essential middleware functions (since v4.16 they replace the separate `body-parser` package).\n\n### `express.json()`\nParses requests with `Content-Type: application/json` and puts the result in `req.body`. Without it, `req.body` is `undefined` in Express 5. Options: `limit` (default `'100kb'`), `strict`, `type`.\n\n```js\napp.use(express.json({ limit: '10kb' }))\n```\n\nInvalid JSON produces a 400 error that reaches your error handler. A body larger than the limit gives 413.\n\n### `express.urlencoded()`\nParses HTML form posts (`application/x-www-form-urlencoded`). In Express 5 `extended` defaults to **false** (Node's `querystring`), so set `extended: true` if you need nested objects like `user[name]=Asha`.\n\n### `express.static()`\nServes files from a folder with correct MIME types, ETag and caching headers:\n\n```js\napp.use(express.static('public'))\napp.use('/assets', express.static('public', { maxAge: '1d' }))\n```\n\nA file `public/logo.png` is available at `/logo.png` (the folder name is not part of the URL). Use an absolute path (`path.join(import.meta.dirname, 'public')`) so it works whatever directory you start Node from. Dotfiles are ignored by default.\n\n### Other built-ins\n`express.raw()` gives a `Buffer` body (needed for Stripe webhook signature checks) and `express.text()` parses plain text bodies. `express.Router()` is also exported on the same object.\n\n### Where to put them\nBefore any route that reads `req.body`.",
+   "keyPoints": [
+    "`express.json()` -> `req.body` for JSON; `undefined` without it (v5)",
+    "`express.urlencoded({ extended: true })` for form data",
+    "`express.static(dir)` serves files; use absolute paths",
+    "Set a body `limit` to defend against huge payloads",
+    "`express.raw()` / `express.text()` handle buffers and plain text"
+   ],
+   "pitfalls": [
+    "Registering routes before `express.json()` - body is undefined",
+    "Using a relative static folder that breaks when started from another directory",
+    "Assuming `urlencoded` supports nested objects without `extended: true` in v5"
+   ],
+   "examples": [
+    {
+     "title": "Parsers and static files",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nimport path from 'node:path'\n\nconst app = express()\n\napp.use(express.json({ limit: '10kb' }))\napp.use(express.urlencoded({ extended: true }))\napp.use(express.static(path.join(import.meta.dirname, 'public')))\n\napp.post('/api/echo', (req, res) => res.json({ youSent: req.body }))\napp.post('/form', (req, res) => res.json(req.body))\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Try it",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl -X POST localhost:3000/api/echo -H \"Content-Type: application/json\" -d '{\"a\":1}'\n# {\"youSent\":{\"a\":1}}\n\ncurl -X POST localhost:3000/form -d \"name=Asha&city=Pune\"\n# {\"name\":\"Asha\",\"city\":\"Pune\"}\n\ncurl -X POST localhost:3000/api/echo -H \"Content-Type: application/json\" -d '{bad'\n# 400 Bad Request (SyntaxError reaches the error handler)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is req.body undefined?",
+     "a": "No body-parsing middleware ran before the route (express.json/urlencoded missing or registered after the route), or the Content-Type did not match the parser."
+    },
+    {
+     "q": "What does express.static do?",
+     "a": "It serves files from a directory with correct MIME types and caching headers; the folder name is not part of the URL."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-custom-middleware",
+   "title": "Writing Custom Middleware",
+   "level": "intermediate",
+   "summary": "Build your own logger, timer and auth guard, and use factory functions for configurable middleware.",
+   "description": "Writing your own middleware is the best way to learn Express. Three classic examples are a **logger**, a **response timer** and an **auth guard**.\n\n### Logger\nLog method, URL and status. The status is only known after the response is produced, so listen to the `finish` event on `res`.\n\n### Timing\nRecord `process.hrtime.bigint()` at the start and compute the difference on `finish`.\n\n### Auth guard\nCheck for credentials; if they are missing, stop with `401`; otherwise attach the user to `req` and call `next()`.\n\n### Factory pattern (configurable middleware)\nA function that **returns** a middleware lets you pass options. This is how `rateLimit({ max: 5 })` or `requireRole('admin')` work:\n\n```js\nconst requireRole = (role) => (req, res, next) => {\n  if (req.user?.role !== role) return res.status(403).json({ error: 'Forbidden' })\n  next()\n}\napp.delete('/users/:id', auth, requireRole('admin'), removeUser)\n```\n\n### Guidelines\n- Do one thing per middleware.\n- Always either respond or call `next()` on every code path.\n- Put reusable middleware in `src/middleware/`.\n- For asynchronous work, use `async` functions - Express 5 forwards rejected promises to the error handler.\n- Extend `req` (`req.user`, `req.id`) rather than using globals so each request has isolated data.",
+   "keyPoints": [
+    "Signature `(req, res, next)`; every path must respond or call `next()`",
+    "Use `res.on('finish')` to log status codes and duration",
+    "Return a middleware from a function to make it configurable (factory)",
+    "Attach per-request data to `req`, never to module globals",
+    "In Express 5, async middleware errors reach the error handler automatically"
+   ],
+   "pitfalls": [
+    "Keeping per-request state in a module-level variable (shared by all users)",
+    "Not returning after sending a 401, so the code continues and calls `next()`",
+    "Reading `res.statusCode` before the response is finished"
+   ],
+   "examples": [
+    {
+     "title": "Logger, timer and auth middleware",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// ## src/middleware/logger.js\nexport function logger(req, res, next) {\n  const start = process.hrtime.bigint()\n  res.on('finish', () => {\n    const ms = Number(process.hrtime.bigint() - start) / 1e6\n    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${ms.toFixed(1)}ms`)\n  })\n  next()\n}\n\n// ## src/middleware/auth.js\nexport function apiKeyAuth(req, res, next) {\n  const key = req.get('x-api-key')\n  if (!key || key !== process.env.API_KEY) {\n    return res.status(401).json({ error: 'Invalid or missing API key' })\n  }\n  req.user = { id: 1, role: 'admin' }\n  next()\n}\n\nexport const requireRole = (role) => (req, res, next) => {\n  if (req.user?.role !== role) return res.status(403).json({ error: 'Forbidden' })\n  next()\n}\n\n// ## src/app.js\nimport express from 'express'\nimport { logger } from './middleware/logger.js'\nimport { apiKeyAuth, requireRole } from './middleware/auth.js'\n\nconst app = express()\napp.use(logger)\napp.get('/public', (req, res) => res.send('open to all'))\napp.get('/secret', apiKeyAuth, requireRole('admin'), (req, res) => res.json({ secret: 42 }))\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Behaviour",
+     "language": "text",
+     "lang": "bash",
+     "code": "$ API_KEY=abc node src/app.js\n$ curl localhost:3000/secret\n{\"error\":\"Invalid or missing API key\"}\n$ curl -H \"x-api-key: abc\" localhost:3000/secret\n{\"secret\":42}\n\n# server log\nGET /secret 401 2.1ms\nGET /secret 200 0.6ms",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you create configurable middleware?",
+     "a": "Write a function that accepts options and returns the (req, res, next) middleware, e.g. requireRole('admin')."
+    },
+    {
+     "q": "Why use res.on('finish') in a logger?",
+     "a": "The status code and duration are only known after the response has been sent, and the finish event fires at that point."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-next-order-conditional",
+   "title": "next(), Order and Conditional Middleware",
+   "level": "intermediate",
+   "summary": "Control flow with next(), next('route') and next(err); understand why order matters and how to run middleware conditionally.",
+   "description": "`next` is how a middleware says \"I am done, continue\". It has three useful forms.\n\n| Call | Effect |\n|---|---|\n| `next()` | go to the next middleware/handler in the stack |\n| `next('route')` | skip the remaining handlers of the **current route** and move to the next matching route |\n| `next(err)` | skip everything and jump to the first error-handling middleware |\n\n(`next('router')` leaves the current router entirely.) Calling `next()` after a response was sent is a bug.\n\n### Order matters\nMiddleware runs in registration order. A logger placed after the routes never logs matched routes; `express.json()` placed after a route does not parse for it; an auth guard placed after a public route does not protect it. Recommended order: security (helmet, cors) -> logging -> parsers -> rate limit -> routes -> 404 -> error handler.\n\n### Conditional middleware\nThree ways to run a middleware only sometimes:\n1. **Path scope**: `app.use('/api', mw)`.\n2. **Attach per route**: `app.get('/admin', auth, handler)`.\n3. **Condition inside a wrapper**: call the middleware only when a predicate is true.\n\n```js\nconst unless = (path, mw) => (req, res, next) =>\n  req.path.startsWith(path) ? next() : mw(req, res, next)\napp.use(unless('/public', authMiddleware))\n```\n\nYou can also branch on environment: `if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'))`.\n\n### Passing data along\nPut values on `req` (`req.user`) or on `res.locals` (data intended for views and downstream handlers).",
+   "keyPoints": [
+    "`next()` continue, `next('route')` skip to the next route, `next(err)` go to error handling",
+    "Registration order = execution order",
+    "Conditional: path prefix, per-route attachment or a wrapper with a predicate",
+    "Share data downstream using `req.xyz` or `res.locals`",
+    "Typical order: security, logging, parsers, routes, 404, errors"
+   ],
+   "pitfalls": [
+    "Putting the auth guard after the routes it should protect",
+    "Calling `next()` and then also responding (double response)",
+    "Using `next('route')` in middleware not attached to a route (it only works in `app.METHOD`/`router.METHOD` handlers)"
+   ],
+   "examples": [
+    {
+     "title": "next('route') and conditional wrapper",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import express from 'express'\nconst app = express()\n\n// next('route'): skip the rest of THIS route, fall to the next matching one\napp.get('/item/:id',\n  (req, res, next) => (/^\\d+$/.test(req.params.id) ? next() : next('route')),\n  (req, res) => res.send(`numeric item ${req.params.id}`)\n)\napp.get('/item/:slug', (req, res) => res.send(`slug item ${req.params.slug}`))\n\n// conditional middleware\nconst unless = (prefix, mw) => (req, res, next) =>\n  req.path.startsWith(prefix) ? next() : mw(req, res, next)\n\nconst needsKey = (req, res, next) =>\n  req.get('x-key') ? next() : res.status(401).send('key required')\n\napp.use(unless('/public', needsKey))\napp.get('/public/info', (req, res) => res.send('public info'))\napp.get('/private/info', (req, res) => res.send('private info'))\n\napp.listen(3000)",
+     "explanation": ""
+    },
+    {
+     "title": "Results",
+     "language": "text",
+     "lang": "bash",
+     "code": "curl localhost:3000/item/42        # numeric item 42\ncurl localhost:3000/item/hello     # slug item hello\ncurl localhost:3000/public/info    # public info\ncurl localhost:3000/private/info   # key required\ncurl -H \"x-key: 1\" localhost:3000/private/info   # private info",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between next() and next('route')?",
+     "a": "next() continues to the next handler in the current stack; next('route') skips the remaining handlers of the current route and tries the next matching route."
+    },
+    {
+     "q": "Why does middleware order matter?",
+     "a": "Express executes the stack in registration order, so parsers, auth and logging must be registered before the routes they should affect."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "express-middleware-simulation",
+   "title": "Simulating the Middleware Chain (runnable)",
+   "level": "intermediate",
+   "summary": "Build a tiny Express-like pipeline in plain JavaScript to see exactly how next() and error middleware work.",
+   "description": "You can understand Express middleware deeply by building a 25-line version yourself. A mini app keeps a **list of functions** and runs them one by one, passing a `next` callback that moves an index forward.\n\n### The algorithm\n1. Store middleware in an array (`stack`).\n2. `handle(req, res)` starts at index `0`.\n3. `next(err)` looks at the next function:\n   - If there is **no error**, it skips functions with 4 parameters (error handlers) and calls the next normal function.\n   - If there **is an error**, it skips normal functions and calls only those with 4 parameters.\n4. When the stack runs out and nobody responded, it sends a 404 (or 500 if there was an error).\n\nThis is exactly the idea of Express (its real implementation is the `router` package): the \"magic\" is a loop over an array and the check `fn.length === 4` to recognise error handlers.\n\n### Observations from the run below\n- Order of the logs equals registration order.\n- Calling `next()` twice would run later handlers twice - a classic bug.\n- Throwing inside middleware is caught and converted into `next(err)`, which mirrors how Express wraps handlers in try/catch.\n- Error handlers are skipped until an error happens.\n\nRun the example and then try commenting out a `next()` call to see the pipeline stall.",
+   "keyPoints": [
+    "Middleware = array of functions executed by a recursive `next`",
+    "Express detects error handlers with `fn.length === 4`",
+    "`next(err)` skips normal middleware until an error handler is found",
+    "Thrown exceptions are caught and routed to `next(err)`"
+   ],
+   "pitfalls": [
+    "Real Express also handles paths, methods and async rejections - this model is simplified"
+   ],
+   "examples": [
+    {
+     "title": "Mini Express pipeline",
+     "language": "javascript",
+     "code": "function miniExpress() {\n  const stack = []\n  const app = {\n    use(fn) { stack.push(fn); return app },\n    handle(req, res) {\n      let i = 0\n      function next(err) {\n        const fn = stack[i++]\n        if (!fn) {\n          return err ? res.send(500, 'Unhandled: ' + err.message)\n                     : res.send(404, 'Not found')\n        }\n        const isErrorHandler = fn.length === 4\n        try {\n          if (err && isErrorHandler) fn(err, req, res, next)\n          else if (!err && !isErrorHandler) fn(req, res, next)\n          else next(err)               // skip: wrong kind of function\n        } catch (e) { next(e) }        // thrown error -> next(err)\n      }\n      next()\n    }\n  }\n  return app\n}\n\nconst app = miniExpress()\napp.use((req, res, next) => { console.log('logger:', req.url); next() })\napp.use((req, res, next) => {\n  req.user = req.url.includes('admin') ? { role: 'admin' } : null\n  next()\n})\napp.use((req, res, next) => {\n  if (req.url === '/crash') throw new Error('boom')\n  next()\n})\napp.use((req, res, next) => {\n  if (req.url === '/') return res.send(200, 'home')\n  if (req.url === '/admin' && req.user) return res.send(200, 'admin panel')\n  next()\n})\napp.use((err, req, res, next) => {\n  console.log('error handler got:', err.message)\n  res.send(500, 'Something went wrong')\n})\n\nfor (const url of ['/', '/admin', '/missing', '/crash']) {\n  app.handle({ url }, { send: (code, body) => console.log(`${url} -> ${code} ${body}\\n`) })\n}",
+     "explanation": "Run it: the logs show the order, and the error skips straight to the 4-argument handler."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does Express distinguish error middleware from normal middleware?",
+     "a": "It checks the function's declared arity: functions with four parameters (err, req, res, next) are used only when an error is passed to next."
+    },
+    {
+     "q": "What happens if next() is called twice in one middleware?",
+     "a": "The downstream handlers run twice, usually leading to duplicate work or \"headers already sent\" errors, so every code path should call next at most once."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,125 @@
+{
+ "id": "py-fastapi",
+ "title": "FastAPI and Framework Comparison",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "py-fastapi-intro",
+   "title": "FastAPI: Modern Async APIs",
+   "level": "advanced",
+   "summary": "Build fast, type-hinted APIs with automatic validation and interactive documentation.",
+   "description": "**FastAPI** is a modern framework for building APIs using standard Python **type hints**. It is built on **Starlette** (ASGI web toolkit) and **Pydantic** (data validation) and is one of the fastest Python frameworks.\n\n```bash\npip install \"fastapi[standard]\"\nfastapi dev main.py        # or: uvicorn main:app --reload\n```\n\n### What you get automatically\n- **Validation**: path, query and body parameters are checked from type hints; invalid input gets a clear `422` response.\n- **Serialisation** of return values to JSON.\n- **Interactive docs** at `/docs` (Swagger UI) and `/redoc`, plus an OpenAPI schema at `/openapi.json`.\n- **Editor autocomplete** because everything is typed.\n\n### async or not\nUse `async def` for endpoints that await async libraries (databases, HTTP clients); use plain `def` for blocking code, and FastAPI will run it in a thread pool so it does not block the event loop.\n\n### Core concepts\n- **Path operations**: `@app.get`, `@app.post`, `@app.put`, `@app.delete`.\n- **Parameters**: `item_id: int` (path), `q: str | None = None` (query), a Pydantic model (body).\n- **Dependency injection**: `Depends(get_db)` shares code such as DB sessions and auth.\n- **Routers**: `APIRouter` like Flask blueprints.\n- **Background tasks**, WebSockets, middleware, CORS.\n- **Testing**: `TestClient(app)`.\n\n### When to choose it\nAPIs, microservices, ML model serving, and any project where typed contracts and generated docs matter.",
+   "keyPoints": [
+    "Built on type hints, Starlette and Pydantic",
+    "Automatic validation, serialisation and /docs",
+    "async def for async I/O, def for blocking code",
+    "Depends() provides dependency injection",
+    "Run with uvicorn or fastapi dev"
+   ],
+   "pitfalls": [
+    "Calling blocking code inside async def (blocks the event loop)",
+    "Forgetting response_model, leaking internal fields",
+    "Mixing sync database drivers into async endpoints"
+   ],
+   "examples": [
+    {
+     "title": "Small FastAPI app",
+     "language": "text",
+     "code": "from fastapi import FastAPI, HTTPException, Query\nfrom pydantic import BaseModel, Field\n\napp = FastAPI(title=\"Items API\")\n\nclass ItemIn(BaseModel):\n    name: str = Field(min_length=2, max_length=50)\n    price: float = Field(gt=0)\n    in_stock: bool = True\n\nclass ItemOut(ItemIn):\n    id: int\n\nDB: dict[int, ItemOut] = {}\n\n@app.post(\"/items\", response_model=ItemOut, status_code=201)\nasync def create_item(item: ItemIn):\n    new = ItemOut(id=len(DB) + 1, **item.model_dump())\n    DB[new.id] = new\n    return new\n\n@app.get(\"/items\", response_model=list[ItemOut])\nasync def list_items(max_price: float | None = Query(default=None, gt=0)):\n    items = list(DB.values())\n    return [i for i in items if max_price is None or i.price <= max_price]\n\n@app.get(\"/items/{item_id}\", response_model=ItemOut)\nasync def get_item(item_id: int):\n    if item_id not in DB:\n        raise HTTPException(status_code=404, detail=\"Item not found\")\n    return DB[item_id]\n\n# run: fastapi dev main.py   then open http://127.0.0.1:8000/docs",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is FastAPI fast?",
+     "a": "It runs on ASGI with Starlette, supports async I/O and uses Pydantic (with a Rust core in v2) for quick validation."
+    },
+    {
+     "q": "How does FastAPI generate documentation?",
+     "a": "From your type hints and Pydantic models it builds an OpenAPI schema automatically and serves Swagger UI and ReDoc from it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-fastapi-pydantic-depends",
+   "title": "FastAPI: Pydantic Models and Dependencies",
+   "level": "advanced",
+   "summary": "Validate data with Pydantic and share logic with dependency injection.",
+   "description": "### Pydantic\n**Pydantic** validates data using type hints and **coerces** compatible values (`\"5\"` to `5`). A model is a class inheriting `BaseModel`:\n\n```python\nclass User(BaseModel):\n    id: int\n    email: EmailStr\n    age: int = Field(ge=0, le=130)\n    tags: list[str] = []\n```\n- `User(**data)` validates; errors list every problem with a location.\n- `.model_dump()` -> dict, `.model_dump_json()` -> JSON string.\n- `@field_validator(\"email\")` for custom rules; `@model_validator` for cross-field rules.\n- `model_config = ConfigDict(from_attributes=True)` lets models read ORM objects.\n\n### Request and response models\nUse separate models for input and output (for example `UserCreate` has a password, `UserOut` does not) and set `response_model` so secrets are never returned.\n\n### Dependency injection\nA **dependency** is a function FastAPI calls for you and passes the result into your endpoint:\n\n```python\ndef get_db():\n    db = SessionLocal()\n    try:\n        yield db          # cleanup runs after the response\n    finally:\n        db.close()\n\n@app.get(\"/users\")\ndef users(db: Session = Depends(get_db)): ...\n```\nUse dependencies for DB sessions, authentication (`get_current_user`), pagination parameters, rate limits and settings. They can depend on other dependencies and are easy to **override in tests**.\n\n### Settings\n`pydantic-settings` loads typed configuration from environment variables and `.env` files.",
+   "keyPoints": [
+    "Pydantic validates and coerces data from type hints",
+    "Separate input and output models; use response_model",
+    "field_validator/model_validator add custom rules",
+    "Depends() injects shared resources like DB sessions and current user",
+    "Dependencies can be overridden in tests"
+   ],
+   "pitfalls": [
+    "Returning the DB model containing password hashes",
+    "Mutable default values in models",
+    "Doing authentication inside each endpoint rather than in a dependency"
+   ],
+   "examples": [
+    {
+     "title": "Models and dependencies",
+     "language": "text",
+     "code": "from fastapi import FastAPI, Depends, HTTPException, Header\nfrom pydantic import BaseModel, EmailStr, Field, field_validator\n\napp = FastAPI()\n\nclass UserCreate(BaseModel):\n    email: EmailStr\n    password: str = Field(min_length=8)\n    name: str\n\n    @field_validator(\"name\")\n    @classmethod\n    def clean_name(cls, v: str) -> str:\n        return v.strip().title()\n\nclass UserOut(BaseModel):\n    id: int\n    email: EmailStr\n    name: str\n\nclass Pagination:\n    def __init__(self, page: int = 1, size: int = 20):\n        self.page, self.size = max(page, 1), min(size, 100)\n\ndef get_current_user(x_token: str = Header()):\n    if x_token != \"secret-token\":\n        raise HTTPException(status_code=401, detail=\"Invalid token\")\n    return {\"id\": 1, \"email\": \"asha@example.com\", \"name\": \"Asha\"}\n\n@app.post(\"/users\", response_model=UserOut, status_code=201)\ndef create_user(data: UserCreate):\n    return {\"id\": 2, \"email\": data.email, \"name\": data.name}\n\n@app.get(\"/me\", response_model=UserOut)\ndef me(user: dict = Depends(get_current_user)):\n    return user\n\n@app.get(\"/users\")\ndef list_users(p: Pagination = Depends(), user: dict = Depends(get_current_user)):\n    return {\"page\": p.page, \"size\": p.size}",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is dependency injection in FastAPI?",
+     "a": "Declaring functions with Depends() so FastAPI calls them per request and passes in their results, giving reusable, testable shared logic."
+    },
+    {
+     "q": "Why separate request and response models?",
+     "a": "To avoid exposing sensitive or internal fields (like password hashes) and to document different shapes for input and output."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-framework-comparison",
+   "title": "Flask vs Django vs FastAPI",
+   "level": "advanced",
+   "summary": "Compare the three main Python web frameworks and choose the right one.",
+   "description": "All three are excellent; the right choice depends on the project.\n\n| | **Flask** | **Django** | **FastAPI** |\n|---|---|---|---|\n| Philosophy | Micro, flexible | Batteries included | Modern, typed APIs |\n| Interface | WSGI | WSGI + ASGI | ASGI |\n| Best for | small apps, prototypes, custom stacks | full websites, CMS, e-commerce, admin-heavy apps | APIs, microservices, ML serving |\n| ORM | none (SQLAlchemy) | built-in | none (SQLAlchemy / SQLModel) |\n| Admin UI | extensions | built-in | no |\n| Auth | extensions | built-in | build with dependencies |\n| Validation | WTForms / marshmallow | Forms / DRF serializers | Pydantic built-in |\n| Docs | manual | manual (DRF schema) | automatic Swagger |\n| Async | limited | growing | native |\n| Learning curve | gentle | steeper | moderate |\n\n### Choosing\n- **Django** when you need a full site quickly with users, admin, ORM, forms and security defaults. Large community and conventions suit teams.\n- **Flask** when you want control, a tiny service, or you like choosing each component. Great for learning how the web works.\n- **FastAPI** for JSON APIs where performance, typing and generated docs matter, particularly with async I/O or machine-learning models.\n\n### Mixed architectures\nMany companies use Django for the main product and FastAPI for high-throughput microservices. Front-ends such as React or Vue consume any of the three through JSON.\n\n### Not about speed alone\nFor most apps, database queries and architecture dominate response time, not the framework. Pick for **productivity, ecosystem and team skills** first.",
+   "keyPoints": [
+    "Django = full-stack, batteries included",
+    "Flask = minimal and flexible",
+    "FastAPI = async, typed, auto-documented APIs",
+    "Choose by project needs and team skills, not benchmarks alone",
+    "They can coexist in one architecture"
+   ],
+   "pitfalls": [
+    "Choosing FastAPI for a content site that needs admin and auth out of the box",
+    "Choosing Django for a tiny single-endpoint service",
+    "Making decisions only from synthetic benchmarks"
+   ],
+   "examples": [
+    {
+     "title": "Hello world in each",
+     "language": "text",
+     "code": "# Flask\nfrom flask import Flask\napp = Flask(__name__)\n\n@app.get(\"/hello/<name>\")\ndef hello(name):\n    return {\"message\": f\"Hello {name}\"}\n\n# FastAPI\nfrom fastapi import FastAPI\napp = FastAPI()\n\n@app.get(\"/hello/{name}\")\nasync def hello(name: str):\n    return {\"message\": f\"Hello {name}\"}\n\n# Django (urls.py + views.py)\nfrom django.http import JsonResponse\nfrom django.urls import path\n\ndef hello(request, name):\n    return JsonResponse({\"message\": f\"Hello {name}\"})\n\nurlpatterns = [path(\"hello/<str:name>/\", hello)]",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you pick Django over Flask?",
+     "a": "When you need built-in ORM, auth, admin, forms and strong conventions to build a full application fast, especially in a team."
+    },
+    {
+     "q": "When would you pick FastAPI?",
+     "a": "For high-performance, async JSON APIs and microservices where typed validation and automatic OpenAPI docs are valuable."
+    },
+    {
+     "q": "Is FastAPI always faster than Django?",
+     "a": "Not necessarily for real apps. It handles concurrency well, but total performance depends on database, caching and design."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

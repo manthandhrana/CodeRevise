@@ -1,0 +1,365 @@
+{
+ "id": "html-links-media",
+ "title": "Links, Images & Media",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "html-anchor-links",
+   "title": "Anchor Tag & Hyperlinks",
+   "level": "beginner",
+   "summary": "The a element creates links to other pages, files, sections of the same page, email and phone.",
+   "description": "The **anchor** element `<a>` creates a hyperlink - the feature that makes the web a *web*. Its main attribute is `href` (hypertext reference), the destination.\n\n```html\n<a href=\"https://example.com\">Visit Example</a>\n```\n\n### Kinds of destinations\n| `href` value | Goes to |\n|---|---|\n| `https://site.com/page` | An **absolute URL** (full address, other site) |\n| `about.html`, `../img/a.png` | A **relative URL** (relative to the current page) |\n| `#contact` | An element on the **same page** with `id=\"contact\"` |\n| `page.html#faq` | A section on another page |\n| `mailto:me@site.com` | Opens the email app |\n| `tel:+1234567890` | Starts a phone call |\n\n### Relative vs absolute\n- **Absolute**: complete address with protocol and domain - needed for other websites.\n- **Relative**: shorter and portable; keeps working if you change your domain.\n\n### Linking inside a page\nGive the target an `id` and link to `#id`. With CSS `html { scroll-behavior: smooth; }` the scroll animates.\n\n### Making things clickable\nAn anchor can wrap text, an image, or even a button-like block. Link text should describe the destination: write \"Download the price list (PDF)\", not \"click here\".",
+   "keyPoints": [
+    "href holds the destination; no href means it is just a placeholder anchor.",
+    "Absolute URL = full address; relative URL = based on the current file.",
+    "#id jumps to an element with that id on the page.",
+    "mailto: and tel: open email and phone apps.",
+    "Write meaningful link text, never just \"click here\"."
+   ],
+   "pitfalls": [
+    "Using onclick on a div/span instead of a real <a> or <button>.",
+    "Putting block-level layouts inside links without reason.",
+    "Unquoted URLs containing spaces or ampersands."
+   ],
+   "examples": [
+    {
+     "title": "External, same-page, mail and phone links",
+     "language": "web",
+     "html": "<nav>\n  <a href=\"#services\">Jump to services</a> |\n  <a href=\"mailto:hello@example.com?subject=Hi\">Email us</a> |\n  <a href=\"tel:+911234567890\">Call us</a>\n</nav>\n<h2>Welcome</h2>\n<p>Scroll down... (keep reading)</p>\n<div style=\"height:260px;background:#f3f3f3;padding:8px\">Some tall content</div>\n<h2 id=\"services\">Our Services</h2>\n<p>You landed here via a fragment link.</p>\n<p><a href=\"#top-of-page\">Back to top</a></p>",
+     "css": "html{scroll-behavior:smooth} body{font-family:sans-serif}",
+     "js": "",
+     "explanation": "The first link scrolls to the element whose id is \"services\"."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you link to a section of the same page?",
+     "a": "Give the target element an id and use href=\"#thatId\" in the anchor."
+    },
+    {
+     "q": "Absolute vs relative URL?",
+     "a": "Absolute includes protocol and domain (https://site.com/x). Relative is resolved from the current page (about.html or ../x)."
+    },
+    {
+     "q": "How do you create an email link and a phone link?",
+     "a": "href=\"mailto:name@site.com\" and href=\"tel:+1234567890\"."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/anchor.html"
+  },
+  {
+   "id": "html-link-attributes",
+   "title": "Link Attributes: target, rel, download & more",
+   "level": "beginner",
+   "summary": "target, rel (noopener, nofollow), download, title, hreflang and how to style link states.",
+   "description": "Anchors become powerful with a few extra attributes.\n\n### target\nWhere to open the link:\n- `_self` - same tab (default)\n- `_blank` - new tab/window\n- `_parent`, `_top` - used with frames\n- a **name** - opens in the iframe with that name\n\n### rel\nDescribes the relationship to the target.\n- `rel=\"noopener\"` - stops the new page from controlling yours via `window.opener`. Modern browsers add it automatically for `_blank`, but write `rel=\"noopener noreferrer\"` for old ones.\n- `rel=\"nofollow\"` - asks search engines not to pass ranking (user-generated links, ads).\n- `rel=\"sponsored\"`, `rel=\"ugc\"` - more specific hints for paid and user content.\n- `rel=\"external\"`, `rel=\"next\"`, `rel=\"prev\"`, `rel=\"alternate\"`...\n\n### download\n`<a href=\"report.pdf\" download=\"my-report.pdf\">` asks the browser to save the file instead of opening it. It works for same-origin files and blob/data URLs.\n\n### Other attributes\n- `title` - tooltip, extra info (not a replacement for good link text).\n- `hreflang` - language of the linked page.\n- `type` - MIME type hint.\n- `ping` - tracking URLs (rarely used).\n- `aria-label` - accessible name when the link only contains an icon.\n- `tabindex`, `accesskey` - keyboard behaviour.\n\n### Link states in CSS\n`a:link`, `a:visited`, `a:hover`, `a:focus`, `a:active` - never remove the focus outline without providing a replacement.",
+   "keyPoints": [
+    "target=\"_blank\" opens a new tab; pair it with rel=\"noopener\".",
+    "rel=\"nofollow\" tells search engines not to endorse the link.",
+    "download triggers a save dialog instead of navigation.",
+    "Icon-only links need an accessible name (aria-label or hidden text).",
+    "Keep the :focus style visible for keyboard users."
+   ],
+   "pitfalls": [
+    "Using target=\"_blank\" on every link - it removes user control.",
+    "Forgetting rel=\"noopener\" on _blank links to untrusted sites.",
+    "Expecting download to work with cross-origin URLs."
+   ],
+   "examples": [
+    {
+     "title": "download, target and rel",
+     "language": "web",
+     "html": "<p><a id=\"dl\" download=\"hello.txt\" href=\"#\">Download a text file</a></p>\n<p><a href=\"https://example.com\" target=\"_blank\" rel=\"noopener noreferrer\">Open example.com in new tab</a></p>\n<p><a href=\"https://example.com\" rel=\"nofollow\" title=\"A nofollow link\">A nofollow link with a title tooltip</a></p>\n<p><a href=\"#\" aria-label=\"Open settings\" class=\"icon\">⚙️</a> (icon link with aria-label)</p>",
+     "css": "body{font-family:sans-serif} a:hover{color:tomato} a:focus{outline:3px solid #7aa7ff}",
+     "js": "var blob = new Blob(['Hello from CodeRevise!'], { type: 'text/plain' });\ndocument.getElementById('dl').href = URL.createObjectURL(blob);",
+     "explanation": "The download link points to a Blob created by JavaScript so no server file is needed."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does rel=\"noopener\" do?",
+     "a": "It prevents the page opened with target=\"_blank\" from accessing window.opener, avoiding tab-nabbing attacks."
+    },
+    {
+     "q": "How does the download attribute work?",
+     "a": "It suggests that the browser save the linked resource instead of navigating to it; you may give a file name as its value."
+    },
+    {
+     "q": "When would you use rel=\"nofollow\"?",
+     "a": "For links you do not want to endorse to search engines, such as user comments or paid ads."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/anchor.html"
+  },
+  {
+   "id": "html-images",
+   "title": "Images: img, alt, size & image maps",
+   "level": "beginner",
+   "summary": "Embed pictures with img, write useful alt text, set dimensions, make images clickable or map regions.",
+   "description": "The `<img>` element embeds an image. It is a **void element** and needs two attributes:\n\n- `src` - the image URL (relative or absolute).\n- `alt` - alternative text, used when the image fails to load and read by screen readers.\n\n```html\n<img src=\"penguin.jpg\" alt=\"A Rockhopper penguin standing on a beach\" width=\"400\" height=\"300\">\n```\n\n### Good alt text\n- Describe the purpose and content: ✅ \"A Rockhopper penguin standing on a beach\", ❌ \"image\" or \"penguin.jpg\".\n- Decorative images get an **empty** alt (`alt=\"\"`) so screen readers skip them.\n- Do not start with \"Image of...\" - the reader already announces it is an image.\n\n### Size attributes\nAlways add `width` and `height` (numbers, in px). The browser can then reserve the space and avoids **layout shift**. Use CSS `max-width:100%; height:auto;` to make it fluid.\n\n### Other attributes\n- `loading=\"lazy\"` - load only when near the viewport.\n- `decoding=\"async\"`, `fetchpriority=\"high\"` - performance hints.\n- `title` - tooltip.\n- Deprecated: `align`, `border`, `hspace`, `vspace` - use CSS.\n\n### Clickable image\nWrap the image in an anchor: `<a href=\"...\"><img ...></a>`.\n\n### Image map\n`<img usemap=\"#m\">` with `<map name=\"m\"><area shape=\"rect\" coords=\"x1,y1,x2,y2\" href=\"...\" alt=\"...\"></map>` makes **regions** of one image clickable. Shapes: `rect`, `circle`, `poly`.\n\n### Formats\nJPEG (photos), PNG (transparency), WebP/AVIF (modern, smaller), SVG (vectors and icons), GIF (simple animation).",
+   "keyPoints": [
+    "img needs src and a meaningful alt.",
+    "Decorative images use alt=\"\" (empty, not missing).",
+    "Set width and height to prevent layout shift.",
+    "Wrap img in <a> to make it a link; use map/area for hotspots.",
+    "Use loading=\"lazy\" for below-the-fold images."
+   ],
+   "pitfalls": [
+    "Missing alt attribute entirely - fails accessibility checks.",
+    "Using alt text like \"image\" or the file name.",
+    "Uploading a 4000px photo and showing it at 300px.",
+    "Putting important text only inside images."
+   ],
+   "examples": [
+    {
+     "title": "img, clickable image and image map",
+     "language": "web",
+     "html": "<h3>Plain image with size and alt</h3>\n<img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='140'><rect width='100%' height='100%' fill='%23f9c74f'/><text x='120' y='90' font-size='60' text-anchor='middle'>🐧</text></svg>\" alt=\"A cartoon penguin on yellow background\" width=\"240\" height=\"140\" title=\"Hello penguin\">\n\n<h3>Image link</h3>\n<a href=\"#thanks\"><img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='90'><rect width='100%' height='100%' fill='%2390be6d'/><text x='80' y='65' font-size='60' text-anchor='middle'>👆</text></svg>\" alt=\"Click to say thanks\" width=\"160\" height=\"90\"></a>\n\n<h3>Image map (click the left or right half)</h3>\n<img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='120'><rect width='100%' height='100%' fill='%23a2d2ff'/><text x='150' y='80' font-size='60' text-anchor='middle'>🗺️</text></svg>\" alt=\"Clickable map\" usemap=\"#demo\" width=\"300\" height=\"120\">\n<map name=\"demo\">\n  <area shape=\"rect\" coords=\"0,0,150,120\" href=\"#left\" alt=\"Left half\">\n  <area shape=\"circle\" coords=\"225,60,40\" href=\"#right\" alt=\"Right circle\">\n</map>\n<p id=\"thanks\" style=\"margin-top:20px\">Scroll target.</p>",
+     "css": "body{font-family:sans-serif} img{border-radius:8px;display:block}",
+     "js": "",
+     "explanation": "All pictures are inline SVG data URIs so the demo needs no files."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is alt text important?",
+     "a": "It gives screen reader users a description, shows when the image fails to load and helps search engines understand the image."
+    },
+    {
+     "q": "What alt value do decorative images get?",
+     "a": "An empty alt (alt=\"\") so assistive technology skips them."
+    },
+    {
+     "q": "How do you make an image a link?",
+     "a": "Wrap the img element inside an a element."
+    },
+    {
+     "q": "Why set width and height on images?",
+     "a": "So the browser reserves space before the image loads, preventing layout shift (better CLS)."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/img.html"
+  },
+  {
+   "id": "html-figure-figcaption",
+   "title": "figure & figcaption",
+   "level": "beginner",
+   "summary": "Group self-contained media such as images, charts or code with an optional caption.",
+   "description": "`<figure>` represents **self-contained content**, usually with a caption, that is referenced from the main text but could be moved elsewhere (to an appendix or sidebar) without breaking the document flow. `<figcaption>` is its caption.\n\n### What can go inside a figure\n- Images and illustrations\n- Diagrams and charts\n- Code listings\n- Videos, audio\n- Quotes and poems\n\n### Structure\n```html\n<figure>\n  <img src=\"html.webp\" alt=\"Thumbnail of the HTML course\" width=\"500\">\n  <figcaption>The best HTML course ever made.</figcaption>\n</figure>\n```\n\nThe `<figcaption>` must be the **first or last** child of the `<figure>`.\n\n### Why use it?\n- It binds an image and its caption **semantically**; assistive tech announces them together.\n- Search engines understand the relationship between image and caption.\n- You can style all figures consistently in CSS.\n\n### figure vs img alone\nUse a plain `<img>` when no caption is needed. Use `<figure>` when you have a caption or when the content (a code block, a table, a chart) is referenced as \"Figure 1\".\n\n### Accessibility notes\nIf the caption already fully describes the image, the `alt` can be shorter or empty to avoid repetition; otherwise keep a descriptive `alt`.",
+   "keyPoints": [
+    "figure wraps self-contained content; figcaption captions it.",
+    "figcaption must be the first or last child of figure.",
+    "Works for images, code, charts, video and quotes.",
+    "Keeps image and caption linked semantically."
+   ],
+   "pitfalls": [
+    "Using figure just as a styling wrapper for any div.",
+    "Putting a figcaption in the middle of the figure.",
+    "Repeating the exact caption text in alt."
+   ],
+   "examples": [
+    {
+     "title": "Image and code figure with captions",
+     "language": "web",
+     "html": "<figure>\n  <img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='140'><rect width='100%' height='100%' fill='%23ffadad'/><text x='130' y='90' font-size='60' text-anchor='middle'>🌄</text></svg>\" alt=\"A sunrise over mountains\" width=\"260\" height=\"140\">\n  <figcaption>Fig 1. Sunrise over the hills.</figcaption>\n</figure>\n<figure>\n  <pre><code>&lt;h1&gt;Hello&lt;/h1&gt;</code></pre>\n  <figcaption>Listing 1. A heading in HTML.</figcaption>\n</figure>",
+     "css": "figure{margin:12px 0;display:inline-block;background:#fafafa;padding:8px;border-radius:8px;box-shadow:0 4px 14px #0002;font-family:sans-serif}\nfigcaption{font-size:13px;color:#555;margin-top:6px;text-align:center}\nimg{display:block;border-radius:6px}",
+     "js": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the figure element for?",
+     "a": "To mark up self-contained content such as an image, diagram or code with an optional caption provided by figcaption."
+    },
+    {
+     "q": "Can figure contain things other than images?",
+     "a": "Yes - code, tables, charts, audio, video, quotes - any self-contained content."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/figure.html"
+  },
+  {
+   "id": "html-responsive-images-picture",
+   "title": "Responsive Images: srcset, sizes & picture",
+   "level": "intermediate",
+   "summary": "Deliver the right image size, density and format to each device with srcset, sizes and picture.",
+   "description": "One image file does not suit every device: a phone needs a small file, a retina desktop needs a big sharp one. HTML solves this with **srcset/sizes** and the **<picture>** element.\n\n### Resolution switching: srcset + sizes\n```html\n<img\n  src=\"photo-800.jpg\"\n  srcset=\"photo-400.jpg 400w, photo-800.jpg 800w, photo-1200.jpg 1200w\"\n  sizes=\"(max-width: 600px) 100vw, 50vw\"\n  alt=\"A mountain lake\">\n```\n- `srcset` lists candidate files and their real widths (`w` descriptor).\n- `sizes` tells the browser how wide the image will be shown at each breakpoint.\n- The browser picks the best file for screen size, pixel density and network.\n\nFor fixed-size images, use density descriptors: `srcset=\"logo.png 1x, logo@2x.png 2x\"`.\n\n### Art direction & formats: picture\n`<picture>` contains several `<source>` elements and one `<img>` fallback. The browser uses the **first** `<source>` that matches.\n\n```html\n<picture>\n  <source srcset=\"hero.avif\" type=\"image/avif\">\n  <source srcset=\"hero.webp\" type=\"image/webp\">\n  <source media=\"(max-width: 600px)\" srcset=\"hero-crop.jpg\">\n  <img src=\"hero.jpg\" alt=\"Hero banner\" width=\"1200\" height=\"600\">\n</picture>\n```\n\nUse `type` to offer modern formats (AVIF, WebP) with a JPEG fallback, and `media` to show a different crop on small screens.\n\n### Remember\nThe inner `<img>` is **required** - it carries `alt`, size and is the fallback. Tools such as squoosh.app help you create WebP/AVIF files.",
+   "keyPoints": [
+    "srcset lists image candidates; sizes describes display width.",
+    "w descriptors = file width, x descriptors = pixel density.",
+    "picture + source lets you switch formats (type) or crops (media).",
+    "The <img> inside picture is mandatory and holds alt.",
+    "The browser picks the first matching source."
+   ],
+   "pitfalls": [
+    "Using srcset with w descriptors but no sizes - the browser assumes 100vw.",
+    "Putting the img element before the source elements.",
+    "Using wrong MIME types like image/jpg (correct is image/jpeg)."
+   ],
+   "examples": [
+    {
+     "title": "picture with art direction (resize the preview)",
+     "language": "web",
+     "html": "<picture>\n  <source media=\"(max-width: 420px)\" srcset=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='100%' height='100%' fill='%23ffb703'/><text x='100' y='120' font-size='60' text-anchor='middle'>📱</text></svg>\">\n  <img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='140'><rect width='100%' height='100%' fill='%23219ebc'/><text x='200' y='90' font-size='60' text-anchor='middle'>🖥️</text></svg>\" alt=\"Shows a phone on narrow screens, a desktop on wide screens\" width=\"400\" height=\"140\">\n</picture>\n<p>Narrow the window below 420px to see the other source.</p>",
+     "css": "body{font-family:sans-serif} img{max-width:100%;height:auto;border-radius:8px}",
+     "js": "",
+     "explanation": "Real sites would point to different cropped files; here two data-URI pictures stand in."
+    },
+    {
+     "title": "srcset and sizes syntax",
+     "language": "text",
+     "code": "<img\n  src=\"html-800.jpg\"\n  srcset=\"html-400.jpg 400w,\n          html-800.jpg 800w,\n          html-1200.jpg 1200w\"\n  sizes=\"(max-width: 600px) 100vw,\n         (max-width: 1100px) 50vw,\n         33vw\"\n  alt=\"HTML course banner\"\n  width=\"1200\" height=\"600\" loading=\"lazy\">",
+     "explanation": "File names are placeholders; replace them with your own optimised images."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem do srcset and sizes solve?",
+     "a": "They let the browser choose the most appropriate image file for the device width and pixel density, saving bandwidth."
+    },
+    {
+     "q": "When use picture instead of just img with srcset?",
+     "a": "When you need different formats (AVIF/WebP fallback) or art direction - a different crop per screen size."
+    },
+    {
+     "q": "Is the img inside picture optional?",
+     "a": "No. It is required; it is the fallback and carries alt, width and height."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/picture.html"
+  },
+  {
+   "id": "html-audio",
+   "title": "Audio Element",
+   "level": "beginner",
+   "summary": "Embed sound with audio, offer several formats with source and provide fallback text.",
+   "description": "The `<audio>` element embeds sound in a page with built-in player controls - no plugin needed.\n\n```html\n<audio controls>\n  <source src=\"podcast.mp3\" type=\"audio/mpeg\">\n  <source src=\"podcast.ogg\" type=\"audio/ogg\">\n  Your browser does not support the audio element.\n</audio>\n```\n\n### Attributes\n| Attribute | Meaning |\n|---|---|\n| `controls` | Show play/pause/volume UI |\n| `autoplay` | Start automatically (blocked by most browsers unless muted) |\n| `loop` | Repeat forever |\n| `muted` | Start silent |\n| `preload` | `none`, `metadata` or `auto` - how much to load in advance |\n| `src` | Single file shortcut |\n\n### Multiple sources\nList several `<source>` children with a `type` (MIME type). The browser plays the **first** it supports. Any text inside `<audio>` is fallback for very old browsers.\n\n### Formats\n- **MP3** (`audio/mpeg`) - universal.\n- **WAV** (`audio/wav`) - uncompressed, big.\n- **OGG** (`audio/ogg`) - open, good compression.\n- **AAC/M4A**, **WebM/Opus** - modern.\n\n### Accessibility\nProvide a **transcript** for spoken content. Avoid autoplay with sound - it surprises and annoys users, and browsers block it anyway.\n\n### JavaScript API\n`audio.play()`, `audio.pause()`, `audio.currentTime`, `audio.volume` and events such as `ended` allow custom players.",
+   "keyPoints": [
+    "controls shows the browser player; without it nothing is visible.",
+    "Provide several source elements for format support.",
+    "autoplay usually requires muted.",
+    "Add a transcript for accessibility.",
+    "preload controls how much data is fetched early."
+   ],
+   "pitfalls": [
+    "Forgetting controls and wondering where the player is.",
+    "Autoplaying audio with sound on page load.",
+    "Using a wrong type value so the browser skips the source."
+   ],
+   "examples": [
+    {
+     "title": "Audio element with a generated beep",
+     "language": "web",
+     "html": "<p>A 440 Hz tone created in memory by JavaScript:</p>\n<audio id=\"player\" controls loop>\n  Your browser does not support the audio element.\n</audio>",
+     "css": "body{font-family:sans-serif} audio{box-shadow:0 7px 29px rgba(100,100,111,.2);border-radius:25px}",
+     "js": "// Build a short beep as a WAV file in memory (no external file needed)\nfunction makeBeep(freq, seconds) {\n  var rate = 8000, n = rate * seconds, buf = new ArrayBuffer(44 + n), v = new DataView(buf);\n  function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }\n  str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt ');\n  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);\n  v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true);\n  v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);\n  for (var i = 0; i < n; i++) v.setUint8(44 + i, 128 + Math.round(60 * Math.sin(2 * Math.PI * freq * i / rate)));\n  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));\n}\ndocument.getElementById('player').src = makeBeep(440, 2);",
+     "explanation": "Normally you would write <source src=\"file.mp3\" type=\"audio/mpeg\">; here the source is a Blob so it works offline."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why provide multiple source elements?",
+     "a": "Different browsers support different codecs; the browser plays the first format it can handle."
+    },
+    {
+     "q": "Why does autoplay often not work?",
+     "a": "Browsers block autoplay of sound without user interaction; the audio normally must be muted to autoplay."
+    },
+    {
+     "q": "What goes between <audio> tags?",
+     "a": "Fallback content shown by browsers that do not support the audio element."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/audiotag.html"
+  },
+  {
+   "id": "html-video-track",
+   "title": "Video, Poster & Subtitles (track)",
+   "level": "intermediate",
+   "summary": "Embed video with controls, multiple formats, poster images and WebVTT captions.",
+   "description": "`<video>` embeds a media player for video files.\n\n```html\n<video controls width=\"500\" poster=\"cover.jpg\" preload=\"metadata\">\n  <source src=\"movie.mp4\" type=\"video/mp4\">\n  <source src=\"movie.webm\" type=\"video/webm\">\n  <track kind=\"subtitles\" src=\"en.vtt\" srclang=\"en\" label=\"English\" default>\n  Your browser does not support the video tag.\n</video>\n```\n\n### Attributes\n- `controls` - show the player UI.\n- `autoplay` + `muted` - autoplay only works for muted videos.\n- `loop` - repeat.\n- `poster` - image shown before playback starts.\n- `width` / `height` - reserve the space.\n- `preload` - `none` | `metadata` | `auto`.\n- `playsinline` - play inside the page on iOS instead of fullscreen.\n\n### Formats\n| Format | MIME | Notes |\n|---|---|---|\n| MP4 (H.264) | `video/mp4` | Best compatibility |\n| WebM (VP9/AV1) | `video/webm` | Open, efficient |\n| Ogg | `video/ogg` | Rare today |\n\nThe browser plays the first `<source>` it supports.\n\n### Captions with track\n`<track>` adds a WebVTT text file: `kind` can be `subtitles`, `captions`, `descriptions`, `chapters` or `metadata`. Captions are essential for deaf users and also help people watching with sound off.\n\n### Embedding vs hosting\nSelf-hosted files use `<video>`. For YouTube or Vimeo you embed their player through an `<iframe>` (see the iframe topic).",
+   "keyPoints": [
+    "video works like audio but also has width/height and poster.",
+    "Use mp4 + webm sources for compatibility.",
+    "autoplay needs muted in most browsers; add playsinline for mobile.",
+    "track provides subtitles/captions in WebVTT.",
+    "Use preload=\"metadata\" to save bandwidth."
+   ],
+   "pitfalls": [
+    "Autoplaying large videos on mobile data.",
+    "No captions for spoken content.",
+    "Not setting dimensions - layout jumps when the video loads."
+   ],
+   "examples": [
+    {
+     "title": "Video element markup and capability check",
+     "language": "web",
+     "html": "<video id=\"v\" controls muted loop width=\"300\" poster=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='170'><rect width='100%' height='100%' fill='%23264653'/><text x='150' y='105' font-size='60' text-anchor='middle'>🎬</text></svg>\">\n  <source src=\"movie.mp4\" type=\"video/mp4\">\n  <source src=\"movie.webm\" type=\"video/webm\">\n  <track kind=\"captions\" src=\"captions.vtt\" srclang=\"en\" label=\"English\">\n  Your browser does not support the video tag.\n</video>\n<ul id=\"out\"></ul>",
+     "css": "body{font-family:sans-serif} video{border-radius:10px;background:#000}",
+     "js": "var v = document.getElementById('v'), out = document.getElementById('out');\n['video/mp4', 'video/webm', 'video/ogg'].forEach(function (t) {\n  var li = document.createElement('li');\n  li.textContent = t + ' -> ' + (v.canPlayType(t) || 'no');\n  out.appendChild(li);\n});",
+     "explanation": "The movie files are placeholders, but the poster shows and canPlayType reports what your browser supports."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you add subtitles to a video?",
+     "a": "Add a track element with kind=\"subtitles\", src pointing to a .vtt file, srclang and label."
+    },
+    {
+     "q": "What is the poster attribute?",
+     "a": "An image shown in the video area before the user starts playback."
+    },
+    {
+     "q": "Why mute a video that autoplays?",
+     "a": "Browser autoplay policies only allow autoplay when the video has no sound, to avoid unexpected noise."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/videotag.html"
+  },
+  {
+   "id": "html-iframe",
+   "title": "iframe: Embedding Other Pages",
+   "level": "intermediate",
+   "summary": "An iframe embeds another HTML page (YouTube, maps, widgets) inside your page.",
+   "description": "An **inline frame** `<iframe>` is a nested browsing context: a complete second page shown in a rectangle of your page. Typical uses are YouTube/Vimeo players, Google Maps, payment widgets, ads and live code demos.\n\n```html\n<iframe src=\"https://www.youtube.com/embed/VIDEO_ID\"\n        width=\"560\" height=\"315\"\n        title=\"Intro video\"\n        loading=\"lazy\"\n        allowfullscreen></iframe>\n```\n\n### Important attributes\n| Attribute | Purpose |\n|---|---|\n| `src` | URL of the page to embed |\n| `srcdoc` | Inline HTML instead of a URL |\n| `title` | **Required for accessibility** - describes the frame |\n| `width` / `height` | Size |\n| `loading=\"lazy\"` | Load only when scrolled near |\n| `allow` | Permissions: fullscreen, camera, autoplay... |\n| `sandbox` | Restrict what the frame can do |\n| `referrerpolicy` | What referrer to send |\n| `name` | Target for links: `<a target=\"frameName\">` |\n\n### Things to know\n- Many sites (Google, Facebook, banks) **forbid** embedding with the `X-Frame-Options` / CSP `frame-ancestors` header. Use the site's official embed URL instead.\n- Embedded third-party content can slow your page and has privacy and security implications - use `sandbox` for untrusted pages.\n- `frameborder` is obsolete; use CSS `border:0`.\n\n### Fallback\nContent inside the iframe tag is shown only by browsers without iframe support - practically never.",
+   "keyPoints": [
+    "iframe embeds an entire HTML page inside the current page.",
+    "Always add a descriptive title attribute.",
+    "srcdoc lets you embed inline HTML without a URL.",
+    "Use loading=\"lazy\" and sandbox for performance and security.",
+    "Sites can refuse to be framed (X-Frame-Options / CSP)."
+   ],
+   "pitfalls": [
+    "Embedding a normal website URL and getting a blank frame.",
+    "Missing title attribute - screen readers cannot name the frame.",
+    "Embedding untrusted content without sandbox."
+   ],
+   "examples": [
+    {
+     "title": "iframe with srcdoc",
+     "language": "web",
+     "html": "<iframe title=\"Inline demo page\" width=\"100%\" height=\"120\"\n  srcdoc=\"<h3 style='color:tomato;font-family:sans-serif'>I am a page inside a page</h3><p style='font-family:sans-serif'>My content comes from the srcdoc attribute.</p>\"></iframe>",
+     "css": "iframe{border:2px solid #e34c26;border-radius:8px}",
+     "js": "",
+     "explanation": "No network is needed because srcdoc holds the HTML directly."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an iframe used for?",
+     "a": "To embed another HTML document such as a video player, map or widget inside the current page."
+    },
+    {
+     "q": "Why might an iframe show a blank page?",
+     "a": "The target site blocks framing through X-Frame-Options or CSP frame-ancestors."
+    },
+    {
+     "q": "Name iframe attributes for security and performance.",
+     "a": "sandbox, allow, referrerpolicy, loading=\"lazy\" and title for accessibility."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/iframe.html"
+  }
+ ]
+}

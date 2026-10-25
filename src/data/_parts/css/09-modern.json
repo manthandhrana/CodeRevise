@@ -1,0 +1,403 @@
+{
+ "id": "css-modern",
+ "title": "Modern CSS",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "css-custom-properties",
+   "title": "CSS Variables (Custom Properties)",
+   "level": "intermediate",
+   "summary": "Define reusable values with --name and read them with var() - they cascade and inherit.",
+   "description": "**Custom properties** (CSS variables) store values you reuse across a stylesheet. Unlike Sass variables they live in the browser: they **cascade**, **inherit** and can be changed at runtime.\n\n### Declare and use\n```css\n:root {\n  --main-color: #0062ff;\n  --bg-color: #080a0c;\n  --radius: 8px;\n}\n.btn {\n  background: var(--main-color);\n  border-radius: var(--radius);\n}\n```\n\n- Names start with `--` and are case-sensitive.\n- `:root` (the html element) is the usual place for global tokens.\n- Use `var(--name, fallback)` to provide a default.\n\n### They cascade and inherit\nOverride a variable inside any selector and only that subtree changes:\n\n```css\n.card.danger { --main-color: crimson; }\n```\n\n### Why use them\n- Single source of truth for a theme (colors, spacing, fonts).\n- Change one value and the whole site updates (the final project in the course uses `--main-color`, `--bg-color` etc.).\n- Runtime theming (dark mode) and JavaScript control: `element.style.setProperty('--x', value)`.\n\n### Not just colors\nAny value: lengths, numbers, strings, even partial values like `--shadow: 0 4px 12px rgba(0,0,0,.2);`.\n\n### Remember\n- Variables cannot be used in media query conditions.\n- If a variable is undefined and no fallback exists, the property becomes invalid at computed time.",
+   "keyPoints": [
+    "Declare with --name, read with var(--name, fallback)",
+    ":root holds global tokens",
+    "They inherit and can be overridden in any scope",
+    "They can be changed at runtime with JavaScript",
+    "Cannot be used inside media query conditions"
+   ],
+   "pitfalls": [
+    "Typos in variable names produce silent failures",
+    "Putting spaces or units wrong: --gap: 8 then var(--gap)px does not work (use calc())",
+    "Expecting Sass-style compile-time calculation"
+   ],
+   "examples": [
+    {
+     "title": "Theme tokens and scoped override",
+     "language": "web",
+     "html": "<button class=\"btn\">Primary</button> <button class=\"btn danger\">Danger</button> <button class=\"btn ghost\">Ghost</button>",
+     "css": ":root { --main-color: #0062ff; --font-color: #fff; --radius: 8px; --pad: 10px 20px; }\n.btn { background: var(--main-color); color: var(--font-color); border: 2px solid var(--main-color); border-radius: var(--radius); padding: var(--pad); font: bold 15px sans-serif; }\n.danger { --main-color: #e11d48; }\n.ghost { background: transparent; color: var(--main-color); }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Change a variable with JavaScript",
+     "language": "web",
+     "html": "<div class=\"box\">Click the button to change --hue</div><button id=\"b\">Change hue</button>",
+     "css": ".box { --hue: 220; background: hsl(var(--hue) 80% 55%); color: #fff; padding: 20px; margin-bottom: 10px; font-family: sans-serif; transition: background .3s; }",
+     "js": "const box = document.querySelector('.box');\nlet hue = 220;\ndocument.getElementById('b').addEventListener('click', () => {\n  hue = (hue + 50) % 360;\n  box.style.setProperty('--hue', hue);\n});",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are CSS variables and how do you declare them?",
+     "a": "Custom properties declared with a -- prefix (e.g. --main-color: #3498db) and read with var(--main-color)."
+    },
+    {
+     "q": "How do CSS variables differ from Sass variables?",
+     "a": "CSS variables exist at runtime, cascade/inherit, can be changed by JS and media queries; Sass variables are compiled away."
+    },
+    {
+     "q": "How do you provide a fallback value?",
+     "a": "var(--color, #333) - the second argument is used if the variable is not defined."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/cssvariables/index.html, cssvariables/style.css, final_project/css/style.css"
+  },
+  {
+   "id": "css-custom-properties-advanced",
+   "title": "Custom Properties: Theming and Advanced Patterns",
+   "level": "advanced",
+   "summary": "Design tokens, component APIs, @property typed variables, calc with variables and scoped themes.",
+   "description": "Beyond simple colors, custom properties enable **design systems** and powerful tricks.\n\n### 1. Design tokens in layers\n```css\n:root {\n  /* primitives */\n  --blue-600: #2563eb; --space-2: .5rem;\n  /* semantic tokens */\n  --color-primary: var(--blue-600);\n  --color-surface: #fff;\n}\n[data-theme=\"dark\"] { --color-surface: #0f172a; }\n```\n\n### 2. Component API (configurable components)\n```css\n.btn { --btn-bg: var(--color-primary); --btn-pad: .5rem 1rem;\n  background: var(--btn-bg); padding: var(--btn-pad); }\n.btn.large { --btn-pad: 1rem 2rem; }\n```\n\n### 3. Math with variables\n```css\n.grid { --cols: 4; grid-template-columns: repeat(var(--cols), 1fr); }\n.item { animation-delay: calc(var(--i) * 80ms); }\n```\nUse `calc(var(--n) * 1px)` - a unitless variable can be given any unit.\n\n### 4. Registered properties with @property\nGives a variable a **type**, initial value and makes it animatable:\n\n```css\n@property --angle { syntax: \"<angle>\"; inherits: false; initial-value: 0deg; }\n.spin { background: conic-gradient(from var(--angle), red, blue, red); animation: turn 3s linear infinite; }\n@keyframes turn { to { --angle: 360deg; } }\n```\n\n### 5. The \"space toggle\" and fallbacks\nNested fallbacks: `var(--a, var(--b, red))`.\n\n### 6. Scoped theming\nSet tokens on any wrapper to restyle everything below it - perfect for cards, sections and previews.\n\n### Tips\n- Name by purpose (`--color-danger`), not value (`--red`).\n- Keep tokens in one file.\n- Beware of too many layers: prefer clarity.",
+   "keyPoints": [
+    "Layer tokens: primitives then semantic aliases",
+    "Expose component knobs as local custom properties",
+    "calc(var(--x) * unit) to scale values",
+    "@property registers a typed, animatable variable",
+    "Scope themes by redefining tokens on a wrapper"
+   ],
+   "pitfalls": [
+    "Naming variables by color value instead of purpose",
+    "Animating an unregistered custom property (it jumps instead of interpolating)",
+    "Deep chains of var() that are hard to debug"
+   ],
+   "examples": [
+    {
+     "title": "Component API and themes",
+     "language": "web",
+     "html": "<div class=\"theme-a\"><button class=\"btn\">Theme A</button> <button class=\"btn large\">Large</button></div>\n<div class=\"theme-b\"><button class=\"btn\">Theme B</button> <button class=\"btn large\">Large</button></div>",
+     "css": ".theme-a { --btn-bg: #2563eb; } .theme-b { --btn-bg: #16a34a; }\ndiv { padding: 10px; }\n.btn { --btn-pad: .5rem 1rem; background: var(--btn-bg, #333); color: #fff; padding: var(--btn-pad); border: 0; border-radius: 8px; font: bold 14px sans-serif; }\n.btn.large { --btn-pad: 1rem 2rem; font-size: 18px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "@property animated gradient",
+     "language": "web",
+     "html": "<div class=\"ring\"></div>",
+     "css": "@property --angle { syntax: \"<angle>\"; inherits: false; initial-value: 0deg; }\n.ring { width: 120px; height: 120px; border-radius: 50%; background: conic-gradient(from var(--angle), #f06, #48f, #0fc, #f06); animation: turn 3s linear infinite; }\n@keyframes turn { to { --angle: 360deg; } }",
+     "js": "",
+     "code": "",
+     "explanation": "Registering the property as an <angle> lets the browser interpolate it inside the gradient."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is @property?",
+     "a": "An at-rule that registers a custom property with a syntax type, initial value and inheritance, enabling validation and smooth animation."
+    },
+    {
+     "q": "How do you build a theme switcher with variables?",
+     "a": "Define tokens on :root and override them under [data-theme=\"dark\"] or a class; toggle the attribute with JavaScript."
+    },
+    {
+     "q": "How can you use a unitless custom property as a length?",
+     "a": "Multiply it inside calc(): calc(var(--n) * 1px)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-cascade-layers",
+   "title": "Cascade Layers (@layer)",
+   "level": "advanced",
+   "summary": "Control which group of styles wins with explicit layers instead of specificity wars.",
+   "description": "**Cascade layers** let you declare the *priority order of groups of styles*. A layer that comes later beats an earlier one **regardless of specificity**.\n\n### Syntax\n```css\n/* 1. declare the order once */\n@layer reset, base, components, utilities;\n\n/* 2. fill layers anywhere */\n@layer reset {\n  * { margin: 0; box-sizing: border-box; }\n}\n@layer components {\n  .btn { background: royalblue; padding: .5rem 1rem; }\n}\n@layer utilities {\n  .bg-red { background: crimson; }   /* wins over .btn even with lower specificity */\n}\n```\n\n### Important rules\n- Order is set by the **first** declaration of layer names.\n- **Unlayered** styles beat all layered styles (they are treated as the final layer).\n- For `!important` the order **reverses**: earlier layers win.\n- Layers can be nested: `@layer framework.theme { }`.\n- Import a whole library into a layer: `@import url(lib.css) layer(vendor);`\n\n### Why it matters\n- Third-party CSS (Bootstrap, plugins) goes into a low layer, so your styles always win without `!important`.\n- Resets and base styles can never accidentally beat components.\n- Utilities in the top layer override components predictably.\n\n### Tools in the same family\n`:where()` (zero specificity) and `@scope` help with the same problem from other angles.\n\n### Debugging\nDevTools shows the layer a rule belongs to. If a style does not apply, check for an unlayered rule overriding it.",
+   "keyPoints": [
+    "Declare order: @layer reset, base, components, utilities;",
+    "Later layer wins regardless of specificity",
+    "Unlayered styles beat layered styles",
+    "!important reverses the layer order",
+    "Great for taming third-party CSS"
+   ],
+   "pitfalls": [
+    "Forgetting that unlayered CSS always wins",
+    "Declaring layer order too late (the first appearance decides)",
+    "Assuming high specificity helps inside a lower layer"
+   ],
+   "examples": [
+    {
+     "title": "Layer order beats specificity",
+     "language": "web",
+     "html": "<button class=\"btn\" id=\"save\">Layered button</button>",
+     "css": "@layer base, components, utilities;\n@layer components {\n  #save.btn { background: royalblue; color: #fff; padding: 10px 20px; border: 0; font: bold 15px sans-serif; border-radius: 6px; }  /* high specificity */\n}\n@layer utilities {\n  .btn { background: crimson; }   /* low specificity, but later layer wins */\n}",
+     "js": "",
+     "code": "",
+     "explanation": "The button is crimson even though the component rule uses an id plus class."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem do cascade layers solve?",
+     "a": "They let you define explicit priority between groups of styles so specificity wars and !important are not needed, especially with third-party CSS."
+    },
+    {
+     "q": "Do unlayered styles beat layered styles?",
+     "a": "Yes. Styles outside any layer take precedence over layered styles (for normal declarations)."
+    },
+    {
+     "q": "How does !important behave with layers?",
+     "a": "The order reverses: !important in an earlier layer beats !important in a later layer."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-logical-properties",
+   "title": "Logical Properties and Writing Modes",
+   "level": "advanced",
+   "summary": "Use inline/block instead of left/right/top/bottom so layouts adapt to any writing direction.",
+   "description": "Physical properties (`left`, `margin-top`, `width`) assume left-to-right, top-to-bottom text. **Logical properties** map to the **inline** axis (the direction text flows) and **block** axis (where new lines stack), so layouts work for RTL languages (Arabic, Hebrew) and vertical scripts.\n\n### Mapping (horizontal-tb, LTR)\n| Physical | Logical |\n|---|---|\n| `width` / `height` | `inline-size` / `block-size` |\n| `margin-left` / `margin-right` | `margin-inline-start` / `margin-inline-end` |\n| `margin-top` / `margin-bottom` | `margin-block-start` / `margin-block-end` |\n| `padding: 0 1rem` | `padding-inline: 1rem` |\n| `border-top` + `border-bottom` | `border-block` |\n| `left` / `top` | `inset-inline-start` / `inset-block-start` |\n| `text-align: left` | `text-align: start` |\n| `top/right/bottom/left: 0` | `inset: 0` |\n\n### Shorthands\n`margin-inline`, `margin-block`, `padding-inline`, `padding-block`, `border-inline`, `border-block`, `inset-inline`, `inset-block`.\n\n### writing-mode\n`writing-mode: horizontal-tb | vertical-rl | vertical-lr;` rotates the flow of text. In vertical mode, `inline-size` becomes the height! (The source demo used `writing-mode: vertical-lr` on a heading.)\n\n### Practical use\n```css\n.container { max-inline-size: 70ch; margin-inline: auto; padding-block: 2rem; }\n.icon + .label { margin-inline-start: .5rem; }  /* flips automatically in RTL */\n```\n\n### Tip\nSet `dir=\"rtl\"` or `html { direction: rtl }` to test; logical code mirrors itself with no extra CSS.",
+   "keyPoints": [
+    "inline axis = text direction; block axis = line stacking",
+    "margin-inline / padding-block etc. replace left/right/top/bottom",
+    "inset: 0 replaces top/right/bottom/left: 0",
+    "text-align: start/end adapts to direction",
+    "writing-mode changes the flow and swaps axes"
+   ],
+   "pitfalls": [
+    "Mixing physical and logical properties inconsistently",
+    "Forgetting that in vertical writing modes inline-size is height",
+    "Assuming margin-left: auto will flip in RTL (it will not)"
+   ],
+   "examples": [
+    {
+     "title": "Logical spacing with direction",
+     "language": "web",
+     "html": "<div class=\"ltr\" dir=\"ltr\"><span class=\"ic\">★</span><span class=\"lb\">LTR label</span></div>\n<div class=\"ltr\" dir=\"rtl\"><span class=\"ic\">★</span><span class=\"lb\">RTL label (mirrors)</span></div>",
+     "css": ".ltr { border-inline-start: 6px solid #2965f1; padding-inline: 12px; padding-block: 8px; margin-block: 8px; background: #eef2ff; font-family: sans-serif; }\n.lb { margin-inline-start: 10px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "writing-mode",
+     "language": "web",
+     "html": "<div class=\"v\"><h2>Vertical heading</h2></div><p class=\"h\">Border-block draws top and bottom borders only.</p>",
+     "css": "body { font-family: sans-serif; display: flex; gap: 20px; }\n.v h2 { writing-mode: vertical-lr; margin: 0; padding: 10px; background: #fde68a; }\n.h { border-block: 4px solid #e11d48; padding-block: 8px; height: fit-content; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are logical properties?",
+     "a": "Properties like margin-inline-start or inline-size that are relative to the writing direction (inline/block axes) instead of physical left/right/top/bottom."
+    },
+    {
+     "q": "Why use margin-inline: auto instead of margin: 0 auto?",
+     "a": "It is equivalent in LTR but expresses intent on the inline axis and adapts to vertical writing modes; both center a block."
+    },
+    {
+     "q": "What does the writing-mode property do?",
+     "a": "It sets whether lines of text are laid out horizontally or vertically and the direction blocks progress."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/latestcss/remaining/style.css"
+  },
+  {
+   "id": "css-font-face-variable",
+   "title": "@font-face and Variable Fonts",
+   "level": "advanced",
+   "summary": "Load custom fonts efficiently and use variable fonts for continuous weight and width.",
+   "description": "### @font-face\nRegister a font file and give it a family name:\n\n```css\n@font-face {\n  font-family: \"Brand\";\n  src: url(\"/fonts/brand.woff2\") format(\"woff2\"),\n       url(\"/fonts/brand.woff\") format(\"woff\");\n  font-weight: 400;\n  font-style: normal;\n  font-display: swap;\n}\nbody { font-family: \"Brand\", system-ui, sans-serif; }\n```\n\n### Formats\n| Format | Use |\n|---|---|\n| `woff2` | best compression, supported everywhere modern - use this |\n| `woff` | fallback |\n| `ttf/otf` | legacy/desktop; the course demo used OpenType |\n\n### font-display\n- `swap`: show fallback immediately, swap when loaded (recommended).\n- `optional`: use font only if it is available very quickly.\n- `block`: invisible text up to ~3s (avoid).\n\n### Performance tips\n- Self-host and use `<link rel=\"preload\" as=\"font\" type=\"font/woff2\" crossorigin>` for the main font.\n- Subset the font (only needed glyphs) with `unicode-range`.\n- Limit weights/styles.\n- Match fallback metrics with `size-adjust` to reduce layout shift.\n\n### Variable fonts\nOne file contains a continuous range of axes (weight, width, slant, optical size).\n\n```css\n@font-face { font-family: \"Inter VF\"; src: url(\"inter-var.woff2\") format(\"woff2\"); font-weight: 100 900; }\nh1 { font-weight: 650; font-variation-settings: \"wdth\" 110; }\n```\nBenefits: fewer files, fine-grained control, smooth weight animation on hover.\n\n### Fallback stack\nAlways finish with a generic family so text stays readable if the font fails.",
+   "keyPoints": [
+    "@font-face defines family name, src files and descriptors",
+    "Prefer woff2 and font-display: swap",
+    "Preload the critical font; subset with unicode-range",
+    "Variable fonts expose axes: font-weight: 100 900",
+    "Always include a generic fallback family"
+   ],
+   "pitfalls": [
+    "Wrong file path or missing CORS headers for cross-origin fonts",
+    "Loading many weights and styles slowing the page",
+    "Using font-display: block causing invisible text (FOIT)"
+   ],
+   "examples": [
+    {
+     "title": "Weight axis animation (system font)",
+     "language": "web",
+     "html": "<p class=\"w\">Weight changes smoothly with variable fonts. Hover me.</p>",
+     "css": ".w { font: 400 28px \"Segoe UI\", system-ui, sans-serif; transition: font-weight .4s, letter-spacing .4s; width: 360px; }\n.w:hover { font-weight: 800; letter-spacing: 1px; }",
+     "js": "",
+     "code": "",
+     "explanation": "With a variable font the weight interpolates smoothly; system fonts without axes will step between available weights."
+    },
+    {
+     "title": "Production @font-face",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "@font-face {\n  font-family: \"Urbanist\";\n  src: url(\"/fonts/urbanist-var.woff2\") format(\"woff2\");\n  font-weight: 100 900;\n  font-display: swap;\n  unicode-range: U+0000-00FF;\n}",
+     "explanation": "Typical self-hosted variable font declaration (file not included here)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you add a custom font in CSS?",
+     "a": "Use @font-face with a font-family name and src url(); then reference the family in font-family with fallbacks."
+    },
+    {
+     "q": "What does font-display: swap do?",
+     "a": "It renders text immediately with a fallback font and swaps to the custom font when it has loaded, preventing invisible text."
+    },
+    {
+     "q": "What is a variable font?",
+     "a": "A single font file containing continuous design axes (weight, width, slant) so you can choose any value in the range with font-weight or font-variation-settings."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/font/style.css"
+  },
+  {
+   "id": "css-scroll-snap",
+   "title": "Scroll Snap and Smooth Scrolling",
+   "level": "advanced",
+   "summary": "Make carousels and full-page sections lock into place with scroll-snap and smooth behavior.",
+   "description": "**Scroll snap** makes a scroll container stop at defined positions - ideal for carousels, galleries and slide-style pages, with no JavaScript.\n\n### Container\n```css\n.scroller {\n  display: flex;\n  overflow-x: auto;\n  scroll-snap-type: x mandatory;   /* axis + strictness */\n  scroll-behavior: smooth;\n  gap: 1rem;\n}\n```\n- `scroll-snap-type: x | y | both` + `mandatory` or `proximity`.\n- `mandatory` always settles on a snap point; `proximity` only if close.\n\n### Items\n```css\n.slide { flex: 0 0 100%; scroll-snap-align: center; }  /* start | center | end */\n```\n- `scroll-snap-stop: always;` prevents skipping items on fast swipes.\n\n### Offsets\n- `scroll-padding` on the container and `scroll-margin` on items - essential when you have a sticky header.\n\n### Smooth anchor scrolling\n```css\nhtml { scroll-behavior: smooth; scroll-padding-top: 80px; }\n```\nThe final project in the course left `scroll-snap-type: y proximity` and `scroll-snap-align: center` commented in its stylesheet - it is exactly this feature applied page-wide.\n\n### Notes\n- Respect `prefers-reduced-motion` for smooth scrolling.\n- Hide scrollbars carefully (`scrollbar-width: none`) - keep navigation dots/arrows for accessibility.\n- Use `overscroll-behavior` to stop scroll chaining.\n- Newer: `scroll-timeline` / scroll-driven animations tie animation progress to scrolling.",
+   "keyPoints": [
+    "scroll-snap-type on the container, scroll-snap-align on children",
+    "mandatory always snaps; proximity snaps when near",
+    "scroll-padding/margin account for sticky headers",
+    "scroll-behavior: smooth animates anchor jumps",
+    "Carousels without JavaScript"
+   ],
+   "pitfalls": [
+    "mandatory snapping with items taller than the viewport (trapped scrolling)",
+    "Forgetting scroll-padding with a fixed header",
+    "Hiding scroll UI without providing other controls"
+   ],
+   "examples": [
+    {
+     "title": "Snap carousel",
+     "language": "web",
+     "html": "<div class=\"scroller\"><div class=\"s s1\">1</div><div class=\"s s2\">2</div><div class=\"s s3\">3</div><div class=\"s s4\">4</div></div><p class=\"hint\">Scroll / swipe horizontally</p>",
+     "css": ".scroller { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 12px; padding: 6px; scroll-behavior: smooth; }\n.s { flex: 0 0 80%; height: 120px; scroll-snap-align: center; display: grid; place-items: center; color: #fff; font: bold 32px sans-serif; border-radius: 12px; }\n.s1 { background: #2965f1; } .s2 { background: #16a34a; } .s3 { background: #f59e0b; } .s4 { background: #e11d48; }\n.hint { font: 12px sans-serif; color: #64748b; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you build a carousel without JavaScript?",
+     "a": "A horizontally scrolling flex container with scroll-snap-type: x mandatory and children with scroll-snap-align: center (plus overflow-x: auto)."
+    },
+    {
+     "q": "mandatory vs proximity?",
+     "a": "mandatory forces the scroll to rest on a snap point; proximity only snaps if the scroll stops near one."
+    },
+    {
+     "q": "How do you offset snapping/anchor scroll below a sticky header?",
+     "a": "Use scroll-padding-top on the scroll container or scroll-margin-top on the targets."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/final_project/css/style.css"
+  },
+  {
+   "id": "css-subgrid",
+   "title": "Subgrid",
+   "level": "advanced",
+   "summary": "Let nested grid items align to their parent grid tracks.",
+   "description": "By default, a grid inside a grid item is **independent**: its tracks do not know about the outer grid. **Subgrid** lets the child use the parent's tracks, so nested content aligns across siblings.\n\n### The classic problem\nA row of cards, each with a title, text and button. Titles have different lengths, so the buttons sit at different heights. With subgrid, every card's internal rows share the same row lines, so titles, text and buttons align perfectly.\n\n### Syntax\n```css\n.cards {\n  display: grid;\n  grid-template-columns: repeat(3, 1fr);\n  grid-template-rows: auto;      /* implicit rows created by cards */\n  gap: 1rem;\n}\n.card {\n  display: grid;\n  grid-row: span 3;                 /* card occupies three outer rows */\n  grid-template-rows: subgrid;      /* inherits those three rows */\n  gap: 0;\n}\n```\n\n### Rules\n- Use `subgrid` as the value of `grid-template-columns` and/or `grid-template-rows`.\n- The subgrid item must **span** the tracks it wants to share.\n- Gaps are inherited, but you can override `gap`.\n- Line names from the parent are available inside.\n\n### When to use\n- Card grids with aligned internal parts.\n- Forms where labels and inputs from different groups align.\n- Complex page layouts where a child must participate in the page grid (full-bleed layouts).\n\n### Support\nSupported in all current major browsers (Firefox first, Chrome 117+, Safari 16+). Provide a graceful fallback (cards still work, only alignment is lost).",
+   "keyPoints": [
+    "subgrid reuses the parent grid's rows and/or columns",
+    "The child must be a grid item that spans tracks",
+    "Solves aligned card internals",
+    "Gaps and line names are inherited",
+    "Fallback behaviour is a normal independent grid"
+   ],
+   "pitfalls": [
+    "Forgetting grid-row: span N on the subgrid item",
+    "Expecting subgrid on non-grid items",
+    "Not verifying support for older browsers"
+   ],
+   "examples": [
+    {
+     "title": "Aligned card parts",
+     "language": "web",
+     "html": "<div class=\"cards\">\n  <article><h3>Short</h3><p>Small text.</p><button>Buy</button></article>\n  <article><h3>A much longer heading that wraps</h3><p>Medium text that takes more room than the first card does.</p><button>Buy</button></article>\n  <article><h3>Title</h3><p>Text text text text text text text text text.</p><button>Buy</button></article>\n</div>",
+     "css": "body { font-family: sans-serif; }\n.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }\narticle { display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: 6px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #f8fafc; }\nh3 { margin: 0; font-size: 15px; }\np { margin: 0; font-size: 13px; }\nbutton { align-self: end; border: 0; background: #2965f1; color: #fff; padding: 6px; border-radius: 6px; }",
+     "js": "",
+     "code": "",
+     "explanation": "Because each card shares the same three row tracks, all titles, texts and buttons line up."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What problem does subgrid solve?",
+     "a": "It lets nested grid items align to the parent grid's tracks, e.g. keeping titles, text and buttons aligned across cards of different content length."
+    },
+    {
+     "q": "How do you use subgrid?",
+     "a": "On a grid item that spans tracks, set display: grid and grid-template-rows/columns: subgrid."
+    },
+    {
+     "q": "Does subgrid inherit gap?",
+     "a": "Yes by default it uses the parent's gap, which can be overridden on the subgrid."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-dark-mode",
+   "title": "Dark Mode and prefers-color-scheme",
+   "level": "advanced",
+   "summary": "Respect the OS theme with prefers-color-scheme and build a manual toggle with variables.",
+   "description": "Dark mode is mostly a **color-token** problem. Define colors as custom properties and swap them.\n\n### 1. Automatic: follow the system\n```css\n:root { --bg: #ffffff; --text: #0f172a; --card: #f1f5f9; color-scheme: light dark; }\n@media (prefers-color-scheme: dark) {\n  :root { --bg: #0b1020; --text: #e2e8f0; --card: #1e293b; }\n}\nbody { background: var(--bg); color: var(--text); }\n```\n\n- `color-scheme: light dark;` lets the browser render built-in widgets (scrollbars, form controls) in the right theme.\n- The modern `light-dark()` function: `color: light-dark(#111, #eee);`\n\n### 2. Manual toggle (user choice)\n```css\n:root[data-theme=\"dark\"] { --bg: #0b1020; --text: #e2e8f0; }\n```\nToggle `document.documentElement.dataset.theme` with JavaScript and save to `localStorage`. Read the system value first with `matchMedia('(prefers-color-scheme: dark)')`.\n\n### 3. Design tips\n- Do not use pure black (#000) on pure white - choose dark gray (#0b1020, #121212).\n- Reduce saturation of accent colors in dark mode.\n- Use elevation (lighter surface) instead of heavy shadows.\n- Check contrast again for both themes.\n- Dim images: `img { filter: brightness(.9); }`.\n\n### Avoid flash\nSet the theme attribute in an inline script **before** the stylesheet paints.",
+   "keyPoints": [
+    "Use custom properties for colors and swap them in a media query",
+    "prefers-color-scheme reads the OS preference",
+    "color-scheme: light dark styles native controls",
+    "Manual toggle via data-theme + localStorage",
+    "Re-check contrast and avoid pure black"
+   ],
+   "pitfalls": [
+    "Hard-coded colors scattered in components",
+    "Flash of wrong theme before JavaScript runs",
+    "Forgetting images, shadows and form controls in dark mode"
+   ],
+   "examples": [
+    {
+     "title": "Theme toggle with variables",
+     "language": "web",
+     "html": "<div class=\"card\"><h3>Theme demo</h3><p>Follows your OS by default. Use the button to override.</p><button id=\"t\">Toggle theme</button></div>",
+     "css": ":root { --bg: #ffffff; --text: #0f172a; --card: #f1f5f9; --btn: #2965f1; color-scheme: light; }\n@media (prefers-color-scheme: dark) { :root:not([data-theme=\"light\"]) { --bg: #0b1020; --text: #e2e8f0; --card: #1e293b; --btn: #60a5fa; color-scheme: dark; } }\n:root[data-theme=\"dark\"] { --bg: #0b1020; --text: #e2e8f0; --card: #1e293b; --btn: #60a5fa; color-scheme: dark; }\n:root[data-theme=\"light\"] { --bg: #ffffff; --text: #0f172a; --card: #f1f5f9; --btn: #2965f1; color-scheme: light; }\nbody { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; padding: 14px; transition: background .3s, color .3s; }\n.card { background: var(--card); padding: 14px; border-radius: 10px; }\nbutton { background: var(--btn); color: #fff; border: 0; padding: 8px 14px; border-radius: 6px; }",
+     "js": "const root = document.documentElement;\nconst isDark = () => root.dataset.theme\n  ? root.dataset.theme === 'dark'\n  : window.matchMedia('(prefers-color-scheme: dark)').matches;\ndocument.getElementById('t').addEventListener('click', () => {\n  root.dataset.theme = isDark() ? 'light' : 'dark';\n});",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you detect dark mode in CSS?",
+     "a": "@media (prefers-color-scheme: dark) { ... } reflects the user's operating system or browser preference."
+    },
+    {
+     "q": "What does color-scheme: light dark do?",
+     "a": "It tells the browser the page supports both schemes so built-in UI like form controls and scrollbars are drawn with the matching theme."
+    },
+    {
+     "q": "How do you let users override the system theme?",
+     "a": "Use a data-theme attribute (or class) on the root with variable overrides, toggle it with JavaScript and persist the choice in localStorage."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

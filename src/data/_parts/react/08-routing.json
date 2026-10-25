@@ -1,0 +1,236 @@
+{
+ "id": "react-routing",
+ "title": "Routing with React Router",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-router-basics",
+   "title": "React Router Basics",
+   "level": "intermediate",
+   "summary": "React Router maps URLs to components so a single-page app can have multiple \"pages\" without reloads.",
+   "description": "A single-page app (SPA) has one HTML file. **Client-side routing** changes what is rendered when the URL changes, using the History API, without a full page reload. **React Router** is the standard library. Version 6 introduced the current API; **version 7** merges it with Remix (import from `react-router`, with an optional framework mode) and keeps the same core ideas.\n\n### Core pieces\n\n| Piece | Purpose |\n| --- | --- |\n| `BrowserRouter` | enables routing with clean URLs |\n| `Routes` / `Route` | match the URL to an `element` |\n| `Link` | navigation without page reload (renders `<a>`) |\n| `NavLink` | Link that knows if it is active (`isActive`) |\n| `Navigate` | redirect declaratively |\n| `path=\"*\"` | catch-all, used for 404 pages |\n\n### Setup\n\n```jsx\nimport { BrowserRouter, Routes, Route, Link } from \"react-router-dom\";\n\n<BrowserRouter>\n  <nav><Link to=\"/\">Home</Link> <Link to=\"/about\">About</Link></nav>\n  <Routes>\n    <Route path=\"/\" element={<Home />} />\n    <Route path=\"/about\" element={<About />} />\n    <Route path=\"*\" element={<NotFound />} />\n  </Routes>\n</BrowserRouter>\n```\n\n### Notes\n\n- Use `Link`, never a plain `<a href>`, for internal navigation (a plain anchor reloads the page).\n- Routes match by **best specificity**, not order.\n- Relative links resolve against the route they are rendered in.\n- For static hosts, configure a **fallback to index.html** so refreshing `/about` does not return 404.\n- `HashRouter` is an alternative for hosts without rewrite rules.",
+   "keyPoints": [
+    "Client-side routing changes the view without reloading",
+    "Routes/Route map paths to elements; path=\"*\" is 404",
+    "Use Link / NavLink instead of <a> for internal links",
+    "BrowserRouter needs server fallback to index.html",
+    "v7 imports from react-router; same core API"
+   ],
+   "pitfalls": [
+    "Using <a href> for internal pages, causing full reloads.",
+    "Deploying without SPA fallback, so refreshing a deep link gives 404."
+   ],
+   "examples": [
+    {
+     "title": "Basic routes",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { BrowserRouter, Routes, Route, NavLink } from \"react-router-dom\";\n\nfunction Home() { return <h1>Home</h1>; }\nfunction About() { return <h1>About</h1>; }\nfunction NotFound() { return <h1>404 - Not found</h1>; }\n\nexport default function App() {\n  return (\n    <BrowserRouter>\n      <nav>\n        <NavLink to=\"/\" end>Home</NavLink>{\" | \"}\n        <NavLink to=\"/about\" className={({ isActive }) => (isActive ? \"active\" : \"\")}>About</NavLink>\n      </nav>\n      <Routes>\n        <Route path=\"/\" element={<Home />} />\n        <Route path=\"/about\" element={<About />} />\n        <Route path=\"*\" element={<NotFound />} />\n      </Routes>\n    </BrowserRouter>\n  );\n}"
+    },
+    {
+     "title": "How a router works (conceptual, in-memory)",
+     "language": "react",
+     "css": "",
+     "code": "const routes = {\n  \"/\": () => <h2>Home page</h2>,\n  \"/about\": () => <h2>About page</h2>,\n  \"/contact\": () => <h2>Contact page</h2>,\n};\n\nfunction App() {\n  const [path, setPath] = useState(\"/\");\n  const Page = routes[path] || (() => <h2>404 Not Found</h2>);\n  const link = (to, label) => (\n    <a\n      href={to}\n      onClick={(e) => { e.preventDefault(); setPath(to); }}\n      style={{ marginRight: 10, fontWeight: path === to ? \"bold\" : \"normal\" }}\n    >\n      {label}\n    </a>\n  );\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <nav>{link(\"/\", \"Home\")}{link(\"/about\", \"About\")}{link(\"/contact\", \"Contact\")}{link(\"/nope\", \"Broken\")}</nav>\n      <Page />\n      <small>Current path (state): {path}</small>\n    </div>\n  );\n}",
+     "explanation": "A tiny route table driven by state, to show the idea without the library."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is client-side routing?",
+     "a": "Changing the rendered components based on the URL using the History API, without requesting a new HTML page from the server."
+    },
+    {
+     "q": "Why use Link instead of an anchor tag?",
+     "a": "Link intercepts the click and updates the URL through the router without reloading the page, preserving app state."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-nested-routes",
+   "title": "Nested Routes and Layouts",
+   "level": "intermediate",
+   "summary": "Nest routes so shared layout (header, sidebar) stays while only the inner part changes, using Outlet.",
+   "description": "Real apps share layouts: a navbar and footer on every page, a sidebar on dashboard pages. Nested routes express this directly in the route tree.\n\n```jsx\n<Routes>\n  <Route element={<MainLayout />}>\n    <Route index element={<Home />} />\n    <Route path=\"products\" element={<Products />} />\n    <Route path=\"dashboard\" element={<DashboardLayout />}>\n      <Route index element={<Overview />} />\n      <Route path=\"settings\" element={<Settings />} />\n    </Route>\n  </Route>\n  <Route path=\"*\" element={<NotFound />} />\n</Routes>\n```\n\n### Outlet\n\nA parent route renders `<Outlet />` where its matched child should appear:\n\n```jsx\nfunction MainLayout() {\n  return (\n    <>\n      <Header />\n      <main><Outlet /></main>\n      <Footer />\n    </>\n  );\n}\n```\n\n### Concepts\n\n- **Layout routes**: a route with no `path` (only `element`) used purely for layout and shared logic.\n- **Index routes**: `index` renders at the parent's exact URL.\n- **Relative paths**: child `path=\"settings\"` becomes `/dashboard/settings`.\n- **Outlet context**: `<Outlet context={...} />` passes data to children via `useOutletContext()`.\n- **Pathless routes** group routes for guards without changing the URL.\n\n### Benefits\n\nState inside the layout is preserved while navigating between its children, and you avoid duplicating headers in every page component.",
+   "keyPoints": [
+    "Parent element renders <Outlet /> for the child",
+    "Index route renders at the parent path",
+    "Layout routes have no path",
+    "Child paths are relative to the parent",
+    "Layout state persists across child navigation"
+   ],
+   "pitfalls": [
+    "Forgetting <Outlet />, so child routes never appear.",
+    "Using absolute paths on children accidentally (leading slash resets the nesting)."
+   ],
+   "examples": [
+    {
+     "title": "Layout route with Outlet",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { Outlet, NavLink, Routes, Route } from \"react-router-dom\";\n\nfunction DashboardLayout() {\n  return (\n    <div style={{ display: \"flex\" }}>\n      <aside>\n        <NavLink to=\"/dashboard\" end>Overview</NavLink><br />\n        <NavLink to=\"/dashboard/settings\">Settings</NavLink>\n      </aside>\n      <section style={{ padding: 16 }}>\n        <Outlet />\n      </section>\n    </div>\n  );\n}\n\nexport default function App() {\n  return (\n    <Routes>\n      <Route path=\"/dashboard\" element={<DashboardLayout />}>\n        <Route index element={<h2>Overview</h2>} />\n        <Route path=\"settings\" element={<h2>Settings</h2>} />\n      </Route>\n    </Routes>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does Outlet do?",
+     "a": "It renders the matched child route inside a parent layout component."
+    },
+    {
+     "q": "What is an index route?",
+     "a": "A child route with no path that renders when the parent's URL matches exactly."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-router-params-navigate",
+   "title": "Params, Search Params and Navigation",
+   "level": "intermediate",
+   "summary": "Read URL parameters with useParams, query strings with useSearchParams, and navigate in code with useNavigate.",
+   "description": "URLs carry state. React Router gives hooks to read and change it.\n\n### Dynamic segments - `useParams`\n\n```jsx\n<Route path=\"/users/:userId\" element={<User />} />\n\nfunction User() {\n  const { userId } = useParams();   // always a string!\n}\n```\n\nConvert numbers yourself: `Number(userId)`. Optional segments use `:id?` and splats use `*`.\n\n### Query string - `useSearchParams`\n\n```jsx\nconst [params, setParams] = useSearchParams();\nconst q = params.get(\"q\") ?? \"\";\nsetParams({ q: \"react\", page: \"2\" });\n```\n\nIt works like `useState`, but the state lives in the URL, so it survives refresh and can be shared. Ideal for filters, search, sorting and pagination.\n\n### Programmatic navigation - `useNavigate`\n\n```jsx\nconst navigate = useNavigate();\nnavigate(\"/orders/42\");\nnavigate(-1);                       // back\nnavigate(\"/login\", { replace: true, state: { from: location } });\n```\n\nUse it after forms or login. Use `<Navigate to=\"/login\" replace />` when you want to redirect during render.\n\n### Location and state\n\n`useLocation()` returns `pathname`, `search`, `hash` and `state` (data passed through `navigate`, not visible in URL).\n\n### Tips\n\n- Prefer `Link` for normal navigation; use `navigate` for side-effect-driven moves.\n- `replace` avoids filling the back-button history with redirects.",
+   "keyPoints": [
+    "useParams reads :dynamic segments as strings",
+    "useSearchParams puts state in the query string",
+    "useNavigate navigates in code (replace, state, -1)",
+    "<Navigate> redirects declaratively",
+    "useLocation gives pathname, search and state"
+   ],
+   "pitfalls": [
+    "Treating params as numbers without conversion.",
+    "Navigating inside render instead of an effect or event handler."
+   ],
+   "examples": [
+    {
+     "title": "Product page with params and search",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useParams, useSearchParams, useNavigate, Link } from \"react-router-dom\";\n\n// <Route path=\"/products\" element={<ProductList />} />\n// <Route path=\"/products/:id\" element={<ProductDetail />} />\n\nfunction ProductList() {\n  const [params, setParams] = useSearchParams();\n  const sort = params.get(\"sort\") ?? \"asc\";\n  return (\n    <>\n      <button onClick={() => setParams({ sort: sort === \"asc\" ? \"desc\" : \"asc\" })}>\n        Sort: {sort}\n      </button>\n      <Link to=\"/products/7\">Product 7</Link>\n    </>\n  );\n}\n\nfunction ProductDetail() {\n  const { id } = useParams();\n  const navigate = useNavigate();\n  return (\n    <>\n      <h2>Product #{Number(id)}</h2>\n      <button onClick={() => navigate(-1)}>Back</button>\n      <button onClick={() => navigate(\"/cart\", { state: { added: id } })}>Add to cart</button>\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What type does useParams return?",
+     "a": "Strings. Convert to numbers explicitly if needed."
+    },
+    {
+     "q": "When use useSearchParams instead of useState?",
+     "a": "When the state (filters, page, search) should be reflected in the URL so it survives refresh and can be shared or bookmarked."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-router-loaders",
+   "title": "Data Routers: Loaders and Actions",
+   "level": "advanced",
+   "summary": "Fetch data before rendering a route and handle form submissions with loader and action functions.",
+   "description": "The **data router** API (`createBrowserRouter` + `RouterProvider`) lets a route declare its data needs next to its path. This avoids \"render, then fetch in an effect, then show spinner\" waterfalls.\n\n```jsx\nconst router = createBrowserRouter([\n  {\n    path: \"/\",\n    element: <Root />,\n    errorElement: <ErrorPage />,\n    children: [\n      {\n        path: \"posts/:id\",\n        loader: ({ params }) => fetch(`/api/posts/${params.id}`).then(r => r.json()),\n        action: async ({ request }) => { /* handle form POST */ },\n        element: <Post />,\n      },\n    ],\n  },\n]);\n<RouterProvider router={router} />\n```\n\n### Pieces\n\n- **`loader`** - runs before the route renders (in parallel for nested routes). Read in the component with `useLoaderData()`.\n- **`action`** - handles `<Form method=\"post\">` submissions and `fetcher.submit`. After an action, loaders **revalidate** automatically so the UI stays in sync.\n- **`errorElement`** - renders if the loader, action or component throws. Read the error with `useRouteError()`.\n- **`useNavigation()`** - `state` is `idle | loading | submitting` for global progress bars.\n- **`useFetcher()`** - call loaders/actions without navigating (like buttons, inline edits).\n- **`defer` / `Await`** (v6) or streaming promises (v7) - render fast parts first.\n\n### Why use it\n\nParallel data loading, built-in error handling, no spinners-in-spinners, and automatic revalidation after mutations. In React Router v7 framework mode it adds SSR, type-safe loaders and file-based or config routes.\n\n### With TanStack Query\n\nYou can call `queryClient.ensureQueryData` inside a loader to combine caching with route-level fetching.",
+   "keyPoints": [
+    "createBrowserRouter + RouterProvider enables data APIs",
+    "loader fetches before render; useLoaderData reads it",
+    "action handles form mutations then revalidates loaders",
+    "errorElement catches route errors",
+    "useNavigation/useFetcher for pending UI and non-navigating calls"
+   ],
+   "pitfalls": [
+    "Throwing non-Response errors without an errorElement, showing the default error page.",
+    "Reading loader data in a route that does not have that loader."
+   ],
+   "examples": [
+    {
+     "title": "Loader, action and error element",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { createBrowserRouter, RouterProvider, useLoaderData, Form, redirect, useRouteError } from \"react-router-dom\";\n\nasync function postsLoader() {\n  const res = await fetch(\"/api/posts\");\n  if (!res.ok) throw new Response(\"Failed\", { status: res.status });\n  return res.json();\n}\n\nasync function createPostAction({ request }) {\n  const form = await request.formData();\n  await fetch(\"/api/posts\", { method: \"POST\", body: JSON.stringify({ title: form.get(\"title\") }) });\n  return redirect(\"/posts\");\n}\n\nfunction Posts() {\n  const posts = useLoaderData();\n  return (\n    <>\n      <ul>{posts.map((p) => <li key={p.id}>{p.title}</li>)}</ul>\n      <Form method=\"post\">\n        <input name=\"title\" required />\n        <button>Add post</button>\n      </Form>\n    </>\n  );\n}\n\nfunction ErrorPage() {\n  const err = useRouteError();\n  return <p>Oops: {err.status ?? err.message}</p>;\n}\n\nconst router = createBrowserRouter([\n  { path: \"/posts\", element: <Posts />, loader: postsLoader, action: createPostAction, errorElement: <ErrorPage /> },\n]);\n\nexport default function App() {\n  return <RouterProvider router={router} />;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the advantage of loaders over fetching in useEffect?",
+     "a": "Data is requested as soon as navigation starts and in parallel for nested routes, avoiding render-then-fetch waterfalls, and errors and revalidation are handled by the router."
+    },
+    {
+     "q": "What happens after an action completes?",
+     "a": "React Router automatically revalidates the active loaders so the page shows fresh data."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-protected-routes",
+   "title": "Protected Routes and Auth Redirects",
+   "level": "intermediate",
+   "summary": "Guard routes by checking authentication and redirect unauthenticated users to login, remembering where they wanted to go.",
+   "description": "Some pages (dashboard, profile, checkout) require a logged-in user. A **protected route** is a wrapper that checks auth and either renders the page or redirects.\n\n### Pattern: guard layout route\n\n```jsx\nfunction RequireAuth() {\n  const { user, loading } = useAuth();\n  const location = useLocation();\n\n  if (loading) return <Spinner />;               // still checking session\n  if (!user) return <Navigate to=\"/login\" replace state={{ from: location }} />;\n  return <Outlet />;                              // render child routes\n}\n\n<Route element={<RequireAuth />}>\n  <Route path=\"/dashboard\" element={<Dashboard />} />\n  <Route path=\"/profile\" element={<Profile />} />\n</Route>\n```\n\n### After login\n\nRead `location.state?.from` and `navigate(from, { replace: true })` so users land where they were headed.\n\n### Details that matter\n\n- **Loading state:** on refresh the auth status is unknown for a moment. Show a spinner; otherwise logged-in users are bounced to login.\n- **Role-based access:** `RequireRole role=\"admin\"` renders 403 or redirects.\n- **Public-only routes:** redirect logged-in users away from `/login`.\n- **Store auth in a context** (`AuthProvider` with `useAuth`), initialize from a cookie/session check.\n\n### Security reminder\n\nRoute guards are only **UX**. Anyone can read your JavaScript bundle. Real protection is on the **server**: every API call must verify the token/session and permissions. Prefer HttpOnly cookies for session tokens over localStorage.",
+   "keyPoints": [
+    "Guard with a layout route that renders <Outlet />",
+    "Redirect with <Navigate replace state={{ from }}>",
+    "Handle the auth-loading state",
+    "Redirect back after login",
+    "Client guards are UX; the server enforces security"
+   ],
+   "pitfalls": [
+    "Redirecting to login while auth state is still loading.",
+    "Hiding admin pages only on the client and trusting it for security."
+   ],
+   "examples": [
+    {
+     "title": "RequireAuth and login redirect",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { Navigate, Outlet, useLocation, useNavigate, Routes, Route } from \"react-router-dom\";\nimport { useAuth } from \"./AuthContext\";\n\nfunction RequireAuth({ role }) {\n  const { user, loading } = useAuth();\n  const location = useLocation();\n  if (loading) return <p>Checking session...</p>;\n  if (!user) return <Navigate to=\"/login\" replace state={{ from: location }} />;\n  if (role && user.role !== role) return <p>403 - Forbidden</p>;\n  return <Outlet />;\n}\n\nfunction Login() {\n  const { login } = useAuth();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const from = location.state?.from?.pathname ?? \"/dashboard\";\n\n  async function handleSubmit(e) {\n    e.preventDefault();\n    await login(new FormData(e.currentTarget));\n    navigate(from, { replace: true });\n  }\n  return <form onSubmit={handleSubmit}><input name=\"email\" /><button>Log in</button></form>;\n}\n\nexport default function AppRoutes() {\n  return (\n    <Routes>\n      <Route path=\"/login\" element={<Login />} />\n      <Route element={<RequireAuth />}>\n        <Route path=\"/dashboard\" element={<h1>Dashboard</h1>} />\n      </Route>\n      <Route element={<RequireAuth role=\"admin\" />}>\n        <Route path=\"/admin\" element={<h1>Admin</h1>} />\n      </Route>\n    </Routes>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you implement protected routes in React Router?",
+     "a": "Create a layout route that checks authentication, returns <Navigate to=\"/login\"> if unauthenticated, otherwise renders <Outlet /> for the child routes."
+    },
+    {
+     "q": "Are client-side route guards secure?",
+     "a": "No. They only improve UX; the server must authenticate and authorize every request."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-lazy-routes",
+   "title": "Lazy Routes, 404s and Scroll Handling",
+   "level": "intermediate",
+   "summary": "Code-split pages with React.lazy or the router's lazy property, and handle not-found and scroll behavior.",
+   "description": "Each page of a big app should load only when visited. Combine routing with code splitting.\n\n### With React.lazy and Suspense\n\n```jsx\nconst Dashboard = lazy(() => import(\"./pages/Dashboard\"));\n\n<Suspense fallback={<PageSpinner />}>\n  <Routes>\n    <Route path=\"/dashboard\" element={<Dashboard />} />\n  </Routes>\n</Suspense>\n```\n\n### With the data router `lazy` property\n\n```jsx\n{ path: \"dashboard\", lazy: () => import(\"./pages/Dashboard\") }\n```\n\nThe module exports `Component`, `loader`, `action` and `ErrorBoundary`, and the router loads it only when needed. This also loads the code in parallel with the data.\n\n### 404 and error pages\n\n- `path=\"*\"` for unknown URLs.\n- In the data router use `errorElement` for thrown errors; throw `new Response(\"Not found\", { status: 404 })` from loaders for missing resources.\n- Show a friendly page with a link home. Remember the server should also return a 404 status for SSR apps.\n\n### Scroll and focus\n\n- SPA navigation does not reset scroll. Use `<ScrollRestoration />` (data routers) or a small effect that scrolls to top on `pathname` change.\n- Move focus to the main heading after navigation for screen reader users and update `document.title`.\n\n### Prefetching\n\nCall the import function on link hover (`onMouseEnter={() => import(\"./pages/Dashboard\")}`) for instant navigation. React Router v7 `<Link prefetch=\"intent\">` does this in framework mode.",
+   "keyPoints": [
+    "Lazy-load each route component",
+    "Wrap routes in Suspense with a fallback",
+    "Data router supports route-level lazy()",
+    "path=\"*\" and errorElement for 404/errors",
+    "Handle scroll restoration and focus on navigation"
+   ],
+   "pitfalls": [
+    "No Suspense boundary above lazy routes.",
+    "Page scroll position staying at the bottom after navigation."
+   ],
+   "examples": [
+    {
+     "title": "Lazy pages with Suspense and scroll reset",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { lazy, Suspense, useEffect } from \"react\";\nimport { Routes, Route, useLocation } from \"react-router-dom\";\n\nconst Home = lazy(() => import(\"./pages/Home\"));\nconst Reports = lazy(() => import(\"./pages/Reports\"));\n\nfunction ScrollToTop() {\n  const { pathname } = useLocation();\n  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);\n  return null;\n}\n\nexport default function App() {\n  return (\n    <>\n      <ScrollToTop />\n      <Suspense fallback={<p>Loading page...</p>}>\n        <Routes>\n          <Route path=\"/\" element={<Home />} />\n          <Route path=\"/reports\" element={<Reports />} />\n          <Route path=\"*\" element={<h1>404</h1>} />\n        </Routes>\n      </Suspense>\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you code-split routes?",
+     "a": "Load route components with React.lazy (or the router's lazy property) and wrap them in Suspense so each page is a separate chunk downloaded on demand."
+    },
+    {
+     "q": "Why handle scroll on route change?",
+     "a": "SPAs don't reload, so the previous scroll position persists; resetting or restoring it matches user expectations."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

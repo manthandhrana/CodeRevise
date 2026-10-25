@@ -1,0 +1,7 @@
+{
+ "id": "python",
+ "title": "Python",
+ "tagline": "From first print() to web scraping, Flask, Django and FastAPI",
+ "description": "A complete Python revision track that starts with syntax, data structures and functions, moves through OOP, the standard library and advanced topics like async and testing, and then covers real-world work: web scraping (Requests, BeautifulSoup, Selenium, Playwright, Scrapy), web frameworks (Flask, Django, FastAPI) and data/automation scripts.",
+ "color": "#3776ab"
+}

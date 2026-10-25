@@ -1,0 +1,7 @@
+{
+ "id": "devnotes",
+ "title": "Dev Notes",
+ "tagline": "Practical Git, backend, scaling and tooling notes for real projects",
+ "description": "A collection of working developer notes: everyday Git recipes, backend fundamentals (REST, auth, caching, indexing, SQL vs NoSQL), a step by step roadmap for scaling a backend, and tooling basics such as Docker, CI/CD and fixing a stuck Android emulator.",
+ "color": "#10b981"
+}

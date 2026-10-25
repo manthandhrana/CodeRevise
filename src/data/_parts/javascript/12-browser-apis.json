@@ -1,0 +1,233 @@
+{
+  "id": "js-browser-apis",
+  "title": "Browser APIs (BOM and Web APIs)",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-bom",
+      "title": "Browser Object Model: window, navigator, screen, location",
+      "level": "beginner",
+      "summary": "The BOM exposes the browser itself: window size, URL, user agent, screen and dialogs.",
+      "description": "The **Browser Object Model (BOM)** is the set of objects the browser gives JavaScript to talk to the **browser window**, not the document. There is no official standard for the BOM as a whole, but all browsers support the common objects.\n\n### window\nThe global object in browsers. Global variables and functions become its properties.\n- `innerWidth` / `innerHeight` - viewport size (without toolbars).\n- `outerWidth` / `outerHeight` - whole browser window.\n- `scrollX` / `scrollY`, `scrollTo()`, `scrollBy()`.\n- `open(url)`, `close()`, `alert()`, `confirm()`, `prompt()`.\n- `localStorage`, `sessionStorage`, `console`, `document`.\n\n### location\nInformation about the **current URL** and navigation.\n| Property / method | Example |\n|---|---|\n| `href` | full URL |\n| `origin`, `protocol`, `host`, `hostname` | `https://site.com` |\n| `pathname` | `/courses/js` |\n| `search` | `?name=John&age=25` |\n| `hash` | `#intro` |\n| `assign(url)` | navigate, keeps history |\n| `replace(url)` | navigate, no back button entry |\n| `reload()` | refresh page |\n\n### navigator\n`userAgent`, `language`, `languages`, `onLine`, `cookieEnabled`, `platform`, `hardwareConcurrency`, plus APIs such as `clipboard`, `geolocation`, `serviceWorker`, `share()`.\n\n### screen\n`width`, `height`, `availWidth`, `availHeight`, `colorDepth`, `orientation`.\n\n### Useful events\n`resize`, `scroll`, `online` / `offline`, `beforeunload`, `visibilitychange`.\n\n### Reminder\nDialogs (`alert`, `confirm`, `prompt`) block the page and are poor UX; prefer in-page modals.",
+      "keyPoints": [
+        "window is the global object in the browser",
+        "location reads/changes the URL; replace skips history",
+        "navigator gives browser and device information",
+        "screen describes the display",
+        "innerWidth is the viewport, outerWidth is the whole window"
+      ],
+      "pitfalls": [
+        "Detecting browsers with userAgent is unreliable; use feature detection",
+        "alert/prompt block the main thread",
+        "location.href assignment adds a history entry; replace does not"
+      ],
+      "examples": [
+        {
+          "title": "Reading BOM info",
+          "language": "web",
+          "explanation": "",
+          "html": "<h3>Browser information</h3>\n<table id=\"info\"></table>\n<button id=\"refresh\">Refresh values</button>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\ntable { border-collapse: collapse; }\ntd { border: 1px solid #ccc; padding: 6px 10px; }\ntd:first-child { font-weight: bold; background: #f4f4f4; }",
+          "js": "function show() {\n  const rows = {\n    \"innerWidth x innerHeight\": innerWidth + \" x \" + innerHeight,\n    \"screen width x height\": screen.width + \" x \" + screen.height,\n    \"navigator.language\": navigator.language,\n    \"navigator.onLine\": navigator.onLine,\n    \"navigator.cookieEnabled\": navigator.cookieEnabled,\n    \"location.protocol\": location.protocol,\n    \"location.pathname\": location.pathname,\n    \"history.length\": history.length,\n  };\n  document.getElementById(\"info\").innerHTML = Object.entries(rows)\n    .map(([k, v]) => `<tr><td>${k}</td><td>${String(v)}</td></tr>`).join(\"\");\n}\nshow();\ndocument.getElementById(\"refresh\").addEventListener(\"click\", show);\naddEventListener(\"resize\", show);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between BOM and DOM?",
+          "a": "The DOM represents the HTML document (elements, text); the BOM represents the browser environment (window, location, navigator, history, screen)."
+        },
+        {
+          "q": "Difference between location.assign and location.replace?",
+          "a": "assign loads the new URL and keeps the current page in history; replace loads it and removes the current page from history so back does not return to it."
+        },
+        {
+          "q": "What is window in a browser?",
+          "a": "The global object that represents the browser window/tab and holds global variables, the document, timers, storage and the other BOM objects."
+        }
+      ],
+      "source": "JS-one-shot/windows/bom/index.js, JS-one-shot/windows/bom/index.html"
+    },
+    {
+      "id": "js-history-url",
+      "title": "History API and URL Handling",
+      "level": "intermediate",
+      "summary": "Change the address bar without reloading using pushState, and parse URLs with URL and URLSearchParams.",
+      "description": "### history object\n```js\nhistory.back();      // like the back button\nhistory.forward();\nhistory.go(-2);      // relative jump\nhistory.length;      // entries in the session\n```\n\n### pushState and replaceState\nThese change the URL **without reloading** the page. They are how single-page apps (React Router, Vue Router) work.\n```js\nhistory.pushState({ page: 2 }, \"\", \"/products?page=2\");   // adds an entry\nhistory.replaceState({ page: 3 }, \"\", \"/products?page=3\"); // replaces current\n```\n- The first argument is a **state object** (retrievable via `history.state`).\n- The URL must be the **same origin**.\n- Nothing happens on the page automatically; you must update the UI yourself.\n- When the user clicks back/forward, the **`popstate`** event fires with `event.state`.\n\n### URL and URLSearchParams\n```js\nconst url = new URL(\"https://shop.com/items?cat=shoes&page=2#top\");\nurl.searchParams.get(\"cat\");        // \"shoes\"\nurl.searchParams.set(\"page\", 3);\nurl.searchParams.append(\"tag\", \"sale\");\nurl.toString();\n[...url.searchParams.entries()];\n```\nUse `URLSearchParams` instead of manual string splitting, and `encodeURIComponent()` for values.\n\n### Hash routing\n`location.hash` and the `hashchange` event give a simple router that needs no server configuration.\n\n### Notes\nDirect visits to a pushed URL need server configuration (fallback to `index.html`) for SPAs.",
+      "keyPoints": [
+        "history.back/forward/go navigate the session",
+        "pushState and replaceState change the URL without reload",
+        "popstate fires on back and forward",
+        "URL and URLSearchParams parse and build URLs safely",
+        "SPA routers are built on the History API"
+      ],
+      "pitfalls": [
+        "pushState does not trigger popstate by itself",
+        "Different origins throw a SecurityError",
+        "Building query strings by hand without encoding"
+      ],
+      "examples": [
+        {
+          "title": "URL parsing and state",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const url = new URL(\"https://shop.com/items?cat=shoes&page=2#top\");\nconsole.log(url.hostname, url.pathname, url.hash);\nconsole.log(url.searchParams.get(\"cat\"), url.searchParams.get(\"missing\"));\n\nurl.searchParams.set(\"page\", 3);\nurl.searchParams.append(\"tag\", \"on sale\");\nconsole.log(url.toString());\nconsole.log([...url.searchParams.keys()]);\n\nconst params = new URLSearchParams({ q: \"js tips\", sort: \"new\" });\nconsole.log(params.toString());\nconsole.log(Object.fromEntries(new URLSearchParams(\"?a=1&b=2\")));"
+        },
+        {
+          "title": "Router with pushState (web)",
+          "language": "web",
+          "explanation": "pushState updates the displayed path inside the preview without a reload; popstate restores the page on back/forward.",
+          "html": "<nav>\n  <button data-page=\"home\">Home</button>\n  <button data-page=\"about\">About</button>\n  <button data-page=\"contact\">Contact</button>\n  <button id=\"back\">history.back()</button>\n</nav>\n<h2 id=\"view\"></h2>\n<p>Current state: <code id=\"state\"></code></p>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nbutton { margin: 4px; padding: 6px 10px; cursor: pointer; }\ncode { background: #eee; padding: 2px 6px; }",
+          "js": "const view = document.getElementById(\"view\");\nconst stateEl = document.getElementById(\"state\");\nconst render = (page) => {\n  view.textContent = \"Page: \" + page;\n  stateEl.textContent = JSON.stringify(history.state);\n};\nfunction go(page) {\n  try { history.pushState({ page }, \"\", \"#\" + page); } catch (e) { /* sandboxed */ }\n  render(page);\n}\ndocument.querySelectorAll(\"[data-page]\").forEach((b) =>\n  b.addEventListener(\"click\", () => go(b.dataset.page))\n);\ndocument.getElementById(\"back\").addEventListener(\"click\", () => history.back());\naddEventListener(\"popstate\", (e) => render(e.state?.page ?? \"home\"));\nrender(\"home\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do SPAs change the URL without a page reload?",
+          "a": "They use history.pushState/replaceState to update the address bar and listen to the popstate event to render the right view on back/forward."
+        },
+        {
+          "q": "Does pushState trigger the popstate event?",
+          "a": "No. popstate fires only when the user navigates through history (back, forward, history.go)."
+        },
+        {
+          "q": "How do you read query string parameters?",
+          "a": "new URL(location.href).searchParams.get(\"name\") or new URLSearchParams(location.search)."
+        }
+      ],
+      "source": "JS-one-shot/windows/bom/index.html"
+    },
+    {
+      "id": "js-web-storage",
+      "title": "localStorage, sessionStorage and Cookies",
+      "level": "beginner",
+      "summary": "Store small amounts of data in the browser with localStorage, sessionStorage or cookies.",
+      "description": "Browsers offer several places to keep data on the client.\n\n### localStorage\n- Key-value pairs of **strings**, stays **until cleared** (survives restart).\n- About 5 MB per origin, **synchronous**, shared between tabs of the same origin.\n```js\nlocalStorage.setItem(\"theme\", \"dark\");\nlocalStorage.getItem(\"theme\");     // \"dark\" (null if missing)\nlocalStorage.removeItem(\"theme\");\nlocalStorage.clear();\n```\n\n### sessionStorage\nSame API, but data is cleared when the **tab** closes and is not shared between tabs.\n\n### Storing objects\nOnly strings are stored, so serialise:\n```js\nlocalStorage.setItem(\"user\", JSON.stringify({ name: \"Vinod\", age: 30 }));\nconst user = JSON.parse(localStorage.getItem(\"user\"));\n```\n\n### Cookies\nSmall (4 KB) strings **sent to the server on every request** - used for sessions and authentication. Set via `document.cookie` or the `Set-Cookie` header. Important flags: `HttpOnly` (JS cannot read it), `Secure`, `SameSite`, `Max-Age`.\n\n### Comparison\n| | localStorage | sessionStorage | cookie | IndexedDB |\n|---|---|---|---|---|\n| Lifetime | forever | tab | configurable | forever |\n| Size | ~5 MB | ~5 MB | ~4 KB | large |\n| Sent to server | no | no | yes | no |\n| API | sync | sync | string | async |\n\n### Rules\n- Never store passwords, tokens or sensitive data in localStorage - any XSS script can read it.\n- Wrap access in `try/catch` (private mode, blocked storage, quota exceeded).\n- Listen to the `storage` event to sync tabs.",
+      "keyPoints": [
+        "localStorage persists, sessionStorage lasts for the tab",
+        "Values are strings: use JSON.stringify and JSON.parse",
+        "Synchronous and about 5 MB",
+        "Cookies are sent to the server with every request",
+        "Never keep secrets in web storage"
+      ],
+      "pitfalls": [
+        "Storing objects directly saves \"[object Object]\"",
+        "Reading a missing key returns null, not undefined",
+        "Storage may be disabled or full - handle errors"
+      ],
+      "examples": [
+        {
+          "title": "Persist a visit counter and an object",
+          "language": "web",
+          "explanation": "",
+          "html": "<h3>Visits: <span id=\"visits\">0</span></h3>\n<button id=\"save\">Save profile</button>\n<button id=\"load\">Load profile</button>\n<button id=\"clear\">Clear storage</button>\n<pre id=\"out\"></pre>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nbutton { margin: 4px; padding: 6px 10px; cursor: pointer; }\npre { background: #f4f4f4; padding: 10px; border-radius: 6px; }",
+          "js": "const out = document.getElementById(\"out\");\nconst safe = (fn) => { try { return fn(); } catch (e) { out.textContent = \"Storage unavailable: \" + e.name; } };\n\nsafe(() => {\n  const visits = Number(localStorage.getItem(\"visits\") || 0) + 1;\n  localStorage.setItem(\"visits\", String(visits));\n  document.getElementById(\"visits\").textContent = visits;\n});\ndocument.getElementById(\"save\").addEventListener(\"click\", () =>\n  safe(() => {\n    localStorage.setItem(\"profile\", JSON.stringify({ name: \"Vinod\", age: 30, city: \"pune\" }));\n    out.textContent = \"Saved!\";\n  })\n);\ndocument.getElementById(\"load\").addEventListener(\"click\", () =>\n  safe(() => {\n    const p = JSON.parse(localStorage.getItem(\"profile\"));\n    out.textContent = p ? JSON.stringify(p, null, 2) : \"Nothing saved yet\";\n  })\n);\ndocument.getElementById(\"clear\").addEventListener(\"click\", () =>\n  safe(() => { localStorage.clear(); out.textContent = \"Cleared\"; })\n);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between localStorage and sessionStorage?",
+          "a": "localStorage data persists until it is removed; sessionStorage data is limited to the tab/session and is deleted when the tab closes."
+        },
+        {
+          "q": "Can localStorage store objects?",
+          "a": "Only strings. Convert objects with JSON.stringify and back with JSON.parse."
+        },
+        {
+          "q": "When would you choose cookies instead of localStorage?",
+          "a": "When the server needs the data on every request (sessions), or when you need HttpOnly/Secure protection and expiry control."
+        }
+      ],
+      "source": "JS-one-shot/10_localstorage.js"
+    },
+    {
+      "id": "js-clipboard",
+      "title": "Clipboard API",
+      "level": "intermediate",
+      "summary": "Copy and paste text programmatically with navigator.clipboard, which requires a secure context and permission.",
+      "description": "The **Async Clipboard API** (`navigator.clipboard`) lets pages read and write the system clipboard using promises.\n\n```js\nawait navigator.clipboard.writeText(\"Copied!\");\nconst text = await navigator.clipboard.readText();\n```\n\n### Requirements\n- Works only in a **secure context** (HTTPS or localhost).\n- `writeText` normally needs a **user gesture** (a click handler).\n- `readText` triggers a **permission prompt** and may be denied.\n- In iframes the `clipboard-write` permission policy must be allowed.\n- Both methods return promises, so handle rejections.\n\n### Rich content\n`navigator.clipboard.write([new ClipboardItem({ \"text/html\": blob })])` copies images or HTML.\n\n### Fallback\nThe old `document.execCommand(\"copy\")` still exists but is **deprecated**. For legacy support select the text in a hidden `<textarea>` and call it inside try/catch.\n\n### Clipboard events\n`copy`, `cut` and `paste` events let you intercept the action: `event.clipboardData.getData(\"text\")` and `event.preventDefault()`.\n\n### UX tips\n- Give feedback (\"Copied!\") and revert after a short time.\n- Do not overwrite the clipboard silently - users find it hostile.\n- Never read the clipboard without a clear reason.",
+      "keyPoints": [
+        "navigator.clipboard.writeText / readText return promises",
+        "Needs HTTPS and usually a user gesture",
+        "readText asks for permission",
+        "Handle errors and provide a fallback",
+        "Show feedback when the copy succeeds"
+      ],
+      "pitfalls": [
+        "Calling writeText outside a user gesture can fail",
+        "Not handling the rejected promise in iframes or insecure pages",
+        "Using deprecated execCommand as the only approach"
+      ],
+      "examples": [
+        {
+          "title": "Copy button with feedback",
+          "language": "web",
+          "explanation": "",
+          "html": "<input id=\"text\" value=\"npm create vite@latest\" size=\"28\" />\n<button id=\"copy\">Copy</button>\n<p id=\"status\"></p>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\ninput, button { padding: 8px; }\n#status { color: #176b2c; min-height: 1.2em; }",
+          "js": "const input = document.getElementById(\"text\");\nconst statusEl = document.getElementById(\"status\");\n\ndocument.getElementById(\"copy\").addEventListener(\"click\", async () => {\n  try {\n    await navigator.clipboard.writeText(input.value);\n    statusEl.textContent = \"Copied to clipboard!\";\n  } catch (err) {\n    // fallback for blocked clipboard (iframes, http)\n    input.select();\n    const ok = document.execCommand && document.execCommand(\"copy\");\n    statusEl.textContent = ok ? \"Copied (fallback)\" : \"Press Ctrl+C - clipboard is blocked here\";\n  }\n  setTimeout(() => (statusEl.textContent = \"\"), 2500);\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you copy text to the clipboard in modern JavaScript?",
+          "a": "await navigator.clipboard.writeText(text) from a user-initiated event handler on a secure origin."
+        },
+        {
+          "q": "Why might navigator.clipboard be undefined?",
+          "a": "It is only exposed in secure contexts (HTTPS, localhost), so on plain HTTP pages it is undefined."
+        },
+        {
+          "q": "Is document.execCommand(\"copy\") recommended?",
+          "a": "No. It is deprecated; use the async Clipboard API and keep execCommand only as a legacy fallback."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-geolocation",
+      "title": "Geolocation API",
+      "level": "intermediate",
+      "summary": "Ask the user for their position with navigator.geolocation and handle permission errors.",
+      "description": "The **Geolocation API** gives the device's position with the user's explicit permission.\n\n```js\nnavigator.geolocation.getCurrentPosition(success, error, options);\nconst watchId = navigator.geolocation.watchPosition(success, error);\nnavigator.geolocation.clearWatch(watchId);\n```\n\n### Success callback\nReceives a `position` object:\n- `position.coords.latitude`, `longitude`\n- `position.coords.accuracy` (metres)\n- `altitude`, `speed`, `heading` (may be `null`)\n- `position.timestamp`\n\n### Error callback\n`error.code`:\n| Code | Meaning |\n|---|---|\n| `1` PERMISSION_DENIED | user said no |\n| `2` POSITION_UNAVAILABLE | device cannot find location |\n| `3` TIMEOUT | took longer than `timeout` |\n\n### Options\n`{ enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }`. High accuracy uses GPS and drains battery.\n\n### Requirements and privacy\n- **Secure context** (HTTPS) and user permission prompt.\n- Explain why you need location before asking; ask on user action, not on page load.\n- Handle denial gracefully with a manual city search fallback.\n- Never send precise location without consent.\n\n### Promise wrapper\n```js\nconst getPosition = (opts) =>\n  new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));\n```\nUse with `await` and combine with a weather API for local forecasts.",
+      "keyPoints": [
+        "getCurrentPosition for one reading, watchPosition for updates",
+        "Requires HTTPS and user permission",
+        "coords.latitude and coords.longitude hold the position",
+        "Handle error codes: denied, unavailable, timeout",
+        "Wrap callbacks in a promise for async/await"
+      ],
+      "pitfalls": [
+        "Requesting location on page load without context",
+        "No fallback when permission is denied",
+        "Leaving watchPosition running (battery drain)"
+      ],
+      "examples": [
+        {
+          "title": "Get my position (permission required)",
+          "language": "web",
+          "explanation": "",
+          "html": "<button id=\"where\">Where am I?</button>\n<p id=\"result\">Press the button. The browser will ask for permission.</p>",
+          "css": "body { font-family: system-ui, sans-serif; padding: 16px; }\nbutton { padding: 8px 12px; cursor: pointer; }\n#result { background: #f4f4f4; padding: 10px; border-radius: 6px; }",
+          "js": "const result = document.getElementById(\"result\");\nconst messages = { 1: \"Permission denied\", 2: \"Position unavailable\", 3: \"Request timed out\" };\n\ndocument.getElementById(\"where\").addEventListener(\"click\", () => {\n  if (!(\"geolocation\" in navigator)) {\n    result.textContent = \"Geolocation is not supported\";\n    return;\n  }\n  result.textContent = \"Locating...\";\n  navigator.geolocation.getCurrentPosition(\n    ({ coords }) => {\n      result.textContent = `Lat ${coords.latitude.toFixed(4)}, Lng ${coords.longitude.toFixed(4)} (+/- ${Math.round(coords.accuracy)} m)`;\n    },\n    (err) => { result.textContent = messages[err.code] || err.message; },\n    { timeout: 8000, maximumAge: 60000 }\n  );\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What permissions does the Geolocation API need?",
+          "a": "The user must grant permission through the browser prompt, and the page must be served from a secure context (HTTPS or localhost)."
+        },
+        {
+          "q": "Difference between getCurrentPosition and watchPosition?",
+          "a": "getCurrentPosition returns the position once; watchPosition calls the callback every time the position changes and returns an id for clearWatch."
+        },
+        {
+          "q": "How do you handle the user denying permission?",
+          "a": "Use the error callback (code 1), show a clear message and offer an alternative such as typing a city or postcode."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

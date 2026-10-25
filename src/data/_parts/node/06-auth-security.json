@@ -1,0 +1,478 @@
+{
+ "id": "node-auth-security",
+ "title": "Auth and Security",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-password-hashing",
+   "title": "Hashing Passwords (bcrypt and argon2)",
+   "level": "intermediate",
+   "summary": "Never store plain passwords: use slow, salted hashing with bcrypt or argon2 and verify with the library's compare function.",
+   "description": "If your database leaks, plain or weakly hashed passwords expose every user (many reuse passwords elsewhere). The rule: store only a **slow, salted, one-way hash**.\n\n### Why normal hashes fail\nSHA-256 and MD5 are designed to be **fast**. Attackers with GPUs try billions of guesses per second and use precomputed rainbow tables. Password hashing algorithms are intentionally slow and memory hungry.\n\n### The right tools\n| Algorithm | Notes |\n|---|---|\n| **argon2id** | Current best practice (winner of the Password Hashing Competition); package `argon2` |\n| **bcrypt** | Proven, widely used; package `bcrypt` (or `bcryptjs`); limited to 72 bytes of input |\n| **scrypt** | Built in via `crypto.scrypt` |\n\n### Key ideas\n* **Salt**: random value mixed in per password so identical passwords give different hashes. Libraries generate and embed it in the output string.\n* **Cost factor**: bcrypt rounds (10-12 today) or argon2 memory/time. Raise it as hardware improves; the hash string records the settings so old hashes still verify.\n* **Pepper** (optional): a secret from the environment added to the password before hashing.\n* **Comparison**: use `bcrypt.compare` / `argon2.verify`, which are timing-safe.\n\n### Login flow\n1. Find the user by email\n2. `await bcrypt.compare(plain, user.passwordHash)`\n3. Return the **same generic error** for unknown email or wrong password (\"Invalid credentials\") so attackers cannot enumerate accounts\n4. Add rate limiting and optional MFA\n\n### Registration rules\nEnforce minimum length (12+ is better than complex rules), check against breached password lists, never log passwords, and never email them.\n\n### Async only\nThe hashing is CPU-intensive. Use the async versions so the work runs on the thread pool instead of blocking the event loop.",
+   "keyPoints": [
+    "Store only salted slow hashes: argon2id or bcrypt",
+    "Use the library's compare/verify, never === on hashes",
+    "Return one generic error for bad email or password",
+    "Hash asynchronously; sync versions block the event loop",
+    "Increase cost factors over time"
+   ],
+   "pitfalls": [
+    "Using SHA-256, MD5 or plain text for passwords",
+    "Revealing whether the email or the password was wrong",
+    "bcrypt.hashSync in request handlers"
+   ],
+   "examples": [
+    {
+     "title": "bcrypt registration and login",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i bcrypt\nimport bcrypt from 'bcrypt';\n\nconst ROUNDS = 12;\nconst DUMMY_HASH = await bcrypt.hash('not-a-real-password', ROUNDS);\n\nexport async function register(db, email, password) {\n  if (password.length < 12) throw Object.assign(new Error('Password too short'), { status: 422 });\n  const passwordHash = await bcrypt.hash(password, ROUNDS);   // salt is generated and embedded\n  return db.users.insert({ email: email.toLowerCase(), passwordHash });\n}\n\nexport async function login(db, email, password) {\n  const user = await db.users.findByEmail(email.toLowerCase());\n  // compare against a dummy hash when the user is missing, so timing does not leak\n  const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);\n  if (!user || !ok) throw Object.assign(new Error('Invalid credentials'), { status: 401 });\n  return user;\n}",
+     "explanation": "A bcrypt string looks like $2b$12$salt...hash and contains the cost, salt and hash together.",
+     "lang": "javascript"
+    },
+    {
+     "title": "argon2",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i argon2\nimport argon2 from 'argon2';\n\nconst hash = await argon2.hash('correct horse battery staple');   // argon2id by default\nconsole.log(hash.startsWith('$argon2id$'));                        // true\nconsole.log(await argon2.verify(hash, 'correct horse battery staple')); // true\nconsole.log(await argon2.verify(hash, 'wrong'));                    // false",
+     "explanation": "verify reads the parameters from the hash string itself.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is bcrypt better than SHA-256 for passwords?",
+     "a": "bcrypt is deliberately slow and has an adjustable cost, with built-in per-password salts, which makes brute-force and rainbow table attacks impractical. SHA-256 is fast, so it lets attackers test enormous numbers of guesses."
+    },
+    {
+     "q": "What is a salt?",
+     "a": "A unique random value added to each password before hashing so identical passwords produce different hashes and precomputed tables become useless. It is stored alongside the hash and is not secret."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-jwt",
+   "title": "JSON Web Tokens (JWT)",
+   "level": "intermediate",
+   "summary": "Stateless signed tokens: structure, signing and verifying, expiry, refresh tokens and when not to use them.",
+   "description": "A **JWT** is a compact, signed string the server issues after login. The client sends it on later requests in `Authorization: Bearer <token>`, and the server verifies the signature instead of looking up a session.\n\n### Structure: three base64url parts\n`header.payload.signature`\n* **Header**: algorithm (`HS256`, `RS256`, `EdDSA`) and type\n* **Payload (claims)**: `sub` (user id), `iat`, `exp` (expiry), `iss`, `aud`, plus your data such as `role`\n* **Signature**: HMAC or digital signature over header and payload\n\nThe payload is only **encoded, not encrypted**. Anyone can read it, so never put secrets in a JWT.\n\n### Algorithms\n* **HS256**: one shared secret signs and verifies (good for a single service)\n* **RS256 / ES256 / EdDSA**: private key signs, public key verifies (good for many services; publish keys via JWKS)\n\n### Library\n`jsonwebtoken` or `jose`: `jwt.sign(payload, secret, { expiresIn: '15m' })` and `jwt.verify(token, secret, { algorithms: ['HS256'] })`. Always pin the allowed algorithms (the old `alg: none` attack).\n\n### Access and refresh tokens\n* **Access token**: short life (5-15 minutes)\n* **Refresh token**: long life (days), stored hashed in the database, delivered as an `HttpOnly` cookie, **rotated** on every use and revocable\n\n### Storage in browsers\n`localStorage` is readable by any XSS script. Prefer `HttpOnly; Secure; SameSite` cookies for the refresh token.\n\n### Weaknesses\nStateless tokens cannot be revoked before expiry (unless you keep a denylist or version number). Keep them short lived. For plain server-rendered apps, server-side **sessions** are often simpler and safer.",
+   "keyPoints": [
+    "JWT = header.payload.signature, signed but not encrypted",
+    "Always set exp and verify with a fixed algorithm list",
+    "Use short access tokens plus rotating refresh tokens",
+    "Never store secrets in the payload",
+    "Revocation requires extra state; sessions can be simpler"
+   ],
+   "pitfalls": [
+    "Storing sensitive data in the payload",
+    "Accepting any algorithm (alg none or confusion attacks)",
+    "Long-lived access tokens kept in localStorage",
+    "Weak, guessable HS256 secrets"
+   ],
+   "examples": [
+    {
+     "title": "Middleware with jsonwebtoken",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i jsonwebtoken\nimport jwt from 'jsonwebtoken';\n\nconst SECRET = process.env.JWT_SECRET;       // at least 32 random bytes\n\nexport function issueToken(user) {\n  return jwt.sign({ sub: user.id, role: user.role }, SECRET, { expiresIn: '15m', issuer: 'my-api' });\n}\n\nexport function requireAuth(req, res, next) {\n  const header = req.headers.authorization ?? '';\n  const token = header.startsWith('Bearer ') ? header.slice(7) : null;\n  if (!token) return res.status(401).json({ error: 'Missing token' });\n  try {\n    req.user = jwt.verify(token, SECRET, { algorithms: ['HS256'], issuer: 'my-api' });\n    next();\n  } catch (err) {\n    const msg = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';\n    res.status(401).json({ error: msg });\n  }\n}\n\nexport const requireRole = (role) => (req, res, next) =>\n  req.user?.role === role ? next() : res.status(403).json({ error: 'Forbidden' });",
+     "explanation": "401 for missing/invalid tokens, 403 for valid users without the needed role.",
+     "lang": "javascript"
+    },
+    {
+     "title": "HS256 JWT from scratch (to understand the format)",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import crypto from 'node:crypto';\n\nconst enc = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');\n\nfunction sign(payload, secret, ttl = 3600) {\n  const now = Math.floor(Date.now() / 1000);\n  const data = `${enc({ alg: 'HS256', typ: 'JWT' })}.${enc({ ...payload, iat: now, exp: now + ttl })}`;\n  const sig = crypto.createHmac('sha256', secret).update(data).digest('base64url');\n  return `${data}.${sig}`;\n}\n\nfunction verify(token, secret) {\n  const [h, p, s] = token.split('.');\n  const expected = crypto.createHmac('sha256', secret).update(`${h}.${p}`).digest();\n  const given = Buffer.from(s ?? '', 'base64url');\n  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) throw new Error('bad signature');\n  const payload = JSON.parse(Buffer.from(p, 'base64url'));\n  if (payload.exp < Date.now() / 1000) throw new Error('token expired');\n  return payload;\n}\n\nconst token = sign({ sub: 42, role: 'admin' }, 's3cret');\nconsole.log(verify(token, 's3cret'));        // { sub: 42, role: 'admin', iat: ..., exp: ... }\ntry { verify(token, 'wrong'); } catch (e) { console.log(e.message); }   // bad signature",
+     "explanation": "Use a tested library in production, but this shows there is no magic.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is a JWT encrypted?",
+     "a": "No. A normal JWT (JWS) is only signed, so integrity is guaranteed but anyone can decode and read the payload. Do not put sensitive data in it; use JWE if you need encryption."
+    },
+    {
+     "q": "How do you log a user out when using JWTs?",
+     "a": "Delete the token on the client and revoke the refresh token on the server. Access tokens stay valid until they expire, so keep them short, or maintain a denylist or token version for immediate revocation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-sessions-cookies",
+   "title": "Sessions and Cookies",
+   "level": "intermediate",
+   "summary": "Server-side sessions with a session id cookie, secure cookie flags, session stores and CSRF protection.",
+   "description": "HTTP is stateless. A **session** lets the server remember a user between requests.\n\n### How cookie sessions work\n1. User logs in; server creates a session record (user id, expiry) in a **store** and a random session id\n2. Server sends `Set-Cookie: sid=<random id>; HttpOnly; Secure; SameSite=Lax`\n3. The browser sends the cookie with every request\n4. Server looks up the id in the store → knows who the user is\n5. Logout deletes the record, so it is **instantly revocable**\n\n### Cookie flags (memorise)\n| Flag | Effect |\n|---|---|\n| `HttpOnly` | JavaScript cannot read it (blocks theft via XSS) |\n| `Secure` | Sent only over HTTPS |\n| `SameSite=Lax` / `Strict` | Not sent on most cross-site requests (CSRF defence) |\n| `Max-Age` / `Expires` | Lifetime; omit for a session cookie |\n| `Domain`, `Path` | Scope |\n| `__Host-` prefix | Forces Secure, Path=/, no Domain |\n\n### express-session\n`app.use(session({ secret, resave: false, saveUninitialized: false, cookie: {...}, store }))`. The default **MemoryStore leaks and does not scale**; use `connect-redis` or `connect-mongo` in production. `req.session.userId = user.id` stores data; `req.session.destroy()` logs out. Call `req.session.regenerate()` on login to stop session fixation.\n\n### Behind a proxy\nSet `app.set('trust proxy', 1)` or `Secure` cookies are not set.\n\n### CSRF\nCookies are sent automatically, so malicious sites can trigger requests. Defend with `SameSite`, CSRF tokens (double submit or synchroniser) and checking `Origin`.\n\n### Sessions vs JWT\nSessions: simple, revocable, need a store. JWT: stateless, good for APIs and multiple services, harder to revoke.",
+   "keyPoints": [
+    "Session id in an HttpOnly, Secure, SameSite cookie; data stays on the server",
+    "Use Redis or a database store, never MemoryStore in production",
+    "Regenerate the session on login; destroy it on logout",
+    "Protect against CSRF with SameSite and tokens",
+    "trust proxy is required behind load balancers for Secure cookies"
+   ],
+   "pitfalls": [
+    "MemoryStore in production",
+    "Cookies without HttpOnly/Secure flags",
+    "A weak or committed session secret"
+   ],
+   "examples": [
+    {
+     "title": "express-session with Redis",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i express express-session connect-redis redis\nimport express from 'express';\nimport session from 'express-session';\nimport { RedisStore } from 'connect-redis';\nimport { createClient } from 'redis';\n\nconst redis = createClient({ url: process.env.REDIS_URL });\nawait redis.connect();\n\nconst app = express();\napp.set('trust proxy', 1);\napp.use(express.json());\napp.use(session({\n  store: new RedisStore({ client: redis }),\n  name: 'sid',\n  secret: process.env.SESSION_SECRET,\n  resave: false,\n  saveUninitialized: false,\n  cookie: { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 1000 * 60 * 60 * 8 },\n}));\n\napp.post('/login', async (req, res) => {\n  const user = await authenticate(req.body.email, req.body.password);   // your function\n  if (!user) return res.status(401).json({ error: 'Invalid credentials' });\n  req.session.regenerate((err) => {\n    if (err) return res.sendStatus(500);\n    req.session.userId = user.id;\n    res.json({ ok: true });\n  });\n});\n\napp.get('/me', (req, res) => {\n  if (!req.session.userId) return res.status(401).json({ error: 'Not logged in' });\n  res.json({ id: req.session.userId });\n});\n\napp.post('/logout', (req, res) => req.session.destroy(() => res.clearCookie('sid').json({ ok: true })));\napp.listen(3000);",
+     "explanation": "The browser only ever sees the random session id, never the user data.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Sessions vs JWT: how do you choose?",
+     "a": "Sessions store state on the server, are easy to revoke and ideal for classic web apps. JWTs are stateless and convenient for APIs, mobile apps and multi-service systems but are harder to revoke. Many apps use a short JWT plus a refresh token cookie."
+    },
+    {
+     "q": "What do HttpOnly and SameSite do?",
+     "a": "HttpOnly hides the cookie from JavaScript, limiting XSS damage. SameSite stops the browser from sending the cookie on cross-site requests, which blocks most CSRF attacks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-oauth-overview",
+   "title": "OAuth 2.0 and Social Login Overview",
+   "level": "intermediate",
+   "summary": "Delegated authorisation with the authorization code flow plus PKCE; OpenID Connect adds login; use libraries like Passport.",
+   "description": "**OAuth 2.0** lets a user grant your app limited access to their account on another service (Google, GitHub) **without sharing the password**. **OpenID Connect (OIDC)** adds an identity layer on top, so it is also used for \"Sign in with Google\".\n\n### Roles\n* **Resource owner**: the user\n* **Client**: your app\n* **Authorization server**: Google, GitHub, Auth0, Keycloak\n* **Resource server**: the API holding the data\n\n### Authorization Code flow (with PKCE) - the standard\n1. Your app redirects the user to the provider with `client_id`, `redirect_uri`, `scope`, a random `state` and a PKCE `code_challenge`\n2. The user logs in and consents\n3. The provider redirects back with a one-time `code` and your `state`\n4. Your **server** checks `state`, then exchanges the `code` (plus `code_verifier` and the `client_secret`) for tokens\n5. You receive an **access token** (call APIs), an optional **refresh token** and, with OIDC, an **ID token** (a JWT describing the user)\n6. You find or create the local user and start your own session\n\n### Security essentials\n* `state` parameter prevents CSRF; PKCE prevents code interception\n* Register exact redirect URIs\n* Keep `client_secret` on the server only\n* Request minimal scopes\n* Validate the ID token (signature, `iss`, `aud`, `exp`, `nonce`)\n\n### In Node\n* **Passport.js** (`passport-google-oauth20`, `passport-github2`) for Express\n* **openid-client**, **arctic**, **Auth.js**, **better-auth** for modern setups\n* Hosted providers: Auth0, Clerk, Firebase Auth, Supabase Auth, Keycloak\n\n### Other flows\nClient credentials (machine to machine), device code (TVs and CLIs). **Implicit flow is obsolete.**",
+   "keyPoints": [
+    "OAuth delegates access without sharing passwords; OIDC adds identity",
+    "Use Authorization Code + PKCE",
+    "Validate state and the ID token; keep the client secret on the server",
+    "After the callback, create your own session or JWT",
+    "Prefer proven libraries or hosted auth over writing it yourself"
+   ],
+   "pitfalls": [
+    "Skipping the state parameter check",
+    "Treating the access token as proof of identity instead of validating the ID token",
+    "Using the implicit flow or putting the client secret in a SPA"
+   ],
+   "examples": [
+    {
+     "title": "Passport-style callback outline",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// Simplified flow with plain fetch (use a library in production)\nimport crypto from 'node:crypto';\n\napp.get('/auth/github', (req, res) => {\n  const state = crypto.randomBytes(16).toString('hex');\n  req.session.oauthState = state;\n  const url = new URL('https://github.com/login/oauth/authorize');\n  url.search = new URLSearchParams({\n    client_id: process.env.GITHUB_ID,\n    redirect_uri: 'https://myapp.com/auth/github/callback',\n    scope: 'read:user user:email',\n    state,\n  });\n  res.redirect(url);\n});\n\napp.get('/auth/github/callback', async (req, res) => {\n  if (req.query.state !== req.session.oauthState) return res.status(400).send('Bad state');\n\n  const tokenRes = await fetch('https://github.com/login/oauth/access_token', {\n    method: 'POST',\n    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      client_id: process.env.GITHUB_ID,\n      client_secret: process.env.GITHUB_SECRET,\n      code: req.query.code,\n    }),\n  });\n  const { access_token } = await tokenRes.json();\n\n  const profile = await (await fetch('https://api.github.com/user', {\n    headers: { Authorization: `Bearer ${access_token}` },\n  })).json();\n\n  req.session.userId = await findOrCreateUser('github', profile.id, profile.login);\n  res.redirect('/');\n});",
+     "explanation": "The server exchanges the code for a token; the browser never sees the client secret.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "OAuth vs OpenID Connect?",
+     "a": "OAuth 2.0 is about authorisation: giving an app access to resources. OpenID Connect is a thin layer on OAuth that adds authentication: an ID token that tells the app who the user is."
+    },
+    {
+     "q": "Why is PKCE needed?",
+     "a": "It binds the authorization code to the client that started the flow (code_verifier/code_challenge), so a stolen code is useless. It is mandatory for public clients such as SPAs and mobile apps and recommended for all."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-helmet-cors",
+   "title": "Helmet and CORS",
+   "level": "intermediate",
+   "summary": "Add secure HTTP headers with helmet and control cross-origin browser access with the cors middleware.",
+   "description": "### Helmet: secure headers\n`app.use(helmet())` sets a group of defensive headers:\n| Header | Protects against |\n|---|---|\n| `Content-Security-Policy` | XSS and injection: restricts where scripts/styles load from |\n| `Strict-Transport-Security` | Forces HTTPS |\n| `X-Content-Type-Options: nosniff` | MIME sniffing |\n| `X-Frame-Options` / `frame-ancestors` | Clickjacking |\n| `Referrer-Policy` | Leaking URLs |\n| `Cross-Origin-*-Policy` | Cross-origin isolation |\nIt also removes `X-Powered-By`, which advertises Express (`app.disable('x-powered-by')`). For APIs the defaults are fine; for sites with scripts tune the CSP.\n\n### CORS in plain words\nBrowsers block JavaScript on `https://app.com` from reading responses of `https://api.com` unless the API opts in. This is the **same-origin policy**; CORS is the opt-in. It is enforced **by browsers only**; curl and servers ignore it. It is not authentication.\n\n### How it works\n* **Simple requests**: the browser sends the request with an `Origin` header; the response must include `Access-Control-Allow-Origin`\n* **Preflight**: for JSON content types, custom headers or methods such as PUT/DELETE, the browser first sends `OPTIONS` and checks `Access-Control-Allow-Methods` / `-Headers`; results can be cached with `Access-Control-Max-Age`\n* **Credentials** (cookies): need `credentials: 'include'` on the client and `Access-Control-Allow-Credentials: true` plus a **specific origin** (never `*`)\n\n### The cors package\n`app.use(cors({ origin: ['https://app.com'], credentials: true }))`. Use an allow-list; avoid reflecting any origin blindly.\n\n### Common error\n\"No 'Access-Control-Allow-Origin' header\" means the server did not send it (or the preflight failed, or a redirect or error response lacks headers). Fix it on the server, not in the frontend.",
+   "keyPoints": [
+    "helmet() adds a set of protective headers; tune CSP for your frontend",
+    "CORS is a browser rule relaxed by server headers, not security against attackers",
+    "Preflight OPTIONS requests precede non-simple requests",
+    "Credentials require a specific origin, not *",
+    "Use an allow-list of origins"
+   ],
+   "pitfalls": [
+    "Setting origin: '*' together with credentials",
+    "Believing CORS protects your API from non-browser clients",
+    "Disabling CSP completely because it is inconvenient"
+   ],
+   "examples": [
+    {
+     "title": "Secure Express setup",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import express from 'express';\nimport helmet from 'helmet';\nimport cors from 'cors';\n\nconst app = express();\napp.disable('x-powered-by');\n\napp.use(helmet({\n  contentSecurityPolicy: {\n    directives: {\n      defaultSrc: [\"'self'\"],\n      scriptSrc: [\"'self'\"],\n      imgSrc: [\"'self'\", 'data:'],\n    },\n  },\n}));\n\nconst allowed = ['https://app.example.com', 'http://localhost:5173'];\napp.use(cors({\n  origin: (origin, cb) => (!origin || allowed.includes(origin) ? cb(null, true) : cb(new Error('Not allowed by CORS'))),\n  credentials: true,\n  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],\n  maxAge: 600,\n}));\n\napp.get('/api/ping', (req, res) => res.json({ pong: true }));\napp.listen(3000);",
+     "explanation": "Requests without an Origin header (curl, server to server) are allowed through; browsers from other sites are not.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a CORS preflight request?",
+     "a": "An automatic OPTIONS request the browser sends before certain cross-origin requests (custom headers, JSON content type, methods like PUT/DELETE). The server answers with allowed methods and headers, and only then the real request is sent."
+    },
+    {
+     "q": "Does CORS protect your API?",
+     "a": "No. It only tells browsers whether front-end JavaScript from another origin may read the response. Anyone can still call the API with curl or scripts, so you need authentication and authorisation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-rate-limiting",
+   "title": "Rate Limiting and Brute-Force Protection",
+   "level": "intermediate",
+   "summary": "Limit requests per client with fixed or sliding windows and token buckets; use Redis when running multiple instances.",
+   "description": "Without limits, one client can overload your server, scrape your data or brute-force passwords. **Rate limiting** rejects excess requests with **429 Too Many Requests**.\n\n### Algorithms\n| Algorithm | Idea |\n|---|---|\n| **Fixed window** | Count requests per time window (100 per minute); simple, allows bursts at window edges |\n| **Sliding window** | Smoother: counts the last N seconds |\n| **Token bucket** | Bucket refills at a steady rate; each request spends a token; allows controlled bursts |\n| **Leaky bucket** | Queue processed at a constant rate |\n| **Concurrency limit** | Cap simultaneous requests |\n\n### Key choice\nLimit by IP, user id or API key. Behind a proxy set `trust proxy` so `req.ip` is the real client. Stricter limits for sensitive routes (login, password reset, OTP): for example 5 attempts per 15 minutes.\n\n### Headers\nSend `Retry-After` and the draft standard `RateLimit-*` headers so well-behaved clients back off.\n\n### express-rate-limit\n`rateLimit({ windowMs: 60_000, limit: 100, standardHeaders: true })`. Default storage is memory, which is **per process**: with clustering or several containers use a shared store (`rate-limit-redis`) or `rate-limiter-flexible`.\n\n### More defences\n* Exponential delay or account lockout after repeated login failures\n* CAPTCHA on public forms\n* Request size and time limits, `server.requestTimeout`\n* Edge protection: Cloudflare, nginx `limit_req`, API gateways\n\n### Also limit\nExpensive operations (exports, searches), uploads and websocket messages.",
+   "keyPoints": [
+    "Reject excess requests with 429 and Retry-After",
+    "Token bucket allows bursts; fixed window is simplest",
+    "Apply tight limits to login and password reset",
+    "Memory stores do not work across multiple instances; use Redis",
+    "Configure trust proxy so the real IP is used"
+   ],
+   "pitfalls": [
+    "Rate limiting by proxy IP because trust proxy is not set (everyone shares one limit)",
+    "In-memory counters in a multi-instance deployment",
+    "No limit on login attempts"
+   ],
+   "examples": [
+    {
+     "title": "express-rate-limit and a custom token bucket",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import rateLimit from 'express-rate-limit';\n\napp.set('trust proxy', 1);\n\napp.use('/api', rateLimit({ windowMs: 60_000, limit: 100, standardHeaders: 'draft-7', legacyHeaders: false }));\n\napp.use('/api/login', rateLimit({\n  windowMs: 15 * 60_000,\n  limit: 5,\n  message: { error: 'Too many login attempts, try again later' },\n}));\n\n// a tiny token bucket (single process)\nconst buckets = new Map();\nexport function allow(key, capacity = 10, refillPerSec = 1) {\n  const now = Date.now();\n  const b = buckets.get(key) ?? { tokens: capacity, last: now };\n  b.tokens = Math.min(capacity, b.tokens + ((now - b.last) / 1000) * refillPerSec);\n  b.last = now;\n  const ok = b.tokens >= 1;\n  if (ok) b.tokens -= 1;\n  buckets.set(key, b);\n  return ok;\n}",
+     "explanation": "The bucket allows a burst of 10 requests, then one per second.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does in-memory rate limiting fail when you scale horizontally?",
+     "a": "Each process keeps its own counters, so a client can send the limit to every instance. Use a shared store like Redis, or limit at the gateway/proxy."
+    },
+    {
+     "q": "What status code does a rate limited request get?",
+     "a": "429 Too Many Requests, ideally with a Retry-After header telling the client when to retry."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-input-validation",
+   "title": "Input Validation with zod and joi",
+   "level": "intermediate",
+   "summary": "Never trust client data: validate and coerce request bodies, params and query with schemas.",
+   "description": "Every value from outside (body, query string, headers, files, environment, third-party APIs) is **untrusted**. Validate its shape, types, ranges and formats at the edge of your app, before business logic or the database sees it.\n\n### Why\nPrevents crashes (`undefined.name`), injection attacks, bad data in your database, mass assignment (users setting `role: 'admin'`) and gives clients useful 400/422 messages.\n\n### Libraries\n| Library | Style |\n|---|---|\n| **zod** | TypeScript-first schemas; infers types; very popular |\n| **joi** | Mature, expressive, JavaScript |\n| **valibot, typebox, ajv** | Lightweight / JSON Schema based (Fastify uses ajv) |\n| **express-validator** | Chain-style middleware |\n\n### With zod\n`schema.parse(data)` throws `ZodError`; `schema.safeParse(data)` returns `{ success, data | error }`. The parsed output is the **cleaned** data: unknown keys stripped, strings trimmed, numbers coerced (`z.coerce.number()`), defaults applied.\n\n### Validation middleware\nWrite one generic `validate(schema)` that checks `req.body`, `req.query` or `req.params`, answers **400/422** with field errors on failure and replaces the data with the parsed result.\n\n### Rules of thumb\n* Use **allow-lists** (known fields) not block-lists\n* Set maximum lengths and array sizes\n* Normalise emails (lowercase, trim)\n* Validate again on the server even if the frontend validates\n* Escape/encode on **output** to prevent XSS; parameterise on **database** access\n* Validate file type by content, not just extension\n* Also validate environment variables at start-up",
+   "keyPoints": [
+    "All external input is untrusted: validate at the boundary",
+    "zod/joi schemas define allowed shape and return cleaned data",
+    "A reusable validate(schema) middleware keeps handlers clean",
+    "Strip unknown fields to stop mass assignment",
+    "Server-side validation is mandatory even with client validation"
+   ],
+   "pitfalls": [
+    "Passing req.body straight into the database layer",
+    "Validating only on the frontend",
+    "Forgetting to validate query and route params"
+   ],
+   "examples": [
+    {
+     "title": "zod validation middleware",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i zod\nimport { z } from 'zod';\n\nconst createUser = z.object({\n  name: z.string().trim().min(2).max(50),\n  email: z.string().trim().toLowerCase().email(),\n  age: z.coerce.number().int().min(13).max(120).optional(),\n  role: z.enum(['user', 'editor']).default('user'),\n});\n\nexport const validate = (schema, source = 'body') => (req, res, next) => {\n  const result = schema.safeParse(req[source]);\n  if (!result.success) {\n    return res.status(422).json({\n      error: 'Validation failed',\n      fields: result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),\n    });\n  }\n  req[source] = result.data;      // cleaned and typed\n  next();\n};\n\napp.post('/users', validate(createUser), (req, res) => {\n  res.status(201).json(req.body);     // { name, email, age?, role }\n});",
+     "explanation": "Extra fields such as isAdmin are silently dropped because zod objects strip unknown keys by default.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Validate environment variables",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { z } from 'zod';\n\nconst env = z.object({\n  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),\n  PORT: z.coerce.number().int().positive().default(3000),\n  DATABASE_URL: z.string().url(),\n  JWT_SECRET: z.string().min(32),\n}).parse(process.env);\n\nexport default env;",
+     "explanation": "The app refuses to start with a clear error if configuration is missing or wrong.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why validate on the server when the front end already validates?",
+     "a": "Clients can be bypassed with curl or modified scripts, so client-side checks are only for convenience. The server is the only place that can enforce rules."
+    },
+    {
+     "q": "What is mass assignment?",
+     "a": "When a request body is passed directly into a model, letting attackers set fields they should not (role, isAdmin, price). Prevent it with schemas and allow-lists of accepted fields."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-env-secrets",
+   "title": "Environment Variables and Secrets",
+   "level": "beginner",
+   "summary": "Configure apps with environment variables, load .env files with --env-file or dotenv, and keep secrets out of git.",
+   "description": "Hard-coded configuration makes code unsafe and hard to deploy. The twelve-factor approach stores config in **environment variables**: database URLs, API keys, ports, feature flags. The same code then runs in development, staging and production.\n\n### Reading\n`process.env.PORT` (always a string, or `undefined`). Convert: `Number(process.env.PORT ?? 3000)`.\n\n### .env files\nA `.env` file holds `KEY=value` lines for local development. Load it with:\n* **`node --env-file=.env app.js`** (built in since Node 20.6; add several files, later ones win)\n* `process.loadEnvFile('.env')` in code (Node 21.7+/20.12+)\n* The **`dotenv`** package (`import 'dotenv/config'`) for older Node versions\n\nVariables that are already set in the real environment are **not** overridden by the file (so a platform's real settings win), and with several `--env-file` flags the later file wins. dotenv behaves the same way by default.\n\n### Git hygiene\n* Add `.env` to `.gitignore`\n* Commit a `.env.example` listing keys without values\n* If a secret was ever committed, **rotate it**; deleting the commit is not enough\n\n### Secrets in production\nUse the platform's secret store: Render/Railway/Vercel environment settings, GitHub Actions secrets, Docker/Kubernetes secrets, AWS Secrets Manager, Vault, Doppler. Do not bake secrets into Docker images or print them in logs.\n\n### Good practices\n* Validate all variables at start-up (zod) and fail fast\n* Never expose server secrets to browser bundles\n* Use different secrets per environment and rotate regularly\n* Keep config in one module: `config.js`\n* Prefer long random values: `node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"`",
+   "keyPoints": [
+    "Configuration and secrets live in environment variables",
+    "Load .env with node --env-file or dotenv for local development",
+    "Never commit .env; commit .env.example",
+    "Validate variables at start-up and fail fast",
+    "Use a secret manager in production and rotate leaked keys"
+   ],
+   "pitfalls": [
+    "Committing .env or keys to git",
+    "Forgetting that env values are strings",
+    "Logging process.env or full config objects"
+   ],
+   "examples": [
+    {
+     "title": ".env workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# .env  (never commit)\nPORT=4000\nDATABASE_URL=postgres://app:pw@localhost:5432/shop\nJWT_SECRET=change-me\n\n# .env.example  (commit this)\nPORT=\nDATABASE_URL=\nJWT_SECRET=\n\n$ node --env-file=.env -e \"console.log(process.env.PORT, typeof process.env.PORT)\"\n4000 string",
+     "explanation": "Values from a .env file are always strings, even when they look like numbers.",
+     "lang": "bash"
+    },
+    {
+     "title": "config.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// config.js - the only file that reads process.env\nconst required = (name) => {\n  const value = process.env[name];\n  if (!value) throw new Error(`Missing environment variable: ${name}`);\n  return value;\n};\n\nexport const config = {\n  env: process.env.NODE_ENV ?? 'development',\n  port: Number(process.env.PORT ?? 3000),\n  dbUrl: required('DATABASE_URL'),\n  jwtSecret: required('JWT_SECRET'),\n  isProd: process.env.NODE_ENV === 'production',\n};",
+     "explanation": "The app crashes at start-up with a helpful message instead of failing later at runtime.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use environment variables for configuration?",
+     "a": "They separate config from code, so the same build runs in every environment, secrets stay out of source control and values can change without redeploying new code."
+    },
+    {
+     "q": "You accidentally committed an API key. What do you do?",
+     "a": "Revoke and rotate the key immediately, then remove it from the code and history if needed. Anything pushed to a repository must be treated as compromised."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-owasp-security",
+   "title": "OWASP Top 10 for Node.js",
+   "level": "advanced",
+   "summary": "The common web vulnerabilities and how they appear in Node apps: injection, XSS, broken access control, SSRF and more.",
+   "description": "The **OWASP Top 10** lists the most critical web application risks. In Node the main ones look like this:\n\n| Risk | Node example | Defence |\n|---|---|---|\n| **Broken access control** | `GET /orders/42` returns anyone's order (IDOR) | Check ownership on every request; deny by default |\n| **Cryptographic failures** | MD5 passwords, plain HTTP, secrets in git | argon2/bcrypt, TLS, secret manager |\n| **Injection** | SQL built with string concat, NoSQL `{ \"$ne\": null }` in login, command injection with `exec` | Parameterised queries, validate types, `execFile`, `mongo-sanitize` |\n| **Insecure design** | No rate limits, no threat model | Design reviews, abuse cases |\n| **Security misconfiguration** | Debug mode, stack traces, default passwords, open CORS | helmet, production env, least privilege |\n| **Vulnerable components** | Old packages with CVEs | `npm audit`, Dependabot, lock files |\n| **Auth failures** | Weak passwords, no lockout, JWT `alg: none` | MFA, rate limits, strong session handling |\n| **Integrity failures** | Unsigned updates, unsafe deserialisation, malicious packages | Signed artifacts, `npm ci`, review dependencies |\n| **Logging and monitoring gaps** | No audit trail | Structured logs, alerts |\n| **SSRF** | `fetch(userUrl)` reaching internal services or cloud metadata | Allow-list hosts, block private IP ranges |\n\n### Node-specific hazards\n* **Prototype pollution**: merging user JSON into objects with `__proto__` keys; use `Object.create(null)`, schema validation, safe merge libraries\n* **ReDoS**: slow regex on user input blocks the event loop\n* **Path traversal**: `../` in file names\n* **`eval`, `new Function`, `vm`**: never run user input\n* **Unbounded body sizes**, **uncaught exceptions** leaking stack traces\n* **XSS**: escape output, set CSP, use template engines with auto-escaping; do not build HTML by hand\n\n### Habit checklist\nValidate input, encode output, authenticate, authorise every request, least privilege for DB users, HTTPS everywhere, update dependencies, log security events, never trust the client.",
+   "keyPoints": [
+    "Access control checks belong on every request (watch for IDOR)",
+    "Parameterise queries and validate types to stop SQL/NoSQL injection",
+    "Avoid eval and shell strings with user data",
+    "Protect against SSRF, path traversal, prototype pollution and ReDoS",
+    "Keep dependencies patched"
+   ],
+   "pitfalls": [
+    "Checking only that the user is logged in, not that the resource is theirs",
+    "Passing req.body objects directly into Mongo queries",
+    "Showing stack traces in production responses"
+   ],
+   "examples": [
+    {
+     "title": "NoSQL injection and the fix",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// Vulnerable: attacker sends {\"email\": {\"$ne\": null}, \"password\": {\"$ne\": null}}\napp.post('/login', async (req, res) => {\n  const user = await User.findOne({ email: req.body.email, password: req.body.password });\n  // matches the first user in the collection!\n});\n\n// Fixed: force strings (or validate with zod), then compare hashes\nimport { z } from 'zod';\nconst body = z.object({ email: z.string().email(), password: z.string().min(1) });\n\napp.post('/login', async (req, res) => {\n  const { email, password } = body.parse(req.body);\n  const user = await User.findOne({ email }).select('+password');\n  if (!user || !(await user.checkPassword(password))) return res.status(401).json({ error: 'Invalid credentials' });\n  res.json({ ok: true });\n});",
+     "explanation": "Query operators in JSON are values the attacker controls; validation makes them plain strings.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Authorisation check against IDOR",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "app.get('/api/orders/:id', requireAuth, async (req, res) => {\n  const order = await Order.findOne({ _id: req.params.id, userId: req.user.sub }); // scoped to the owner\n  if (!order) return res.status(404).json({ error: 'Not found' });   // same answer for \"missing\" and \"not yours\"\n  res.json(order);\n});",
+     "explanation": "Always include the owner in the query instead of fetching by id alone.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is IDOR?",
+     "a": "Insecure Direct Object Reference, a broken access control bug where changing an id in the URL (orders/42 to orders/43) returns another user's data because the server does not check ownership."
+    },
+    {
+     "q": "What is prototype pollution?",
+     "a": "An attack where user-controlled keys like __proto__ or constructor.prototype are merged into an object, modifying Object.prototype and changing behaviour for the whole application. Validate input and avoid unsafe deep merges."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-dependency-auditing",
+   "title": "Dependency Auditing and Supply Chain Security",
+   "level": "intermediate",
+   "summary": "Find vulnerable and malicious packages with npm audit, lock files, Dependabot/Renovate and safe install habits.",
+   "description": "A typical Node app has hundreds of transitive packages. Each one runs with your app's permissions, so the **supply chain** is part of your attack surface.\n\n### npm audit\n* `npm audit` lists known vulnerabilities (CVEs) in your tree with severity and fix paths\n* `npm audit fix` applies safe updates; `--force` may include breaking changes (review them)\n* `npm audit --omit=dev` focuses on production dependencies\n* `npm audit signatures` verifies registry signatures and provenance\n\n### Keep it updated\n* **Dependabot** (GitHub) or **Renovate** open pull requests for updates\n* `npm outdated` and `npx npm-check-updates` show newer versions\n* Run tests in CI for every update PR\n\n### Reduce risk\n1. **Commit the lock file** and install with `npm ci`\n2. Prefer **fewer, well maintained** dependencies; check downloads, maintainers and last release before adding one\n3. Beware of **typosquatting** (`expresss`) and dependency confusion for private package names\n4. Disable install scripts for unknown packages: `npm ci --ignore-scripts` (or `ignore-scripts=true` in `.npmrc`), allow only where required\n5. Use **2FA** and provenance when publishing your own packages\n6. Pin versions in critical apps and review changelogs for major updates\n7. Scan in CI: `npm audit`, Snyk, Socket, GitHub code scanning, `osv-scanner`\n\n### Node's own permission model\n`node --permission --allow-fs-read=./data app.js` (Node 20+) restricts file system, child process and worker access for untrusted code. It is a seat belt, not a sandbox.\n\n### Respond to incidents\nIf a package is compromised: remove or pin to a safe version, rotate secrets that were available to the app or CI, redeploy.",
+   "keyPoints": [
+    "npm audit reports known vulnerabilities; fix with updates",
+    "Automate updates with Dependabot or Renovate plus CI tests",
+    "Use lock files, npm ci and few trusted dependencies",
+    "Install scripts and typosquatting are real attack paths",
+    "Rotate secrets after a compromise"
+   ],
+   "pitfalls": [
+    "Ignoring audit output for months",
+    "Running npm audit fix --force without testing",
+    "Adding a package for a 3-line function"
+   ],
+   "examples": [
+    {
+     "title": "Audit workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "npm audit                      # report\nnpm audit --omit=dev           # only runtime packages\nnpm audit fix                  # safe fixes\nnpm audit signatures           # verify provenance\nnpm ci --ignore-scripts        # install without running lifecycle scripts\nnpm outdated                   # what is behind?\nnode --permission --allow-fs-read=. app.js   # restrict file access (Node 20+)",
+     "explanation": "Run audit in CI and fail the build on high or critical issues.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is typosquatting in npm?",
+     "a": "Publishing malicious packages with names similar to popular ones (lodahs, expresss) hoping developers mistype. Double-check package names and prefer packages with history and maintainers."
+    },
+    {
+     "q": "Why use npm ci in CI instead of npm install?",
+     "a": "npm ci installs exactly what the lock file specifies and fails on mismatch, giving reproducible, tamper-evident builds, whereas npm install may resolve newer versions."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

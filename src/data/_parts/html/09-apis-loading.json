@@ -1,0 +1,303 @@
+{
+ "id": "html-apis-loading",
+ "title": "HTML5 APIs & Loading",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "html-script-loading",
+   "title": "Loading Scripts: defer, async & type=\"module\"",
+   "level": "advanced",
+   "summary": "Control when JavaScript downloads and runs so it never blocks HTML parsing.",
+   "description": "By default a `<script src>` is **parser-blocking**: the browser stops building the page, downloads the file, runs it, then continues. That delays rendering. Two attributes fix this.\n\n### The three modes\n| Attribute | Download | Executes | Order | DOM ready? |\n|---|---|---|---|---|\n| (none) | blocks parser | immediately | in order | No |\n| `defer` | parallel | after HTML parsed, before DOMContentLoaded | **in order** | Yes |\n| `async` | parallel | as soon as downloaded | **unpredictable** | Maybe |\n| `type=\"module\"` | parallel | deferred by default | module graph | Yes |\n\n### Choosing\n- **App code that touches the DOM or depends on other scripts** → `defer` (put the tag in `<head>`).\n- **Independent scripts** such as analytics or ads → `async`.\n- **Modern ES modules** (`import`/`export`) → `type=\"module\"`; it is deferred automatically, strict mode, own scope.\n- Old habit: scripts at the end of body. `defer` in head is better because the download starts early.\n\n### More\n- `nomodule` - run only in browsers that do not support modules.\n- `<script type=\"importmap\">` - bare specifier mapping.\n- `<noscript>` - fallback content.\n- Inline scripts ignore `defer`/`async` (except modules, which are always deferred).\n- Add `integrity` and `crossorigin` for CDN files (Subresource Integrity).\n\n### CSS also blocks\nStylesheets in head block rendering (to avoid unstyled flashes) and block scripts below them. Keep CSS small and critical.",
+   "keyPoints": [
+    "Plain script blocks HTML parsing.",
+    "defer: parallel download, runs after parsing, keeps order.",
+    "async: runs as soon as ready, order not guaranteed.",
+    "type=\"module\" is deferred by default and has its own scope.",
+    "Use defer for app code, async for independent third parties."
+   ],
+   "pitfalls": [
+    "Using async for scripts that depend on each other.",
+    "Using defer on inline scripts - it has no effect.",
+    "Placing blocking scripts in head with no defer."
+   ],
+   "examples": [
+    {
+     "title": "The three ways in the head",
+     "language": "text",
+     "code": "<head>\n  <!-- blocks parsing: avoid -->\n  <script src=\"legacy.js\"></script>\n\n  <!-- best for your app: runs after HTML is parsed, in order -->\n  <script src=\"app.js\" defer></script>\n\n  <!-- independent: analytics, ads -->\n  <script src=\"analytics.js\" async></script>\n\n  <!-- modern modules: deferred automatically -->\n  <script type=\"module\" src=\"main.js\"></script>\n</head>",
+     "explanation": ""
+    },
+    {
+     "title": "Execution order demo",
+     "language": "web",
+     "html": "<ul id=\"log\"></ul>\n<script>\n  function log(t) { var li = document.createElement('li'); li.textContent = t; document.getElementById('log').appendChild(li); }\n  log('1. classic inline script (runs immediately)');\n  document.addEventListener('DOMContentLoaded', function () { log('3. DOMContentLoaded fired'); });\n<\\/script>\n<script type=\"module\">\n  var li = document.createElement('li'); li.textContent = '2. module script (deferred until HTML is parsed)';\n  document.getElementById('log').appendChild(li);\n</script>\n<p>Order printed above shows module scripts waiting for parsing.</p>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": "Module scripts run after the document has been parsed, but before DOMContentLoaded."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between async and defer?",
+     "a": "Both download in parallel. defer executes after parsing in document order; async executes as soon as downloaded in any order."
+    },
+    {
+     "q": "Are module scripts blocking?",
+     "a": "No. type=\"module\" scripts are deferred by default."
+    },
+    {
+     "q": "Where should script tags go?",
+     "a": "In head with defer (or at the end of body for older practice) so they do not block rendering."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-resource-hints",
+   "title": "Resource Hints: preload, prefetch, preconnect",
+   "level": "advanced",
+   "summary": "Tell the browser early what it will need so it can fetch or connect ahead of time.",
+   "description": "Browsers discover resources while parsing. **Resource hints** in `<link>` let you tell them about important resources earlier.\n\n| Hint | What it does | Use for |\n|---|---|---|\n| `rel=\"preload\"` | Fetch a resource **now**, high priority, for *this* page | hero image, key font, critical CSS/JS |\n| `rel=\"prefetch\"` | Fetch at **low priority** for a *future* navigation | next page's script/data |\n| `rel=\"preconnect\"` | Open DNS + TCP + TLS to an origin early | CDN, API, fonts domain |\n| `rel=\"dns-prefetch\"` | Only resolve DNS early | many third parties |\n| `rel=\"modulepreload\"` | Preload an ES module and its dependencies | module apps |\n| `rel=\"prerender\"` / Speculation Rules | Render the next page in the background | likely next click |\n\n### Syntax\n```html\n<link rel=\"preload\" href=\"/fonts/Inter.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>\n<link rel=\"preload\" href=\"/img/hero.webp\" as=\"image\">\n<link rel=\"preconnect\" href=\"https://api.example.com\" crossorigin>\n<link rel=\"prefetch\" href=\"/next-page.js\" as=\"script\">\n```\n\n### Rules\n- `as` is **required** for preload so the browser sets priority and cache correctly.\n- Fonts need `crossorigin` even on the same origin.\n- Do not preload everything - too many hints compete with truly critical resources and waste bandwidth.\n- A preload that is not used within a few seconds triggers a console warning.\n\n### fetchpriority\n`<img fetchpriority=\"high\">` raises the priority of the LCP image without a preload tag.",
+   "keyPoints": [
+    "preload = needed now; prefetch = maybe needed next.",
+    "preconnect warms up the connection to another origin.",
+    "preload requires the as attribute (and crossorigin for fonts).",
+    "Over-preloading hurts performance.",
+    "fetchpriority=\"high\" prioritises the key image."
+   ],
+   "pitfalls": [
+    "Preloading without as.",
+    "Preloading resources that are never used.",
+    "Forgetting crossorigin on font preloads (fetched twice)."
+   ],
+   "examples": [
+    {
+     "title": "Typical hints for a fast hero page",
+     "language": "text",
+     "code": "<head>\n  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n  <link rel=\"preload\" href=\"/fonts/Inter-var.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>\n  <link rel=\"preload\" href=\"/img/hero.avif\" as=\"image\" fetchpriority=\"high\">\n  <link rel=\"stylesheet\" href=\"/css/main.css\">\n  <link rel=\"prefetch\" href=\"/pricing.html\">\n</head>",
+     "explanation": "Dev tools Network panel shows the Priority column so you can verify the effect."
+    }
+   ],
+   "interview": [
+    {
+     "q": "preload vs prefetch?",
+     "a": "preload fetches a resource needed for the current page at high priority; prefetch fetches something that may be needed for a future navigation at low priority."
+    },
+    {
+     "q": "What does preconnect do?",
+     "a": "It performs DNS lookup, TCP connection and TLS handshake to an origin ahead of the request, saving time."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-lazy-loading",
+   "title": "Lazy Loading Images & iframes",
+   "level": "intermediate",
+   "summary": "loading=\"lazy\" delays offscreen images and iframes until the user scrolls near them.",
+   "description": "Loading every image on page load wastes bandwidth and slows the first view. **Lazy loading** defers images and iframes that are off-screen.\n\n```html\n<img src=\"photo.jpg\" alt=\"...\" width=\"800\" height=\"500\" loading=\"lazy\">\n<iframe src=\"https://www.youtube.com/embed/ID\" title=\"Video\" loading=\"lazy\"></iframe>\n```\n\n### Values\n- `loading=\"lazy\"` - load when near the viewport.\n- `loading=\"eager\"` - load immediately (default).\n\n### Rules of thumb\n- **Do not** lazy-load the first visible (above-the-fold / LCP) image - it makes the page slower. Use `fetchpriority=\"high\"` instead.\n- Always set `width` and `height` so lazy images do not cause layout shift.\n- Great for long articles, galleries, comment avatars and embedded videos/maps.\n- Images in `<picture>`: put `loading` on the inner `<img>`.\n\n### Other lazy techniques\n- **IntersectionObserver** for custom behaviour (videos, background images, infinite scroll).\n- `<video preload=\"none\" poster=\"...\">` to avoid downloading video until play.\n- `content-visibility: auto` in CSS to skip rendering of offscreen sections.\n- `decoding=\"async\"` to decode images off the main thread.\n\n### Browser support\nNative lazy loading is supported by all modern browsers; older ones just load eagerly, so it is safe progressive enhancement.",
+   "keyPoints": [
+    "loading=\"lazy\" works on img and iframe.",
+    "Never lazy-load the LCP / above-the-fold image.",
+    "Set width and height to avoid layout shifts.",
+    "IntersectionObserver gives custom lazy loading.",
+    "Fully safe as progressive enhancement."
+   ],
+   "pitfalls": [
+    "Lazy-loading the hero image and hurting LCP.",
+    "No dimensions on lazy images - the page jumps while scrolling.",
+    "Lazy-loading tiny icons - it adds overhead."
+   ],
+   "examples": [
+    {
+     "title": "Native lazy attribute + IntersectionObserver",
+     "language": "web",
+     "html": "<p>Scroll down inside the preview. The picture below loads its content only when visible.</p>\n<div style=\"height:260px;background:#f1f1f1;display:grid;place-items:center\">⬇ scroll ⬇</div>\n<img id=\"lazy\" width=\"300\" height=\"150\" alt=\"Lazy loaded picture\" loading=\"lazy\" data-src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='150'><rect width='100%' height='100%' fill='%23ffadad'/><text x='150' y='95' font-size='60' text-anchor='middle'>😴</text></svg>\">\n<p id=\"msg\">Image not loaded yet...</p>\n<div style=\"height:200px\"></div>",
+     "css": "body{font-family:sans-serif} img{background:#ddd;border-radius:8px;display:block}",
+     "js": "var img = document.getElementById('lazy');\nvar io = new IntersectionObserver(function (entries) {\n  if (entries[0].isIntersecting) {\n    img.src = img.dataset.src;\n    document.getElementById('msg').textContent = 'Image loaded because it entered the viewport!';\n    io.disconnect();\n  }\n});\nio.observe(img);",
+     "explanation": "data-src is copied to src when the image becomes visible - the same idea as native lazy loading."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you lazy load an image?",
+     "a": "Add loading=\"lazy\" to the img (or iframe); the browser loads it only when it is near the viewport."
+    },
+    {
+     "q": "Which images should NOT be lazy loaded?",
+     "a": "Above-the-fold images, especially the Largest Contentful Paint image."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/img.html"
+  },
+  {
+   "id": "html-web-storage",
+   "title": "Web Storage: localStorage & sessionStorage",
+   "level": "intermediate",
+   "summary": "Store key-value strings in the browser: persistent with localStorage, per-tab with sessionStorage.",
+   "description": "Web Storage is a simple key-value store in the browser (about 5 MB per origin). It replaced many uses of cookies.\n\n| | localStorage | sessionStorage | Cookies |\n|---|---|---|---|\n| Lifetime | Until cleared | Until tab closes | Set by expiry |\n| Scope | Origin (all tabs) | Origin + single tab | Origin (+ path) |\n| Sent to server | No | No | Yes, with every request |\n| Size | ~5 MB | ~5 MB | ~4 KB |\n\n### API\n```js\nlocalStorage.setItem('theme', 'dark');\nlocalStorage.getItem('theme');      // 'dark' (null if missing)\nlocalStorage.removeItem('theme');\nlocalStorage.clear();\nlocalStorage.length; localStorage.key(0);\n```\n\n### Only strings\nConvert objects with JSON:\n```js\nlocalStorage.setItem('user', JSON.stringify({ name: 'Asha' }));\nconst user = JSON.parse(localStorage.getItem('user'));\n```\n\n### The storage event\nWhen another tab changes localStorage, a `storage` event fires in the other tabs - a simple way to sync tabs.\n\n### Security & limits\n- Synchronous (blocks the main thread) - keep data small.\n- Readable by any script on the page, so **never store passwords or tokens** that XSS could steal (prefer HttpOnly cookies).\n- Can throw in private mode or when full - wrap in try/catch.\n- Use IndexedDB for large or structured data.",
+   "keyPoints": [
+    "localStorage persists; sessionStorage lasts for the tab.",
+    "Only strings - use JSON.stringify/parse for objects.",
+    "About 5 MB per origin; synchronous API.",
+    "Not sent to the server automatically (unlike cookies).",
+    "Never store secrets in web storage."
+   ],
+   "pitfalls": [
+    "Storing objects without JSON.stringify - you get \"[object Object]\".",
+    "Treating localStorage as secure.",
+    "Not handling exceptions when storage is blocked or full."
+   ],
+   "examples": [
+    {
+     "title": "Persist a counter and a theme",
+     "language": "web",
+     "html": "<p>Visits stored: <b id=\"count\">0</b></p>\n<button id=\"inc\">Add visit</button>\n<button id=\"reset\">Reset</button>\n<p id=\"note\"></p>",
+     "css": "body{font-family:sans-serif} button{padding:6px 10px;margin-right:6px}",
+     "js": "var store;\ntry { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); store = localStorage; document.getElementById('note').textContent = 'Using real localStorage.'; }\ncatch (e) { var mem = {}; store = { getItem: function (k) { return k in mem ? mem[k] : null; }, setItem: function (k, v) { mem[k] = String(v); }, removeItem: function (k) { delete mem[k]; } };\n  document.getElementById('note').textContent = 'Storage blocked in this sandbox - using an in-memory fallback.'; }\nvar el = document.getElementById('count');\nel.textContent = store.getItem('visits') || '0';\ndocument.getElementById('inc').onclick = function () { var n = Number(store.getItem('visits') || 0) + 1; store.setItem('visits', n); el.textContent = n; };\ndocument.getElementById('reset').onclick = function () { store.removeItem('visits'); el.textContent = '0'; };",
+     "explanation": "Always try/catch storage access: it may be unavailable in sandboxed frames or private mode."
+    }
+   ],
+   "interview": [
+    {
+     "q": "localStorage vs sessionStorage vs cookies?",
+     "a": "localStorage persists indefinitely per origin, sessionStorage lasts for the tab session, and cookies are small, can expire and are sent with every HTTP request."
+    },
+    {
+     "q": "How do you store an object in localStorage?",
+     "a": "Serialize with JSON.stringify when saving and JSON.parse when reading."
+    },
+    {
+     "q": "Is localStorage safe for tokens?",
+     "a": "Not really; any XSS can read it. HttpOnly cookies are safer for session tokens."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-geolocation",
+   "title": "Geolocation API",
+   "level": "advanced",
+   "summary": "Ask the user for permission and read latitude/longitude with navigator.geolocation.",
+   "description": "The **Geolocation API** lets a page learn the user's position (with explicit permission). It works only in **secure contexts** (HTTPS or localhost).\n\n### Getting the position once\n```js\nnavigator.geolocation.getCurrentPosition(\n  (pos) => {\n    const { latitude, longitude, accuracy } = pos.coords;\n  },\n  (err) => console.log(err.code, err.message),\n  { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }\n);\n```\n\n### Watching movement\n`navigator.geolocation.watchPosition(success, error, options)` returns an id; stop with `clearWatch(id)`.\n\n### Error codes\n| Code | Meaning |\n|---|---|\n| 1 | PERMISSION_DENIED |\n| 2 | POSITION_UNAVAILABLE |\n| 3 | TIMEOUT |\n\n### Options\n- `enableHighAccuracy` - GPS (slower, more battery).\n- `timeout` - ms to wait.\n- `maximumAge` - accept a cached position this old.\n\n### Good practice\n- Ask only after a user action (\"Find stores near me\"), never on page load.\n- Explain *why* you need it.\n- Always handle denial and provide manual fallback (type your city).\n- Location is sensitive personal data - do not store it without need.\n\n### Permissions Policy\nIn an iframe the parent must allow it: `<iframe allow=\"geolocation\">`.",
+   "keyPoints": [
+    "navigator.geolocation requires user permission and HTTPS.",
+    "getCurrentPosition = once; watchPosition = continuous.",
+    "Always implement the error callback (denied/timeout).",
+    "Request location only after a user gesture.",
+    "iframes need allow=\"geolocation\"."
+   ],
+   "pitfalls": [
+    "Requesting location on page load.",
+    "No fallback when permission is denied.",
+    "Forgetting accuracy - coordinates may be rough (IP based)."
+   ],
+   "examples": [
+    {
+     "title": "Request the location (button click)",
+     "language": "web",
+     "html": "<button id=\"go\">📍 Find my location</button>\n<pre id=\"out\">Not requested yet.</pre>",
+     "css": "body{font-family:sans-serif} button{padding:8px 12px} pre{background:#f4f4f4;padding:8px;border-radius:6px;white-space:pre-wrap}",
+     "js": "document.getElementById('go').addEventListener('click', function () {\n  var out = document.getElementById('out');\n  if (!('geolocation' in navigator)) { out.textContent = 'Geolocation not supported.'; return; }\n  out.textContent = 'Asking for permission...';\n  navigator.geolocation.getCurrentPosition(function (p) {\n    out.textContent = 'Latitude: ' + p.coords.latitude.toFixed(4) + '\\nLongitude: ' + p.coords.longitude.toFixed(4) + '\\nAccuracy: ' + Math.round(p.coords.accuracy) + ' m';\n  }, function (e) {\n    out.textContent = 'Could not get location (code ' + e.code + '): ' + e.message + '\\nThis is normal in sandboxed previews - handle it gracefully!';\n  }, { timeout: 8000 });\n});",
+     "explanation": "In a sandboxed iframe the browser may deny the request; the error callback shows how to handle that."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you get the user position?",
+     "a": "navigator.geolocation.getCurrentPosition(success, error, options) after the user grants permission."
+    },
+    {
+     "q": "What are the geolocation error codes?",
+     "a": "1 permission denied, 2 position unavailable, 3 timeout."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-drag-drop",
+   "title": "Drag and Drop API",
+   "level": "advanced",
+   "summary": "Make elements draggable and handle dragstart, dragover and drop events.",
+   "description": "The HTML Drag and Drop API makes native dragging of elements and files possible.\n\n### Steps\n1. Mark the source: `draggable=\"true\"` (images, links and selected text are draggable by default).\n2. Listen for **`dragstart`** on the source - store data with `event.dataTransfer.setData('text/plain', id)`.\n3. On the target, handle **`dragover`** and call `event.preventDefault()` - this is what *allows* dropping.\n4. Handle **`drop`** - call `preventDefault()`, read `getData()` and move/append the element.\n\n### Events\n| Event | Fires on | When |\n|---|---|---|\n| `dragstart` | source | drag begins |\n| `drag` | source | repeatedly while dragging |\n| `dragenter` / `dragleave` | target | pointer enters/leaves |\n| `dragover` | target | continuously over the target |\n| `drop` | target | released |\n| `dragend` | source | finished |\n\n### File drop\nDropping files from the desktop: read `event.dataTransfer.files` in the `drop` handler (and prevent the default so the browser does not open the file).\n\n### dataTransfer\n- `effectAllowed` / `dropEffect` - copy, move, link.\n- `setDragImage()` - custom ghost image.\n\n### Accessibility\nNative drag and drop is mouse centred. Provide a **keyboard alternative** (buttons \"move up/down\", select + move).\n\nFor complex sortable lists many projects use libraries, but the native API is enough for simple cases.",
+   "keyPoints": [
+    "draggable=\"true\" + dragstart start a drag.",
+    "dragover must call preventDefault to allow dropping.",
+    "Read data in drop via dataTransfer.getData.",
+    "Files can be dropped via dataTransfer.files.",
+    "Provide a keyboard alternative."
+   ],
+   "pitfalls": [
+    "Forgetting preventDefault in dragover - drop never fires.",
+    "Not preventing default on drop - the browser navigates to the file.",
+    "No keyboard alternative for the same action."
+   ],
+   "examples": [
+    {
+     "title": "Drag a card between two columns",
+     "language": "web",
+     "html": "<div class=\"cols\">\n  <div class=\"col\" id=\"todo\"><h4>To do</h4>\n    <div class=\"card\" id=\"c1\" draggable=\"true\">Learn HTML</div>\n    <div class=\"card\" id=\"c2\" draggable=\"true\">Practice forms</div>\n  </div>\n  <div class=\"col\" id=\"done\"><h4>Done</h4></div>\n</div>",
+     "css": "body{font-family:sans-serif}\n.cols{display:flex;gap:12px}\n.col{flex:1;min-height:140px;background:#f1f1f1;padding:8px;border-radius:8px}\n.col.over{background:#dff3e4;outline:2px dashed seagreen}\n.card{background:#fff;padding:8px;margin:6px 0;border-radius:6px;box-shadow:0 1px 4px #0003;cursor:grab}",
+     "js": "document.querySelectorAll('.card').forEach(function (c) {\n  c.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', c.id); });\n});\ndocument.querySelectorAll('.col').forEach(function (col) {\n  col.addEventListener('dragover', function (e) { e.preventDefault(); col.classList.add('over'); });\n  col.addEventListener('dragleave', function () { col.classList.remove('over'); });\n  col.addEventListener('drop', function (e) {\n    e.preventDefault(); col.classList.remove('over');\n    var card = document.getElementById(e.dataTransfer.getData('text/plain'));\n    if (card) col.appendChild(card);\n  });\n});",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why must dragover call preventDefault?",
+     "a": "By default elements are not valid drop targets; cancelling dragover signals the browser that dropping is allowed."
+    },
+    {
+     "q": "Which events does the drag source fire?",
+     "a": "dragstart, drag and dragend."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "html-web-workers",
+   "title": "Web Workers (Background Threads)",
+   "level": "advanced",
+   "summary": "Run heavy JavaScript in a separate thread so the UI never freezes.",
+   "description": "JavaScript in a page runs on a **single main thread** shared with rendering and user input. A long calculation freezes the page. A **Web Worker** runs a script in a **background thread**.\n\n### Key facts\n- Workers have **no access to the DOM**, `window` or `document`.\n- They talk to the page only by **messages** (`postMessage` / `onmessage`). Data is *copied* (structured clone) or transferred.\n- They can use `fetch`, timers, IndexedDB, `importScripts()` and modules.\n\n### Basic usage\n```js\n// main.js\nconst worker = new Worker('worker.js');\nworker.postMessage({ n: 40 });\nworker.onmessage = (e) => console.log('result', e.data);\nworker.onerror = (e) => console.error(e.message);\n// worker.terminate();  // stop it\n\n// worker.js\nself.onmessage = (e) => {\n  const result = heavyWork(e.data.n);\n  self.postMessage(result);\n};\n```\n\n### Worker types\n| Type | Use |\n|---|---|\n| Dedicated Worker | One page owns it |\n| Shared Worker | Shared by several tabs |\n| Service Worker | Offline cache, push, network proxy (PWA) |\n\n### When to use\nImage processing, parsing big files, encryption, sorting huge data, data crunching. **Not** for small tasks - creating a worker has overhead.\n\n### Inline workers\nCreate from a Blob URL when you do not want a separate file (see the example).",
+   "keyPoints": [
+    "Workers run JS in a background thread.",
+    "No DOM access; communicate with postMessage/onmessage.",
+    "Data is copied (structured clone) unless transferred.",
+    "terminate() stops a worker; close() inside stops itself.",
+    "Service workers enable offline PWAs."
+   ],
+   "pitfalls": [
+    "Trying to touch document inside a worker.",
+    "Sending huge objects back and forth repeatedly (copy cost).",
+    "Starting a worker for trivial tasks."
+   ],
+   "examples": [
+    {
+     "title": "Heavy loop in a worker, UI stays responsive",
+     "language": "web",
+     "html": "<button id=\"run\">Sum 1 to 300 million in a worker</button>\n<p>Counter while working: <b id=\"tick\">0</b></p>\n<pre id=\"out\">Click the button.</pre>",
+     "css": "body{font-family:sans-serif} button{padding:8px 12px} pre{background:#f4f4f4;padding:8px;border-radius:6px}",
+     "js": "var ticks = 0, tickEl = document.getElementById('tick');\nsetInterval(function () { tickEl.textContent = ++ticks; }, 100);\ndocument.getElementById('run').addEventListener('click', function () {\n  var out = document.getElementById('out');\n  try {\n    var code = 'onmessage=function(e){var s=0;for(var i=1;i<=e.data;i++){s+=i}postMessage(s)}';\n    var w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));\n    out.textContent = 'Worker started...';\n    w.onmessage = function (e) { out.textContent = 'Result from worker: ' + e.data; w.terminate(); };\n    w.onerror = function (e) { out.textContent = 'Worker error: ' + e.message; };\n    w.postMessage(300000000);\n  } catch (err) {\n    out.textContent = 'Workers are blocked in this sandbox: ' + err.message;\n  }\n});",
+     "explanation": "The counter keeps ticking because the loop runs in the worker, not the main thread."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a Web Worker?",
+     "a": "A script running in a background thread, separate from the main UI thread, communicating by messages."
+    },
+    {
+     "q": "Can a worker access the DOM?",
+     "a": "No. It has no access to document or window; it must post messages to the main thread."
+    },
+    {
+     "q": "Worker vs Service Worker?",
+     "a": "A web worker offloads computation for a page; a service worker is a persistent proxy between page and network used for offline caching, push notifications and PWAs."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

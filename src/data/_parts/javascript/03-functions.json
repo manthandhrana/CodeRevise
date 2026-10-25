@@ -1,0 +1,303 @@
+{
+  "id": "js-functions",
+  "title": "Functions",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-function-basics",
+      "title": "Function Declarations, Expressions and Return",
+      "level": "beginner",
+      "summary": "Functions are reusable blocks of code defined with declarations or expressions and return a value.",
+      "description": "A **function** is a reusable block of code that performs a task. Without functions you would copy and paste the same lines everywhere.\n\n### Ways to create a function\n```js\n// 1. Declaration (hoisted)\nfunction add(a, b) { return a + b; }\n\n// 2. Expression (not hoisted for use before definition)\nconst multiply = function (a, b) { return a * b; };\n\n// 3. Named function expression\nconst fact = function f(n) { return n <= 1 ? 1 : n * f(n - 1); };\n\n// 4. Arrow function (see next topic)\nconst sub = (a, b) => a - b;\n```\n\n### Parameters vs arguments\n- **Parameters** are the names listed in the definition.\n- **Arguments** are the actual values passed when calling.\n- Missing arguments become `undefined`; extra arguments are ignored (but available through `arguments` or rest).\n\n### return\n`return` sends a value back to the caller and **stops** the function. A function without `return` returns `undefined`. Do not put a line break right after `return`, because automatic semicolon insertion turns it into `return;`.\n\n### Functions are values\nA function is an object. You can store it in a variable, put it in an array, pass it to another function or return it from one (first-class functions).\n\n### Function declaration vs expression\nDeclarations are **hoisted completely**, so you can call them before they appear in the file. Expressions assigned with `let`/`const` cannot be used before the line runs.\n\nEach call creates a new **local scope**, so variables inside are not visible outside.",
+      "keyPoints": [
+        "Declaration is hoisted, expression is not",
+        "Parameters are placeholders, arguments are real values",
+        "No return statement means the function returns undefined",
+        "return ends execution of the function immediately",
+        "Functions are first-class values"
+      ],
+      "pitfalls": [
+        "return followed by a new line returns undefined",
+        "Calling a function expression before its definition throws a ReferenceError (TDZ)",
+        "Forgetting the parentheses () only references the function, it does not call it"
+      ],
+      "examples": [
+        {
+          "title": "Declaration, expression and return",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(sum(5, 10));      // works: declarations are hoisted\n\nfunction sum(a, b) {\n  return a + b;\n  console.log(\"never printed\");\n}\n\nconst greet = function (name) {\n  return \"Hello \" + name + \", welcome to the JS course\";\n};\nconsole.log(greet(\"Ravi\"));\nconsole.log(typeof noReturn(), typeof sum);\n\nfunction noReturn() {}\n\ntry {\n  later();\n} catch (e) {\n  console.log(e.name);\n}\nconst later = () => \"ok\";"
+        },
+        {
+          "title": "Reverse a string and palindrome",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const reverse = (str) => {\n  let out = \"\";\n  for (let i = str.length - 1; i >= 0; i--) out += str[i];\n  return out;\n};\nconst isPalindrome = (str) => str === reverse(str);\n\nconsole.log(reverse(\"vinod thapa\"));\nconsole.log(isPalindrome(\"level\"), isPalindrome(\"hello\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between a function declaration and a function expression?",
+          "a": "A declaration is fully hoisted and can be called before it is defined. An expression is a value assigned to a variable and exists only after that line executes."
+        },
+        {
+          "q": "What does a function return when it has no return statement?",
+          "a": "undefined."
+        },
+        {
+          "q": "What are first-class functions?",
+          "a": "Functions are treated like any other value: they can be assigned to variables, passed as arguments and returned from other functions."
+        }
+      ],
+      "source": "JS-one-shot/5_functions.js"
+    },
+    {
+      "id": "js-arrow-functions",
+      "title": "Arrow Functions",
+      "level": "beginner",
+      "summary": "Arrow functions are a short syntax with lexical this and no own arguments object.",
+      "description": "Arrow functions (ES2015) are a compact way to write function expressions.\n\n### Syntax\n```js\nconst add = (a, b) => a + b;         // implicit return\nconst square = n => n * n;           // one param: () optional\nconst hello = () => \"hi\";            // no params: () required\nconst make = (n) => { return { n }; }; // block body needs return\nconst obj = () => ({ ok: true });    // wrap object literal in ()\n```\n\n### What is different from normal functions\n1. **Lexical `this`** - an arrow does not create its own `this`; it uses the `this` of the surrounding code. Great for callbacks inside methods.\n2. **No `arguments` object** - use rest parameters (`...args`).\n3. **Cannot be used with `new`** - not a constructor, no `prototype`.\n4. **Cannot be a generator**.\n5. `call`, `apply` and `bind` cannot change its `this`.\n\n### When not to use arrows\n- Object methods that need `this` to be the object.\n- Prototype methods and constructors.\n- Event handlers where you need `this` to be the element (use `event.currentTarget` instead).\n\n### When to use arrows\nShort callbacks for `map`, `filter`, `reduce`, `setTimeout`, promise chains, and any function that should keep the outer `this`.",
+      "keyPoints": [
+        "Concise syntax with implicit return for single expressions",
+        "Wrap an object literal in parentheses to return it",
+        "Arrows capture this from the surrounding scope",
+        "No arguments object, not constructible",
+        "Not suitable for object methods that rely on this"
+      ],
+      "pitfalls": [
+        "const f = () => { a: 1 } returns undefined (it is a block with a label)",
+        "Using an arrow as an object method makes this point to the outer scope"
+      ],
+      "examples": [
+        {
+          "title": "Arrow vs normal this",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const counter = {\n  count: 0,\n  startNormal() {\n    setTimeout(function () {\n      console.log(\"normal this.count:\", this === counter, this.count);\n    }, 0);\n  },\n  startArrow() {\n    setTimeout(() => {\n      console.log(\"arrow this.count:\", this.count);\n    }, 0);\n  },\n};\ncounter.count = 7;\ncounter.startNormal();\ncounter.startArrow();\n\nconst makeUser = (name) => ({ name });\nconsole.log(makeUser(\"Asha\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the main difference between arrow functions and regular functions?",
+          "a": "Arrow functions have no own this, arguments or prototype; they inherit this lexically and cannot be used as constructors."
+        },
+        {
+          "q": "Why does an arrow function used as an object method give wrong this?",
+          "a": "Because arrows do not bind this to the object. They use the this of the enclosing scope (often the module or window), not the object."
+        },
+        {
+          "q": "How do you return an object literal from an arrow function directly?",
+          "a": "Wrap it in parentheses: () => ({ key: value })."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2015.js"
+    },
+    {
+      "id": "js-function-parameters",
+      "title": "Default, Rest Parameters and the arguments Object",
+      "level": "beginner",
+      "summary": "Give parameters default values and collect extra arguments with rest syntax.",
+      "description": "### Default parameters\nA parameter gets its default only when the argument is `undefined` (not for `null`, `0` or `\"\"`).\n\n```js\nfunction greet(name = \"Guest\", greeting = \"Hello\") {\n  return `${greeting}, ${name}`;\n}\ngreet();            // Hello, Guest\ngreet(\"Asha\");      // Hello, Asha\n```\nDefaults can use earlier parameters and any expression, and are evaluated on every call.\n\n### Rest parameters `...`\nCollect all remaining arguments into a **real array**:\n```js\nconst sum = (first, ...others) => others.reduce((a, b) => a + b, first);\nsum(1, 2, 3, 4); // 10\n```\nRules: only **one** rest parameter and it must be **last**.\n\n### The `arguments` object\nOld-style functions have an array-like `arguments`. It has `length` and indexes but no array methods. Arrow functions do not have it. Prefer rest parameters.\n\n### Spread when calling\nThe opposite of rest: `Math.max(...numbers)` expands an array into separate arguments.\n\n### Named parameters via destructuring\nFor many options, accept one object and destructure it with defaults:\n```js\nfunction createUser({ name, role = \"user\", active = true } = {}) { }\n```\nThis makes call sites readable and order-independent.",
+      "keyPoints": [
+        "Defaults apply only for undefined",
+        "Rest collects remaining args into a real array and must be last",
+        "arguments is array-like and missing in arrow functions",
+        "Spread (...) expands an array when calling",
+        "Destructured options object = named parameters"
+      ],
+      "pitfalls": [
+        "Passing null does not trigger a default value",
+        "Objects passed as arguments are references, so mutating them inside the function changes the caller's data"
+      ],
+      "examples": [
+        {
+          "title": "Defaults, rest and spread",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function sum(a = 20, b = 10) { return a + b; }\nconsole.log(sum(), sum(1), sum(undefined, 5), sum(null, 5));\n\nconst total = (a, b, ...nums) => nums.reduce((x, y) => x + y, a + b);\nconsole.log(total(1, 2, 3, 4));\n\nconst nums = [4, 9, 2];\nconsole.log(Math.max(...nums), Math.min(...nums));\n\nfunction legacy() { return arguments.length + \" args, array? \" + Array.isArray(arguments); }\nconsole.log(legacy(1, 2, 3));\n\nfunction createUser({ name, role = \"user\" } = {}) { return `${name ?? \"anon\"}:${role}`; }\nconsole.log(createUser({ name: \"Ravi\" }), createUser());"
+        }
+      ],
+      "interview": [
+        {
+          "q": "When is a default parameter value used?",
+          "a": "Only when the argument is undefined or missing. null, 0, \"\" and false are used as given."
+        },
+        {
+          "q": "Difference between rest and spread?",
+          "a": "Rest collects many values into one array in a parameter list or destructuring. Spread expands one iterable into many values in a call or literal."
+        },
+        {
+          "q": "Why prefer rest parameters over arguments?",
+          "a": "Rest gives a real array with all array methods, works in arrow functions and is explicit in the signature."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2015.js"
+    },
+    {
+      "id": "js-iife",
+      "title": "IIFE (Immediately Invoked Function Expression)",
+      "level": "intermediate",
+      "summary": "An IIFE runs immediately after being defined and creates a private scope.",
+      "description": "An **IIFE** is a function that is defined and called at the same time:\n\n```js\n(function () {\n  // private scope\n})();\n\n(() => { /* arrow IIFE */ })();\n```\n\nThe wrapping parentheses turn the `function` keyword into an **expression** so it can be invoked straight away.\n\n### Why use an IIFE?\n1. **Avoid polluting the global scope.** Before ES modules and `let/const`, IIFEs were the only way to make private variables.\n2. **Module pattern.** Return an object with public methods while internal state stays hidden through closures.\n3. **Run once setup code**, such as reading config.\n4. **Async top-level helper**: `(async () => { await ... })();` to use `await` where top-level await is unavailable.\n\n### Passing arguments\n```js\nconst result = (function (a, b) { return a + b; })(5, 10);\n```\n\n### Modern alternatives\nES modules and block scopes (`{ let x; }`) solve most of the original problems, but IIFEs are still common in older code, bundled output and interviews.\n\n### A semicolon warning\nWhen a line starts with `(`, the previous line must end with `;`, otherwise JavaScript may treat it as a function call on the previous expression.",
+      "keyPoints": [
+        "Function expression wrapped in () and invoked immediately",
+        "Creates a private scope, keeps variables out of global",
+        "Basis of the module pattern with closures",
+        "Can take arguments and return a value",
+        "Async IIFE is used to await in non-module scripts"
+      ],
+      "pitfalls": [
+        "A missing semicolon on the previous line breaks the IIFE",
+        "Without the wrapping parentheses it is a syntax error"
+      ],
+      "examples": [
+        {
+          "title": "Module pattern with IIFE",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const bank = (function () {\n  let balance = 100;           // private\n  return {\n    deposit(n) { balance += n; return balance; },\n    getBalance() { return balance; },\n  };\n})();\n\nconsole.log(bank.deposit(50));\nconsole.log(bank.getBalance());\nconsole.log(bank.balance);     // undefined - private\n\nconst result = (function (a, b) { return a + b; })(5, 10);\nconsole.log(\"sum:\", result);\n\n(async () => {\n  const v = await Promise.resolve(\"async IIFE done\");\n  console.log(v);\n})();"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is an IIFE and why use it?",
+          "a": "A function that runs immediately after it is defined. It creates a private scope so variables do not leak globally and enables the module pattern."
+        },
+        {
+          "q": "Why are the parentheses needed around a function in an IIFE?",
+          "a": "A statement starting with function is parsed as a declaration, which needs a name and cannot be invoked. Wrapping makes it an expression."
+        },
+        {
+          "q": "Do we still need IIFEs?",
+          "a": "Less so, because ES modules and let/const give scope isolation. They still appear in legacy code and for async wrappers."
+        }
+      ],
+      "source": "JS-one-shot/5_functions.js"
+    },
+    {
+      "id": "js-higher-order-callbacks",
+      "title": "First-Class, Higher-Order and Callback Functions",
+      "level": "intermediate",
+      "summary": "Functions can be passed around; a higher-order function takes or returns a function, and a callback is the function passed in.",
+      "description": "In JavaScript functions are **first-class citizens**: they are values just like numbers or strings.\n\n### Higher-order function (HOF)\nA function that **takes a function as an argument** or **returns a function**. `map`, `filter`, `reduce`, `setTimeout` and `addEventListener` are all higher-order functions.\n\n### Callback function\nA function passed to another function to be **called later** - either immediately (synchronous callback, e.g. `arr.map(cb)`) or after some work finishes (asynchronous callback, e.g. `setTimeout(cb)`).\n\n```js\nfunction operate(a, b, operation) {\n  return operation(a, b);   // operation is the callback\n}\noperate(5, 15, (x, y) => x + y);\n```\n\n### Returning functions\nHOFs can build specialised functions. The returned function remembers its environment through a **closure**:\n```js\nconst multiplier = (factor) => (n) => n * factor;\nconst double = multiplier(2);\ndouble(5); // 10\n```\n\n### Why this matters\n- Removes duplicate code (pass behaviour in as data).\n- Enables functional style: `compose`, `pipe`, `curry`.\n- Callbacks are the base of async JavaScript, later improved by Promises and async/await.\n\n### Callback conventions\nNode.js uses **error-first callbacks**: `(err, data) => {}`. Always check `err` first.",
+      "keyPoints": [
+        "Functions are first-class values",
+        "HOF takes and/or returns a function",
+        "Callback is a function passed to be invoked later",
+        "Returned functions keep access to outer variables (closure)",
+        "map/filter/reduce/forEach are HOFs"
+      ],
+      "pitfalls": [
+        "Passing fn() instead of fn runs it immediately",
+        "Deeply nested callbacks become callback hell",
+        "Losing this when passing a method as a callback"
+      ],
+      "examples": [
+        {
+          "title": "Callbacks and a function factory",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const add = (a, b) => a + b;\nconst sub = (a, b) => b - a;\nconst mathOperation = (a, b, operation) => operation(a, b);\nconsole.log(mathOperation(5, 15, add));\nconsole.log(mathOperation(5, 15, sub));\n\nconst multiplier = (factor) => (number) => number * factor;\nconst double = multiplier(2), triple = multiplier(3);\nconsole.log(double(5), triple(5));\n\nfunction processUserInput(name, callback) {\n  console.log(\"Received:\", name);\n  callback(name);\n}\nprocessUserInput(\"Vinod\", (n) => console.log(`Hello! ${n}`));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is a higher-order function?",
+          "a": "A function that accepts another function as an argument, returns a function, or both. Examples are map, filter and reduce."
+        },
+        {
+          "q": "What is a callback?",
+          "a": "A function passed as an argument to another function, to be executed later by it - either synchronously or after an async task."
+        },
+        {
+          "q": "What happens if you write setTimeout(fn(), 1000)?",
+          "a": "fn runs immediately and its return value is passed to setTimeout. You must pass the function reference: setTimeout(fn, 1000) or setTimeout(() => fn(), 1000)."
+        }
+      ],
+      "source": "JS-one-shot/advancedJS/functions/index.js"
+    },
+    {
+      "id": "js-pure-currying-composition",
+      "title": "Pure Functions, Currying and Composition",
+      "level": "advanced",
+      "summary": "Write predictable functions without side effects and combine small functions into bigger ones.",
+      "description": "### Pure functions\nA function is **pure** when:\n1. The same input always gives the same output.\n2. It has **no side effects** (no mutation of outside data, no I/O, no `Math.random()`, no `Date.now()`).\n\nPure functions are easy to test, cache (memoize), run in parallel and reason about. React reducers and selectors rely on them.\n\n```js\n// impure - mutates input\nconst addItem = (arr, x) => { arr.push(x); return arr; };\n// pure - returns a new array\nconst addItemPure = (arr, x) => [...arr, x];\n```\n\n### Currying\nTransform `f(a, b, c)` into `f(a)(b)(c)`. Each call returns a function that waits for the next argument. It enables **partial application**:\n```js\nconst add = (a) => (b) => a + b;\nconst add10 = add(10);\nadd10(5); // 15\n```\n\n### Composition\nCombine functions so the output of one becomes the input of the next:\n```js\nconst compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x);\nconst pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);\n```\n`pipe` reads left to right and is usually easier to follow.\n\n### Immutability\nPrefer `map`, `filter`, spread and `structuredClone` over in-place mutation to keep functions pure.",
+      "keyPoints": [
+        "Pure = same input gives same output and no side effects",
+        "Currying turns f(a, b) into f(a)(b)",
+        "Partial application pre-fills some arguments",
+        "compose/pipe chain small functions",
+        "Pure code is easier to test and memoize"
+      ],
+      "pitfalls": [
+        "Mutating arguments (arrays/objects) makes a function impure",
+        "Over-currying can hurt readability"
+      ],
+      "examples": [
+        {
+          "title": "Pure, curry and pipe",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const impure = (arr, x) => { arr.push(x); return arr; };\nconst pure = (arr, x) => [...arr, x];\nconst base = [1, 2];\nconsole.log(pure(base, 3), base);\nimpure(base, 99);\nconsole.log(base);\n\nconst curry = (fn) => function curried(...args) {\n  return args.length >= fn.length\n    ? fn(...args)\n    : (...rest) => curried(...args, ...rest);\n};\nconst volume = curry((l, w, h) => l * w * h);\nconsole.log(volume(2)(3)(4), volume(2, 3)(4));\n\nconst pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);\nconst slugify = pipe(\n  (s) => s.trim(),\n  (s) => s.toLowerCase(),\n  (s) => s.replace(/\\s+/g, \"-\")\n);\nconsole.log(slugify(\"  Learn JavaScript Fast \"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is a pure function?",
+          "a": "A function whose output depends only on its inputs and which causes no side effects, so calling it with the same arguments always returns the same result."
+        },
+        {
+          "q": "What is currying?",
+          "a": "Converting a function with multiple arguments into a chain of functions that each take one argument, e.g. add(1)(2)."
+        },
+        {
+          "q": "Write a function sum(1)(2)(3)... that returns the total when called with no arguments.",
+          "a": "const sum = (a) => (b) => b === undefined ? a : sum(a + b); then sum(1)(2)(3)() returns 6."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-recursion",
+      "title": "Recursion",
+      "level": "intermediate",
+      "summary": "A function that calls itself needs a base case and a smaller problem each time.",
+      "description": "**Recursion** is when a function calls itself to solve a smaller version of the same problem. Every recursive function needs:\n\n1. **Base case** - a condition where it returns without calling itself.\n2. **Recursive case** - a call with an input that moves closer to the base case.\n\n```js\nfunction factorial(n) {\n  if (n <= 1) return 1;        // base case\n  return n * factorial(n - 1); // recursive case\n}\n```\n\n### How it works\nEach call is pushed on the **call stack**. When the base case returns, the stack unwinds and results are multiplied back up. Too many nested calls cause `RangeError: Maximum call stack size exceeded` (stack overflow).\n\n### Good use cases\n- Tree and graph traversal (DOM tree, folder structure).\n- Flattening nested arrays, deep clone, deep equality.\n- Divide and conquer: merge sort, quick sort, binary search.\n- Permutations, combinations, backtracking.\n\n### Recursion vs loops\nAnything recursive can be written with a loop. Loops are faster and use no stack; recursion is often clearer for hierarchical data. JavaScript engines do not reliably optimise tail calls, so avoid very deep recursion (more than a few thousand calls).\n\n### Optimisation\nMemoize repeated sub-problems (Fibonacci) or convert to iteration.",
+      "keyPoints": [
+        "Needs a base case and progress toward it",
+        "Each call uses call stack memory",
+        "Missing base case causes stack overflow",
+        "Great for trees and nested data",
+        "Memoization avoids repeated work"
+      ],
+      "pitfalls": [
+        "Forgetting the base case or never reaching it",
+        "Naive recursive Fibonacci is exponential time",
+        "Deep recursion on big inputs overflows the stack"
+      ],
+      "examples": [
+        {
+          "title": "Factorial, sum of nested array, Fibonacci",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const factorial = (n) => (n <= 1 ? 1 : n * factorial(n - 1));\nconsole.log(factorial(5));\n\nconst sumDeep = (arr) =>\n  arr.reduce((acc, v) => acc + (Array.isArray(v) ? sumDeep(v) : v), 0);\nconsole.log(sumDeep([1, [2, [3, 4]], 5]));\n\nconst memo = new Map();\nfunction fib(n) {\n  if (n < 2) return n;\n  if (memo.has(n)) return memo.get(n);\n  const value = fib(n - 1) + fib(n - 2);\n  memo.set(n, value);\n  return value;\n}\nconsole.log(fib(50));\n\ntry {\n  (function forever() { forever(); })();\n} catch (e) {\n  console.log(e.name);\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is a base case?",
+          "a": "The condition under which a recursive function stops calling itself and returns a value directly. Without it the recursion never ends."
+        },
+        {
+          "q": "What causes a stack overflow in recursion?",
+          "a": "Too many nested calls (usually from a missing or unreachable base case) exceed the call stack limit, giving a RangeError."
+        },
+        {
+          "q": "How can you make recursive Fibonacci efficient?",
+          "a": "Use memoization (cache results) or an iterative loop, reducing time from exponential O(2^n) to linear O(n)."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

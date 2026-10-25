@@ -1,0 +1,200 @@
+{
+ "id": "react-forms-a11y",
+ "title": "Forms, Validation and Accessibility",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-form-validation",
+   "title": "Form Validation by Hand",
+   "level": "intermediate",
+   "summary": "Validate on blur and submit, keep errors in state, and show messages next to the fields.",
+   "description": "Before reaching for a library, understand the manual approach. A validation flow has four parts.\n\n### 1. Values and errors in state\n\nKeep `values` (what the user typed), `errors` (messages by field name) and `touched` (fields the user has left) in state.\n\n### 2. A pure `validate(values)` function\n\nIt returns an object like `{ email: \"Invalid email\" }`. Pure functions are easy to unit test and reuse on server and client.\n\n### 3. When to validate\n\n- **On submit** - always block the submit if there are errors.\n- **On blur** - show an error when the user leaves a field (use `touched`) so you do not shout while they are still typing.\n- **On change** - for fields that have been touched or already show an error, to clear the message as soon as it is fixed.\n\n### 4. Accessible feedback\n\nLink each error to its input with `aria-describedby`, set `aria-invalid`, move focus to the first invalid field on failed submit, and use `role=\"alert\"` for dynamic messages.\n\n### Client vs server validation\n\nClient validation is for UX. **Never trust it for security**: the server must validate again, and it can return field errors that you map into the same `errors` state.\n\n### When it gets heavy\n\nMany fields, arrays, async checks and dependent fields quickly become repetitive. That is when React Hook Form and a schema library like Zod are worth it.",
+   "keyPoints": [
+    "Keep values, errors and touched in state",
+    "Write validation as a pure function",
+    "Validate on blur and submit; clear errors on change",
+    "Use aria-invalid and aria-describedby for accessibility",
+    "Always validate again on the server"
+   ],
+   "pitfalls": [
+    "Showing errors before the user touched the field.",
+    "Validating only in the UI and trusting the data on the server."
+   ],
+   "examples": [
+    {
+     "title": "Sign-up form with touched + submit validation",
+     "language": "react",
+     "css": "",
+     "code": "function validate(v) {\n  const e = {};\n  if (!v.name.trim()) e.name = \"Name is required\";\n  if (!/^\\S+@\\S+\\.\\S+$/.test(v.email)) e.email = \"Enter a valid email\";\n  if (v.password.length < 6) e.password = \"At least 6 characters\";\n  return e;\n}\n\nfunction Field({ label, name, type = \"text\", values, errors, touched, onChange, onBlur }) {\n  const show = touched[name] && errors[name];\n  return (\n    <div style={{ marginBottom: 10 }}>\n      <label htmlFor={name} style={{ display: \"block\" }}>{label}</label>\n      <input id={name} name={name} type={type} value={values[name]} onChange={onChange} onBlur={onBlur}\n        aria-invalid={!!show} aria-describedby={show ? name + \"-err\" : undefined} />\n      {show && <div id={name + \"-err\"} role=\"alert\" style={{ color: \"crimson\", fontSize: 13 }}>{errors[name]}</div>}\n    </div>\n  );\n}\n\nfunction App() {\n  const [values, setValues] = useState({ name: \"\", email: \"\", password: \"\" });\n  const [touched, setTouched] = useState({});\n  const [done, setDone] = useState(false);\n  const errors = validate(values);\n\n  const onChange = (e) => setValues({ ...values, [e.target.name]: e.target.value });\n  const onBlur = (e) => setTouched({ ...touched, [e.target.name]: true });\n  const onSubmit = (e) => {\n    e.preventDefault();\n    setTouched({ name: true, email: true, password: true });\n    if (Object.keys(errors).length === 0) setDone(true);\n  };\n\n  const shared = { values, errors, touched, onChange, onBlur };\n  return (\n    <form onSubmit={onSubmit} style={{ fontFamily: \"sans-serif\", padding: 12, maxWidth: 260 }} noValidate>\n      <Field label=\"Name\" name=\"name\" {...shared} />\n      <Field label=\"Email\" name=\"email\" {...shared} />\n      <Field label=\"Password\" name=\"password\" type=\"password\" {...shared} />\n      <button type=\"submit\">Create account</button>\n      {done && <p style={{ color: \"green\" }}>Account created!</p>}\n    </form>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When should you show validation errors?",
+     "a": "After the user has interacted with the field (blur/touched) or tried to submit, not while they have not started typing."
+    },
+    {
+     "q": "Why is client-side validation not enough?",
+     "a": "Users can bypass the browser, so the server must validate again for security and data integrity."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-hook-form",
+   "title": "React Hook Form",
+   "level": "intermediate",
+   "summary": "React Hook Form manages forms with minimal re-renders using uncontrolled inputs and a simple register API.",
+   "description": "**React Hook Form (RHF)** is the most popular form library. It mostly uses **uncontrolled inputs** and refs under the hood, so typing in one field does not re-render the whole form. It also gives validation, error state, dirty/touched tracking and easy integration with schema validators.\n\n### Core API\n\n| API | Purpose |\n| --- | --- |\n| `useForm()` | creates the form instance |\n| `register(\"name\", rules)` | connects an input; returns `ref`, `name`, `onChange`, `onBlur` |\n| `handleSubmit(fn)` | validates, then calls `fn(data)` |\n| `formState.errors` | validation errors per field |\n| `formState.isSubmitting`, `isDirty`, `isValid` | status flags |\n| `watch(\"field\")` | subscribe to value changes (causes re-render) |\n| `reset()`, `setValue()`, `getValues()` | imperative control |\n| `Controller` / `useController` | integrate controlled UI libs (MUI, Select) |\n| `useFieldArray` | dynamic lists of inputs |\n\n### Rules\n\nBuilt-in rules: `required`, `min`, `max`, `minLength`, `maxLength`, `pattern`, `validate` (custom function, can be async).\n\n### Why teams like it\n\n- Very small bundle, no dependencies.\n- Few re-renders - great for big forms.\n- Works with TypeScript (typed form values).\n- Pairs with `@hookform/resolvers` for Zod/Yup.\n\n### Modes\n\n`mode: \"onSubmit\"` (default), `\"onBlur\"`, `\"onChange\"`, `\"onTouched\"` decide when validation runs.\n\n### Tips\n\nProvide `defaultValues` for every field, use `Controller` for non-native inputs, and prefer `watch` sparingly.",
+   "keyPoints": [
+    "useForm + register connects inputs without state",
+    "handleSubmit validates then passes data",
+    "formState.errors holds messages",
+    "Few re-renders thanks to uncontrolled inputs",
+    "Controller for custom components; useFieldArray for lists"
+   ],
+   "pitfalls": [
+    "Forgetting defaultValues, leading to undefined values and warnings.",
+    "Overusing watch(), which re-renders on each change."
+   ],
+   "examples": [
+    {
+     "title": "React Hook Form sign-up",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useForm } from \"react-hook-form\";\n\nexport default function SignUp() {\n  const {\n    register,\n    handleSubmit,\n    reset,\n    formState: { errors, isSubmitting },\n  } = useForm({ defaultValues: { email: \"\", password: \"\" }, mode: \"onBlur\" });\n\n  const onSubmit = async (data) => {\n    await fakeApi(data);   // your API call\n    reset();\n  };\n\n  return (\n    <form onSubmit={handleSubmit(onSubmit)} noValidate>\n      <input\n        placeholder=\"Email\"\n        {...register(\"email\", {\n          required: \"Email is required\",\n          pattern: { value: /^\\S+@\\S+\\.\\S+$/, message: \"Invalid email\" },\n        })}\n      />\n      {errors.email && <p role=\"alert\">{errors.email.message}</p>}\n\n      <input\n        type=\"password\"\n        placeholder=\"Password\"\n        {...register(\"password\", { required: \"Required\", minLength: { value: 6, message: \"Min 6 chars\" } })}\n      />\n      {errors.password && <p role=\"alert\">{errors.password.message}</p>}\n\n      <button disabled={isSubmitting}>{isSubmitting ? \"Saving...\" : \"Sign up\"}</button>\n    </form>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is React Hook Form fast?",
+     "a": "It relies on uncontrolled inputs and refs, so typing does not trigger a re-render of the whole form on every keystroke."
+    },
+    {
+     "q": "What does register return?",
+     "a": "An object with name, ref, onChange and onBlur handlers that you spread onto the input to connect it to the form."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-zod-validation",
+   "title": "Schema Validation with Zod",
+   "level": "intermediate",
+   "summary": "Describe your data shape once with Zod, and reuse it for validation and TypeScript types.",
+   "description": "**Zod** is a TypeScript-first schema library. You define a schema describing valid data, then parse input with it. The same schema gives you runtime validation **and** a static TypeScript type via `z.infer`.\n\n```js\nimport { z } from \"zod\";\n\nconst signUpSchema = z.object({\n  email: z.string().email(\"Invalid email\"),\n  password: z.string().min(8, \"Min 8 chars\"),\n  confirm: z.string(),\n  age: z.coerce.number().int().min(18, \"Must be 18+\"),\n}).refine(d => d.password === d.confirm, {\n  message: \"Passwords do not match\",\n  path: [\"confirm\"],\n});\n```\n\n### Parsing\n\n- `schema.parse(data)` returns typed data or throws `ZodError`.\n- `schema.safeParse(data)` returns `{ success, data | error }` without throwing.\n- `error.flatten().fieldErrors` gives messages per field.\n\n### Common building blocks\n\n`z.string()`, `z.number()`, `z.boolean()`, `z.date()`, `z.enum([...])`, `z.array()`, `z.object()`, `.optional()`, `.nullable()`, `.default()`, `.transform()`, `.refine()`, `z.coerce.number()` (form values are strings!), `z.infer<typeof schema>`.\n\n### With React Hook Form\n\nInstall `@hookform/resolvers` and pass `resolver: zodResolver(schema)` to `useForm`. Errors then flow into `formState.errors` automatically.\n\n### Share between client and server\n\nPut the schema in a shared package. The API validates incoming bodies with the very same schema, so rules never drift. Alternatives: Yup, Valibot, ArkType.",
+   "keyPoints": [
+    "Schema = single source of truth for validation and types",
+    "safeParse avoids exceptions",
+    "z.coerce converts form strings to numbers/dates",
+    "refine adds cross-field rules",
+    "zodResolver connects Zod to React Hook Form"
+   ],
+   "pitfalls": [
+    "Forgetting that form inputs return strings; numbers need z.coerce.number().",
+    "Putting cross-field errors on the wrong path."
+   ],
+   "examples": [
+    {
+     "title": "Zod + React Hook Form",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useForm } from \"react-hook-form\";\nimport { zodResolver } from \"@hookform/resolvers/zod\";\nimport { z } from \"zod\";\n\nconst schema = z\n  .object({\n    email: z.string().email(\"Invalid email\"),\n    password: z.string().min(8, \"At least 8 characters\"),\n    confirm: z.string(),\n  })\n  .refine((d) => d.password === d.confirm, {\n    message: \"Passwords do not match\",\n    path: [\"confirm\"],\n  });\n\nexport default function Register() {\n  const { register, handleSubmit, formState: { errors } } = useForm({\n    resolver: zodResolver(schema),\n  });\n\n  return (\n    <form onSubmit={handleSubmit((data) => console.log(data))}>\n      <input {...register(\"email\")} placeholder=\"Email\" />\n      <p>{errors.email?.message}</p>\n      <input type=\"password\" {...register(\"password\")} placeholder=\"Password\" />\n      <p>{errors.password?.message}</p>\n      <input type=\"password\" {...register(\"confirm\")} placeholder=\"Confirm\" />\n      <p>{errors.confirm?.message}</p>\n      <button>Register</button>\n    </form>\n  );\n}"
+    },
+    {
+     "title": "safeParse on the server",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { z } from \"zod\";\n\nconst Todo = z.object({ title: z.string().min(1), done: z.boolean().default(false) });\n// In TypeScript: type TodoT = z.infer<typeof Todo>;\n\nconst result = Todo.safeParse({ title: \"\" });\nif (!result.success) {\n  console.log(result.error.flatten().fieldErrors);\n  // { title: [\"String must contain at least 1 character(s)\"] }\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does z.infer give you?",
+     "a": "A TypeScript type derived from the schema, so the runtime validation and compile-time types always match."
+    },
+    {
+     "q": "Why use z.coerce for form values?",
+     "a": "HTML inputs always give strings; coerce converts them to numbers or dates before validating."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-file-upload",
+   "title": "File Upload and Preview",
+   "level": "intermediate",
+   "summary": "Read the selected file from an input, validate its type and size, preview it, and send it with FormData.",
+   "description": "A file input is always **uncontrolled** in React; you cannot set its value. You read the selected files from `e.target.files` (a `FileList`) in the `onChange` handler.\n\n### Steps\n\n1. Render `<input type=\"file\" accept=\"image/*\" />` (add `multiple` for many files).\n2. In `onChange`, take `e.target.files[0]`.\n3. **Validate** `file.type` and `file.size` on the client (limits are for UX; the server must check again).\n4. **Preview** images with `URL.createObjectURL(file)` and **revoke** the URL when done (cleanup) to avoid memory leaks. Alternatively use `FileReader.readAsDataURL`.\n5. **Upload** with `FormData`:\n\n```js\nconst fd = new FormData();\nfd.append(\"avatar\", file);\nawait fetch(\"/api/upload\", { method: \"POST\", body: fd });\n```\n\nDo **not** set the `Content-Type` header yourself; the browser adds the multipart boundary.\n\n### Progress\n\n`fetch` has no upload progress. Use `XMLHttpRequest` (`xhr.upload.onprogress`) or axios `onUploadProgress`.\n\n### Large files and production\n\nUse **pre-signed URLs** (S3/GCS) so the browser uploads directly to storage, chunked/resumable uploads (tus), and drag-and-drop zones (`react-dropzone`). Always scan and validate on the server; never trust the file extension or MIME type sent by the client.",
+   "keyPoints": [
+    "e.target.files holds selected files",
+    "File inputs are uncontrolled",
+    "Preview with createObjectURL and revoke on cleanup",
+    "Upload with FormData; do not set Content-Type manually",
+    "Server must re-validate type and size"
+   ],
+   "pitfalls": [
+    "Forgetting URL.revokeObjectURL, leaking memory.",
+    "Manually setting the multipart Content-Type header, breaking the boundary."
+   ],
+   "examples": [
+    {
+     "title": "Pick a file, validate and show details",
+     "language": "react",
+     "css": "",
+     "code": "const MAX = 1024 * 1024; // 1 MB\n\nfunction App() {\n  const [file, setFile] = useState(null);\n  const [error, setError] = useState(\"\");\n  const [preview, setPreview] = useState(null);\n\n  function onChange(e) {\n    const f = e.target.files && e.target.files[0];\n    setError(\"\");\n    if (!f) { setFile(null); return; }\n    if (!f.type.startsWith(\"image/\")) { setError(\"Only images allowed\"); setFile(null); return; }\n    if (f.size > MAX) { setError(\"File larger than 1 MB\"); setFile(null); return; }\n    setFile(f);\n  }\n\n  useEffect(() => {\n    if (!file) { setPreview(null); return; }\n    const url = URL.createObjectURL(file);\n    setPreview(url);\n    return () => URL.revokeObjectURL(url);\n  }, [file]);\n\n  function upload() {\n    const fd = new FormData();\n    fd.append(\"avatar\", file);\n    console.log(\"would POST\", file.name, fd.has(\"avatar\"));\n  }\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <input type=\"file\" accept=\"image/*\" onChange={onChange} />\n      {error && <p style={{ color: \"crimson\" }}>{error}</p>}\n      {file && (\n        <div>\n          <p>{file.name} - {(file.size / 1024).toFixed(1)} KB</p>\n          {preview && <img src={preview} alt=\"preview\" style={{ maxWidth: 160, maxHeight: 120 }} />}\n          <div><button onClick={upload}>Upload</button></div>\n        </div>\n      )}\n    </div>\n  );\n}",
+     "explanation": "In a real app you would send the file via FormData."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you upload a file from React?",
+     "a": "Read it from the input's files, append it to a FormData object and send with fetch or axios as the request body; the browser sets the multipart header."
+    },
+    {
+     "q": "Why revoke object URLs?",
+     "a": "createObjectURL keeps the file in memory until it is revoked, so cleaning up avoids memory leaks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-accessibility",
+   "title": "Accessibility (a11y) in React",
+   "level": "intermediate",
+   "summary": "Use semantic HTML, labels, keyboard support, focus management and ARIA so everyone can use your app.",
+   "description": "Accessibility means people using screen readers, keyboards, voice control or with low vision can use your UI. React renders ordinary HTML, so the same rules apply, with a few React-specific tools.\n\n### The most important rules\n\n1. **Semantic HTML first:** use `button`, `a`, `nav`, `main`, `ul`, `label`, headings in order. A clickable `<div>` has no keyboard support or role.\n2. **Labels:** every input needs a `<label htmlFor>` (or `aria-label`). Use `useId` for unique ids.\n3. **Keyboard:** everything clickable must be reachable with Tab and operable with Enter/Space. Never remove focus outlines without a replacement.\n4. **Alt text:** meaningful `alt` for images; `alt=\"\"` for decorative ones.\n5. **Color contrast:** at least 4.5:1 for body text.\n6. **Announce changes:** `role=\"alert\"` or `aria-live=\"polite\"` for toasts, errors and async results.\n\n### React-specific tips\n\n- Use **Fragments** to keep valid HTML structure (table rows, lists).\n- `htmlFor`, `tabIndex`, `aria-*` and `role` are written as camelCase/lowercase attributes in JSX.\n- **Manage focus** with refs when UI changes: move focus into a modal, back to the trigger on close, and to the new heading after a route change.\n- Use `eslint-plugin-jsx-a11y` to catch problems at build time.\n- Test with the keyboard, a screen reader (NVDA, VoiceOver), axe DevTools and Lighthouse; `jest-axe` in unit tests.\n\n### ARIA rule of thumb\n\n*No ARIA is better than bad ARIA.* Use ARIA only when HTML cannot express the widget (tabs, combobox), and implement the full keyboard pattern.",
+   "keyPoints": [
+    "Prefer semantic HTML over div soup with ARIA",
+    "Every control needs a label and keyboard access",
+    "Manage focus for modals and route changes",
+    "Use aria-live for dynamic messages",
+    "Lint with jsx-a11y and test with axe and keyboard"
+   ],
+   "pitfalls": [
+    "Using div or span with onClick instead of a button.",
+    "Removing outline: none without a custom focus style.",
+    "Using placeholder as the only label."
+   ],
+   "examples": [
+    {
+     "title": "Accessible toggle with live status",
+     "language": "react",
+     "css": "",
+     "code": "function App() {\n  const [subscribed, setSubscribed] = useState(false);\n  const [message, setMessage] = useState(\"\");\n  const emailId = useId();\n\n  function toggle() {\n    const next = !subscribed;\n    setSubscribed(next);\n    setMessage(next ? \"You are subscribed.\" : \"You are unsubscribed.\");\n  }\n\n  return (\n    <main style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <h2>Newsletter</h2>\n      <label htmlFor={emailId}>Email address</label>\n      <br />\n      <input id={emailId} type=\"email\" autoComplete=\"email\" />\n      <br />\n      <button type=\"button\" aria-pressed={subscribed} onClick={toggle} style={{ marginTop: 8 }}>\n        {subscribed ? \"Unsubscribe\" : \"Subscribe\"}\n      </button>\n      <p role=\"status\" aria-live=\"polite\">{message}</p>\n    </main>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a button instead of a clickable div?",
+     "a": "A button is focusable, activates with Enter/Space and exposes the correct role to assistive tech; a div has none of that by default."
+    },
+    {
+     "q": "How do you announce dynamic content to screen readers?",
+     "a": "Render it in an element with aria-live (for example role=\"status\" or role=\"alert\") so changes are read out."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

@@ -1,0 +1,214 @@
+{
+ "id": "css-responsive",
+ "title": "Responsive Design",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-media-queries",
+   "title": "Media Queries and @supports",
+   "level": "intermediate",
+   "summary": "Apply styles by viewport size and user preferences; test feature support with @supports.",
+   "description": "A **media query** applies CSS only when a condition is true. It is the base of responsive design.\n\n### Syntax\n```css\n@media (min-width: 768px) { ... }          /* classic */\n@media (width >= 768px) { ... }            /* range syntax (modern) */\n@media (width < 600px) { ... }\n@media (min-width: 600px) and (max-width: 900px) { ... }\n@media screen and (orientation: landscape) { ... }\n@media print { ... }\n```\n\n### Common features\n| Feature | Example |\n|---|---|\n| `width` / `height` | viewport size |\n| `orientation` | `portrait` / `landscape` |\n| `prefers-color-scheme` | `dark` / `light` |\n| `prefers-reduced-motion` | `reduce` |\n| `hover` and `pointer` | `(hover: hover)`, `(pointer: coarse)` for touch |\n| `resolution` | `(min-resolution: 2dppx)` retina |\n\n### Choosing breakpoints\nDo not chase specific devices. Add a breakpoint **where your content breaks**. Typical references: 480, 768, 1024, 1280 px. The final project in this course steps down at 1400, 1220, 1100, 998 and 768px using `@media (width <= 998px)`.\n\n### Combining\nComma means OR: `@media (width < 600px), print { }`. Use `not` and `and` for more logic.\n\n### @supports - feature queries\nCheck if the browser understands a declaration:\n\n```css\n.gallery { display: flex; flex-wrap: wrap; }\n@supports (display: grid) {\n  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); }\n}\n@supports not (aspect-ratio: 1) { .box { padding-top: 100%; } }\n```\n\n### Tip\nKeep media queries close to the component (nesting helps) instead of one giant block at the bottom.",
+   "keyPoints": [
+    "@media applies rules only when a condition is true",
+    "Range syntax (width >= 768px) is shorter and clearer",
+    "Query user preferences: color scheme, reduced motion, hover, pointer",
+    "Breakpoints should follow content, not devices",
+    "@supports enables progressive enhancement"
+   ],
+   "pitfalls": [
+    "Missing the viewport meta tag, so media queries behave like desktop on phones",
+    "Mixing min-width and max-width styles randomly",
+    "Dozens of device-specific breakpoints"
+   ],
+   "examples": [
+    {
+     "title": "Responsive columns",
+     "language": "web",
+     "html": "<div class=\"cols\"><div>A</div><div>B</div><div>C</div></div><p class=\"hint\">Resize the preview: 1 column under 420px, 3 above.</p>",
+     "css": "body { font-family: sans-serif; }\n.cols { display: grid; gap: 10px; grid-template-columns: 1fr; }\n.cols div { background: #2965f1; color: #fff; padding: 20px; text-align: center; border-radius: 8px; }\n@media (width >= 420px) { .cols { grid-template-columns: repeat(3, 1fr); } }\n@media (width < 420px) { .hint { color: crimson; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Preference queries and @supports",
+     "language": "web",
+     "html": "<div class=\"box\">I react to dark mode, hover capability and grid support</div>",
+     "css": ".box { padding: 20px; border: 3px solid #0f172a; background: #fff; color: #0f172a; font-family: sans-serif; }\n@media (prefers-color-scheme: dark) { .box { background: #0f172a; color: #fff; border-color: #fff; } }\n@media (hover: hover) { .box:hover { background: #fde68a; color: #000; } }\n@supports (display: grid) { .box { display: grid; place-items: center; min-height: 100px; } }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a media query?",
+     "a": "A CSS rule (@media) that applies styles only if conditions such as viewport width, orientation or user preference are met."
+    },
+    {
+     "q": "min-width vs max-width queries?",
+     "a": "min-width applies from that width upward (mobile-first); max-width applies up to that width (desktop-first)."
+    },
+    {
+     "q": "What is @supports?",
+     "a": "A feature query that applies CSS only if the browser supports a given property/value, used for progressive enhancement."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/final_project/css/style.css, grid/style.css"
+  },
+  {
+   "id": "css-mobile-first",
+   "title": "Responsive Design and Mobile-first",
+   "level": "intermediate",
+   "summary": "Viewport meta, fluid layouts, mobile-first workflow and modern responsive patterns.",
+   "description": "**Responsive design** means one codebase that adapts to every screen size. It rests on three pillars: flexible layouts, flexible media and media queries.\n\n### 1. The viewport meta tag\n```html\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n```\nWithout it, phones render the page at ~980px and shrink it.\n\n### 2. Mobile-first workflow\nWrite the **small-screen styles first** with no query, then add enhancements with `min-width` queries:\n\n```css\n.layout { display: grid; gap: 1rem; }               /* mobile: 1 column */\n@media (min-width: 768px)  { .layout { grid-template-columns: 1fr 1fr; } }\n@media (min-width: 1100px) { .layout { grid-template-columns: repeat(4, 1fr); } }\n```\n\nBenefits: lighter CSS for phones, simpler overrides, forces focus on content.\n\n### 3. Flexible building blocks\n- Widths in `%`, `fr`, `min()`, `max-width` instead of fixed px.\n- Images: `max-width: 100%; height: auto;`.\n- Typography with `rem` and `clamp()`.\n- Grid `auto-fit/minmax` and Flexbox `wrap` for self-adjusting layouts.\n\n### 4. Viewport units\n`vw`, `vh`, `dvh` (dynamic - adjusts when mobile toolbars appear), `svh` (small), `lvh` (large). Use `min-height: 100dvh;` for full-screen sections.\n\n### 5. Touch and spacing\n- Tap targets at least **44x44px**.\n- Do not rely on `:hover` for essential actions.\n- Use `@media (hover: hover)` for hover-only effects.\n\n### Testing\nUse DevTools device mode, real phones, and resize slowly to find where the layout breaks.",
+   "keyPoints": [
+    "Always include the viewport meta tag",
+    "Mobile-first = base styles for small screens + min-width queries",
+    "Prefer fluid units (%, fr, rem, clamp) to fixed px",
+    "Use dvh for mobile full-height sections",
+    "Tap targets >= 44px; do not depend on hover"
+   ],
+   "pitfalls": [
+    "Desktop-first max-width overrides that become very long",
+    "Fixed-width containers causing horizontal scroll",
+    "100vh sections cut by mobile browser toolbars"
+   ],
+   "examples": [
+    {
+     "title": "Mobile-first card layout",
+     "language": "web",
+     "html": "<div class=\"layout\"><div class=\"c\">1</div><div class=\"c\">2</div><div class=\"c\">3</div><div class=\"c\">4</div></div>",
+     "css": ".layout { display: grid; gap: 10px; font-family: sans-serif; }\n.c { background: linear-gradient(135deg,#6a11cb,#2575fc); color: #fff; padding: 22px; text-align: center; border-radius: 10px; }\n@media (min-width: 380px) { .layout { grid-template-columns: repeat(2, 1fr); } }\n@media (min-width: 560px) { .layout { grid-template-columns: repeat(4, 1fr); } }",
+     "js": "",
+     "code": "",
+     "explanation": "No query = one column (mobile). Columns increase as the preview gets wider."
+    },
+    {
+     "title": "Fluid container pattern",
+     "language": "web",
+     "html": "<div class=\"wrap\"><h2>Fluid container</h2><p>The container is fluid up to 640px and centered, with side padding that never touches the edge.</p></div>",
+     "css": ".wrap { width: min(100% - 2rem, 640px); margin-inline: auto; padding: 1rem; background: #f1f5f9; font-family: sans-serif; border-radius: 10px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is mobile-first design?",
+     "a": "Designing and writing base CSS for small screens first, then progressively enhancing for larger screens with min-width media queries."
+    },
+    {
+     "q": "Why is the viewport meta tag needed?",
+     "a": "It tells mobile browsers to use the device width as layout width and a 1:1 initial scale; otherwise pages are rendered as a zoomed-out desktop layout."
+    },
+    {
+     "q": "What problem do dvh units solve?",
+     "a": "On mobile, 100vh ignores the collapsing address bar and may overflow; dvh follows the actual visible viewport."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/final_project/css/style.css"
+  },
+  {
+   "id": "css-fluid-sizing",
+   "title": "calc(), min(), max() and clamp()",
+   "level": "intermediate",
+   "summary": "Math functions for fluid typography, flexible containers and mixed units.",
+   "description": "CSS has built-in math functions that evaluate in the browser.\n\n### calc()\nMix units: `width: calc(100% - 240px);`, `padding: calc(1rem + 2vw);`, `height: calc(100dvh - var(--header-h));`. Operators need spaces around `+` and `-` (not `*` or `/`).\n\n### min() and max()\n- `min(100%, 600px)` -> the smaller value: a width that never exceeds 600px (like max-width).\n- `max(16px, 2vw)` -> the larger value: a lower bound.\n\n### clamp(min, preferred, max)\nValue that scales with the viewport but never goes below min nor above max:\n\n```css\nh1 { font-size: clamp(1.75rem, 1rem + 3vw, 3.5rem); }\n.container { width: clamp(320px, 90%, 1200px); }\n.section { padding-block: clamp(2rem, 6vw, 6rem); }\n```\n\nFluid type means **no media queries** for headings.\n\n### Accessibility note\nKeep a `rem` part in the preferred value (`1rem + 3vw`). Pure `vw` ignores user zoom and fails WCAG.\n\n### Useful combos\n- Full-bleed + centered content: `padding-inline: max(1rem, (100% - 1100px) / 2);`\n- Scale spacing with custom properties: `--space: clamp(1rem, 2.5vw, 2rem);`\n\n### Where they work\nAny property that takes a length, percentage, number or angle. They can nest: `clamp(1rem, calc(0.5rem + 2vw), 2rem)` (inner calc is optional).",
+   "keyPoints": [
+    "calc() mixes units; spaces required around + and -",
+    "min() caps a value from above, max() sets a floor",
+    "clamp(min, preferred, max) gives fluid, bounded sizes",
+    "Combine rem + vw for accessible fluid typography",
+    "Replace many media queries with clamp()"
+   ],
+   "pitfalls": [
+    "calc(100%-20px) without spaces is invalid",
+    "Using pure vw for font-size (no zoom support)",
+    "Mixing up min() and max() semantics (min = upper bound)"
+   ],
+   "examples": [
+    {
+     "title": "Fluid heading and container",
+     "language": "web",
+     "html": "<div class=\"wrap\"><h1>Fluid heading</h1><p>Resize the preview. The heading grows between 1.5rem and 3rem; the box never exceeds 520px.</p></div>",
+     "css": ".wrap { width: min(100% - 2rem, 520px); margin: 0 auto; font-family: sans-serif; background: #eef2ff; padding: 1rem; }\nh1 { font-size: clamp(1.5rem, 1rem + 4vw, 3rem); margin: 0 0 .5rem; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "calc layout",
+     "language": "web",
+     "html": "<div class=\"bar\"><aside>240px sidebar</aside><main>calc(100% - 240px)</main></div>",
+     "css": ".bar { display: flex; font-family: sans-serif; color: #fff; }\naside { width: 240px; background: #451952; padding: 16px; }\nmain { width: calc(100% - 240px); background: #ae445a; padding: 16px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does clamp(1rem, 2.5vw, 2rem) do?",
+     "a": "The value follows 2.5vw but is never smaller than 1rem or larger than 2rem."
+    },
+    {
+     "q": "Why must calc(100% - 20px) have spaces?",
+     "a": "Because \"-20px\" without spaces could be parsed as a negative number; + and - require whitespace around them in calc()."
+    },
+    {
+     "q": "min() vs max-width?",
+     "a": "min(100%, 600px) in the width property gives the same effect as width: 100% with max-width: 600px, in one declaration."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "css-container-queries",
+   "title": "Container Queries",
+   "level": "advanced",
+   "summary": "Style components based on the size of their container, not the viewport.",
+   "description": "Media queries react to the **viewport**. **Container queries** react to the size of a **parent container**, so a component adapts to wherever it is placed (sidebar, main column, modal).\n\n### Step 1: declare a container\n```css\n.card-wrap {\n  container-type: inline-size;     /* track width */\n  container-name: card;            /* optional */\n}\n/* shorthand */\n.card-wrap { container: card / inline-size; }\n```\n\n### Step 2: query it\n```css\n@container card (width <= 600px) {\n  .card { grid-template-columns: 1fr; }\n}\n@container (min-width: 400px) { ... }\n```\n\nThe queried element must be a **descendant** of the container (a container cannot style itself).\n\n### Container query units\n`cqw`, `cqh`, `cqi`, `cqb`, `cqmin`, `cqmax` - 1% of the container's size. Great for fluid type inside cards: `font-size: clamp(1rem, 5cqi, 2rem);`.\n\n### Container vs media query\n| | Media query | Container query |\n|---|---|---|\n| Reacts to | viewport | nearest container |\n| Best for | page-level layout | reusable components |\n| Same component in two places | same look | can look different |\n\n### Notes\n- `container-type: inline-size` applies containment, so the container cannot size itself from its children's width.\n- Style queries (`@container style(--theme: dark)`) exist for custom properties.\n- The source demo used a bordered box and compared `@container changelayout (width <= 600px)` to a plain media query.",
+   "keyPoints": [
+    "container-type: inline-size marks a parent as a query container",
+    "@container (width <= 600px) styles descendants",
+    "Components adapt to their slot, not the screen",
+    "cqi / cqw units are relative to the container",
+    "Use media queries for page-level, container queries for components"
+   ],
+   "pitfalls": [
+    "Trying to style the container itself inside its own @container rule",
+    "Forgetting container-type, so the query never matches",
+    "Expecting the container to grow with content after inline-size containment"
+   ],
+   "examples": [
+    {
+     "title": "Same card, different containers",
+     "language": "web",
+     "html": "<div class=\"wide\"><div class=\"card\"><div class=\"img\">IMG</div><h3>Container query card</h3></div></div>\n<div class=\"narrow\"><div class=\"card\"><div class=\"img\">IMG</div><h3>Container query card</h3></div></div>",
+     "css": "body { font-family: sans-serif; }\n.wide, .narrow { container-type: inline-size; border: 3px solid #ffb000; margin-bottom: 12px; padding: 8px; }\n.wide { width: 100%; } .narrow { width: 220px; }\n.card { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: center; }\n.img { background: #2965f1; color: #fff; height: 70px; display: grid; place-items: center; }\n@container (width < 320px) {\n  .card { grid-template-columns: 1fr; text-align: center; }\n  h3 { color: #e11d48; }\n}",
+     "js": "",
+     "code": "",
+     "explanation": "The narrow wrapper stacks the card even though the viewport is wide."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between media queries and container queries?",
+     "a": "Media queries depend on the viewport; container queries depend on the size of a specified ancestor container, making components context-aware."
+    },
+    {
+     "q": "What do you need to declare before using @container?",
+     "a": "An ancestor with container-type (usually inline-size), optionally named with container-name."
+    },
+    {
+     "q": "What are cqw and cqi units?",
+     "a": "Percentages of the query container's width (cqw) or inline size (cqi), usable for fluid sizing inside a component."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/latestcss/containerqueries/index.html"
+  }
+ ]
+}

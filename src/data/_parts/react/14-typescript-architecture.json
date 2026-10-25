@@ -1,0 +1,204 @@
+{
+ "id": "react-typescript-architecture",
+ "title": "TypeScript and Project Architecture",
+ "level": "advanced",
+ "topics": [
+  {
+   "id": "react-ts-props-hooks",
+   "title": "TypeScript: Typing Props, State and Events",
+   "level": "intermediate",
+   "summary": "Type props with interfaces, let TypeScript infer state, and use React's built-in event and element types.",
+   "description": "TypeScript catches mistakes (wrong prop, missing field, undefined access) before you run the code. Create a project with `npm create vite@latest app -- --template react-ts`. Component files use `.tsx`.\n\n### Props\n\n```tsx\ninterface ButtonProps {\n  label: string;\n  variant?: \"primary\" | \"ghost\";          // optional + union\n  onClick: (id: number) => void;           // function type\n  children?: React.ReactNode;              // anything renderable\n}\nfunction Button({ label, variant = \"primary\", onClick }: ButtonProps) { ... }\n```\n\nPrefer `interface`/`type` plus a plain function. `React.FC` is optional and no longer recommended by default.\n\n### Useful prop helpers\n\n- `React.ComponentProps<\"button\">` - all native props of an element.\n- `extends React.ButtonHTMLAttributes<HTMLButtonElement>` to forward native props.\n- `React.ReactNode` for children, `React.ReactElement` for a single element.\n- `React.CSSProperties` for style objects.\n\n### Hooks\n\n- `useState<User | null>(null)` - give a generic when the initial value does not describe the full type.\n- `useRef<HTMLInputElement>(null)` for DOM refs; `useRef<number>(0)` for mutable values.\n- `useReducer` with a **discriminated union** for actions.\n- `useContext` with a context created as `createContext<Ctx | null>(null)` and a hook that narrows the null.\n\n### Events\n\n```tsx\nconst onChange = (e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value);\nconst onSubmit = (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault(); };\nconst onClick = (e: React.MouseEvent<HTMLButtonElement>) => {};\n```\n\nTip: write the handler inline and hover to see the inferred type, or use `React.ChangeEventHandler<HTMLInputElement>`.",
+   "keyPoints": [
+    "Props via interface/type; mark optional with ?",
+    "Use unions for variant-style props",
+    "useState generics when the initial value is null or empty",
+    "Event types: ChangeEvent, FormEvent, MouseEvent with element generic",
+    "ComponentProps<\"tag\"> reuses native props"
+   ],
+   "pitfalls": [
+    "Using any to silence errors instead of modeling data.",
+    "useState([]) infers never[]; give an explicit type."
+   ],
+   "examples": [
+    {
+     "title": "Typed component, state and events (TSX)",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { useState, useRef, type ChangeEvent, type FormEvent } from \"react\";\n\ninterface Todo {\n  id: number;\n  text: string;\n  done: boolean;\n}\n\ninterface TodoFormProps {\n  onAdd: (text: string) => void;\n  placeholder?: string;\n}\n\nfunction TodoForm({ onAdd, placeholder = \"Add todo\" }: TodoFormProps) {\n  const [text, setText] = useState(\"\");\n  const inputRef = useRef<HTMLInputElement>(null);\n\n  const handleChange = (e: ChangeEvent<HTMLInputElement>) => setText(e.target.value);\n  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {\n    e.preventDefault();\n    if (!text.trim()) return;\n    onAdd(text);\n    setText(\"\");\n    inputRef.current?.focus();\n  };\n\n  return (\n    <form onSubmit={handleSubmit}>\n      <input ref={inputRef} value={text} onChange={handleChange} placeholder={placeholder} />\n      <button>Add</button>\n    </form>\n  );\n}\n\nexport default function App() {\n  const [todos, setTodos] = useState<Todo[]>([]);\n  const add = (text: string) => setTodos((t) => [...t, { id: Date.now(), text, done: false }]);\n  return (\n    <>\n      <TodoForm onAdd={add} />\n      <ul>{todos.map((t) => <li key={t.id}>{t.text}</li>)}</ul>\n    </>\n  );\n}"
+    },
+    {
+     "title": "Reducer with discriminated unions (TSX)",
+     "language": "text",
+     "lang": "jsx",
+     "code": "type State = { count: number };\ntype Action =\n  | { type: \"inc\" }\n  | { type: \"dec\" }\n  | { type: \"set\"; value: number };   // payload only on \"set\"\n\nfunction reducer(state: State, action: Action): State {\n  switch (action.type) {\n    case \"inc\": return { count: state.count + 1 };\n    case \"dec\": return { count: state.count - 1 };\n    case \"set\": return { count: action.value };   // value is known to exist here\n  }\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Should you use React.FC?",
+     "a": "It is optional and no longer recommended by default; plain functions with typed props are simpler and handle generics and children more explicitly."
+    },
+    {
+     "q": "How do you type a ref to an input?",
+     "a": "useRef<HTMLInputElement>(null), then access ref.current?.focus()."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-ts-generics",
+   "title": "Generic Components and Utility Types",
+   "level": "advanced",
+   "summary": "Use generics so a component works for any data type while keeping full type safety.",
+   "description": "A reusable `List` or `Select` component should not be tied to one data shape. **Generic components** take a type parameter that flows from props to callbacks.\n\n```tsx\ninterface ListProps<T> {\n  items: T[];\n  getKey: (item: T) => string | number;\n  renderItem: (item: T) => React.ReactNode;\n}\n\nfunction List<T>({ items, getKey, renderItem }: ListProps<T>) {\n  return <ul>{items.map((i) => <li key={getKey(i)}>{renderItem(i)}</li>)}</ul>;\n}\n\n<List items={users} getKey={(u) => u.id} renderItem={(u) => u.name} />   // T inferred as User\n```\n\nIn `.tsx` files an arrow generic needs a trailing comma or constraint: `const List = <T,>(props: ListProps<T>) => ...`.\n\n### Constraints\n\n`<T extends { id: number }>` guarantees the property exists, so you can write `item.id`.\n\n### Utility types you will use\n\n| Type | Meaning |\n| --- | --- |\n| `Partial<T>` | all fields optional |\n| `Required<T>` | all required |\n| `Pick<T, \"a\" \\| \"b\">` | choose fields |\n| `Omit<T, \"a\">` | remove fields |\n| `Record<K, V>` | object map |\n| `ReturnType<typeof fn>` | function return type |\n| `React.ComponentProps<typeof X>` | props of another component |\n\n### Polymorphic `as` prop\n\nComponents like `Box as=\"a\"` can be typed with generics over the element type, so `href` is accepted only when `as=\"a\"`.\n\n### Typing custom hooks\n\n```ts\nfunction useLocalStorage<T>(key: string, initial: T): [T, (v: T | ((p: T) => T)) => void]\n```\n\n### Tip\n\nUse `satisfies` to check an object against a type without widening it. Prefer type inference; annotate boundaries (props, exported functions), not every local variable.",
+   "keyPoints": [
+    "<T> on the component gives type-safe reusable UI",
+    "Constrain with extends to require fields",
+    "Partial, Pick, Omit, Record reduce duplication",
+    "Hooks can be generic: useLocalStorage<T>",
+    "Annotate boundaries; let inference do the rest"
+   ],
+   "pitfalls": [
+    "Forgetting the trailing comma in generic arrow functions in TSX.",
+    "Over-engineering types that are harder to read than the code."
+   ],
+   "examples": [
+    {
+     "title": "Generic Select component and hook (TSX)",
+     "language": "text",
+     "lang": "jsx",
+     "code": "interface SelectProps<T> {\n  options: T[];\n  value: T | null;\n  onChange: (value: T) => void;\n  getLabel: (option: T) => string;\n  getValue: (option: T) => string | number;\n}\n\nexport function Select<T>({ options, value, onChange, getLabel, getValue }: SelectProps<T>) {\n  return (\n    <select\n      value={value ? String(getValue(value)) : \"\"}\n      onChange={(e) => {\n        const picked = options.find((o) => String(getValue(o)) === e.target.value);\n        if (picked) onChange(picked);\n      }}\n    >\n      <option value=\"\" disabled>Choose...</option>\n      {options.map((o) => (\n        <option key={getValue(o)} value={String(getValue(o))}>{getLabel(o)}</option>\n      ))}\n    </select>\n  );\n}\n\n// usage: T is inferred as { id: number; name: string }\n// <Select options={users} value={selected} onChange={setSelected} getLabel={(u) => u.name} getValue={(u) => u.id} />\n\nexport function useLocalStorage<T>(key: string, initial: T) {\n  const [value, setValue] = useState<T>(() => {\n    const raw = localStorage.getItem(key);\n    return raw ? (JSON.parse(raw) as T) : initial;\n  });\n  useEffect(() => localStorage.setItem(key, JSON.stringify(value)), [key, value]);\n  return [value, setValue] as const;\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why make a component generic?",
+     "a": "So it works with any data type while TypeScript infers and checks the types of callbacks and values for each use."
+    },
+    {
+     "q": "Difference between Pick and Omit?",
+     "a": "Pick selects the listed keys from a type, Omit removes the listed keys and keeps the rest."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-architecture",
+   "title": "Project Architecture: Feature Folders and Absolute Imports",
+   "level": "intermediate",
+   "summary": "Organize code by feature, keep shared code separate, and use path aliases to avoid ../../../ imports.",
+   "description": "There is no official structure, but a good one keeps related code together and makes dependencies clear.\n\n### Folder by type (small apps)\n\n```\nsrc/\n  components/  hooks/  pages/  services/  utils/  context/\n```\n\nSimple, but as the app grows, one feature's files are scattered across the tree.\n\n### Folder by feature (recommended for growth)\n\n```\nsrc/\n  app/            # providers, router, store setup\n  features/\n    auth/\n      components/ hooks/ api.ts types.ts index.ts\n    cart/\n      components/ cartSlice.ts index.ts\n  components/     # shared, generic UI (Button, Modal)\n  hooks/          # shared hooks\n  lib/            # axios instance, query client\n  pages/ (or routes/)\n  assets/ styles/\n```\n\n### Rules that keep it healthy\n\n- A feature exposes a **public API** via `index.ts`; other features import only from it.\n- Features do not import from each other's internals; shared code goes down to `components/`, `lib/`.\n- **Colocate** tests, styles and stories next to components (`Button/Button.tsx`, `Button.test.tsx`).\n- Keep pages thin: they compose feature components.\n- Put API calls in `api` files, not inside JSX.\n\n### Absolute imports (aliases)\n\nReplace `../../../components/Button` with `@/components/Button`.\n\n```js\n// vite.config.js\nresolve: { alias: { \"@\": fileURLToPath(new URL(\"./src\", import.meta.url)) } }\n```\n\n```json\n// tsconfig.json / jsconfig.json\n{ \"compilerOptions\": { \"baseUrl\": \".\", \"paths\": { \"@/*\": [\"src/*\"] } } }\n```\n\n### Don't over-engineer\n\nStart flat and refactor when a folder gets crowded. Copying a huge enterprise structure into a todo app slows you down.",
+   "keyPoints": [
+    "Prefer feature folders as the app grows",
+    "Expose a feature's public API with index files",
+    "Shared UI and utilities live outside features",
+    "Colocate tests and styles with components",
+    "Use @/ aliases configured in Vite and tsconfig"
+   ],
+   "pitfalls": [
+    "Circular imports between features.",
+    "Creating deep folder trees for tiny apps."
+   ],
+   "examples": [
+    {
+     "title": "Feature-based layout",
+     "language": "text",
+     "lang": "bash",
+     "code": "src/\n├─ app/\n│  ├─ App.tsx\n│  ├─ router.tsx\n│  └─ providers.tsx\n├─ features/\n│  ├─ auth/\n│  │  ├─ components/LoginForm.tsx\n│  │  ├─ hooks/useAuth.ts\n│  │  ├─ api.ts\n│  │  └─ index.ts          # export { LoginForm, useAuth }\n│  └─ cart/\n│     ├─ components/CartDrawer.tsx\n│     ├─ cartStore.ts\n│     └─ index.ts\n├─ components/ui/Button.tsx\n├─ hooks/useDebounce.ts\n├─ lib/http.ts\n└─ pages/HomePage.tsx"
+    },
+    {
+     "title": "Alias in vite.config.js",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { defineConfig } from \"vite\";\nimport react from \"@vitejs/plugin-react\";\nimport path from \"node:path\";\n\nexport default defineConfig({\n  plugins: [react()],\n  resolve: {\n    alias: { \"@\": path.resolve(import.meta.dirname, \"./src\") },\n  },\n});\n// Now: import { Button } from \"@/components/ui/Button\";"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why organize by feature instead of by file type?",
+     "a": "Related code stays together, making features easier to understand, change, test and delete, while dependencies between features stay explicit."
+    },
+    {
+     "q": "What is the benefit of absolute imports with aliases?",
+     "a": "They remove fragile relative paths like ../../../, make moving files easier and read more clearly."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-env-variables",
+   "title": "Environment Variables in React",
+   "level": "intermediate",
+   "summary": "Configure API URLs and keys per environment with .env files, remembering that front-end env vars are public.",
+   "description": "Different environments (development, staging, production) need different settings such as API URLs. Use **environment variables** instead of hard-coding.\n\n### Vite\n\n- Create `.env`, `.env.development`, `.env.production`, `.env.local` (git-ignored).\n- Only variables prefixed with **`VITE_`** are exposed to the client.\n- Read with `import.meta.env.VITE_API_URL`. Built-ins: `import.meta.env.MODE`, `DEV`, `PROD`, `BASE_URL`.\n- Restart the dev server after changing a `.env` file.\n\n```\n# .env.development\nVITE_API_URL=http://localhost:4000\n# .env.production\nVITE_API_URL=https://api.example.com\n```\n\n### Create React App / Next.js\n\nCRA used `process.env.REACT_APP_*`. Next.js exposes `NEXT_PUBLIC_*` to the browser; other variables stay on the server.\n\n### Critical: they are not secret\n\nVariables are **inlined into the JavaScript bundle at build time**, so anyone can read them in DevTools. Never put private API keys, database URLs or tokens in client env variables. Keep secrets on a backend (or Server Components / API routes) and call that.\n\n### Practices\n\n- Commit a `.env.example` with variable names but no real values.\n- Do not commit `.env.local` or `.env.production` with secrets.\n- Validate at startup (for example with Zod) and fail fast on missing values.\n- On CI/hosting (Vercel, Netlify) define variables in the dashboard; they apply at **build** time for static builds.\n- For runtime config on one image, load a `/config.json` at start or inject through a server.",
+   "keyPoints": [
+    "Vite exposes only VITE_ prefixed variables",
+    "Read via import.meta.env",
+    "Client env vars are public in the bundle",
+    "Commit .env.example, never secrets",
+    "Static builds read variables at build time"
+   ],
+   "pitfalls": [
+    "Putting secret API keys in VITE_ variables.",
+    "Changing .env without restarting the dev server."
+   ],
+   "examples": [
+    {
+     "title": "Typed and validated env",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// src/lib/env.js\nimport { z } from \"zod\";\n\nconst schema = z.object({\n  VITE_API_URL: z.string().url(),\n  VITE_FEATURE_BETA: z.enum([\"true\", \"false\"]).default(\"false\"),\n});\n\nconst parsed = schema.safeParse(import.meta.env);\nif (!parsed.success) {\n  console.error(parsed.error.flatten().fieldErrors);\n  throw new Error(\"Invalid environment variables\");\n}\n\nexport const env = {\n  apiUrl: parsed.data.VITE_API_URL,\n  betaEnabled: parsed.data.VITE_FEATURE_BETA === \"true\",\n};"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why are VITE_ variables not secret?",
+     "a": "They are replaced with their values in the built JavaScript, so any user can see them in the browser."
+    },
+    {
+     "q": "How do you keep real secrets safe in a React app?",
+     "a": "Keep them on a server or serverless backend and have the front end call that API; never ship them in client code."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-eslint-prettier",
+   "title": "ESLint and Prettier",
+   "level": "beginner",
+   "summary": "ESLint finds bugs and bad patterns; Prettier formats code automatically; together they keep a codebase consistent.",
+   "description": "### ESLint - code quality\n\nESLint analyzes code and reports problems. Vite templates include a flat config (`eslint.config.js`) with:\n\n- **`eslint-plugin-react-hooks`** - `rules-of-hooks` (error) and `exhaustive-deps` (warn). Essential.\n- **`eslint-plugin-react-refresh`** - keeps fast refresh working.\n- **`typescript-eslint`** for TS projects.\n- **`eslint-plugin-jsx-a11y`** - accessibility checks.\n- **`eslint-plugin-react-compiler`** (or compiler rules in react-hooks) - flags code the compiler cannot optimize.\n\nRun `npm run lint`, and fix automatically with `eslint --fix`.\n\n### Prettier - formatting\n\nPrettier is an opinionated formatter: line length, quotes, semicolons, trailing commas. It ends style arguments in code reviews. Config in `.prettierrc`:\n\n```json\n{ \"semi\": true, \"singleQuote\": false, \"printWidth\": 100, \"trailingComma\": \"all\" }\n```\n\nAdd `eslint-config-prettier` so ESLint does not fight Prettier about formatting.\n\n### Editor and team workflow\n\n- Enable **format on save** in VS Code.\n- Add scripts: `\"lint\"`, `\"format\": \"prettier --write .\"`.\n- Use **husky + lint-staged** to run linters on staged files before each commit.\n- Run lint, type-check (`tsc --noEmit`) and tests in **CI**.\n- Add `.editorconfig` for tabs/spaces across editors.\n\n### Alternative\n\n**Biome** is a fast single tool that does both linting and formatting.",
+   "keyPoints": [
+    "ESLint = problems; Prettier = formatting",
+    "react-hooks plugin catches hook mistakes",
+    "eslint-config-prettier avoids rule conflicts",
+    "husky + lint-staged enforce checks on commit",
+    "Run lint, types and tests in CI"
+   ],
+   "pitfalls": [
+    "Ignoring exhaustive-deps warnings instead of fixing the dependency design.",
+    "Configuring ESLint style rules that conflict with Prettier."
+   ],
+   "examples": [
+    {
+     "title": "eslint.config.js (flat config)",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import js from \"@eslint/js\";\nimport globals from \"globals\";\nimport reactHooks from \"eslint-plugin-react-hooks\";\nimport reactRefresh from \"eslint-plugin-react-refresh\";\nimport jsxA11y from \"eslint-plugin-jsx-a11y\";\nimport prettier from \"eslint-config-prettier\";\n\nexport default [\n  { ignores: [\"dist\"] },\n  {\n    files: [\"**/*.{js,jsx}\"],\n    languageOptions: {\n      ecmaVersion: 2023,\n      globals: globals.browser,\n      parserOptions: { ecmaFeatures: { jsx: true }, sourceType: \"module\" },\n    },\n    plugins: { \"react-hooks\": reactHooks, \"react-refresh\": reactRefresh, \"jsx-a11y\": jsxA11y },\n    rules: {\n      ...js.configs.recommended.rules,\n      ...reactHooks.configs.recommended.rules,\n      ...jsxA11y.flatConfigs.recommended.rules,\n      \"react-refresh/only-export-components\": [\"warn\", { allowConstantExport: true }],\n    },\n  },\n  prettier,\n];"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does the exhaustive-deps rule do?",
+     "a": "It warns when an effect, memo or callback uses a reactive value that is missing from its dependency array, preventing stale closures."
+    },
+    {
+     "q": "ESLint vs Prettier?",
+     "a": "ESLint finds code-quality problems and risky patterns; Prettier only formats code consistently. They are complementary."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

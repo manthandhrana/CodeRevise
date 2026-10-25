@@ -1,0 +1,247 @@
+{
+ "id": "node-testing",
+ "title": "Testing",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-test-runner",
+   "title": "The Built-in node:test Runner",
+   "level": "beginner",
+   "summary": "Write and run tests with no dependencies using node:test and node:assert, including hooks, async tests and watch mode.",
+   "description": "Node includes a stable test runner. No Jest or Mocha needed for many projects.\n\n### Basics\nImport from `node:test`: `test`, `describe`, `it`, `before`, `after`, `beforeEach`, `afterEach`, `mock`. Use `node:assert/strict` for checks.\n\n### Running\n* `node --test` finds files named `*.test.js`, `*.spec.js` or anything inside a `test/` folder and runs each in its own process\n* `node --test path/to/file.test.js` runs one file\n* `node --test --watch` re-runs on change\n* `--test-name-pattern=\"user\"` filters by name; `.only` plus `--test-only`, `.skip`, `.todo` mark tests\n* `--test-reporter=spec | tap | junit | lcov`\n* `--experimental-test-coverage` prints coverage\n\n### Test structure\n`describe` groups, `it`/`test` defines a case. Tests can be `async`. Subtests with `t.test()` are supported. Failing assertions throw, the runner marks the test failed and shows a diff.\n\n### Good tests\n1. **Arrange, act, assert**: set up data, call the code, check the result\n2. One behaviour per test with a descriptive name\n3. Independent: no test depends on another's side effects\n4. Deterministic: control time, randomness, network\n5. Fast: unit tests run in milliseconds\n\n### Test pyramid\nMany **unit tests** (functions, services), some **integration tests** (API with a test database), few **end-to-end tests** (full browser flows).\n\n### Where to put them\nNext to the code (`user.service.test.js`) or in `test/`. Keep fixtures in a `test/fixtures` folder.",
+   "keyPoints": [
+    "node --test runs *.test.js files with no extra packages",
+    "describe/it/test, hooks and node:assert/strict are the basics",
+    "Tests should be independent, deterministic and fast",
+    "Use --watch during development and --experimental-test-coverage for coverage",
+    "Prefer many unit tests, fewer integration and e2e tests"
+   ],
+   "pitfalls": [
+    "Tests that depend on execution order or shared mutable state",
+    "Forgetting to await async assertions",
+    "Real network or real time inside unit tests"
+   ],
+   "examples": [
+    {
+     "title": "math.test.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// math.js\nexport const add = (a, b) => a + b;\nexport async function fetchUser(id, http) {\n  const res = await http.get(`/users/${id}`);\n  if (!res.ok) throw new Error('not found');\n  return res.data;\n}\n\n// math.test.js\nimport { test, describe, it, mock } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { add, fetchUser } from './math.js';\n\ndescribe('add', () => {\n  it('adds numbers', () => assert.equal(add(2, 3), 5));\n  it('handles negatives', () => assert.equal(add(-1, -1), -2));\n});\n\ntest('fetchUser returns data', async () => {\n  const http = { get: mock.fn(async () => ({ ok: true, data: { id: 1, name: 'Ann' } })) };\n  assert.deepEqual(await fetchUser(1, http), { id: 1, name: 'Ann' });\n  assert.equal(http.get.mock.callCount(), 1);\n});\n\ntest('fetchUser rejects when missing', async () => {\n  await assert.rejects(fetchUser(2, { get: async () => ({ ok: false }) }), /not found/);\n});",
+     "explanation": "Dependency injection (passing http in) makes the function easy to test.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node --test\n▶ add\n  ✔ adds numbers (12.09ms)\n  ✔ handles negatives (0.54ms)\n✔ add (17.12ms)\n✔ fetchUser returns data (3.17ms)\n✔ fetchUser rejects when missing (1.52ms)\nℹ tests 4\nℹ suites 1\nℹ pass 4\nℹ fail 0",
+     "explanation": "Timings vary per run.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Do you need Jest to test a Node app?",
+     "a": "No. node:test with node:assert is built in and covers describe/it, hooks, mocking, timers and coverage. Jest or Vitest add richer matchers, snapshots and watch UI which many teams prefer."
+    },
+    {
+     "q": "What makes a good unit test?",
+     "a": "It tests one behaviour, is independent of other tests, deterministic (no real time, network or randomness), fast, and fails with a clear message."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-vitest-jest",
+   "title": "Jest and Vitest",
+   "level": "intermediate",
+   "summary": "Popular full-featured test frameworks: expect matchers, mocks, snapshots, watch mode, and when to choose which.",
+   "description": "**Jest** and **Vitest** provide a batteries-included testing experience: runner, assertions (`expect`), mocking, snapshots, coverage and a watch mode.\n\n### Comparison\n| | Jest | Vitest |\n|---|---|---|\n| Origin | Meta, huge ecosystem | Vite team, Jest-compatible API |\n| Speed | Good | Faster start-up, native ESM and TypeScript |\n| ESM support | Needs configuration | Works out of the box |\n| Config | `jest.config.js` | `vitest.config.js` (or the Vite config) |\n| Mock functions | `jest.fn()`, `jest.mock()` | `vi.fn()`, `vi.mock()` |\n| Fake timers | `jest.useFakeTimers()` | `vi.useFakeTimers()` |\n\nFor new projects with ESM or TypeScript, **Vitest** is usually the smoother choice. Many existing codebases use Jest.\n\n### Core API\n* `describe`, `it`/`test`, `beforeEach`, `afterEach`, `beforeAll`, `afterAll`\n* `expect(value).toBe(x)` (strict equality), `toEqual` (deep), `toStrictEqual`, `toBeTruthy`, `toContain`, `toMatchObject`, `toThrow`, `rejects.toThrow`, `resolves`\n* `toHaveBeenCalledWith(...)`, `toHaveBeenCalledTimes(n)`\n* `toMatchSnapshot()` / `toMatchInlineSnapshot()` store expected output (use sparingly for logic)\n* `it.each([[1,1,2],[2,3,5]])('add(%i,%i)=%i', ...)` for table-driven tests\n\n### Running\n`npx vitest` (watch), `npx vitest run` (once, for CI), `npx jest --watch`. Add `\"test\": \"vitest run\"` to scripts.\n\n### Tips\n* Reset mocks between tests (`vi.restoreAllMocks()`)\n* Use `--coverage` with the v8 provider\n* Test names should read like sentences",
+   "keyPoints": [
+    "Jest and Vitest share a similar expect/describe/it API",
+    "Vitest has native ESM/TypeScript support and is fast; Jest is the long-time standard",
+    "toBe is strict equality, toEqual compares deeply",
+    "it.each runs table-driven tests",
+    "Snapshots are for stable output, not a replacement for assertions"
+   ],
+   "pitfalls": [
+    "Overusing snapshots so changes are blindly updated",
+    "Forgetting to await expect(...).resolves/rejects",
+    "Mock state leaking between tests"
+   ],
+   "examples": [
+    {
+     "title": "Vitest test file",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// cart.test.js     npm i -D vitest     npx vitest run\nimport { describe, it, expect, vi, beforeEach } from 'vitest';\nimport { total, checkout } from './cart.js';\n\ndescribe('cart', () => {\n  it.each([\n    [[{ price: 10, qty: 2 }], 20],\n    [[{ price: 5, qty: 1 }, { price: 7, qty: 3 }], 26],\n    [[], 0],\n  ])('total(%j) = %i', (items, expected) => {\n    expect(total(items)).toBe(expected);\n  });\n\n  describe('checkout', () => {\n    const payments = { charge: vi.fn() };\n    beforeEach(() => payments.charge.mockReset());\n\n    it('charges the total once', async () => {\n      payments.charge.mockResolvedValue({ id: 'p_1' });\n      const result = await checkout([{ price: 10, qty: 2 }], payments);\n      expect(payments.charge).toHaveBeenCalledTimes(1);\n      expect(payments.charge).toHaveBeenCalledWith(20);\n      expect(result).toMatchObject({ paymentId: 'p_1' });\n    });\n\n    it('rejects when the payment fails', async () => {\n      payments.charge.mockRejectedValue(new Error('declined'));\n      await expect(checkout([{ price: 1, qty: 1 }], payments)).rejects.toThrow('declined');\n    });\n  });\n});",
+     "explanation": "it.each runs the same test body with several data rows.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "toBe vs toEqual?",
+     "a": "toBe uses Object.is (strict identity for objects), toEqual compares values recursively, so two different objects with the same contents are equal under toEqual but not under toBe."
+    },
+    {
+     "q": "Why might a team choose Vitest over Jest?",
+     "a": "Faster execution, native ESM and TypeScript support without Babel configuration, and reuse of the Vite config, with a mostly Jest-compatible API."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-supertest-api-testing",
+   "title": "Testing APIs with supertest",
+   "level": "intermediate",
+   "summary": "Test Express/HTTP apps in-process without opening ports, using a test database and clean fixtures.",
+   "description": "**supertest** calls your Express (or any `http.Server`) app directly and offers a fluent API to assert status, headers and body. It starts the app on an ephemeral port automatically, so there are no port clashes.\n\n### Preparing the app\nExport the app from `app.js` and keep `app.listen` in `server.js`. Then in tests: `import app from '../src/app.js'`.\n\n### Writing tests\n`await request(app).post('/users').send({ name: 'Ann' }).expect(201)` then check `res.body`. Chain `.set('Authorization', 'Bearer ...')`, `.query({ page: 2 })`, `.attach('file', path)`.\n\n### Database strategy\n| Option | Notes |\n|---|---|\n| Real test database | Most realistic; use a separate DB (docker compose, Testcontainers) |\n| In-memory (`mongodb-memory-server`, SQLite `:memory:`) | Fast, isolated |\n| Mocks/fakes of repositories | Fast unit tests of services |\n\nReset data between tests: truncate tables or drop collections in `beforeEach`. Never point tests at production or shared development data.\n\n### What to cover\n* Happy paths and validation errors (400/422)\n* Authentication (401) and authorisation (403)\n* Not found (404) and conflicts (409)\n* Pagination, sorting and filtering\n* Error handler output shape\n\n### Auth in tests\nCreate a user in a helper and sign a token with the test secret, or log in through the API once in `before`.\n\n### Without supertest\nNode 18+ lets you start the server on port 0 and use `fetch`: `const server = app.listen(0); const { port } = server.address();`. Close it in `after`.\n\n### Contract and e2e\nFor browser flows use Playwright; for API contracts consider OpenAPI-based tools or Pact.",
+   "keyPoints": [
+    "supertest sends requests to your app in-process and asserts the response",
+    "Export app separately from listen",
+    "Use a separate test database and reset it per test",
+    "Test error paths and auth, not just the happy path",
+    "Alternative: start on port 0 and call with fetch"
+   ],
+   "pitfalls": [
+    "Tests that run against a shared or production database",
+    "Leaving servers or DB connections open so the test process hangs",
+    "Only testing success responses"
+   ],
+   "examples": [
+    {
+     "title": "API test with supertest and node:test",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i -D supertest\nimport { test, before, after, beforeEach } from 'node:test';\nimport assert from 'node:assert/strict';\nimport request from 'supertest';\nimport app from '../src/app.js';\nimport { db } from '../src/lib/db.js';\n\nbefore(async () => { await db.connect(process.env.TEST_DATABASE_URL); });\nbeforeEach(async () => { await db.reset(); });\nafter(async () => { await db.close(); });\n\ntest('POST /users creates a user', async () => {\n  const res = await request(app)\n    .post('/users')\n    .send({ name: 'Ann', email: 'ann@example.com', password: 'a-long-password' })\n    .expect(201)\n    .expect('Content-Type', /json/);\n\n  assert.equal(res.body.email, 'ann@example.com');\n  assert.equal(res.body.password, undefined);        // never returned\n});\n\ntest('POST /users rejects invalid email', async () => {\n  const res = await request(app).post('/users').send({ name: 'Ann', email: 'nope' }).expect(422);\n  assert.ok(res.body.error);\n});\n\ntest('GET /me requires authentication', async () => {\n  await request(app).get('/me').expect(401);\n});",
+     "explanation": "supertest never binds a fixed port, so tests can run in parallel.",
+     "lang": "javascript"
+    },
+    {
+     "title": "The same without supertest",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { test, before, after } from 'node:test';\nimport assert from 'node:assert/strict';\nimport app from '../src/app.js';\n\nlet server, base;\nbefore(() => new Promise((resolve) => {\n  server = app.listen(0, () => { base = `http://127.0.0.1:${server.address().port}`; resolve(); });\n}));\nafter(() => new Promise((resolve) => server.close(resolve)));\n\ntest('GET /health', async () => {\n  const res = await fetch(`${base}/health`);\n  assert.equal(res.status, 200);\n  assert.deepEqual(await res.json(), { status: 'ok' });\n});",
+     "explanation": "Port 0 asks the OS for any free port.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why separate app and server files?",
+     "a": "So tests can import the app and let supertest handle the port, without the real server starting, and to avoid port conflicts and hanging processes."
+    },
+    {
+     "q": "How do you keep API tests isolated?",
+     "a": "Use a dedicated test database, reset or truncate data before each test, create the fixtures each test needs and avoid depending on test order."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mocking",
+   "title": "Mocking, Stubs and Fake Timers",
+   "level": "intermediate",
+   "summary": "Replace slow or unpredictable dependencies with fakes: mock functions, module mocks, spies, time and HTTP.",
+   "description": "A **mock** replaces a real dependency (database, email service, HTTP API, clock) with a controllable fake so the unit under test runs in isolation, quickly and deterministically.\n\n### Vocabulary\n| Term | Meaning |\n|---|---|\n| **Stub** | Returns canned values |\n| **Spy** | Wraps a real function and records calls |\n| **Mock** | A fake that also verifies expected calls |\n| **Fake** | A simple working replacement (in-memory repository) |\n\n### In node:test\n* `mock.fn(impl)` creates a function; inspect `fn.mock.calls`, `callCount()`\n* `mock.method(obj, 'name', impl)` replaces a method (restore with `mock.restoreAll()` or the test context `t.mock`)\n* `t.mock.timers.enable({ apis: ['setTimeout', 'Date'] })` then `tick(ms)` for **fake timers**\n* `mock.module(...)` (experimental, run with `--experimental-test-module-mocks`)\n\n### In Vitest / Jest\n`vi.fn()`, `vi.spyOn(obj, 'method')`, `vi.mock('./email.js')`, `vi.useFakeTimers()`, `vi.setSystemTime(date)`.\n\n### Mocking HTTP\nUse `msw` or undici's `MockAgent` to intercept `fetch` calls and return responses, so you never hit real APIs in tests.\n\n### Dependency injection beats module mocking\nPass dependencies as parameters (`createService({ repo, mailer })`). Tests then pass simple fakes without patching modules.\n\n### Rules\n1. Mock at the **boundary** (network, disk, time), not your own pure logic\n2. Do not over-mock: tests that check mock calls only can pass while the real behaviour is broken\n3. Restore mocks after each test\n4. Keep at least some integration tests with the real database",
+   "keyPoints": [
+    "Stubs return values, spies record calls, fakes are working substitutes",
+    "Use fake timers to test retries, debounce and expiry without waiting",
+    "Mock external boundaries such as HTTP, email and time",
+    "Dependency injection makes mocking easy",
+    "Restore mocks between tests"
+   ],
+   "pitfalls": [
+    "Mocking everything so tests no longer prove anything",
+    "Forgetting to restore mocked methods",
+    "Calling real external APIs from tests"
+   ],
+   "examples": [
+    {
+     "title": "Fake timers and a spy",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\n\nfunction debounce(fn, ms) {\n  let id;\n  return (...args) => { clearTimeout(id); id = setTimeout(() => fn(...args), ms); };\n}\n\ntest('debounce calls once after the delay', (t) => {\n  t.mock.timers.enable({ apis: ['setTimeout'] });\n  const spy = t.mock.fn();\n  const d = debounce(spy, 200);\n\n  d('a'); d('b'); d('c');\n  t.mock.timers.tick(199);\n  assert.equal(spy.mock.callCount(), 0);\n  t.mock.timers.tick(1);\n  assert.equal(spy.mock.callCount(), 1);\n  assert.deepEqual(spy.mock.calls[0].arguments, ['c']);\n});\n\ntest('sendWelcome calls the mailer', async (t) => {\n  const mailer = { send: t.mock.fn(async () => true) };\n  const service = { async register(email) { await mailer.send({ to: email, subject: 'Welcome' }); return { email }; } };\n\n  await service.register('a@b.c');\n  assert.equal(mailer.send.mock.callCount(), 1);\n  assert.equal(mailer.send.mock.calls[0].arguments[0].to, 'a@b.c');\n});",
+     "explanation": "Fake timers let a 200 ms delay finish instantly.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Mock vs stub vs spy?",
+     "a": "A stub returns predefined data, a spy wraps a function and records how it was called, and a mock is a fake with expectations about calls. In practice libraries use \"mock\" for all of them."
+    },
+    {
+     "q": "Why prefer dependency injection to module mocking?",
+     "a": "Passing dependencies as arguments needs no patching of the module system, is explicit and works the same in CommonJS and ESM, which keeps tests simple and less fragile."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-test-coverage",
+   "title": "Code Coverage and CI",
+   "level": "intermediate",
+   "summary": "Measure which code your tests execute, interpret the metrics sensibly and run tests automatically in CI.",
+   "description": "**Coverage** reports which lines, branches and functions ran during tests.\n\n### Metrics\n* **Line / statement**: how many lines executed\n* **Branch**: both sides of every `if`/ternary/`??`\n* **Function**: functions called at least once\n\n### Tools\n| Tool | Command |\n|---|---|\n| Node built in | `node --test --experimental-test-coverage` |\n| c8 (V8 coverage) | `npx c8 node --test` |\n| Vitest | `vitest run --coverage` (provider v8 or istanbul) |\n| Jest | `jest --coverage` |\n\nReports: terminal table, `lcov` (for Codecov/Coveralls), HTML (`coverage/index.html`). Add `coverage/` to `.gitignore`.\n\n### Thresholds\nFail the build when coverage drops, e.g. Vitest: `coverage: { thresholds: { lines: 80, branches: 70 } }`; Node: `--test-coverage-lines=80`.\n\n### Interpreting\nCoverage shows what was **not** tested; it does not prove tests are good. A test without assertions gives 100% coverage and zero value. Aim for meaningful coverage on business logic (70-90% is typical); do not chase 100% by testing getters or config.\n\n### CI pipeline (GitHub Actions)\n1. Checkout, set up Node with caching (`actions/setup-node` with `cache: npm`)\n2. `npm ci`\n3. `npm run lint`\n4. `npm test -- --coverage`\n5. Optionally build and upload coverage\n\nRun on every pull request and make it a required check. Test against the Node versions you support with a **matrix**.\n\n### Flaky tests\nFix or quarantine them quickly: they train people to ignore failures. Common causes are time, randomness, network and shared state.",
+   "keyPoints": [
+    "Coverage measures executed code, not test quality",
+    "Use c8, Vitest or node --test coverage flags",
+    "Set sensible thresholds rather than 100%",
+    "Run lint and tests in CI on every pull request with npm ci",
+    "Eliminate flaky tests"
+   ],
+   "pitfalls": [
+    "Chasing 100% coverage with meaningless tests",
+    "Treating high coverage as proof of correctness",
+    "Letting flaky tests stay in the suite"
+   ],
+   "examples": [
+    {
+     "title": "GitHub Actions workflow",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "# .github/workflows/ci.yml\nname: CI\non:\n  push: { branches: [main] }\n  pull_request:\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    strategy:\n      matrix:\n        node: [20, 22, 24]\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node }}\n          cache: npm\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test -- --experimental-test-coverage --test-coverage-lines=80",
+     "explanation": "The matrix runs the same job on three Node versions.",
+     "lang": "yaml"
+    },
+    {
+     "title": "Coverage output",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node --test --experimental-test-coverage\nℹ start of coverage report\nℹ ----------------------------------------------------------\nℹ file      | line % | branch % | funcs % | uncovered lines\nℹ ----------------------------------------------------------\nℹ math.js   | 100.00 |   100.00 |  100.00 |\nℹ ----------------------------------------------------------\nℹ all files | 100.00 |   100.00 |  100.00 |\nℹ ----------------------------------------------------------\nℹ end of coverage report",
+     "explanation": "The last column lists line numbers that no test executed.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Does 100% coverage mean no bugs?",
+     "a": "No. It only means every line ran at least once. Missing assertions, untested edge cases and integration issues can still hide bugs."
+    },
+    {
+     "q": "What is the difference between line and branch coverage?",
+     "a": "Line coverage counts executed lines; branch coverage checks that each decision path (both the if and else side, each logical operand) was taken, which is stricter and reveals untested conditions."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

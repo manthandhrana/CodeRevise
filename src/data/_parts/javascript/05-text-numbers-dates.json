@@ -1,0 +1,264 @@
+{
+  "id": "js-text-numbers-dates",
+  "title": "Strings, Regex, Numbers and Dates",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-strings-basics",
+      "title": "Strings and Template Literals",
+      "level": "beginner",
+      "summary": "Strings are immutable sequences of characters; template literals make interpolation and multi-line text easy.",
+      "description": "A **string** is a sequence of UTF-16 characters written in single quotes, double quotes or backticks. Single and double quotes behave the same; backticks create **template literals**.\n\n### Basic facts\n- `str.length` counts UTF-16 code units (spaces included).\n- Access characters with `str[0]` or `str.at(-1)`.\n- Strings are **immutable**: `str[0] = \"x\"` silently does nothing. Methods always return a **new** string.\n- Strings are iterable: `[...\"INDIA\"]` gives an array of characters.\n\n### Escape characters\n| Code | Meaning |\n|---|---|\n| `\\'` `\\\"` | quote |\n| `\\\\` | backslash |\n| `\\n` | new line |\n| `\\t` | tab |\n| `\\u{1F600}` | Unicode code point |\n\n### Template literals (ES2015)\n```js\nconst name = \"Ravi\", n = 5;\nconst msg = `Hi ${name}, 5 * ${n} = ${5 * n}`;\nconst multi = `line one\nline two`;\n```\n- `${expression}` can contain any JavaScript expression.\n- Multi-line strings need no `\\n`.\n- **Tagged templates** (a function name written right before a template literal) pass the text pieces and values to that function; libraries like styled-components use this.\n\n### Concatenation\n`+` joins strings; if either side is a string the other is converted. Prefer template literals for readability. `\"5\" + 3` is `\"53\"`.\n\n### Comparing\nUse `===`. For locale-aware ordering use `a.localeCompare(b)`.\n\n### Emoji caveat\nSome characters take two code units, so `\"😀\".length` is `2`. Use `[...\"😀\"].length` to count real characters.",
+      "keyPoints": [
+        "Strings are immutable - methods return new strings",
+        "Template literals use backticks, ${} and allow multiple lines",
+        "Index with str[i] or str.at(-1)",
+        "Strings are iterable with for...of and spread",
+        "length counts UTF-16 code units, not always visible characters"
+      ],
+      "pitfalls": [
+        "Trying to modify str[0] does nothing",
+        "Mixing quotes without escaping causes a syntax error",
+        "Concatenating numbers and strings with + gives unexpected results"
+      ],
+      "examples": [
+        {
+          "title": "Template literals and immutability",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const name = \"Vinod\", age = 30;\nconsole.log(`My name is ${name} and next year I will be ${age + 1}.`);\nconsole.log(`Line 1\nLine 2`);\nconsole.log(\"5 * \" + 3 + \" = \" + 5 * 3);\n\nlet s = \"hello\";\ns[0] = \"J\";\nconsole.log(s, s.length, s.at(-1), [...\"INDIA\"]);\nconsole.log(\"😀\".length, [...\"😀\"].length);\nconsole.log(\"My name is \\\"Thapa\\\" and path is C:\\\\temp\");"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Are strings mutable in JavaScript?",
+          "a": "No. Strings are immutable primitives; every method such as replace or toUpperCase returns a new string."
+        },
+        {
+          "q": "What are the advantages of template literals?",
+          "a": "They allow expression interpolation with ${}, multi-line strings without escapes, and tagged templates."
+        },
+        {
+          "q": "What does \"5\" + 3 return and why?",
+          "a": "\"53\". When either operand of + is a string, JavaScript concatenates instead of adding."
+        }
+      ],
+      "source": "JS-one-shot/7_strings.js, JS-one-shot/ecmascripts/es2015.js"
+    },
+    {
+      "id": "js-string-methods",
+      "title": "Essential String Methods",
+      "level": "beginner",
+      "summary": "Search, extract, replace, pad, split and clean strings with the built-in methods.",
+      "description": "### Searching\n- `indexOf(text, from)` / `lastIndexOf(text)` - position or `-1` (case sensitive).\n- `includes(text)`, `startsWith(text, pos)`, `endsWith(text)` - booleans.\n- `search(regex)` - index of first regex match.\n- `match(regex)` - array of matches (with `g`) or match details; `matchAll(regex)` - iterator of all matches with groups.\n\n### Extracting\n- `slice(start, end)` - supports **negative** indexes. Preferred.\n- `substring(start, end)` - negatives treated as 0, swaps arguments if start > end.\n- `substr()` is **deprecated**.\n- `charAt(i)`, `charCodeAt(i)`, `at(i)`.\n\n### Replacing\n- `replace(search, replacement)` - first match only (for a string search).\n- `replaceAll(search, replacement)` (ES2021) - all matches.\n- Both accept a regex or a function as the replacement.\n\n### Transforming\n`toUpperCase()`, `toLowerCase()`, `trim()`, `trimStart()`, `trimEnd()`, `padStart(len, ch)`, `padEnd(len, ch)`, `repeat(n)`, `concat()`.\n\n### Splitting and joining\n`\"a,b,c\".split(\",\")` gives an array; `array.join(\"-\")` builds a string. Reverse a string: `str.split(\"\").reverse().join(\"\")`.\n\n### Char codes\n`\"a\".charCodeAt(0)` is 97 and `String.fromCharCode(97)` is `\"a\"`. Useful for loops from \"a\" to \"z\" and Caesar ciphers.\n\nAll of these return **new** values; the original string never changes.",
+      "keyPoints": [
+        "slice supports negative indexes, substring does not",
+        "replace changes only the first match, replaceAll changes all",
+        "includes/startsWith/endsWith return booleans",
+        "split and join convert between strings and arrays",
+        "padStart is great for 0-padded numbers"
+      ],
+      "pitfalls": [
+        "indexOf is case sensitive",
+        "replace(\"a\", \"b\") with a string only replaces the first occurrence",
+        "includes does not accept a regex (it throws)"
+      ],
+      "examples": [
+        {
+          "title": "Extract, replace, pad",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const text = \"Hello JavaScript, welcome to our world best JavaScript course\";\nconsole.log(text.indexOf(\"JavaScript\"), text.lastIndexOf(\"JavaScript\"));\nconsole.log(text.slice(6, 16), text.slice(-6), text.substring(-5, 5));\nconsole.log(text.replace(\"JavaScript\", \"JS\"));\nconsole.log(text.replaceAll(\"JavaScript\", \"JS\"));\nconsole.log(text.startsWith(\"welcome\", 18), text.endsWith(\"course\"));\nconsole.log([...text.matchAll(/JavaScript/g)].map((m) => m.index));\n\nconsole.log(\"7\".padStart(3, \"0\"), \"Kodyfier\".padEnd(12, \"$\"));\nconsole.log(\"  Hello  \".trim().length);\nconsole.log(\"apple,orange,banana\".split(\",\").reverse().join(\" | \"));\nconsole.log(\"a\".repeat(3), String.fromCharCode(72, 105));"
+        },
+        {
+          "title": "Count vowels and pangram",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const countVowels = (str) => [...str.toLowerCase()].filter((c) => \"aeiou\".includes(c)).length;\nconsole.log(countVowels(\"Hello a i o u world\"));\n\nconst isPangram = (str) => {\n  const letters = str.toLowerCase().replace(/[^a-z]/g, \"\");\n  return new Set(letters).size === 26;\n};\nconsole.log(isPangram(\"The quick brown fox jumps over the lazy dog\"));\nconsole.log(isPangram(\"Hello world\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between slice and substring?",
+          "a": "Both extract part of a string, but slice accepts negative indexes (counting from the end) while substring treats negatives as 0 and swaps arguments if start is greater than end."
+        },
+        {
+          "q": "How do you replace all occurrences of a word?",
+          "a": "Use replaceAll(\"a\", \"b\") or replace with a global regex: replace(/a/g, \"b\")."
+        },
+        {
+          "q": "How do you reverse a string?",
+          "a": "str.split(\"\").reverse().join(\"\") or [...str].reverse().join(\"\") to handle Unicode characters better."
+        }
+      ],
+      "source": "JS-one-shot/7_strings.js, JS-one-shot/ecmascripts/es2017.js, JS-one-shot/ecmascripts/es2021.js"
+    },
+    {
+      "id": "js-regex",
+      "title": "Regular Expressions",
+      "level": "intermediate",
+      "summary": "Describe text patterns with regex literals, flags, groups and use them with test, match and replace.",
+      "description": "A **regular expression** (regex) is a pattern used to search, validate and replace text.\n\n### Creating\n```js\nconst re1 = /ab+c/gi;             // literal\nconst re2 = new RegExp(\"ab+c\", \"gi\"); // constructor (dynamic patterns)\n```\n\n### Flags\n| Flag | Meaning |\n|---|---|\n| `g` | global - find all matches |\n| `i` | ignore case |\n| `m` | `^`/`$` match at each line |\n| `s` | dot matches newline |\n| `u` | full Unicode |\n| `y` | sticky |\n\n### Building blocks\n- Character classes: `\\d` digit, `\\w` word char, `\\s` space, `.` any char, `[abc]`, `[^abc]`, `[a-z]`.\n- Quantifiers: `*` (0+), `+` (1+), `?` (0 or 1), `{2,4}`.\n- Anchors: `^` start, `$` end, `\\b` word boundary.\n- Groups: `( )` capture, `(?: )` non-capture, `(?<year>\\d{4})` named group.\n- Alternation: `cat|dog`. Lookahead: `a(?=b)`.\n\n### Methods\n- `regex.test(str)` - boolean.\n- `regex.exec(str)` - match details (stateful with `g`).\n- `str.match(regex)`, `str.matchAll(regex)`, `str.replace(regex, fn)`, `str.split(regex)`, `str.search(regex)`.\n\n### Notes\n- Quantifiers are **greedy** by default; add `?` to make them lazy (`.*?`).\n- A regex with the `g` flag keeps `lastIndex`, so calling `test` twice can give surprising results.\n- Do not validate full email addresses or HTML with regex; keep patterns simple.",
+      "keyPoints": [
+        "Literal /pattern/flags or new RegExp(string, flags)",
+        "g finds all matches, i ignores case",
+        "test returns boolean, match/matchAll return matches",
+        "Use capture groups and named groups to extract parts",
+        "Quantifiers are greedy unless followed by ?"
+      ],
+      "pitfalls": [
+        "Reusing a /g regex with test() keeps lastIndex and alternates results",
+        "Forgetting to escape special characters like . or ?",
+        "Catastrophic backtracking with nested quantifiers"
+      ],
+      "examples": [
+        {
+          "title": "Validate and extract",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const phone = /^\\d{10}$/;\nconsole.log(phone.test(\"9876543210\"), phone.test(\"98765\"));\n\nconst dateText = \"Released on 2024-02-19 and updated 2025-03-01\";\nconst re = /(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})/g;\nfor (const m of dateText.matchAll(re)) {\n  console.log(m[0], m.groups.year, m.groups.month);\n}\n\nconsole.log(\"This   has   extra   spaces\".replace(/\\s+/g, \" \"));\nconsole.log(\"john smith\".replace(/\\b\\w/g, (c) => c.toUpperCase()));\nconsole.log(\"a1b22c333\".match(/\\d+/g));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does the g flag do?",
+          "a": "It makes the regex global so match/replace find all matches instead of stopping after the first, and test/exec keep track of lastIndex."
+        },
+        {
+          "q": "What is the difference between greedy and lazy quantifiers?",
+          "a": "Greedy quantifiers (.*) match as much as possible; lazy ones (.*?) match as little as possible."
+        },
+        {
+          "q": "How do you extract capturing groups?",
+          "a": "Use match/exec/matchAll and read result[1], result[2] or result.groups.name for named groups."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-numbers-math",
+      "title": "Numbers and the Math Object",
+      "level": "beginner",
+      "summary": "Work with number methods, rounding, random numbers and floating point limits.",
+      "description": "### The Number type\nAll numbers are 64-bit floating point. Useful constants: `Number.MAX_SAFE_INTEGER` (2^53 - 1), `Number.EPSILON`, `Infinity`. For integers larger than the safe limit use **BigInt** (`123n`).\n\n### Number methods\n- `n.toFixed(2)` - string with 2 decimals (rounds).\n- `n.toString(2)` - binary string; `n.toString(16)` - hex.\n- `Number.isInteger`, `Number.isFinite`, `Number.isNaN`, `Number.parseFloat`.\n- `toLocaleString()` - formatting like `1,23,456.78`.\n\n### Math object\n| Method | Result |\n|---|---|\n| `Math.round(3.5)` | 4 (nearest) |\n| `Math.ceil(3.1)` | 4 (up) |\n| `Math.floor(3.9)` | 3 (down) |\n| `Math.trunc(-3.7)` | -3 (remove decimals) |\n| `Math.abs(-5)` | 5 |\n| `Math.max(...)`, `Math.min(...)` | extremes |\n| `Math.pow(2, 5)` or `2 ** 5` | 32 |\n| `Math.sqrt(25)` | 5 |\n| `Math.PI` | 3.14159... |\n| `Math.sign(-8)` | -1 |\n\n`Math.floor(-3.1)` is `-4` while `Math.trunc(-3.1)` is `-3`.\n\n### Random numbers\n`Math.random()` returns a number from 0 (inclusive) to 1 (exclusive).\n```js\nconst randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;\n```\nIt is **not** cryptographically secure; use `crypto.getRandomValues()` for tokens.\n\n### Floating point\n`0.1 + 0.2 !== 0.3`. Compare with `Math.abs(a - b) < Number.EPSILON` or use integers (paise/cents).",
+      "keyPoints": [
+        "All numbers are 64-bit floats",
+        "toFixed returns a string",
+        "floor rounds down, ceil up, trunc removes decimals",
+        "Math.random is in [0, 1) and not secure",
+        "BigInt handles integers beyond 2^53 - 1"
+      ],
+      "pitfalls": [
+        "0.1 + 0.2 is 0.30000000000000004",
+        "toFixed(2) of 1.005 is \"1.00\" because of binary representation",
+        "Mixing BigInt and Number throws a TypeError"
+      ],
+      "examples": [
+        {
+          "title": "Rounding and random",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(Math.round(3.5), Math.ceil(3.1), Math.floor(-3.1), Math.trunc(-3.1));\nconsole.log(2 ** 10, Math.sqrt(144), Math.max(3, 9, 1), Math.abs(-15));\n\nconst randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;\nconst r = randInt(1, 6);\nconsole.log(\"dice between 1 and 6:\", r >= 1 && r <= 6);\n\nconsole.log((1234.5678).toFixed(2), (255).toString(16), (5).toString(2));\nconsole.log(Number.MAX_SAFE_INTEGER, 2 ** 53 === 2 ** 53 + 1);\nconsole.log(9007199254740993n + 10n);\nconsole.log(Math.abs(0.1 + 0.2 - 0.3) < Number.EPSILON);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between Math.floor and Math.trunc?",
+          "a": "They are equal for positive numbers. For negative numbers floor goes down (-3.1 gives -4) while trunc just drops the decimals (-3.1 gives -3)."
+        },
+        {
+          "q": "How do you generate a random integer between min and max inclusive?",
+          "a": "Math.floor(Math.random() * (max - min + 1)) + min."
+        },
+        {
+          "q": "How do you deal with floating point errors in money calculations?",
+          "a": "Store amounts as integers in the smallest unit (cents/paise), or round with toFixed for display only, or use a decimal library."
+        }
+      ],
+      "source": "JS-one-shot/8_maths.js"
+    },
+    {
+      "id": "js-date-time",
+      "title": "Date and Time",
+      "level": "intermediate",
+      "summary": "Create, read, change and compare dates, and remember that months start at 0.",
+      "description": "The `Date` object stores **milliseconds since 1 January 1970 UTC** (the Unix epoch).\n\n### Creating dates\n```js\nnew Date();                          // now\nnew Date(\"2024-02-19\");              // ISO string (parsed as UTC)\nnew Date(\"2024-02-19T10:44:09Z\");\nnew Date(2024, 1, 19, 10, 44);       // year, MONTH(0-11), day, h, m\nnew Date(1708339449000);             // from milliseconds\nDate.now();                          // current timestamp (number)\n```\n\n### Getters\n`getFullYear()`, `getMonth()` (**0-11**), `getDate()` (1-31), `getDay()` (0 = Sunday), `getHours()`, `getMinutes()`, `getSeconds()`, `getTime()`. UTC versions: `getUTCHours()` etc.\n\n### Setters\n`setFullYear`, `setMonth`, `setDate`, `setHours`... They **mutate** the date and automatically roll over: `d.setDate(d.getDate() + 7)` adds a week even across months.\n\n### Formatting\n- `toISOString()` - `2024-02-19T10:44:09.274Z` (best for storage/APIs).\n- `toLocaleDateString(\"en-IN\")`, `toLocaleTimeString()`, `toLocaleString()`.\n- For full control use `Intl.DateTimeFormat` (next topic).\n\n### Arithmetic\nSubtracting two dates returns milliseconds:\n```js\nconst days = Math.round((d2 - d1) / (24 * 60 * 60 * 1000));\n```\n\n### Gotchas\n- Months are zero-based; days of month are one-based.\n- Date-only ISO strings are UTC, date-time strings without `Z` are local time.\n- Time zones and daylight saving make date math tricky; the upcoming Temporal API will fix many issues.",
+      "keyPoints": [
+        "A Date is a number of ms since 1970-01-01 UTC",
+        "Months are 0-11, getDay returns 0 for Sunday",
+        "Setters mutate and handle overflow automatically",
+        "Subtracting dates gives milliseconds",
+        "Use toISOString for machine-readable output"
+      ],
+      "pitfalls": [
+        "new Date(2024, 1, 29) is February, not January",
+        "Date strings in non-ISO formats parse differently across browsers",
+        "Mutating a Date that is shared between functions"
+      ],
+      "examples": [
+        {
+          "title": "Add days and difference between dates",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const addDays = (date, n) => {\n  const d = new Date(date);       // copy, do not mutate input\n  d.setDate(d.getDate() + n);\n  return d;\n};\nconst start = new Date(\"2024-02-25T00:00:00Z\");\nconsole.log(addDays(start, 7).toISOString());\n\nconst daysBetween = (a, b) => Math.round(Math.abs(a - b) / 86400000);\nconsole.log(daysBetween(new Date(\"2024-02-19\"), new Date(\"2024-03-01\")));\n\nconst d = new Date(Date.UTC(2024, 1, 19, 10, 44, 9));\nconsole.log(d.getUTCMonth(), d.getUTCDate(), d.getUTCDay(), d.getTime());\nconsole.log(Date.parse(\"2024-02-19T16:30:00Z\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why does new Date(2024, 0, 1) give January and not 0th month?",
+          "a": "Months are zero-based in JavaScript (0 = January, 11 = December), while the day of the month starts at 1."
+        },
+        {
+          "q": "How do you find the difference in days between two dates?",
+          "a": "Subtract the dates to get milliseconds and divide by 24*60*60*1000, then round."
+        },
+        {
+          "q": "What does Date.now() return?",
+          "a": "The current timestamp as the number of milliseconds since the Unix epoch."
+        }
+      ],
+      "source": "JS-one-shot/9_date_time.js"
+    },
+    {
+      "id": "js-intl",
+      "title": "Intl: Formatting Dates, Numbers and Currency",
+      "level": "intermediate",
+      "summary": "The built-in Intl API formats dates, numbers, currency, lists and region names for any locale.",
+      "description": "`Intl` is the **Internationalization API** built into every modern browser and Node.js. It formats values according to a locale without any library.\n\n### Intl.DateTimeFormat\n```js\nconst fmt = new Intl.DateTimeFormat(\"en-US\", {\n  weekday: \"long\", year: \"numeric\", month: \"long\", day: \"numeric\",\n  hour: \"numeric\", minute: \"numeric\",\n});\nfmt.format(new Date());\n```\nShortcut: `date.toLocaleDateString(\"en-IN\", options)`.\n\n### Intl.NumberFormat\n```js\nnew Intl.NumberFormat(\"en-IN\", { style: \"currency\", currency: \"INR\" }).format(1234567.5);\n// \"₹12,34,567.50\"\n```\nOptions: `style` (`decimal`, `currency`, `percent`, `unit`), `minimumFractionDigits`, `notation: \"compact\"` (`1.2M`).\n\n### Intl.DisplayNames\nTurns codes into names - used in the weather app project to show a country name:\n```js\nnew Intl.DisplayNames([\"en\"], { type: \"region\" }).of(\"IN\"); // \"India\"\n```\n\n### Other helpers\n- `Intl.RelativeTimeFormat` - \"yesterday\", \"in 3 days\".\n- `Intl.ListFormat` - \"A, B, and C\".\n- `Intl.PluralRules`, `Intl.Collator` (locale aware sorting).\n\n### Why use it\nIt handles currency symbols, digit grouping, month names and right-to-left languages for you, and is faster and more correct than hand-written formatting.\n\nRemember to create a formatter **once** and reuse it if you format many values.",
+      "keyPoints": [
+        "Intl formats by locale: dates, numbers, currency, lists",
+        "DateTimeFormat and NumberFormat take locale + options",
+        "DisplayNames converts region codes to names",
+        "toLocaleString methods use Intl under the hood",
+        "Reuse formatter instances for performance"
+      ],
+      "pitfalls": [
+        "Output depends on the runtime's locale data and may differ slightly",
+        "Passing an invalid currency code throws a RangeError"
+      ],
+      "examples": [
+        {
+          "title": "Dates, currency and names",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const date = new Date(Date.UTC(2024, 1, 19, 10, 44));\nconst fmt = new Intl.DateTimeFormat(\"en-US\", {\n  weekday: \"long\", year: \"numeric\", month: \"long\", day: \"numeric\", timeZone: \"UTC\",\n});\nconsole.log(fmt.format(date));\n\nconsole.log(new Intl.NumberFormat(\"en-IN\", { style: \"currency\", currency: \"INR\" }).format(1234567.5));\nconsole.log(new Intl.NumberFormat(\"en-US\", { notation: \"compact\" }).format(1250000));\nconsole.log(new Intl.DisplayNames([\"en\"], { type: \"region\" }).of(\"IN\"));\nconsole.log(new Intl.ListFormat(\"en\", { type: \"conjunction\" }).format([\"HTML\", \"CSS\", \"JS\"]));\nconsole.log(new Intl.RelativeTimeFormat(\"en\", { numeric: \"auto\" }).format(-1, \"day\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you format a number as currency in JavaScript?",
+          "a": "Use Intl.NumberFormat(locale, { style: \"currency\", currency: \"USD\" }).format(value) or number.toLocaleString with the same options."
+        },
+        {
+          "q": "What is Intl.DisplayNames used for?",
+          "a": "To convert codes such as region (IN), language (en) or currency (USD) into human-readable names in a chosen language."
+        },
+        {
+          "q": "Why prefer Intl over manual formatting?",
+          "a": "It follows locale conventions automatically (separators, symbols, order, translations) and avoids bugs and extra libraries."
+        }
+      ],
+      "source": "JS-one-shot/API/index.js, JS-one-shot/API/pract.js"
+    }
+  ]
+}

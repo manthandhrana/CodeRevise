@@ -1,0 +1,349 @@
+{
+ "id": "py-flask",
+ "title": "Flask",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "py-flask-hello-routing",
+   "title": "Flask: Hello World and Routing",
+   "level": "intermediate",
+   "summary": "Install Flask, run your first app and map URLs to view functions with dynamic routes.",
+   "description": "**Flask** is a **micro-framework**: it gives you routing, request handling and templating, and leaves databases, forms and auth to extensions you choose. That makes it small, explicit and easy to learn.\n\n### Install and run\n```bash\npython -m venv .venv && source .venv/bin/activate\npip install flask\nflask --app app run --debug\n```\n`--debug` enables the auto-reloader and interactive debugger (development only).\n\n### Routing\n`@app.route(rule, methods=[...])` registers a **view function** for a URL rule.\n\n- Static: `@app.route(\"/about\")`\n- Dynamic: `@app.route(\"/user/<username>\")`\n- Typed converters: `<int:id>`, `<float:x>`, `<path:subpath>`, `<uuid:id>`\n- Methods: default is `GET`; add `methods=[\"GET\", \"POST\"]`. Shortcuts `@app.get()` and `@app.post()` exist.\n\n### Return values\nA view returns a string (HTML), a `dict` (auto-JSON), a tuple `(body, status, headers)` or a `Response` object.\n\n### url_for\nBuild URLs from endpoint names instead of hard-coding: `url_for(\"profile\", username=\"asha\")`. If you rename a route, links keep working.\n\n### Errors\n`abort(404)` raises an HTTP error; `@app.errorhandler(404)` returns a custom page.\n\n### Request lifecycle\nBrowser -> WSGI server -> Flask app -> route match -> view -> response. Flask is **WSGI**-based and synchronous by default.",
+   "keyPoints": [
+    "Flask is a micro-framework; extensions add features",
+    "@app.route maps URLs to view functions",
+    "Converters like <int:id> validate and convert URL parts",
+    "Use url_for instead of hard-coded URLs",
+    "flask --app app run --debug for development only"
+   ],
+   "pitfalls": [
+    "Running with debug=True in production",
+    "Hard-coding URLs instead of url_for",
+    "Forgetting methods=[\"POST\"] and getting 405 errors"
+   ],
+   "examples": [
+    {
+     "title": "Minimal app",
+     "language": "text",
+     "code": "from flask import Flask, abort, url_for\n\napp = Flask(__name__)\n\n@app.route(\"/\")\ndef home():\n    return \"<h1>Hello, Flask!</h1>\"\n\n@app.route(\"/user/<username>\")\ndef profile(username):\n    return f\"Profile of {username}\"\n\n@app.route(\"/post/<int:post_id>\")\ndef post(post_id):\n    if post_id > 100:\n        abort(404)\n    return {\"id\": post_id, \"title\": f\"Post {post_id}\"}      # dict -> JSON\n\n@app.route(\"/links\")\ndef links():\n    return url_for(\"profile\", username=\"asha\")             # \"/user/asha\"\n\n@app.errorhandler(404)\ndef not_found(error):\n    return \"<h1>Page not found</h1>\", 404\n\nif __name__ == \"__main__\":\n    app.run(debug=True)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is Flask?",
+     "a": "A lightweight WSGI web micro-framework for Python that provides routing, request/response handling and Jinja2 templating, while leaving other features to extensions."
+    },
+    {
+     "q": "Why use url_for?",
+     "a": "It builds URLs from endpoint names, so links stay correct if routes change and special characters are escaped properly."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-templates",
+   "title": "Flask: Jinja2 Templates",
+   "level": "intermediate",
+   "summary": "Render HTML with template inheritance, variables, loops, conditions and filters.",
+   "description": "**Jinja2** is the template engine used by Flask. Templates live in a `templates/` folder and are rendered with `render_template(\"page.html\", name=value)`.\n\n### Syntax\n- `{{ expression }}` prints a value (auto-escaped, which protects against XSS).\n- `{% statement %}` for control flow: `if`, `for`, `block`, `extends`, `include`, `set`.\n- `{# comment #}`.\n\n### Example\n```html\n<h1>Hello {{ user.name }}</h1>\n{% if items %}\n  <ul>\n  {% for item in items %}\n    <li>{{ loop.index }}. {{ item.title | title }}</li>\n  {% endfor %}\n  </ul>\n{% else %}\n  <p>No items.</p>\n{% endif %}\n```\n\n### Template inheritance\nDefine the shared layout once in `base.html` with `{% block content %}{% endblock %}` and extend it in child pages with `{% extends \"base.html\" %}`. This is the core DRY feature.\n\n### Filters\n`{{ text | upper }}`, `| length`, `| default(\"n/a\")`, `| truncate(50)`, `| safe` (marks HTML as trusted, use with great care), `| tojson`.\n\n### Static files and URLs\n`{{ url_for(\"static\", filename=\"style.css\") }}` points to files in `static/`.\n\n### Context\nEvery template can use `request`, `session`, `g`, `config` and `get_flashed_messages()`. Add global variables with `@app.context_processor`.\n\nNever build HTML from user input with string concatenation; let Jinja's auto-escaping do its job.",
+   "keyPoints": [
+    "{{ }} prints, {% %} controls flow",
+    "Auto-escaping blocks XSS unless you use |safe",
+    "extends and block implement layout inheritance",
+    "Use url_for(\"static\", filename=...) for assets",
+    "Filters transform values in the template"
+   ],
+   "pitfalls": [
+    "Marking user input as |safe",
+    "Putting heavy business logic in templates",
+    "Wrong templates folder location (must be next to the app module)"
+   ],
+   "examples": [
+    {
+     "title": "base.html and a child page",
+     "language": "text",
+     "code": "<!-- templates/base.html -->\n<!doctype html>\n<html>\n<head>\n  <title>{% block title %}My Site{% endblock %}</title>\n  <link rel=\"stylesheet\" href=\"{{ url_for('static', filename='style.css') }}\">\n</head>\n<body>\n  <nav><a href=\"{{ url_for('home') }}\">Home</a></nav>\n  {% for message in get_flashed_messages() %}\n    <p class=\"flash\">{{ message }}</p>\n  {% endfor %}\n  {% block content %}{% endblock %}\n</body>\n</html>\n\n<!-- templates/products.html -->\n{% extends \"base.html\" %}\n{% block title %}Products{% endblock %}\n{% block content %}\n  <h1>Products ({{ products | length }})</h1>\n  {% for p in products %}\n    <div>{{ p.name | title }} - Rs {{ \"%.2f\" | format(p.price) }}</div>\n  {% else %}\n    <p>Nothing in stock.</p>\n  {% endfor %}\n{% endblock %}\n\n# app.py\n@app.route(\"/products\")\ndef products():\n    items = [{\"name\": \"pen\", \"price\": 12.5}, {\"name\": \"notebook\", \"price\": 55}]\n    return render_template(\"products.html\", products=items)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does autoescaping do in Jinja2?",
+     "a": "It converts characters like < and > in variables to HTML entities, preventing injected scripts (XSS)."
+    },
+    {
+     "q": "How does template inheritance work?",
+     "a": "A base template defines blocks; child templates extend it and override only the blocks they need."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-request-response",
+   "title": "Flask: Request, Response and Redirects",
+   "level": "intermediate",
+   "summary": "Read query strings, form data, JSON and files; build responses, set cookies and redirect.",
+   "description": "Flask exposes the incoming HTTP request through the global-looking `request` proxy (it is context-local and safe per request).\n\n### Reading input\n| Source | Access |\n|---|---|\n| Query string `?q=py` | `request.args.get(\"q\")` |\n| HTML form fields | `request.form[\"name\"]` / `.get()` |\n| JSON body | `request.get_json()` |\n| Uploaded files | `request.files[\"photo\"]` |\n| Headers | `request.headers[\"User-Agent\"]` |\n| Cookies | `request.cookies.get(\"theme\")` |\n| Method, URL | `request.method`, `request.path`, `request.url` |\n\n`request.form[\"x\"]` raises `400 Bad Request` if missing; prefer `.get(\"x\")` when optional.\n\n### Building responses\n- Return a string, dict or `jsonify(...)`.\n- Set status: `return {\"error\": \"not found\"}, 404`.\n- `make_response(...)` lets you add headers and cookies: `resp.set_cookie(\"theme\", \"dark\")`.\n- `redirect(url_for(\"home\"))` sends a 302.\n- `send_file`, `send_from_directory` for downloads.\n\n### Post/Redirect/Get\nAfter handling a POST, redirect to a GET page so a browser refresh does not resubmit the form.\n\n### Flash messages\n`flash(\"Saved!\")` stores a one-time message in the session; show it with `get_flashed_messages()`.\n\n### File uploads\nAlways use `werkzeug.utils.secure_filename`, restrict extensions and size (`MAX_CONTENT_LENGTH`).",
+   "keyPoints": [
+    "request.args, .form, .json, .files cover all input",
+    "Return dict/jsonify for JSON, tuple for status codes",
+    "Use redirect(url_for(...)) after POST (PRG pattern)",
+    "flash() gives one-time messages",
+    "Sanitise upload filenames and limit size"
+   ],
+   "pitfalls": [
+    "Trusting request data without validation",
+    "Using request.form[...] for optional fields",
+    "Saving uploads with the client-supplied filename"
+   ],
+   "examples": [
+    {
+     "title": "Reading input and returning responses",
+     "language": "text",
+     "code": "from flask import Flask, request, jsonify, redirect, url_for, make_response, flash\n\napp = Flask(__name__)\napp.secret_key = \"change-me\"\n\n@app.route(\"/search\")\ndef search():\n    q = request.args.get(\"q\", \"\").strip()\n    page = request.args.get(\"page\", 1, type=int)\n    return jsonify(query=q, page=page)\n\n@app.route(\"/contact\", methods=[\"GET\", \"POST\"])\ndef contact():\n    if request.method == \"POST\":\n        name = request.form.get(\"name\", \"\").strip()\n        if not name:\n            flash(\"Name is required\")\n            return redirect(url_for(\"contact\"))\n        flash(f\"Thanks {name}!\")\n        return redirect(url_for(\"contact\"))\n    return \"\"\"<form method=\"post\"><input name=\"name\"><button>Send</button></form>\"\"\"\n\n@app.post(\"/api/echo\")\ndef echo():\n    data = request.get_json(silent=True) or {}\n    return jsonify(received=data), 201\n\n@app.route(\"/theme/<name>\")\ndef theme(name):\n    resp = make_response(redirect(url_for(\"search\")))\n    resp.set_cookie(\"theme\", name, max_age=60 * 60 * 24 * 30, httponly=True)\n    return resp",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the Post/Redirect/Get pattern?",
+     "a": "After processing a POST you redirect to a GET URL so refreshing the page does not re-submit the form."
+    },
+    {
+     "q": "request.args vs request.form?",
+     "a": "args holds URL query-string parameters; form holds fields from an HTML form submitted in the request body."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-forms",
+   "title": "Flask: Forms and Validation with WTForms",
+   "level": "intermediate",
+   "summary": "Build validated, CSRF-protected forms using Flask-WTF.",
+   "description": "Handling forms by hand means repeating parsing, validation, error messages and CSRF protection. **Flask-WTF** (WTForms plus CSRF) turns a form into a class.\n\n```bash\npip install flask-wtf email-validator\n```\n\n### Defining a form\n```python\nfrom flask_wtf import FlaskForm\nfrom wtforms import StringField, PasswordField, SubmitField\nfrom wtforms.validators import DataRequired, Email, Length, EqualTo\n\nclass RegisterForm(FlaskForm):\n    email = StringField(\"Email\", validators=[DataRequired(), Email()])\n    password = PasswordField(\"Password\", validators=[DataRequired(), Length(min=8)])\n    confirm = PasswordField(\"Confirm\", validators=[EqualTo(\"password\")])\n    submit = SubmitField(\"Register\")\n```\n\n### In the view\n`form.validate_on_submit()` is `True` only for a POST whose data passes all validators and the CSRF check. Errors are available in `form.errors` and per field in `form.email.errors`.\n\n### In the template\n```html\n<form method=\"post\">\n  {{ form.hidden_tag() }}   <!-- CSRF token -->\n  {{ form.email.label }} {{ form.email() }}\n  {% for e in form.email.errors %}<small>{{ e }}</small>{% endfor %}\n  {{ form.submit() }}\n</form>\n```\n\n### Why CSRF protection?\nCross-Site Request Forgery tricks a logged-in user's browser into sending an unwanted request. A per-session secret token in each form prevents it; this requires `SECRET_KEY`.\n\n### Custom validators\nAdd `validate_<fieldname>(self, field)` methods to a form class to check uniqueness or business rules and raise `ValidationError`.\n\nAlways validate on the **server**, even if you also validate in JavaScript.",
+   "keyPoints": [
+    "FlaskForm classes declare fields and validators",
+    "validate_on_submit() checks method, data and CSRF",
+    "form.hidden_tag() renders the CSRF token",
+    "Custom validate_<field> methods enforce business rules",
+    "SECRET_KEY is required for CSRF"
+   ],
+   "pitfalls": [
+    "Forgetting hidden_tag() and getting a CSRF error",
+    "Relying on client-side validation only",
+    "Not setting SECRET_KEY"
+   ],
+   "examples": [
+    {
+     "title": "Register form view",
+     "language": "text",
+     "code": "from flask import Flask, render_template, redirect, url_for, flash\nfrom flask_wtf import FlaskForm\nfrom wtforms import StringField, PasswordField, SubmitField\nfrom wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError\n\napp = Flask(__name__)\napp.config[\"SECRET_KEY\"] = \"dev-only-secret\"\n\nTAKEN = {\"asha@example.com\"}\n\nclass RegisterForm(FlaskForm):\n    email = StringField(\"Email\", validators=[DataRequired(), Email()])\n    password = PasswordField(\"Password\", validators=[DataRequired(), Length(min=8)])\n    confirm = PasswordField(\"Confirm\", validators=[EqualTo(\"password\", \"Passwords must match\")])\n    submit = SubmitField(\"Register\")\n\n    def validate_email(self, field):\n        if field.data.lower() in TAKEN:\n            raise ValidationError(\"Email already registered\")\n\n@app.route(\"/register\", methods=[\"GET\", \"POST\"])\ndef register():\n    form = RegisterForm()\n    if form.validate_on_submit():\n        flash(\"Account created\")\n        return redirect(url_for(\"register\"))\n    return render_template(\"register.html\", form=form)",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does CSRF protection do?",
+     "a": "It ensures a form submission came from your own page by requiring a secret token that third-party sites cannot know."
+    },
+    {
+     "q": "Why validate on the server too?",
+     "a": "Client-side checks can be bypassed trivially; the server is the only trusted place for validation."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-blueprints",
+   "title": "Flask: Blueprints and the App Factory",
+   "level": "intermediate",
+   "summary": "Organise a growing Flask app into modules with blueprints and an application factory.",
+   "description": "A single `app.py` becomes unmanageable as an app grows. Two patterns keep things organised.\n\n### Blueprints\nA **Blueprint** is a bundle of routes, templates and static files that can be registered on an app, often with a URL prefix. Think of it as a mini-app: `auth`, `blog`, `api`.\n\n```python\n# blog/routes.py\nfrom flask import Blueprint\nbp = Blueprint(\"blog\", __name__, url_prefix=\"/blog\", template_folder=\"templates\")\n\n@bp.route(\"/\")\ndef index(): ...\n```\nEndpoint names become `blog.index`, so `url_for(\"blog.index\")`.\n\n### Application factory\nCreate the app inside a function so you can build different instances (development, testing) and avoid circular imports.\n\n```python\ndef create_app(config_object=\"config.DevConfig\"):\n    app = Flask(__name__)\n    app.config.from_object(config_object)\n    db.init_app(app)\n    from .blog.routes import bp as blog_bp\n    app.register_blueprint(blog_bp)\n    return app\n```\nExtensions are created without an app (`db = SQLAlchemy()`) and attached with `init_app`.\n\n### Typical layout\n```text\nmyapp/\n  __init__.py      # create_app\n  extensions.py    # db, login_manager\n  models.py\n  auth/ routes.py forms.py\n  blog/ routes.py\n  templates/\n  tests/\n```\n\n### Benefits\nSeparation of concerns, easier testing (`create_app(\"config.TestConfig\")`), reuse of blueprints across projects and cleaner team collaboration.",
+   "keyPoints": [
+    "Blueprints group related routes, templates and static files",
+    "Endpoints are prefixed: url_for(\"blog.index\")",
+    "The factory pattern creates configurable app instances",
+    "Create extensions globally, bind them with init_app",
+    "Factories simplify testing and avoid circular imports"
+   ],
+   "pitfalls": [
+    "Forgetting the blueprint name prefix in url_for",
+    "Importing app from a module that imports back (circular import)",
+    "Registering a blueprint twice"
+   ],
+   "examples": [
+    {
+     "title": "Factory with two blueprints",
+     "language": "text",
+     "code": "# extensions.py\nfrom flask_sqlalchemy import SQLAlchemy\ndb = SQLAlchemy()\n\n# auth/routes.py\nfrom flask import Blueprint\nbp = Blueprint(\"auth\", __name__, url_prefix=\"/auth\")\n\n@bp.route(\"/login\")\ndef login():\n    return \"login page\"\n\n# api/routes.py\nfrom flask import Blueprint, jsonify\nbp = Blueprint(\"api\", __name__, url_prefix=\"/api/v1\")\n\n@bp.get(\"/health\")\ndef health():\n    return jsonify(status=\"ok\")\n\n# __init__.py\nfrom flask import Flask\nfrom .extensions import db\n\ndef create_app(config_object=\"config.DevConfig\"):\n    app = Flask(__name__)\n    app.config.from_object(config_object)\n    db.init_app(app)\n\n    from .auth.routes import bp as auth_bp\n    from .api.routes import bp as api_bp\n    app.register_blueprint(auth_bp)\n    app.register_blueprint(api_bp)\n    return app\n\n# run:  flask --app myapp run --debug",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use an application factory?",
+     "a": "It lets you create multiple configured app instances (dev, test, prod), avoids circular imports and makes testing easy."
+    },
+    {
+     "q": "What is a Blueprint?",
+     "a": "A reusable collection of routes, templates and static files that is registered on the application, optionally under a URL prefix."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-sqlalchemy",
+   "title": "Flask: Databases with SQLAlchemy",
+   "level": "intermediate",
+   "summary": "Define models and query a database with Flask-SQLAlchemy and run migrations.",
+   "description": "**SQLAlchemy** is Python's best-known ORM (object-relational mapper): you work with classes and objects instead of raw SQL. **Flask-SQLAlchemy** integrates it with Flask.\n\n```bash\npip install flask-sqlalchemy flask-migrate\n```\n\n### Setup\n```python\napp.config[\"SQLALCHEMY_DATABASE_URI\"] = \"sqlite:///app.db\"\ndb = SQLAlchemy(model_class=Base)\ndb.init_app(app)\n```\nUse `postgresql+psycopg://user:pw@host/db` for PostgreSQL.\n\n### Models\nA model class maps to a table; attributes map to columns. Relationships (`relationship`, `ForeignKey`) link tables.\n\n### Queries (SQLAlchemy 2.0 style)\n- Select: `db.session.execute(db.select(User).where(User.email == e)).scalar_one_or_none()`\n- All: `db.session.scalars(db.select(Post).order_by(Post.id.desc())).all()`\n- By primary key: `db.session.get(User, 1)` or `db.get_or_404(User, 1)`\n- Paginate: `db.paginate(db.select(Post), page=1, per_page=10)`\n- Write: `db.session.add(obj)`, `db.session.delete(obj)`, then `db.session.commit()`.\n\n### Migrations\nUse **Flask-Migrate** (Alembic): `flask db init`, `flask db migrate -m \"add posts\"`, `flask db upgrade`. Never rely on `create_all()` for schema changes in a real project.\n\n### Good habits\nCommit once per request, roll back on error, avoid the N+1 query problem with `selectinload`/`joinedload`, and keep secrets out of the URI by reading from environment variables.",
+   "keyPoints": [
+    "Models are classes; attributes are columns",
+    "Use db.select() with session.execute/scalars (2.0 style)",
+    "session.add + commit saves; rollback on errors",
+    "Flask-Migrate handles schema changes",
+    "Use eager loading to avoid N+1 queries"
+   ],
+   "pitfalls": [
+    "Forgetting db.session.commit()",
+    "Using create_all() instead of migrations in production",
+    "Building SQL with string formatting (injection)"
+   ],
+   "examples": [
+    {
+     "title": "Models and queries",
+     "language": "text",
+     "code": "from flask import Flask, jsonify, request\nfrom flask_sqlalchemy import SQLAlchemy\nfrom sqlalchemy import ForeignKey, String\nfrom sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship\n\nclass Base(DeclarativeBase):\n    pass\n\ndb = SQLAlchemy(model_class=Base)\napp = Flask(__name__)\napp.config[\"SQLALCHEMY_DATABASE_URI\"] = \"sqlite:///blog.db\"\ndb.init_app(app)\n\nclass User(db.Model):\n    id: Mapped[int] = mapped_column(primary_key=True)\n    username: Mapped[str] = mapped_column(String(50), unique=True)\n    posts: Mapped[list[\"Post\"]] = relationship(back_populates=\"author\")\n\nclass Post(db.Model):\n    id: Mapped[int] = mapped_column(primary_key=True)\n    title: Mapped[str] = mapped_column(String(120))\n    user_id: Mapped[int] = mapped_column(ForeignKey(\"user.id\"))\n    author: Mapped[User] = relationship(back_populates=\"posts\")\n\nwith app.app_context():\n    db.create_all()\n\n@app.post(\"/posts\")\ndef create_post():\n    data = request.get_json()\n    user = db.session.scalar(db.select(User).where(User.username == data[\"author\"]))\n    if user is None:\n        user = User(username=data[\"author\"])\n        db.session.add(user)\n    post = Post(title=data[\"title\"], author=user)\n    db.session.add(post)\n    db.session.commit()\n    return jsonify(id=post.id), 201\n\n@app.get(\"/posts\")\ndef list_posts():\n    posts = db.session.scalars(db.select(Post).order_by(Post.id.desc())).all()\n    return jsonify([{\"id\": p.id, \"title\": p.title, \"author\": p.author.username} for p in posts])",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an ORM?",
+     "a": "An Object-Relational Mapper maps database tables to classes and rows to objects so you query and modify data with Python code instead of hand-written SQL."
+    },
+    {
+     "q": "What is the N+1 query problem?",
+     "a": "Loading a list then issuing one extra query per item to fetch a related object; fix with eager loading (joinedload/selectinload)."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-rest-api",
+   "title": "Flask: Building a REST API",
+   "level": "intermediate",
+   "summary": "Design JSON endpoints with correct methods, status codes, validation and error handling.",
+   "description": "A **REST API** exposes resources (users, posts) at URLs and uses HTTP methods as verbs.\n\n| Action | Method | URL | Success code |\n|---|---|---|---|\n| List | GET | `/api/tasks` | 200 |\n| Create | POST | `/api/tasks` | 201 |\n| Read one | GET | `/api/tasks/5` | 200 |\n| Update | PUT / PATCH | `/api/tasks/5` | 200 |\n| Delete | DELETE | `/api/tasks/5` | 204 |\n\n### Principles\n- Nouns in URLs, verbs via methods.\n- Return JSON and use meaningful **status codes**: 400 invalid input, 401 unauthenticated, 403 forbidden, 404 missing, 409 conflict, 422 validation error.\n- Be **stateless**: each request carries what the server needs (token in header).\n- Version the API (`/api/v1/`) and paginate lists.\n\n### In Flask\nUse `jsonify`, `request.get_json()`, `abort`, and a JSON error handler so errors are not HTML pages. For larger projects use **Flask-RESTX**, **Flask-Smorest** or **marshmallow** for schemas, validation and OpenAPI docs.\n\n### Validation\nNever trust the input. Check required keys and types and return `400` with a clear message. Marshmallow or Pydantic schemas centralise this.\n\n### CORS\nBrowsers block cross-origin calls unless the server sends CORS headers; add `flask-cors` for front-end apps hosted on another origin.\n\n### Testing\n`app.test_client().post(\"/api/tasks\", json={...})` makes testing simple with pytest.",
+   "keyPoints": [
+    "Resources as nouns, HTTP methods as verbs",
+    "Use correct status codes: 201 create, 204 delete, 404 missing",
+    "Validate input and return JSON errors",
+    "Version and paginate your API",
+    "Use flask-cors when a separate front-end calls the API"
+   ],
+   "pitfalls": [
+    "Returning 200 for every response",
+    "Returning HTML error pages from an API",
+    "Trusting JSON body fields without validation"
+   ],
+   "examples": [
+    {
+     "title": "Tasks API in memory",
+     "language": "text",
+     "code": "from flask import Flask, jsonify, request, abort\n\napp = Flask(__name__)\ntasks = {1: {\"id\": 1, \"title\": \"Learn Flask\", \"done\": False}}\nnext_id = 2\n\n@app.get(\"/api/v1/tasks\")\ndef list_tasks():\n    done = request.args.get(\"done\")\n    items = list(tasks.values())\n    if done is not None:\n        items = [t for t in items if t[\"done\"] == (done.lower() == \"true\")]\n    return jsonify(items)\n\n@app.post(\"/api/v1/tasks\")\ndef create_task():\n    global next_id\n    data = request.get_json(silent=True) or {}\n    title = str(data.get(\"title\", \"\")).strip()\n    if not title:\n        return jsonify(error=\"title is required\"), 400\n    task = {\"id\": next_id, \"title\": title, \"done\": False}\n    tasks[next_id] = task\n    next_id += 1\n    return jsonify(task), 201\n\n@app.patch(\"/api/v1/tasks/<int:task_id>\")\ndef update_task(task_id):\n    task = tasks.get(task_id) or abort(404)\n    task.update({k: v for k, v in (request.get_json() or {}).items() if k in (\"title\", \"done\")})\n    return jsonify(task)\n\n@app.delete(\"/api/v1/tasks/<int:task_id>\")\ndef delete_task(task_id):\n    if tasks.pop(task_id, None) is None:\n        abort(404)\n    return \"\", 204\n\n@app.errorhandler(404)\ndef not_found(e):\n    return jsonify(error=\"not found\"), 404",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "PUT vs PATCH?",
+     "a": "PUT replaces the whole resource; PATCH applies a partial update."
+    },
+    {
+     "q": "What does stateless mean in REST?",
+     "a": "The server stores no client session between requests; every request carries all information needed, such as an auth token."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-auth-sessions",
+   "title": "Flask: Sessions and Authentication",
+   "level": "intermediate",
+   "summary": "Hash passwords, keep users logged in with sessions, and protect routes with Flask-Login.",
+   "description": "### Sessions\n`flask.session` is a dict-like object stored in a **signed cookie**. Flask signs it with `SECRET_KEY` so users cannot tamper with it, but its contents are readable, so never store secrets there. For server-side sessions use `Flask-Session`.\n\n### Password storage\nNever store plain passwords. Hash them with a slow, salted algorithm:\n```python\nfrom werkzeug.security import generate_password_hash, check_password_hash\nuser.password_hash = generate_password_hash(password)\ncheck_password_hash(user.password_hash, attempt)\n```\n\n### Flask-Login\nManages the logged-in user across requests.\n- `LoginManager` with `login_view = \"auth.login\"`.\n- `UserMixin` on the model supplies `is_authenticated` etc.\n- `@login_manager.user_loader` loads a user from the id stored in the session.\n- `login_user(user, remember=True)`, `logout_user()`, `current_user`, `@login_required`.\n\n### Token-based auth for APIs\nBrowsers use cookies; APIs and mobile apps typically send `Authorization: Bearer <JWT>`. Extensions: `Flask-JWT-Extended`.\n\n### Security checklist\n- Hash passwords; never log them.\n- `SECRET_KEY` from the environment, long and random.\n- `SESSION_COOKIE_HTTPONLY`, `SESSION_COOKIE_SECURE`, `SESSION_COOKIE_SAMESITE=\"Lax\"`.\n- CSRF protection on every state-changing form.\n- Use HTTPS in production, rate-limit login attempts, validate `next` redirects.",
+   "keyPoints": [
+    "session is a signed cookie, not encrypted",
+    "Hash passwords with generate_password_hash",
+    "Flask-Login provides login_user, logout_user, @login_required",
+    "Use JWT/bearer tokens for APIs",
+    "Set secure cookie flags and a strong SECRET_KEY in production"
+   ],
+   "pitfalls": [
+    "Storing plain-text or MD5 passwords",
+    "Putting sensitive data in the session cookie",
+    "Redirecting to an unvalidated next parameter (open redirect)"
+   ],
+   "examples": [
+    {
+     "title": "Login and protected route",
+     "language": "text",
+     "code": "from flask import Flask, request, redirect, url_for, render_template, flash\nfrom flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user\nfrom werkzeug.security import generate_password_hash, check_password_hash\n\napp = Flask(__name__)\napp.config[\"SECRET_KEY\"] = \"load-from-environment\"\n\nlogin_manager = LoginManager(app)\nlogin_manager.login_view = \"login\"\n\nclass User(UserMixin):\n    def __init__(self, id, email, password_hash):\n        self.id, self.email, self.password_hash = id, email, password_hash\n\nUSERS = {\"1\": User(\"1\", \"asha@example.com\", generate_password_hash(\"secret123\"))}\n\n@login_manager.user_loader\ndef load_user(user_id):\n    return USERS.get(user_id)\n\n@app.route(\"/login\", methods=[\"GET\", \"POST\"])\ndef login():\n    if request.method == \"POST\":\n        email = request.form.get(\"email\", \"\")\n        password = request.form.get(\"password\", \"\")\n        user = next((u for u in USERS.values() if u.email == email), None)\n        if user and check_password_hash(user.password_hash, password):\n            login_user(user)\n            return redirect(url_for(\"dashboard\"))\n        flash(\"Invalid credentials\")\n    return render_template(\"login.html\")\n\n@app.route(\"/dashboard\")\n@login_required\ndef dashboard():\n    return f\"Welcome {current_user.email}\"\n\n@app.route(\"/logout\")\n@login_required\ndef logout():\n    logout_user()\n    return redirect(url_for(\"login\"))",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does Flask store sessions?",
+     "a": "By default in a client-side cookie signed with SECRET_KEY; the data is tamper-proof but visible to the user."
+    },
+    {
+     "q": "Why hash passwords instead of encrypting them?",
+     "a": "Hashing is one-way, so a database leak does not reveal passwords; salted slow hashes also resist brute-force attacks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "py-flask-config-deployment",
+   "title": "Flask: Configuration and Deployment",
+   "level": "intermediate",
+   "summary": "Manage settings per environment and deploy with gunicorn, a reverse proxy and Docker.",
+   "description": "### Configuration\n`app.config` is a dict. Load it from objects, files or the environment:\n```python\nclass Config:\n    SECRET_KEY = os.environ[\"SECRET_KEY\"]\n    SQLALCHEMY_DATABASE_URI = os.environ.get(\"DATABASE_URL\", \"sqlite:///app.db\")\nclass ProdConfig(Config):\n    DEBUG = False\nclass TestConfig(Config):\n    TESTING = True\napp.config.from_object(\"config.ProdConfig\")\n```\nKeep **secrets out of source control**: use environment variables or a `.env` file loaded with `python-dotenv` (Flask does this automatically for `.flaskenv`/`.env`). Follow the 12-factor idea: same code, different config per environment.\n\n### Why not `flask run` in production?\nThe built-in server is single-purpose for development. Use a production **WSGI server**.\n\n### gunicorn\n```bash\npip install gunicorn\ngunicorn -w 4 -b 0.0.0.0:8000 \"myapp:create_app()\"\n```\nWorkers = roughly `2 * cores + 1`. On Windows use `waitress` instead.\n\n### Reverse proxy\nPut **Nginx** (or a cloud load balancer) in front of gunicorn to terminate HTTPS, serve static files and buffer slow clients. Behind a proxy use `ProxyFix` so Flask sees the real scheme and client IP.\n\n### Docker\nPackage the app in a container: a `Dockerfile` that installs requirements and starts gunicorn.\n\n### Checklist\n`DEBUG=False`, strong `SECRET_KEY`, HTTPS, logging, database migrations run on deploy, a health endpoint, and process supervision (systemd, Docker restart policies).",
+   "keyPoints": [
+    "Load config from env vars and config classes",
+    "Never use the built-in dev server in production",
+    "gunicorn (or waitress on Windows) serves the WSGI app",
+    "Nginx handles TLS, static files and buffering",
+    "Turn DEBUG off and keep secrets out of git"
+   ],
+   "pitfalls": [
+    "Leaving debug mode on (remote code execution risk)",
+    "Committing .env or SECRET_KEY",
+    "Running a single worker for a busy site"
+   ],
+   "examples": [
+    {
+     "title": "gunicorn and Dockerfile",
+     "language": "text",
+     "code": "# requirements.txt: flask, gunicorn, flask-sqlalchemy, psycopg[binary]\n\n# Dockerfile\nFROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nENV FLASK_ENV=production\nEXPOSE 8000\nCMD [\"gunicorn\", \"-w\", \"4\", \"-b\", \"0.0.0.0:8000\", \"myapp:create_app()\"]\n\n# build and run\ndocker build -t myapp .\ndocker run -p 8000:8000 -e SECRET_KEY=... -e DATABASE_URL=... myapp\n\n# minimal nginx location\n# location / { proxy_pass http://127.0.0.1:8000; proxy_set_header Host $host; }",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use gunicorn instead of flask run?",
+     "a": "It is a production-grade WSGI server with multiple worker processes, robustness and performance; the Flask dev server is for development only."
+    },
+    {
+     "q": "Where should secrets live?",
+     "a": "In environment variables or a secrets manager, never in the repository."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

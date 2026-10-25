@@ -1,0 +1,649 @@
+{
+  "id": "js-err-handling",
+  "title": "Handling and Custom Errors",
+  "level": "intermediate",
+  "topics": [
+    {
+      "source": "",
+      "pitfalls": [
+        "return in finally hides exceptions thrown in try/catch.",
+        "try { setTimeout(() => { throw new Error() }) } catch {} does NOT catch the error.",
+        "try { fetchData() } catch {} without await does not catch the rejected promise."
+      ],
+      "id": "js-err-try-catch-finally",
+      "title": "try / catch / finally Semantics (including return in finally)",
+      "level": "beginner",
+      "summary": "Exactly how try, catch and finally run, what they return and why return inside finally overrides everything.",
+      "description": "`try...catch...finally` looks simple, but its exact rules explain many surprising bugs.\n\n### Syntax\n```js\ntry {\n  // code that might throw\n} catch (error) {      // optional binding (ES2019): catch { ... }\n  // runs only if try threw\n} finally {\n  // runs ALWAYS: after try, after catch, even after return/break/continue\n}\n```\nYou need at least one of `catch` or `finally`.\n\n### Rules to remember\n1. **Only synchronous errors** inside the `try` block are caught. A rejected promise or a `setTimeout` callback is *outside* the block unless you `await` it.\n2. If `try` finishes normally, `catch` is skipped. If it throws, execution jumps to `catch` and the rest of `try` is skipped.\n3. `finally` runs **in all cases** - even if `try` or `catch` executes `return`, `break`, `continue`, or throws again.\n4. **A `return` (or `throw`) inside `finally` overrides** the earlier `return` or `throw`. This silently swallows errors - avoid it.\n5. The `catch` binding is **block scoped**: `error` does not exist after the block. Variables declared with `let/const` inside `try` are not visible in `catch` or `finally` - declare them before `try`.\n6. If `catch` throws, `finally` still runs, and the new error propagates.\n7. `return` value is computed *before* `finally` runs, but a later `finally` can still change an object it points to.\n\n### Typical uses of finally\nHide a loading spinner, release a lock, close a file or database connection, restore state - things that must happen on success and on failure.\n\n### Optional catch binding\nWhen you do not need the error: `try { JSON.parse(x) } catch { return null }`. Do this only when ignoring it is truly correct; otherwise log it.\n\n### Performance and style\nKeep the `try` block small - wrap only the risky call, not 100 lines, so you know what failed. Do not use exceptions for normal control flow.",
+      "keyPoints": [
+        "finally always runs, even after return, break, continue or a new throw.",
+        "return or throw inside finally overrides the previous return/throw and swallows errors.",
+        "try/catch handles only synchronous errors; use await or .catch for promises.",
+        "The catch parameter is block scoped; declare outer variables before try.",
+        "Keep try blocks small and catch only what you can handle."
+      ],
+      "examples": [
+        {
+          "title": "Execution order and return in finally",
+          "language": "javascript",
+          "code": "function a() { try { return \"try\"; } finally { console.log(\"finally runs after return is evaluated\"); } }\nfunction b() { try { return \"try\"; } finally { return \"finally\"; } }           // overrides\nfunction c() { try { throw new Error(\"lost\"); } finally { return \"swallowed\"; } } // error swallowed!\nfunction d() {\n  try { throw new Error(\"first\"); }\n  catch (e) { throw new Error(\"from catch\"); }\n  finally { console.log(\"cleanup always runs\"); }\n}\nconsole.log(a());\nconsole.log(b());\nconsole.log(c());\ntry { d(); } catch (e) { console.log(\"caught:\", e.message); }",
+          "explanation": ""
+        },
+        {
+          "title": "finally with loops and mutation",
+          "language": "javascript",
+          "code": "for (let i = 1; i <= 3; i++) {\n  try {\n    if (i === 2) continue;\n    console.log(\"body\", i);\n  } finally {\n    console.log(\"finally\", i);       // runs even for the continue\n  }\n}\nfunction f() {\n  const state = { n: 0 };\n  try { return state; } finally { state.n = 99; }   // object is shared, so the caller sees 99\n}\nconsole.log(f().n);\nfunction g() {\n  let n = 0;\n  try { return n; } finally { n = 99; }             // primitive copied before finally\n}\nconsole.log(g());",
+          "explanation": ""
+        },
+        {
+          "title": "Scope and async traps",
+          "language": "javascript",
+          "code": "let result;                    // declare outside so it is visible after the block\ntry {\n  const parsed = JSON.parse(\"{bad json}\");\n  result = parsed;\n} catch {\n  result = \"fallback\";\n}\nconsole.log(result);\n\ntry {\n  setTimeout(() => { console.log(\"timer callback runs later, outside the try block\"); }, 0);\n  Promise.reject(new Error(\"async failure\")).catch((e) => console.log(\"caught by .catch:\", e.message));\n} catch (e) {\n  console.log(\"never reached\");\n}\n(async () => {\n  try { await Promise.reject(new Error(\"awaited\")); }\n  catch (e) { console.log(\"caught with await:\", e.message); }\n  finally { console.log(\"async finally\"); }\n})();",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What happens if both try and finally contain return?",
+          "a": "The return in finally wins; the value from try is discarded. The same applies to throw: a return in finally swallows an exception from try."
+        },
+        {
+          "q": "Does finally run if try returns?",
+          "a": "Yes. The return value is evaluated, then finally runs, then the function actually returns (unless finally returns/throws itself)."
+        },
+        {
+          "q": "Why does try/catch not catch my setTimeout or promise error?",
+          "a": "Those callbacks run later, after the try block has finished. Use .catch, or await inside the try of an async function, and add try/catch inside the callback."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "catch (e) { throw new Error(e.message) } loses the original stack and type - use cause.",
+        "Logging and rethrowing at every level produces the same error ten times in the logs.",
+        "Throwing inside finally replaces the original error."
+      ],
+      "id": "js-err-throw-rethrow",
+      "title": "throw, Rethrow and Error Propagation",
+      "level": "beginner",
+      "summary": "How throw unwinds the call stack, when to rethrow, and how to keep the original stack trace.",
+      "description": "### throw\n`throw expression` stops the current function immediately. The engine **unwinds the call stack** frame by frame looking for a `catch`. If it reaches the top without finding one the error is **uncaught**: browsers log `Uncaught Error: ...` and fire the global `error` event; Node.js prints the stack and exits with code 1.\n\nYou can throw any value, but throw `Error` objects (or subclasses) so that you get `name`, `message` and `stack`.\n\n### Propagation\nErrors travel upward through callers; every function on the way is *skipped*, which is why you rarely need `try/catch` everywhere. **Catch where you can do something useful**: show a message, retry, fall back, or add context. Low-level functions should usually throw; the top-level code (UI event handler, request handler, `main()`) decides what to do.\n\n### Rethrow patterns\n| Pattern | Code | When |\n|---|---|---|\n| Pure rethrow | `catch (e) { cleanup(); throw e; }` | you only need side effects; stack is preserved |\n| Conditional rethrow | `if (!(e instanceof Expected)) throw e;` | handle one kind only |\n| Wrap and rethrow | `throw new AppError(\"Load failed\", { cause: e })` | add context, keep the original in `cause` |\n| Log and rethrow | `console.error(e); throw e;` | at boundaries only; risk of duplicate logs |\n\n`throw e` keeps the **original stack** (the stack is captured when the Error is *created*, not when thrown). Creating a new error loses the original stack unless you pass `cause`.\n\n### throw in expressions (workaround)\nThere is no throw expression yet; use a helper: `const required = (name) => { throw new Error(name + \" is required\"); };` then `function f(a = required(\"a\")) {}`.\n\n### Errors in different places\n| Where | How it surfaces |\n|---|---|\n| Synchronous code | caught by surrounding `try/catch` |\n| `async` function | becomes a **rejected promise** |\n| Promise callback (`then`) | rejects the derived promise |\n| Event handler / timer | global `error` event / uncaught exception |",
+      "keyPoints": [
+        "throw unwinds the stack until a catch is found; otherwise the error is uncaught.",
+        "Throw Error objects; the stack is recorded at creation time.",
+        "Catch only where you can act; let low-level functions throw.",
+        "Rethrow with throw e to keep the stack, or wrap with { cause } to add context.",
+        "In async functions a throw becomes a rejected promise."
+      ],
+      "examples": [
+        {
+          "title": "Propagation through the call stack",
+          "language": "javascript",
+          "code": "function level3() { throw new RangeError(\"deep failure\"); }\nfunction level2() { console.log(\"level2 start\"); level3(); console.log(\"never printed\"); }\nfunction level1() { try { level2(); } catch (e) { console.log(\"level1 caught\", e.name); throw e; } }\ntry { level1(); } catch (e) { console.log(\"top caught\", e.message, \"| same object:\", e instanceof RangeError); }",
+          "explanation": ""
+        },
+        {
+          "title": "Rethrow vs wrap",
+          "language": "javascript",
+          "code": "function readConfig() { return JSON.parse(\"{oops\"); }\n\nfunction loadWrapped() {\n  try { return readConfig(); }\n  catch (e) { throw new Error(\"Could not load config\", { cause: e }); }\n}\ntry { loadWrapped(); }\ncatch (e) {\n  console.log(e.message);\n  console.log(\"cause:\", e.cause.name, \"-\", e.cause.message);\n}\n\nfunction onlySyntax(fn) {\n  try { return fn(); }\n  catch (e) { if (e instanceof SyntaxError) return \"bad json\"; throw e; }\n}\nconsole.log(onlySyntax(() => JSON.parse(\"{\")));\ntry { onlySyntax(() => null.x); } catch (e) { console.log(\"rethrown unknown:\", e.name); }",
+          "explanation": ""
+        },
+        {
+          "title": "Throw helper for required args",
+          "language": "javascript",
+          "code": "const required = (name) => { throw new TypeError(name + \" is required\"); };\nfunction createUser(name = required(\"name\"), age = 18) { return { name, age }; }\nconsole.log(createUser(\"Asha\"));\ntry { createUser(); } catch (e) { console.log(e.name + \": \" + e.message); }",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Where is the stack trace of an error captured?",
+          "a": "When the Error object is created (new Error), not when it is thrown. So rethrowing the same object keeps the original stack."
+        },
+        {
+          "q": "Why wrap an error with cause?",
+          "a": "To add context (what operation failed) while preserving the low-level error and its stack for debugging."
+        },
+        {
+          "q": "What happens to an error thrown inside an async function?",
+          "a": "The function returns a rejected promise with that error; it must be handled with await in try/catch or .catch()."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "this.constructor.name changes after minification - do not rely on it for protocols.",
+        "Forgetting super(message) leaves message empty (and throws in derived classes if super is never called).",
+        "Do not store sensitive data (tokens, passwords) in error details that get logged."
+      ],
+      "id": "js-err-custom-classes",
+      "title": "Custom Error Classes",
+      "level": "intermediate",
+      "summary": "Create your own Error subclasses with names, codes and extra data - and avoid the common pitfalls.",
+      "description": "Built-in types cannot express your domain: \"user not found\", \"payment declined\", \"validation failed\". **Custom errors** give each situation a class that callers can test with `instanceof` and that carries useful data.\n\n### Basic pattern\n```js\nclass AppError extends Error {\n  constructor(message, options = {}) {\n    super(message, options);              // passes cause along\n    this.name = this.constructor.name;     // \"AppError\" / subclass name\n    this.code = options.code;\n    if (Error.captureStackTrace) Error.captureStackTrace(this, this.constructor); // V8: clean stack\n  }\n}\nclass NotFoundError extends AppError {}\n```\n\n### Details that matter\n- Call `super(message)` first; it sets `message` and the `stack`.\n- Set `this.name` - otherwise it stays `\"Error\"` in logs. Using `this.constructor.name` breaks after **minification** (names are mangled) - set a literal string for server-visible names.\n- `Error.captureStackTrace(this, ctor)` is V8-only (Chrome, Node, Edge). It hides the constructor frames from the trace.\n- Add **machine-readable** fields: `code` (`\"E_NOT_FOUND\"`), `status` (`404`), `details`.\n- `JSON.stringify(err)` returns `{}` for errors; implement `toJSON()` to log/send them.\n- Use the class hierarchy to build categories: `AppError → HttpError → NotFoundError`.\n- `instanceof` works for classes in the same realm; for cross-realm checks add a `Symbol.hasInstance` or compare `name` / `code`.\n- In old ES5 transpilers (Babel 5, TypeScript targeting ES5) `extends Error` broke `instanceof`; with modern targets this is solved. If needed call `Object.setPrototypeOf(this, new.target.prototype)`.\n\n### When to create a class\nWhen callers need to *react differently* (retry vs show message vs report). Do not create one class per message string. Typical set: `ValidationError`, `NotFoundError`, `AuthError`, `NetworkError` (with `status`), `TimeoutError`.",
+      "keyPoints": [
+        "class X extends Error { constructor(msg, opts){ super(msg, opts); this.name = \"X\"; } }",
+        "Set name explicitly - it defaults to \"Error\".",
+        "Add code/status/details fields for programmatic handling.",
+        "Implement toJSON because JSON.stringify(err) gives {}.",
+        "Error.captureStackTrace is V8-only: feature-test it."
+      ],
+      "examples": [
+        {
+          "title": "A small error hierarchy",
+          "language": "javascript",
+          "code": "class AppError extends Error {\n  constructor(message, { code = \"E_APP\", status = 500, cause, details } = {}) {\n    super(message, { cause });\n    this.name = \"AppError\";\n    this.code = code;\n    this.status = status;\n    this.details = details;\n    if (typeof Error.captureStackTrace === \"function\") Error.captureStackTrace(this, this.constructor);\n  }\n  toJSON() { return { name: this.name, code: this.code, status: this.status, message: this.message, details: this.details }; }\n}\nclass NotFoundError extends AppError {\n  constructor(what) { super(what + \" not found\", { code: \"E_NOT_FOUND\", status: 404 }); this.name = \"NotFoundError\"; }\n}\nclass ValidationError extends AppError {\n  constructor(fields) { super(\"Validation failed\", { code: \"E_VALIDATION\", status: 422, details: fields }); this.name = \"ValidationError\"; }\n}\n\nconst errors = [new NotFoundError(\"User 42\"), new ValidationError({ email: \"invalid\" }), new AppError(\"boom\")];\nfor (const e of errors) {\n  console.log(e.name, e.status, e instanceof AppError, e instanceof NotFoundError, e instanceof Error);\n}\nconsole.log(JSON.stringify(errors[1]));\nconsole.log(String(errors[0]));\nconsole.log(errors[0].stack.split(\"\\n\")[0]);",
+          "explanation": ""
+        },
+        {
+          "title": "Handling by class",
+          "language": "javascript",
+          "code": "class HttpError extends Error {\n  constructor(status, message) { super(message); this.name = \"HttpError\"; this.status = status; }\n}\nfunction handle(e) {\n  if (e instanceof HttpError) {\n    if (e.status === 401) return \"redirect to login\";\n    if (e.status === 404) return \"show not-found page\";\n    if (e.status >= 500) return \"show retry banner\";\n    return \"show message: \" + e.message;\n  }\n  throw e;\n}\nfor (const s of [401, 404, 503, 400]) console.log(s, \"->\", handle(new HttpError(s, \"HTTP \" + s)));",
+          "explanation": ""
+        },
+        {
+          "title": "Common pitfalls",
+          "language": "javascript",
+          "code": "class Forgot extends Error {}                               // no name set\nconst f = new Forgot(\"hi\");\nconsole.log(f.name, String(f), f.constructor.name);          // name is \"Error\"\n\nclass Good extends Error { get name() { return \"Good\"; } }   // prototype-level name\nconsole.log(String(new Good(\"hi\")));\n\n// instanceof across realms is not possible here, so many libraries also set a flag:\nclass Flagged extends Error { constructor(m) { super(m); this.isFlagged = true; } }\nconst plain = { isFlagged: true, message: \"from another realm\" };\nconsole.log(new Flagged(\"x\") instanceof Flagged, plain instanceof Flagged, plain.isFlagged === true);\n\nconsole.log(JSON.stringify(new Error(\"lost\")), JSON.stringify({ ...new Error(\"lost\") }));",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why set this.name in a custom error?",
+          "a": "name defaults to \"Error\" (inherited), so logs and err.toString() would not show your type. Setting name makes the type visible without checking the constructor."
+        },
+        {
+          "q": "What does Error.captureStackTrace do?",
+          "a": "A V8 API that records a stack trace on the given object and can omit frames above a constructor function, so your error class constructor is not part of the trace."
+        },
+        {
+          "q": "When should you create a custom error class?",
+          "a": "When callers need to handle the situation differently (retry, show a message, log as bug). Use a code or status field for details instead of a new class per message."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Rethrowing new Error(e.message) drops the stack and the type of the original.",
+        "JSON.stringify(err) does not include cause - serialise it yourself."
+      ],
+      "id": "js-err-cause-chains",
+      "title": "error.cause: Wrapping and Chaining Errors",
+      "level": "intermediate",
+      "summary": "Keep the root cause while adding context at every layer, then log the whole chain.",
+      "description": "Real failures happen in layers: *the database failed* → *the repository could not load the user* → *the request handler could not render the page*. If every layer rethrows a new Error with only its own message, the root cause is lost. The ES2022 **cause** option chains them:\n\n```js\ntry {\n  await db.query(sql);\n} catch (err) {\n  throw new Error(\"Could not load user \" + id, { cause: err });\n}\n```\n\n### Rules\n- `cause` can be **any value**, but usually the original error object.\n- It is stored as a non-enumerable own property: `err.cause`.\n- Use it at **layer boundaries**: translate a low-level error into a domain error, but keep the low-level one.\n- The new message should say **what you were trying to do** (\"Could not load user 7\"), not repeat the inner message.\n- The inner error keeps its own `stack`, so debugging shows both places.\n\n### Reading a chain\n```js\nfunction* chain(err) { while (err) { yield err; err = err.cause; } }\n```\nLogging libraries and DevTools show the cause automatically: Chrome prints `Caused by: ...` below the stack; Node's `console.error` prints `[cause]: ...`.\n\n### What not to do\n- Do not append the inner message into the outer message (`\"Failed: \" + e.message`) - that loses type, stack and code.\n- Do not create very long chains of identical messages; each layer should add distinct information.\n- Avoid cycles (an error that is its own cause) - walking the chain would loop forever; guard with a `Set`.\n\n### Support\nChrome 93+, Firefox 91+, Safari 15+, Node 16.9+. For older environments define a manual `this.cause = cause` in your custom base class.",
+      "keyPoints": [
+        "new Error(message, { cause: original }) keeps the root cause.",
+        "cause is non-enumerable; read err.cause, not Object.keys.",
+        "Add context at layer boundaries (what you were trying to do).",
+        "Walk the chain in loggers; guard against cycles.",
+        "Prefer cause over concatenating the old message."
+      ],
+      "examples": [
+        {
+          "title": "Three layers, one chain",
+          "language": "javascript",
+          "code": "function queryDb() { throw new Error(\"connection refused (ECONNREFUSED)\"); }\nfunction loadUser(id) {\n  try { return queryDb(); }\n  catch (e) { throw new Error(\"Could not load user \" + id, { cause: e }); }\n}\nfunction renderProfile(id) {\n  try { return loadUser(id); }\n  catch (e) { throw new Error(\"Profile page failed\", { cause: e }); }\n}\n\ntry { renderProfile(7); }\ncatch (err) {\n  let level = 0;\n  for (let e = err; e; e = e.cause) console.log(\"  \".repeat(level++) + (level > 1 ? \"caused by: \" : \"\") + e.message);\n  console.log(\"root cause:\", err.cause.cause.message);\n}",
+          "explanation": ""
+        },
+        {
+          "title": "A chain-to-JSON serializer",
+          "language": "javascript",
+          "code": "function serialize(err, seen = new Set()) {\n  if (!(err instanceof Error)) return err;\n  if (seen.has(err)) return \"[circular cause]\";\n  seen.add(err);\n  return {\n    name: err.name,\n    message: err.message,\n    code: err.code,\n    cause: err.cause === undefined ? undefined : serialize(err.cause, seen),\n  };\n}\nconst root = new TypeError(\"fetch failed\");\nconst mid = new Error(\"service unavailable\", { cause: root });\nconst top = new Error(\"checkout failed\", { cause: mid });\nconsole.log(JSON.stringify(serialize(top), null, 2));\n\nconst loop = new Error(\"a\"); loop.cause = loop;\nconsole.log(JSON.stringify(serialize(loop)));",
+          "explanation": ""
+        },
+        {
+          "title": "cause can be any value",
+          "language": "javascript",
+          "code": "const e1 = new Error(\"with string\", { cause: \"plain text reason\" });\nconst e2 = new Error(\"with object\", { cause: { status: 503, retryAfter: 30 } });\nconsole.log(e1.cause, e2.cause.retryAfter);\nconsole.log(\"cause\" in new Error(\"no cause\"), \"cause\" in e1);\nconsole.log(Object.getOwnPropertyDescriptor(e1, \"cause\").enumerable);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What problem does error.cause solve?",
+          "a": "It preserves the original error when you translate or wrap it, so higher layers get a meaningful message and developers still see the root cause and its stack."
+        },
+        {
+          "q": "Is cause enumerable?",
+          "a": "No. It is a non-enumerable own property, so it does not appear in JSON.stringify or Object.keys."
+        },
+        {
+          "q": "How do you print the whole chain?",
+          "a": "Loop err = err.cause until undefined, or rely on console.error / DevTools which print nested causes."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Promise.all hides the other failures: only the first rejection is reported.",
+        "An AggregateError with no context per item is hard to act on - attach the input that failed."
+      ],
+      "id": "js-err-aggregate-handling",
+      "title": "Handling Multiple Errors: AggregateError, Promise.any and Collecting Failures",
+      "level": "intermediate",
+      "summary": "Report all failures at once: validation collectors, Promise.any, and turning allSettled results into one AggregateError.",
+      "description": "Sometimes the correct response to failure is not to stop at the first problem, but to **collect all of them**.\n\n### Where multiple errors appear\n1. **Validation** - show every invalid field at once, not one per submit.\n2. **Parallel tasks** - upload 5 files; report which failed.\n3. **Redundant sources** - try 3 mirrors; fail only if all fail (`Promise.any`).\n4. **Cleanup** - closing several resources where more than one close can fail.\n\n### Tools\n| Tool | Purpose |\n|---|---|\n| `new AggregateError(errors, message)` | one error holding `err.errors` |\n| `Promise.any` | first success wins; rejects with `AggregateError` when all fail |\n| `Promise.allSettled` | never rejects; returns `{status, value/reason}` per promise |\n| plain array | collect errors yourself and throw at the end |\n\n### The collector pattern\n```js\nconst errors = [];\nfor (const item of items) {\n  try { process(item); } catch (e) { errors.push(e); }\n}\nif (errors.length) throw new AggregateError(errors, errors.length + \" items failed\");\n```\nThis is the *\"continue on error, report at the end\"* strategy, common in batch jobs, linters and form validation.\n\n### allSettled → AggregateError\n```js\nconst results = await Promise.allSettled(tasks);\nconst failed = results.filter(r => r.status === \"rejected\").map(r => r.reason);\nif (failed.length) throw new AggregateError(failed, \"Some tasks failed\");\n```\n\n### Design tips\n- Decide per feature: **fail fast** (`Promise.all`) when one failure makes the rest pointless; **collect** when partial success is useful.\n- Keep the `errors` array items meaningful (include which input failed, e.g. `cause` or `item` field).\n- Log the individual errors, not just the aggregate message (\"All promises were rejected\" says nothing).",
+      "keyPoints": [
+        "Collect-and-throw lets users fix all validation problems at once.",
+        "Promise.any rejects with AggregateError only if every promise fails.",
+        "Promise.allSettled never rejects; convert failures to an AggregateError if needed.",
+        "Always log err.errors, not just the aggregate message.",
+        "Choose fail-fast vs collect-all deliberately."
+      ],
+      "examples": [
+        {
+          "title": "Batch job with a collector",
+          "language": "javascript",
+          "code": "function process(n) {\n  if (n % 3 === 0) throw new RangeError(\"item \" + n + \" is divisible by 3\");\n  if (n % 5 === 0) throw new TypeError(\"item \" + n + \" is divisible by 5\");\n  return n * 2;\n}\nconst ok = [], errors = [];\nfor (const n of [1, 2, 3, 4, 5, 6]) {\n  try { ok.push(process(n)); } catch (e) { errors.push(e); }\n}\nconsole.log(\"ok:\", ok);\ntry { if (errors.length) throw new AggregateError(errors, errors.length + \" items failed\"); }\ncatch (e) { console.log(e.message); e.errors.forEach((x) => console.log(\" -\", x.name, x.message)); }",
+          "explanation": ""
+        },
+        {
+          "title": "allSettled to AggregateError",
+          "language": "javascript",
+          "code": "const task = (name, ok) => new Promise((res, rej) => setTimeout(() => (ok ? res(name) : rej(new Error(name + \" failed\"))), 5));\n\n(async () => {\n  const results = await Promise.allSettled([task(\"upload-a\", true), task(\"upload-b\", false), task(\"upload-c\", false)]);\n  const done = results.filter((r) => r.status === \"fulfilled\").map((r) => r.value);\n  const failed = results.filter((r) => r.status === \"rejected\").map((r) => r.reason);\n  console.log(\"succeeded:\", done);\n  try { if (failed.length) throw new AggregateError(failed, failed.length + \" uploads failed\"); }\n  catch (e) { console.log(e.name, \"->\", e.errors.map((x) => x.message)); }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "Promise.any with mirrors",
+          "language": "javascript",
+          "code": "const mirror = (name, ok, ms) => new Promise((res, rej) => setTimeout(() => (ok ? res(name + \" data\") : rej(new Error(name + \" down\"))), ms));\n\n(async () => {\n  console.log(await Promise.any([mirror(\"eu\", false, 5), mirror(\"us\", true, 15), mirror(\"asia\", true, 25)]));\n  try { await Promise.any([mirror(\"eu\", false, 5), mirror(\"us\", false, 10)]); }\n  catch (e) { console.log(e instanceof AggregateError, e.errors.map((x) => x.message).join(\", \")); }\n})();",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "When would you collect errors instead of failing fast?",
+          "a": "When partial results are valuable or users benefit from seeing every problem: form validation, batch imports, linters, parallel uploads."
+        },
+        {
+          "q": "How does Promise.allSettled differ from Promise.all?",
+          "a": "all rejects on the first failure and discards other results; allSettled waits for everything and returns an array describing each outcome, never rejecting."
+        },
+        {
+          "q": "What is inside an AggregateError from Promise.any?",
+          "a": "An errors array with the rejection reasons in input order and the message \"All promises were rejected\"."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Retrying without a limit or delay can overload a failing server (retry storm).",
+        "Fallbacks that silently return empty data can hide outages: log them."
+      ],
+      "id": "js-err-strategies",
+      "title": "Error Handling Strategies: Fail Fast, Wrap, Retry, Fallback",
+      "level": "intermediate",
+      "summary": "Choose the right response to each failure: fail fast, add context, retry with backoff, fall back or degrade gracefully.",
+      "description": "Catching an error is not a strategy. Decide **what the program should do** for each kind of failure.\n\n| Strategy | Use when | Example |\n|---|---|---|\n| **Fail fast** | invalid state would corrupt data or hide bugs (programmer errors) | throw on invalid argument, `assert` |\n| **Wrap with context** | crossing a layer boundary | `new Error(\"Load user failed\", {cause})` |\n| **Retry** | *transient* failures: network blips, `503`, `429`, timeouts | retry 3 times with exponential backoff + jitter |\n| **Fallback / default** | non-critical feature | cached value, default avatar, empty list |\n| **Graceful degradation** | part of the page can fail | show widget error, keep the page |\n| **Circuit breaker** | a dependency is down | stop calling for N seconds |\n| **Report and continue** | background or analytics tasks | log to monitoring |\n| **Crash and restart** | unrecoverable server state | process manager restarts |\n\n### Operational vs programmer errors\n- **Operational** errors are expected in a correct program: network down, file missing, invalid user input. Handle them.\n- **Programmer** errors are bugs: `undefined is not a function`, wrong arguments. Do **not** retry or hide them - fix the code, and let tests/monitoring find them.\n\n### Retry rules\n1. Retry only *idempotent* operations (GET, or POST with an idempotency key).\n2. Retry only *transient* errors (network error, 5xx, 429, 408), never 4xx validation errors.\n3. Use **exponential backoff** (200ms, 400ms, 800ms...) with **jitter** (random part) to avoid thundering herds.\n4. Set a maximum attempts / total time. Respect `Retry-After`.\n\n### Timeouts\nEvery network call needs a timeout (`AbortSignal.timeout(5000)`), otherwise \"no error\" can mean \"hangs forever\".\n\n### User-facing messages\nShow a short friendly message (\"Could not save. Try again.\"), log technical details separately, and never show raw stack traces or SQL errors to users.",
+      "keyPoints": [
+        "Decide per error: fail fast, wrap, retry, fallback, degrade or report.",
+        "Retry only transient failures of idempotent operations, with backoff and jitter.",
+        "Do not retry or swallow programmer errors; fix them.",
+        "Always set timeouts on network calls.",
+        "Separate user messages from technical logs."
+      ],
+      "examples": [
+        {
+          "title": "Retry with exponential backoff",
+          "language": "javascript",
+          "code": "async function retry(fn, { retries = 3, baseMs = 10, shouldRetry = () => true } = {}) {\n  let attempt = 0;\n  while (true) {\n    try { return await fn(attempt); }\n    catch (err) {\n      if (attempt >= retries || !shouldRetry(err)) throw err;\n      const delay = baseMs * 2 ** attempt;              // 10, 20, 40...\n      console.log(\"attempt \" + (attempt + 1) + \" failed (\" + err.message + \"), retry in \" + delay + \"ms\");\n      await new Promise((r) => setTimeout(r, delay));\n      attempt++;\n    }\n  }\n}\nlet calls = 0;\nconst flaky = async () => { calls++; if (calls < 3) throw Object.assign(new Error(\"503\"), { transient: true }); return \"success after \" + calls + \" calls\"; };\nretry(flaky, { shouldRetry: (e) => e.transient }).then(console.log);\n\nconst bad = async () => { throw new TypeError(\"bug: x is not a function\"); };\nretry(bad, { shouldRetry: (e) => !(e instanceof TypeError) }).catch((e) => console.log(\"not retried:\", e.message));",
+          "explanation": ""
+        },
+        {
+          "title": "Fallback and graceful degradation",
+          "language": "javascript",
+          "code": "async function loadWidgets(loaders) {\n  const results = await Promise.allSettled(loaders.map((l) => l()));\n  return results.map((r, i) => r.status === \"fulfilled\"\n    ? { ok: true, data: r.value }\n    : { ok: false, message: \"Widget \" + (i + 1) + \" is unavailable\" });\n}\nconst weather = async () => \"sunny 24C\";\nconst news = async () => { throw new Error(\"news API down\"); };\nconst stocks = async () => [\"ACME +2%\"];\nloadWidgets([weather, news, stocks]).then((w) => w.forEach((x) => console.log(JSON.stringify(x))));\n\nfunction withDefault(fn, def) { try { return fn(); } catch { return def; } }\nconsole.log(withDefault(() => JSON.parse(\"oops\"), { theme: \"light\" }));",
+          "explanation": ""
+        },
+        {
+          "title": "A tiny circuit breaker",
+          "language": "javascript",
+          "code": "class CircuitBreaker {\n  constructor(fn, { failureThreshold = 2, cooldownCalls = 2 } = {}) {\n    Object.assign(this, { fn, failureThreshold, cooldownCalls, failures: 0, skipped: 0 });\n  }\n  async call(...args) {\n    if (this.failures >= this.failureThreshold && this.skipped < this.cooldownCalls) {\n      this.skipped++;\n      throw new Error(\"circuit open: skipping call\");\n    }\n    try { const r = await this.fn(...args); this.failures = 0; this.skipped = 0; return r; }\n    catch (e) { this.failures++; this.skipped = 0; throw e; }\n  }\n}\nlet healthy = false;\nconst breaker = new CircuitBreaker(async () => { if (!healthy) throw new Error(\"service down\"); return \"ok\"; });\n(async () => {\n  for (let i = 1; i <= 6; i++) {\n    if (i === 6) healthy = true;\n    try { console.log(i, await breaker.call()); } catch (e) { console.log(i, e.message); }\n  }\n})();",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between operational and programmer errors?",
+          "a": "Operational errors come from the environment (network, disk, invalid input) and must be handled. Programmer errors are bugs (wrong types, undefined access) and should be fixed, not retried or swallowed."
+        },
+        {
+          "q": "Why add jitter to exponential backoff?",
+          "a": "Without randomness, many clients retry at the same moments and hit the recovering server together. Jitter spreads retries out."
+        },
+        {
+          "q": "Which operations are safe to retry?",
+          "a": "Idempotent ones (GET, PUT, DELETE, or POST with an idempotency key) and only for transient failures such as network errors, 5xx, 429 or 408."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "typeof NaN is \"number\" - use Number.isFinite or Number.isNaN.",
+        "Client-side validation is UX only: validate again on the server."
+      ],
+      "id": "js-err-validation-assertions",
+      "title": "Validation Errors, Assertions and Invariants",
+      "level": "intermediate",
+      "summary": "Validate input at the boundary, report all problems with useful messages, and use assertions for impossible states.",
+      "description": "### Validate at the boundary\nData arrives from users, URLs, storage, APIs and other modules. Validate it **once, at the edge**; inside the app, trust the validated shape.\n\nGood validation errors are:\n- **Specific** - say which field and what rule: `\"age must be an integer between 0 and 120, got 'abc'\"`.\n- **Structured** - `{ field, code, message }` so the UI can highlight the field.\n- **Complete** - collect all problems, not just the first one (see AggregateError).\n- **Safe** - never echo secrets (passwords, tokens).\n\n### ValidationError class\n```js\nclass ValidationError extends Error {\n  constructor(issues) {\n    super(issues.length + \" validation issue(s)\");\n    this.name = \"ValidationError\";\n    this.issues = issues;          // [{ field, message }]\n  }\n}\n```\n\n### Assertions (invariants)\nAn **assertion** states \"this must be true if the program is correct\". If it is false, it is a **bug**, not a user mistake.\n```js\nfunction assert(condition, message = \"Assertion failed\") {\n  if (!condition) throw new Error(message);\n}\n```\n- Use assertions for **programmer errors** and internal invariants (`assert(Array.isArray(list))` in a private function).\n- Use validation errors for **user/external** data.\n- `console.assert(cond, msg)` only logs - it does not throw.\n- Node has `assert` (`node:assert`); in the browser write your own or use libraries (Zod, Yup, Valibot, Joi, Ajv).\n\n### Type checks\n`typeof x === \"string\"`, `Array.isArray`, `Number.isFinite`, `Number.isInteger`, `x instanceof Date && !isNaN(x)`. Beware `typeof null === \"object\"` and `NaN`.\n\n### Exhaustiveness\nIn a `switch` over known values add a default that throws: `default: throw new Error(\"Unhandled case: \" + x)` - future values then fail loudly.",
+      "keyPoints": [
+        "Validate untrusted data once at the boundary and return structured issues.",
+        "Collect all validation problems; each with field and message.",
+        "Assertions are for impossible states (bugs), validation for bad input.",
+        "console.assert logs only; it does not throw.",
+        "Add a throwing default to switch statements over closed sets."
+      ],
+      "examples": [
+        {
+          "title": "Collecting validation issues",
+          "language": "javascript",
+          "code": "class ValidationError extends Error {\n  constructor(issues) { super(issues.length + \" validation issue(s)\"); this.name = \"ValidationError\"; this.issues = issues; }\n}\nfunction validateUser(input) {\n  const issues = [];\n  if (typeof input.name !== \"string\" || input.name.trim() === \"\") issues.push({ field: \"name\", message: \"name is required\" });\n  if (!Number.isInteger(input.age) || input.age < 0 || input.age > 120) issues.push({ field: \"age\", message: \"age must be an integer 0-120, got \" + JSON.stringify(input.age) });\n  if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(input.email ?? \"\")) issues.push({ field: \"email\", message: \"email is not valid\" });\n  if (issues.length) throw new ValidationError(issues);\n  return { name: input.name.trim(), age: input.age, email: input.email };\n}\ntry { validateUser({ name: \" \", age: \"abc\", email: \"nope\" }); }\ncatch (e) { console.log(e.name + \": \" + e.message); e.issues.forEach((i) => console.log(\" -\", i.field + \":\", i.message)); }\nconsole.log(validateUser({ name: \"Asha \", age: 30, email: \"asha@example.com\" }));",
+          "explanation": ""
+        },
+        {
+          "title": "Assertions and exhaustive switch",
+          "language": "javascript",
+          "code": "function assert(cond, msg = \"Assertion failed\") { if (!cond) throw new Error(\"Assertion failed: \" + msg); }\n\nfunction average(list) {\n  assert(Array.isArray(list), \"list must be an array\");\n  assert(list.length > 0, \"list must not be empty\");\n  return list.reduce((a, b) => a + b, 0) / list.length;\n}\nconsole.log(average([2, 4, 6]));\ntry { average([]); } catch (e) { console.log(e.message); }\n\nfunction area(shape) {\n  switch (shape.type) {\n    case \"circle\": return +(Math.PI * shape.r ** 2).toFixed(2);\n    case \"square\": return shape.side ** 2;\n    default: throw new Error(\"Unhandled shape: \" + shape.type);\n  }\n}\nconsole.log(area({ type: \"circle\", r: 2 }), area({ type: \"square\", side: 3 }));\ntry { area({ type: \"triangle\" }); } catch (e) { console.log(e.message); }\nconsole.assert(1 === 2, \"console.assert only logs and does not throw\");\nconsole.log(\"still running\");",
+          "explanation": ""
+        },
+        {
+          "title": "Parse, don't validate",
+          "language": "javascript",
+          "code": "// Turn untrusted input into a trusted type exactly once.\nfunction parsePort(value) {\n  const n = Number(value);\n  if (!Number.isInteger(n) || n < 1 || n > 65535) throw new RangeError(\"port must be 1-65535, got \" + JSON.stringify(value));\n  return n;\n}\nfor (const v of [\"8080\", \"0\", \"80.5\", \"abc\", \"\", null]) {\n  try { console.log(JSON.stringify(v), \"->\", parsePort(v)); }\n  catch (e) { console.log(JSON.stringify(v), \"->\", e.name + \": \" + e.message); }\n}",
+          "explanation": "Note that Number(\"\") and Number(null) are 0, so they fail the range check."
+        }
+      ],
+      "interview": [
+        {
+          "q": "When should you use an assertion instead of a validation error?",
+          "a": "Assertions check internal invariants that only a bug can violate. External or user data can legitimately be wrong, so it gets validation with friendly structured errors."
+        },
+        {
+          "q": "Does console.assert throw?",
+          "a": "No. It logs an error message to the console when the condition is false and execution continues."
+        },
+        {
+          "q": "Why validate again on the server?",
+          "a": "Client-side checks can be bypassed; the server is the trust boundary and must never assume validated input."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Mixing styles unpredictably (some functions throw, some return Results) confuses callers - document and be consistent per module.",
+        "The [err, data] tuple lets you forget to check err and use null data."
+      ],
+      "id": "js-err-result-pattern",
+      "title": "The Result / Either Pattern (Errors as Values)",
+      "level": "advanced",
+      "summary": "Return { ok, value } or { ok, error } instead of throwing, for expected failures that callers must handle.",
+      "description": "Exceptions are **invisible** in a function signature: nothing tells the caller that `parseAge()` may fail. The **Result** (or *Either*) pattern makes failure part of the return value.\n\n```js\nconst ok  = (value) => ({ ok: true,  value });\nconst err = (error) => ({ ok: false, error });\n\nfunction parseAge(text) {\n  const n = Number(text);\n  return Number.isInteger(n) && n >= 0 ? ok(n) : err(\"invalid age: \" + text);\n}\n\nconst r = parseAge(\"42\");\nif (r.ok) use(r.value); else show(r.error);\n```\n\n### Where it shines\n- **Expected** failures: validation, parsing, \"not found\", business rules.\n- Pipelines where each step may fail (map / flatMap over results).\n- Code where forgetting to handle an error should be visible (TypeScript discriminated unions enforce it).\n\n### Where exceptions are better\n- **Unexpected** failures (bugs, out-of-memory, programmer errors).\n- Deep call stacks where you want to handle the error far away from where it happened.\n- Interop: all built-ins and most libraries throw.\n\n### Variants\n| Style | Shape |\n|---|---|\n| Result object | `{ ok, value, error }` |\n| Go-style tuple | `const [err, data] = await to(promise)` |\n| Either | `Left(error)` / `Right(value)` with `map/flatMap` |\n| Option / Maybe | value or `null` (no error info) |\n\n### Tuple helper for async code\n```js\nasync function to(promise) {\n  try { return [null, await promise]; } catch (e) { return [e, null]; }\n}\nconst [error, user] = await to(fetchUser(id));\nif (error) return showError(error);\n```\nThis avoids nested `try/catch` blocks, but make sure you check `error` every time.\n\n### Combining both\nUse Result at your module boundaries for expected failures and exceptions inside for the unexpected; convert with `tryCatch(fn)`.",
+      "keyPoints": [
+        "Result makes failure explicit in the return value: { ok, value } / { ok, error }.",
+        "Best for expected failures such as validation and parsing.",
+        "Exceptions remain better for bugs and deep unwinding.",
+        "A tryCatch/to helper converts throwing code to Results.",
+        "Always check ok/error - otherwise you recreate silent failures."
+      ],
+      "examples": [
+        {
+          "title": "Result type with map and flatMap",
+          "language": "javascript",
+          "code": "const ok = (value) => ({ ok: true, value });\nconst err = (error) => ({ ok: false, error });\nconst map = (r, f) => (r.ok ? ok(f(r.value)) : r);\nconst flatMap = (r, f) => (r.ok ? f(r.value) : r);\n\nconst parseJson = (text) => { try { return ok(JSON.parse(text)); } catch (e) { return err(\"bad json: \" + e.message); } };\nconst getAge = (obj) => (Number.isInteger(obj.age) ? ok(obj.age) : err(\"age missing or not an integer\"));\nconst adult = (age) => (age >= 18 ? ok(age) : err(\"must be 18+\"));\n\nfor (const text of ['{\"age\": 30}', '{\"age\": 12}', '{\"name\": \"x\"}', \"{oops\"]) {\n  const result = flatMap(flatMap(parseJson(text), getAge), adult);\n  console.log(text, \"=>\", result.ok ? \"OK \" + result.value : \"ERR \" + result.error);\n}\nconsole.log(map(ok(2), (x) => x * 10), map(err(\"no\"), (x) => x * 10));",
+          "explanation": ""
+        },
+        {
+          "title": "Go-style tuple for async code",
+          "language": "javascript",
+          "code": "async function to(promise) {\n  try { return [null, await promise]; }\n  catch (e) { return [e, null]; }\n}\nconst getUser = (id) => new Promise((res, rej) => setTimeout(() => (id === 1 ? res({ id, name: \"Asha\" }) : rej(new Error(\"user \" + id + \" not found\"))), 5));\n\n(async () => {\n  for (const id of [1, 2]) {\n    const [error, user] = await to(getUser(id));\n    if (error) { console.log(\"failed:\", error.message); continue; }\n    console.log(\"loaded\", user.name);\n  }\n})();",
+          "explanation": ""
+        },
+        {
+          "title": "tryCatch wrapper",
+          "language": "javascript",
+          "code": "function tryCatch(fn) {\n  try { return { ok: true, value: fn() }; }\n  catch (error) { return { ok: false, error }; }\n}\nconst a = tryCatch(() => JSON.parse('{\"x\":1}'));\nconst b = tryCatch(() => JSON.parse(\"{\"));\nconst c = tryCatch(() => decodeURIComponent(\"%\"));\nconsole.log(a.ok, a.value);\nconsole.log(b.ok, b.error.name);\nconsole.log(c.ok, c.error.name);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Result pattern vs exceptions - when to choose which?",
+          "a": "Use Results for expected, recoverable failures that the immediate caller should handle (validation, parsing, not found). Use exceptions for unexpected failures and when handling happens far from the failure."
+        },
+        {
+          "q": "What is the downside of returning [error, data]?",
+          "a": "Nothing forces the caller to check error, and both values can be misused. A tagged union (ok flag) with type checking is safer."
+        },
+        {
+          "q": "What is Either?",
+          "a": "A type with two cases, Left (failure) and Right (success), plus operations like map and flatMap that only run on Right."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Returning true from window.onerror suppresses the console message and can hide bugs in development.",
+        "Continuing to run after an uncaughtException on the server can leave the app in a corrupted state."
+      ],
+      "id": "js-err-global-monitoring",
+      "title": "Global Handlers, Logging and Monitoring",
+      "level": "advanced",
+      "summary": "Catch what try/catch cannot: window.onerror, unhandledrejection, error boundaries, Node process events and error reporting.",
+      "description": "Some errors escape every `try/catch`. Production apps add a **safety net** that records them.\n\n### Browser\n| Hook | Fires for |\n|---|---|\n| `window.addEventListener(\"error\", e => ...)` / `window.onerror` | uncaught synchronous exceptions, **resource load errors** (img/script; use capture phase `true`) |\n| `window.addEventListener(\"unhandledrejection\", e => ...)` | promise rejected with no handler; `e.reason` is the error; `e.preventDefault()` silences the console |\n| `window.addEventListener(\"rejectionhandled\", ...)` | a late handler was attached |\n| `securitypolicyviolation` | CSP violations |\n| `console.error` hooks, `reportError(err)` | manual reporting through the same path as uncaught errors |\n\n### Node.js\n- `process.on(\"uncaughtException\", (err, origin) => ...)` - log, then **exit**; the process may be in an unknown state.\n- `process.on(\"unhandledRejection\", (reason, promise) => ...)` - since Node 15 unhandled rejections crash by default.\n- Frameworks: Express error middleware `(err, req, res, next)`.\n\n### Error boundaries (React concept)\nA component that catches errors thrown **while rendering** its children and shows a fallback UI instead of unmounting the whole app. They are class components using `static getDerivedStateFromError` and `componentDidCatch(error, info)` (or the `react-error-boundary` library). They do **not** catch event-handler, async or server errors.\n\n### What to log\nMessage, stack, error type, **release/version**, URL, user id (anonymised), browser, breadcrumbs (last clicks/requests). Services such as Sentry, Datadog or Rollbar collect this and use **source maps** to de-minify stack traces.\n\n### Good practices\n1. **Rate-limit and de-duplicate** reports (one error in a loop can send thousands).\n2. Use `navigator.sendBeacon` so reports survive page unload.\n3. Never log secrets or personal data; scrub URLs and bodies.\n4. Ignore known noise (browser extensions, `ResizeObserver loop`, \"Script error.\").\n5. Show users a friendly fallback, not a blank page.",
+      "keyPoints": [
+        "window error + unhandledrejection catch what try/catch cannot.",
+        "Node: uncaughtException/unhandledRejection are for logging and graceful shutdown, not recovery.",
+        "React error boundaries catch render errors only, not event handlers or async code.",
+        "De-duplicate and rate-limit reports; use sendBeacon; scrub personal data.",
+        "Upload source maps so minified stacks are readable in monitoring tools."
+      ],
+      "examples": [
+        {
+          "title": "Browser safety net",
+          "language": "text",
+          "lang": "javascript",
+          "code": "window.addEventListener(\"error\", (event) => {\n  // event.error is the Error object (null for cross-origin \"Script error.\")\n  report({ type: \"error\", message: event.message, source: event.filename, line: event.lineno, col: event.colno,\n           stack: event.error && event.error.stack });\n});\n\nwindow.addEventListener(\"unhandledrejection\", (event) => {\n  const reason = event.reason;\n  report({ type: \"unhandledrejection\", message: reason && reason.message ? reason.message : String(reason),\n           stack: reason && reason.stack });\n  // event.preventDefault();   // would hide the default console error\n});\n\nfunction report(payload) {\n  const body = JSON.stringify({ ...payload, url: location.href, ua: navigator.userAgent, release: \"1.4.2\" });\n  if (!navigator.sendBeacon(\"/api/log\", body)) fetch(\"/api/log\", { method: \"POST\", body, keepalive: true });\n}",
+          "explanation": "Run this once, as early as possible in your app."
+        },
+        {
+          "title": "React error boundary and Node handlers",
+          "language": "text",
+          "lang": "jsx",
+          "code": "class ErrorBoundary extends React.Component {\n  state = { hasError: false };\n  static getDerivedStateFromError() { return { hasError: true }; }\n  componentDidCatch(error, info) { logToService(error, info.componentStack); }\n  render() { return this.state.hasError ? <p>Something went wrong. <button onClick={() => location.reload()}>Reload</button></p> : this.props.children; }\n}\n// <ErrorBoundary><Dashboard /></ErrorBoundary>\n\n// Node.js\nprocess.on(\"unhandledRejection\", (reason) => { logger.error({ err: reason }, \"unhandled rejection\"); });\nprocess.on(\"uncaughtException\", (err) => { logger.fatal({ err }, \"uncaught exception\"); process.exit(1); });",
+          "explanation": ""
+        },
+        {
+          "title": "A reporter with de-duplication and rate limit",
+          "language": "javascript",
+          "code": "function createReporter({ maxPerMinute = 3 } = {}) {\n  const seen = new Set();\n  const sent = [];\n  let count = 0;\n  return {\n    capture(err, context = {}) {\n      const key = err.name + \":\" + err.message;\n      if (seen.has(key)) return \"duplicate dropped\";\n      if (count >= maxPerMinute) return \"rate limited\";\n      seen.add(key); count++;\n      sent.push({ name: err.name, message: err.message, ...context });\n      return \"sent\";\n    },\n    sent,\n  };\n}\nconst r = createReporter({ maxPerMinute: 2 });\nconsole.log(r.capture(new TypeError(\"x is undefined\")));\nconsole.log(r.capture(new TypeError(\"x is undefined\")));\nconsole.log(r.capture(new RangeError(\"bad index\"), { page: \"/cart\" }));\nconsole.log(r.capture(new Error(\"third distinct\")));\nconsole.log(r.sent);",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do you need unhandledrejection if you use window.onerror?",
+          "a": "Rejected promises without a handler do not raise a normal error event; they fire unhandledrejection instead."
+        },
+        {
+          "q": "What do React error boundaries not catch?",
+          "a": "Errors in event handlers, asynchronous code (setTimeout, promises), server-side rendering and errors thrown in the boundary itself."
+        },
+        {
+          "q": "Why should a Node process exit after uncaughtException?",
+          "a": "The error left the program in an unknown state (open handles, half-written data). Log it and restart under a process manager."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Never parse err.stack with regexes for program logic; formats vary.",
+        "Shipping a source map that does not match the build gives wrong lines."
+      ],
+      "id": "js-err-stack-traces",
+      "title": "Reading Stack Traces and Source Maps",
+      "level": "intermediate",
+      "summary": "Understand each line of err.stack, async frames, minified code and how source maps restore the original file and line.",
+      "description": "A **stack trace** lists the functions that were active when the error object was created, from the most recent call at the top to the entry point at the bottom.\n\n```text\nTypeError: Cannot read properties of undefined (reading 'name')\n    at getName (app.js:12:20)\n    at renderUser (app.js:25:10)\n    at HTMLButtonElement.<anonymous> (app.js:40:5)\n```\n\n### How to read it\n1. **First line** = `name: message`.\n2. **Each `at` line** = function name, file, line, **column**.\n3. The **first frame in your own code** (not in a library, not in `node_modules`) is usually where to start.\n4. `<anonymous>` = an unnamed function; name your callbacks to get readable traces.\n5. Frames such as `at new Promise (<anonymous>)`, `at async fn` show async chains (V8 \"async stack traces\").\n\n### Differences between engines\n| Engine | Frame format |\n|---|---|\n| V8 (Chrome, Node, Edge) | `at fn (file:line:col)` |\n| Firefox / Safari | `fn@file:line:col` |\nThe format is **not standardised**; use a library (e.g. `error-stack-parser`) if you must parse it.\n\n### Limits\n`Error.stackTraceLimit` (V8, default 10) controls how many frames are kept. Set `Infinity` while debugging deep call stacks. `Error.captureStackTrace(obj)` creates a stack on any object.\n\n### Source maps\nProduction code is minified and bundled, so a stack like `at t (main.4f3a.js:1:53284)` is useless. A **source map** (`main.4f3a.js.map`) maps each position back to the original file, line and name.\n- Build tools (Vite, webpack, esbuild) emit them with `sourcemap: true`.\n- Browsers load them in DevTools via the comment `//# sourceMappingURL=main.js.map`.\n- Monitoring services (Sentry etc.) use **uploaded** maps so you do not need to expose them publicly.\n- Hidden source maps (`\"hidden-source-map\"`) are not referenced in the bundle, so public users cannot read your original source.\n- The map must match the **exact build** (use content-hash filenames and release tags).\n\n### Async stack traces\nChrome DevTools can show \"async\" frames across `await` and promise chains. Always `await` (or return) promises: a lost promise loses its stack.",
+      "keyPoints": [
+        "Read from the top: message first, then the first frame in your own code.",
+        "Format differs per engine (V8: \"at fn (file:line:col)\", Firefox/Safari: \"fn@file:line:col\").",
+        "Error.stackTraceLimit (V8, default 10) limits stack depth.",
+        "Source maps map minified positions back to original code; upload them to monitoring, not necessarily to the public.",
+        "The stack is captured where the error is created, not where it is caught."
+      ],
+      "examples": [
+        {
+          "title": "Inspecting a stack",
+          "language": "javascript",
+          "code": "function inner() { throw new Error(\"deep problem\"); }\nfunction middle() { inner(); }\nfunction outer() { middle(); }\ntry { outer(); } catch (e) {\n  const lines = e.stack.split(\"\\n\");\n  console.log(\"first line:\", lines[0]);\n  const frames = lines.slice(1).filter((l) => l.trim().startsWith(\"at \"));\n  const names = frames.map((l) => l.trim().split(\" \")[1]);\n  console.log(\"function names:\", names.slice(0, 3).join(\" <- \"));\n  console.log(\"has more frames:\", frames.length > 3);\n}",
+          "explanation": "Only function names are printed, because file paths differ between environments."
+        },
+        {
+          "title": "Stack depth and captureStackTrace",
+          "language": "javascript",
+          "code": "if (\"stackTraceLimit\" in Error) {\n  console.log(\"default limit:\", Error.stackTraceLimit);\n  Error.stackTraceLimit = 2;\n  function a() { return new Error(\"limited\"); }\n  function b() { return a(); }\n  const e = b();\n  console.log(\"frames kept:\", e.stack.split(\"\\n\").filter((l) => l.trim().startsWith(\"at \")).length);\n  Error.stackTraceLimit = 10;\n}\nif (typeof Error.captureStackTrace === \"function\") {\n  const target = { name: \"Fake\", message: \"not an Error\" };\n  Error.captureStackTrace(target);\n  console.log(typeof target.stack, target.stack.split(\"\\n\")[0]);\n}",
+          "explanation": "Both APIs are V8-specific, so the example is guarded."
+        },
+        {
+          "title": "Source map workflow",
+          "language": "text",
+          "lang": "bash",
+          "code": "# Vite / webpack: emit maps\nvite build --sourcemap            # dist/assets/index-4f3a.js + index-4f3a.js.map\n\n# Sentry CLI: upload maps for release \"1.4.2\" and delete them from the public folder\nsentry-cli sourcemaps upload --release=1.4.2 ./dist\nfind dist -name \"*.map\" -delete\n\n# Minified stack (useless)           ->   after mapping (useful)\n# at t (index-4f3a.js:1:53284)       ->   at getName (src/user.js:12:20)",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Where do you start when reading a stack trace?",
+          "a": "At the error message, then the first frame that belongs to your own source code. Frames from libraries show how you reached them."
+        },
+        {
+          "q": "What is a source map?",
+          "a": "A file that maps positions in generated (minified/bundled/transpiled) code back to the original source files, lines, columns and names, so stack traces and breakpoints show the original code."
+        },
+        {
+          "q": "Why is the stack captured at creation?",
+          "a": "The engine records the stack when the Error constructor runs. That is why you should create errors where the problem occurs, and why rethrowing keeps the original location."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "console.log(obj) shows the object as it is when you expand it, not when it was logged - snapshot with structuredClone.",
+        "Debugging a stale cached build: do a hard reload or disable cache in DevTools."
+      ],
+      "id": "js-err-debugging-workflow",
+      "title": "Debugging Workflow: Console, Breakpoints, debugger and DevTools",
+      "level": "beginner",
+      "summary": "A repeatable method to find a bug: reproduce, isolate, inspect with console and breakpoints, fix, and verify.",
+      "description": "Debugging is a **process**, not a guess.\n\n### The loop\n1. **Reproduce** reliably. Write down the exact steps and the input.\n2. **Read the error**: type, message, first frame in your code.\n3. **Isolate**: reduce the problem (comment out code, binary search, minimal example).\n4. **Hypothesise** the cause, then **test** it with a log or breakpoint.\n5. **Fix** the cause, not the symptom.\n6. **Verify** and add a test so it cannot return.\n\n### Console tools\n| Method | Use |\n|---|---|\n| `console.log(obj)` | quick values (objects are live references - expand shows *current* state; use `structuredClone` or `JSON.stringify` for a snapshot) |\n| `console.error / warn / info` | severity filters |\n| `console.table(arr)` | arrays of objects as a table |\n| `console.dir(obj, {depth})` | deep objects |\n| `console.group / groupEnd` | nested output |\n| `console.time(\"x\") / timeEnd(\"x\")` | measure duration |\n| `console.trace()` | print the current call stack |\n| `console.assert(cond, msg)` | log only when false |\n| `console.count(label)` | how many times a line runs |\nLabel logs (`console.log(\"user:\", user)`) and use `%o`, `%c` formats if needed.\n\n### Breakpoints (DevTools: Sources panel)\n- **Line breakpoint** - click the line number; **conditional** (right click: `i > 100`); **logpoint** (prints without editing code).\n- `debugger;` statement - pauses when DevTools is open. Remove before commit.\n- **Pause on exceptions** (the pause icon): stops at the throw, including *caught* exceptions.\n- **DOM breakpoints** (subtree/attribute/removal), **XHR/fetch breakpoints**, **event listener breakpoints** (click, keydown).\n- While paused: **Scope** (variables), **Call stack**, **Watch** expressions, step over (F10), into (F11), out (Shift+F11), continue (F8).\n- **Blackbox** library scripts so stepping skips them.\n\n### Other panels\n**Network** (status, payload, headers, timing, \"Preserve log\"), **Application** (storage, service workers), **Performance** and **Memory** (profiles), **Console** \"Issues\" tab (CORS, CSP, deprecations).\n\n### Node.js\n`node --inspect-brk app.js` then attach DevTools (`chrome://inspect`) or use the VS Code debugger with a launch configuration.\n\n### Tricks\nBinary search through `git bisect`, rubber-duck explanation, checking assumptions (is the value really what I think? is the code even running? is it the latest build, not cache?).",
+      "keyPoints": [
+        "Reproduce, isolate, hypothesise, test, fix, verify.",
+        "Use console.table/dir/time/trace/assert, not just console.log.",
+        "Pause on exceptions and use conditional breakpoints/logpoints instead of editing code.",
+        "The debugger statement pauses only when DevTools is open - remove it before shipping.",
+        "Check the Network tab and Issues tab for CORS/HTTP problems."
+      ],
+      "examples": [
+        {
+          "title": "Console toolbox",
+          "language": "javascript",
+          "code": "const users = [{ id: 1, name: \"Asha\", age: 31 }, { id: 2, name: \"Ben\", age: 17 }];\nconsole.log(\"users:\", users);\nconsole.error(\"something failed (shows as red in DevTools)\");\nconsole.warn(\"deprecated API\");\nconsole.assert(users.length === 3, \"expected 3 users, got \" + users.length);\nconsole.count(\"render\"); console.count(\"render\");\nconst snapshot = structuredClone(users[0]);\nusers[0].name = \"Changed\";\nconsole.log(\"snapshot keeps:\", snapshot.name, \"| live object:\", users[0].name);\nconsole.log(\"%s is %d years old\", \"Ben\", 17);",
+          "explanation": ""
+        },
+        {
+          "title": "Binary-search debugging with checkpoints",
+          "language": "javascript",
+          "code": "function pipeline(input) {\n  const a = input.trim();\n  console.log(\"checkpoint 1:\", JSON.stringify(a));\n  const b = a.split(\",\").map(Number);\n  console.log(\"checkpoint 2:\", b);\n  const c = b.filter(Number.isFinite);\n  console.log(\"checkpoint 3:\", c);\n  return c.reduce((x, y) => x + y, 0);\n}\nconsole.log(\"result:\", pipeline(\" 1,2,x,4 \"));   // checkpoint 2 reveals NaN from \"x\"",
+          "explanation": "Logs at each stage reveal where the data first goes wrong."
+        },
+        {
+          "title": "DevTools cheat sheet",
+          "language": "text",
+          "lang": "text",
+          "code": "F12 / Ctrl+Shift+I      open DevTools\nCtrl+P                  open file by name (Sources)\nCtrl+Shift+F            search across all files\nF8                      continue    F10 step over    F11 step into    Shift+F11 step out\nRight-click line number  -> Add conditional breakpoint / Add logpoint\nPause icon               -> Pause on exceptions (check \"Pause on caught exceptions\")\nConsole: $0              the element selected in Elements panel\nConsole: copy(obj)       copy a value to the clipboard\nConsole: monitorEvents($0, \"click\")\nNetwork: Disable cache, Preserve log, throttle to Slow 3G",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you debug an error that only happens sometimes?",
+          "a": "Add logging or logpoints with the inputs, enable \"pause on exceptions\", try to find the pattern (data, timing, order), and write a failing test or minimal repro when you find it."
+        },
+        {
+          "q": "What does the debugger statement do?",
+          "a": "It acts like a breakpoint when DevTools (or another debugger) is attached; otherwise it does nothing. Remove it from production code."
+        },
+        {
+          "q": "Why can console.log(obj) show different values than at log time?",
+          "a": "The console keeps a reference to the object; when you expand it you see the current properties. Log a clone or a string for a snapshot."
+        }
+      ]
+    },
+    {
+      "source": "",
+      "pitfalls": [
+        "Catching an error only to console.log it makes the error \"handled\" in code review but invisible in production."
+      ],
+      "id": "js-err-antipatterns",
+      "title": "Error Handling Anti-patterns",
+      "level": "intermediate",
+      "summary": "The mistakes that make bugs invisible: empty catch, swallowing, string throws, over-catching and more - with fixes.",
+      "description": "These habits turn small bugs into hours of debugging.\n\n| Anti-pattern | Why it hurts | Better |\n|---|---|---|\n| **Empty catch** `catch (e) {}` | error disappears; app continues in a broken state | handle it, or at least log; comment why ignoring is safe |\n| **Log and continue** only `console.log(e)` | user sees nothing, logs unseen | show feedback, report to monitoring |\n| **Catch-all around everything** | hides unrelated bugs | small try blocks, rethrow unknown errors |\n| **Throwing strings** `throw \"bad\"` | no stack, no type | `throw new Error(\"bad\")` |\n| **Rethrow with new message only** `throw new Error(e.message)` | loses stack and type | `{ cause: e }` |\n| **Return in finally** | swallows errors | cleanup only |\n| **Exceptions for control flow** | slow, confusing | use return values / conditions |\n| **Matching message text** | brittle across versions/locales | classes, `code`, `name` |\n| **Forgotten await / floating promise** | rejection never caught | `await`, `.catch`, lint rule `no-floating-promises` |\n| **async inside forEach** `items.forEach(async ...)` | errors and completion not awaited | `for...of` or `Promise.all(map(...))` |\n| **try/catch around async call without await** | does not catch | `await` inside try |\n| **Promise constructor anti-pattern** wrapping an existing promise in `new Promise` | errors lost if you forget reject | return the promise |\n| **Showing raw errors to users** | leaks internals/security info | friendly message + log id |\n| **Catching `Error` for validation of known data** | slow and noisy | validate first |\n| **Retrying everything** | duplicates payments, hammers servers | retry only idempotent + transient |\n| **Not cleaning up** | leaks (timers, connections) | `finally` |\n| **Swallowing `unhandledrejection` with `preventDefault()` everywhere** | hides real bugs | only after reporting |\n| **Using `window.onerror` return true** blindly | hides errors in dev | report, keep default behaviour in dev |\n\n### Checklist for each catch block\n1. What exactly can fail here, and do I **expect** it?\n2. Can I **recover**? If not, rethrow (with context).\n3. Does the **user** know something went wrong?\n4. Is the error **recorded** somewhere with enough context?\n5. Did I **clean up** resources (finally)?\n6. Is the error handling **tested** (failing path)?",
+      "keyPoints": [
+        "Never leave a catch block empty without a comment explaining why.",
+        "Handle what you expect, rethrow what you do not.",
+        "Do not throw strings; keep stack and type when wrapping (cause).",
+        "Await promises; avoid async callbacks in forEach.",
+        "Test the failure paths, not only the happy path."
+      ],
+      "examples": [
+        {
+          "title": "Bad vs good: forEach with async",
+          "language": "javascript",
+          "code": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nasync function save(item) { await sleep(5); if (item === 2) throw new Error(\"failed to save \" + item); return item; }\n\nasync function bad() {\n  [1, 2, 3].forEach(async (i) => { try { await save(i); } catch (e) { console.log(\"inside forEach:\", e.message); } });\n  console.log(\"bad() returns before anything finished\");\n}\nasync function good() {\n  const results = await Promise.allSettled([1, 2, 3].map(save));\n  console.log(results.map((r) => r.status));\n}\nbad().then(() => sleep(30)).then(good);",
+          "explanation": ""
+        },
+        {
+          "title": "Bad vs good catch blocks",
+          "language": "javascript",
+          "code": "function loadBad(text) { try { return JSON.parse(text); } catch (e) {} }           // returns undefined, nobody knows\nfunction loadGood(text) {\n  try { return JSON.parse(text); }\n  catch (e) {\n    if (e instanceof SyntaxError) throw new Error(\"Config file is not valid JSON\", { cause: e });\n    throw e;\n  }\n}\nconsole.log(loadBad(\"{\"));\ntry { loadGood(\"{\"); } catch (e) { console.log(e.message, \"| cause:\", e.cause.name); }\n\ntry { throw \"a string\"; } catch (e) { console.log(\"string throw has stack?\", e.stack === undefined); }\ntry { throw new Error(\"object throw\"); } catch (e) { console.log(\"Error throw has stack?\", typeof e.stack === \"string\"); }",
+          "explanation": ""
+        },
+        {
+          "title": "Floating promises",
+          "language": "javascript",
+          "code": "const fails = () => Promise.reject(new Error(\"nobody handles me\"));\nfireAndForgetSafely();\nfunction fireAndForgetSafely() {\n  // BAD: fire and forget -> unhandled rejection\n  // fails();\n  // GOOD: handle or deliberately report\n  fails().catch((e) => console.log(\"handled:\", e.message));\n}\nasync function goodUsage() {\n  try { await fails(); } catch (e) { console.log(\"awaited and handled:\", e.message); }\n}\ngoodUsage();",
+          "explanation": ""
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why is an empty catch block dangerous?",
+          "a": "It silently swallows errors so the program continues in an unknown state and nobody learns that something failed."
+        },
+        {
+          "q": "Why is async inside forEach a problem?",
+          "a": "forEach ignores returned promises. The loop finishes immediately, errors are not propagated and you cannot await completion. Use for...of or Promise.all with map."
+        },
+        {
+          "q": "What should every catch block answer?",
+          "a": "What failed, can I recover, does the user know, is it logged with context, and is cleanup done."
+        }
+      ]
+    }
+  ]
+}

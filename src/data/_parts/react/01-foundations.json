@@ -1,0 +1,419 @@
+{
+ "id": "react-foundations",
+ "title": "Foundations",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "react-what-and-why",
+   "title": "What is React and Why Use It?",
+   "level": "beginner",
+   "summary": "React is a JavaScript library for building user interfaces out of small, reusable components.",
+   "description": "React is a JavaScript **library** created at Facebook (now Meta) for building user interfaces. It does one job very well: it keeps what the user sees on screen in sync with your data. You describe *what the UI should look like* for a given state, and React figures out *how* to update the real DOM.\n\n### Why developers choose React\n\n- **Declarative UI** - you write `UI = f(state)`. Change the state, and React re-renders. You never manually call `document.getElementById(...).textContent = ...`.\n- **Component-based** - a page is a tree of small, isolated, reusable pieces (Navbar, Card, Button).\n- **Learn once, write anywhere** - the same ideas power React DOM (web), React Native (mobile) and server rendering.\n- **Huge ecosystem** - routing, state management, forms, testing and meta-frameworks like Next.js.\n- **Unidirectional data flow** - data goes down via props, events go up via callbacks. This makes bugs easier to trace.\n\n### Library vs framework\n\nReact only handles the view layer. Routing, data fetching and global state are separate choices. Angular and Vue (full) are more \"batteries included\"; React is more \"bring your own\".\n\n### Imperative vs declarative\n\nPlain JS: \"find the element, change its text, add a class, remove it later\". React: \"when `count` is 3, show `Count: 3`\". The second style scales much better as an app grows.",
+   "keyPoints": [
+    "React is a UI library, not a full framework",
+    "Declarative: describe the UI for a state, React updates the DOM",
+    "Apps are trees of reusable components",
+    "Data flows down (props), events flow up (callbacks)",
+    "Huge ecosystem: Router, Redux, Query, Next.js, React Native"
+   ],
+   "pitfalls": [
+    "Thinking React is a framework - you must pick routing, data and state tools yourself.",
+    "Manipulating the DOM manually inside React components; let React own the DOM."
+   ],
+   "examples": [
+    {
+     "title": "Declarative UI in 10 lines",
+     "language": "react",
+     "css": ".box { font-family: sans-serif; padding: 16px; }\nbutton { margin-right: 8px; padding: 6px 12px; }",
+     "code": "function App() {\n  const [count, setCount] = useState(0);\n  return (\n    <div className=\"box\">\n      <h2>Count: {count}</h2>\n      <button onClick={() => setCount(count + 1)}>+1</button>\n      <button onClick={() => setCount(0)}>Reset</button>\n    </div>\n  );\n}",
+     "explanation": "The UI is a pure result of the count state."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Is React a library or a framework?",
+     "a": "A library focused on the view layer. Routing, data fetching and state management come from other libraries or from a framework built on React such as Next.js."
+    },
+    {
+     "q": "What does \"declarative\" mean in React?",
+     "a": "You describe what the UI should look like for the current state and React handles the DOM updates, instead of writing step-by-step DOM instructions."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-virtual-dom",
+   "title": "Virtual DOM and Reconciliation",
+   "level": "beginner",
+   "summary": "React compares a lightweight tree of the new UI with the previous one and updates only what changed in the real DOM.",
+   "description": "The **Virtual DOM** is a plain JavaScript object tree that describes the UI. Every time state changes, React calls your component functions again and produces a *new* tree of React elements. It then compares that new tree with the previous one. This comparison is called **reconciliation** (the \"diffing\" algorithm).\n\n### How it works\n\n1. State or props change, so React **renders** the component (calls the function).\n2. React builds a new element tree.\n3. React **diffs** the new tree against the old tree.\n4. React **commits** only the minimal set of changes to the real DOM.\n\n### Diffing rules (heuristics)\n\n- Elements of **different types** (`<div>` vs `<span>`) - React tears down the old subtree and builds a new one, losing its state.\n- Elements of the **same type** - React keeps the DOM node and only updates changed attributes.\n- Lists use **keys** to match old and new children, so items can be moved instead of recreated.\n\n### Is the Virtual DOM \"fast\"?\n\nIt is not magic. Touching the real DOM is expensive, so React batches updates and applies the smallest diff. The real benefit is that you get a simple programming model (re-render everything conceptually) with good enough performance.\n\n### Render vs commit\n\n*Render* is pure calculation (no DOM touched). *Commit* is when the DOM is updated and effects run. Keeping render pure is why React rules like \"do not mutate state\" exist.",
+   "keyPoints": [
+    "Virtual DOM = lightweight JS description of the UI",
+    "Reconciliation diffs old and new element trees",
+    "Same type keeps the node; different type remounts it",
+    "Keys help React match list items between renders",
+    "Render is pure calculation; commit touches the DOM"
+   ],
+   "pitfalls": [
+    "Believing re-render means the real DOM is rebuilt; only the diff is applied.",
+    "Changing an element's type (or component identity) between renders unexpectedly resets its state."
+   ],
+   "examples": [
+    {
+     "title": "Same position, different type resets state",
+     "language": "react",
+     "css": "",
+     "code": "function A() { return <input placeholder=\"I am A - type here\" />; }\nfunction B() { return <textarea placeholder=\"I am B - type here\" />; }\n\nfunction App() {\n  const [useA, setUseA] = useState(true);\n  return (\n    <div>\n      <button onClick={() => setUseA(!useA)}>Switch</button>\n      <div style={{ marginTop: 10 }}>{useA ? <A /> : <B />}</div>\n    </div>\n  );\n}",
+     "explanation": "Toggling switches between two component types at the same spot, so the input is recreated and loses its text."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is reconciliation?",
+     "a": "The process where React compares the new element tree with the previous one and works out the minimum DOM operations to make the page match."
+    },
+    {
+     "q": "Why does React need keys in lists?",
+     "a": "Keys give each item a stable identity so reconciliation can match, move or remove the right items instead of re-creating everything or mixing up state."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-vite-setup",
+   "title": "Setting Up a React Project with Vite",
+   "level": "beginner",
+   "summary": "Create a fast modern React app with Vite instead of the deprecated Create React App.",
+   "description": "**Vite** is the recommended build tool for plain React single-page apps. It serves your code with native ES modules in development (instant start, fast hot reload) and bundles with Rollup for production. Create React App is deprecated, so new projects should use Vite or a framework such as Next.js.\n\n### Requirements\n\nYou need **Node.js** (LTS) and a package manager (`npm`, `pnpm` or `yarn`). Check with `node -v`.\n\n### Steps\n\n1. Scaffold the project with the `react` or `react-ts` template.\n2. Install dependencies.\n3. Start the dev server (usually `http://localhost:5173`).\n4. Build for production with `npm run build` and preview with `npm run preview`.\n\n### Useful scripts\n\n| Script | What it does |\n| --- | --- |\n| `npm run dev` | Dev server with Hot Module Replacement |\n| `npm run build` | Optimized production build in `dist/` |\n| `npm run preview` | Serve the built `dist/` locally |\n| `npm run lint` | Run ESLint |\n\n### Why Vite is fast\n\nDev mode does not bundle the whole app. The browser requests modules on demand and Vite transforms them with esbuild. Edits update only the changed module through HMR, keeping component state.",
+   "keyPoints": [
+    "Use `npm create vite@latest` with the react or react-ts template",
+    "Dev server starts instantly using native ES modules",
+    "Production build goes to dist/ via Rollup",
+    "Create React App is deprecated",
+    "Env variables must start with VITE_ to be exposed"
+   ],
+   "pitfalls": [
+    "Running npm commands in the wrong folder (cd into the project first).",
+    "Using an old Node version; Vite needs a currently supported Node LTS."
+   ],
+   "examples": [
+    {
+     "title": "Create and run a Vite React app",
+     "language": "text",
+     "lang": "bash",
+     "code": "npm create vite@latest my-app -- --template react\ncd my-app\nnpm install\nnpm run dev\n# -> Local: http://localhost:5173/\n\n# production\nnpm run build\nnpm run preview"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why prefer Vite over Create React App?",
+     "a": "Vite starts instantly, has fast HMR, produces optimized Rollup builds and is actively maintained, whereas CRA is deprecated and slow on large apps."
+    },
+    {
+     "q": "Where do the production files go after build?",
+     "a": "Into the dist/ folder, which you can upload to any static host."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-structure",
+   "title": "Project Structure Walkthrough",
+   "level": "beginner",
+   "summary": "Know what each file in a fresh Vite React project does and how the app boots.",
+   "description": "A new Vite project is small, and every file has a clear role. Understanding the boot path removes a lot of beginner confusion.\n\n### Key files\n\n- `index.html` - the single HTML page. It has `<div id=\"root\"></div>` and a script tag pointing to `src/main.jsx`.\n- `src/main.jsx` - the **entry point**. It creates a React root and renders `<App />` inside it.\n- `src/App.jsx` - your top-level component.\n- `src/assets/` - images processed by the bundler.\n- `public/` - files served as-is (favicon, robots.txt).\n- `vite.config.js` - build and dev-server configuration, plugins.\n- `package.json` - dependencies and scripts.\n- `eslint.config.js` - lint rules.\n\n### The boot path\n\n1. Browser loads `index.html`.\n2. It runs `main.jsx` as a module.\n3. `createRoot(document.getElementById('root'))` creates a React root.\n4. `root.render(<App />)` mounts the component tree.\n\n`StrictMode` wraps the app in development to surface unsafe patterns by double-invoking some functions.\n\n### Growing the structure\n\nAs the app grows, create folders such as `components/`, `pages/`, `hooks/`, `services/` and `utils/`, or organize by feature. See the architecture topic later in this track.",
+   "keyPoints": [
+    "index.html has the #root mount node",
+    "main.jsx creates the root and renders App",
+    "public/ files are served untouched; src/ files are bundled",
+    "StrictMode helps find side-effect bugs in development",
+    "Keep components in their own files, one main component per file"
+   ],
+   "pitfalls": [
+    "Putting images that you import into public/ (import from src/assets instead).",
+    "Forgetting file extension .jsx for files that contain JSX."
+   ],
+   "examples": [
+    {
+     "title": "src/main.jsx",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { StrictMode } from 'react'\nimport { createRoot } from 'react-dom/client'\nimport App from './App.jsx'\nimport './index.css'\n\ncreateRoot(document.getElementById('root')).render(\n  <StrictMode>\n    <App />\n  </StrictMode>\n)"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does createRoot do?",
+     "a": "It creates a React 18+ root attached to a DOM node. Calling root.render(<App />) mounts the app there and enables concurrent features."
+    },
+    {
+     "q": "Difference between public/ and src/assets/?",
+     "a": "public/ files are copied as-is and referenced by absolute URL; src/assets files are imported, hashed and optimized by the bundler."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-jsx",
+   "title": "JSX: Syntax and Rules",
+   "level": "beginner",
+   "summary": "JSX looks like HTML inside JavaScript but compiles to function calls and has stricter rules.",
+   "description": "**JSX** is a syntax extension that lets you write markup inside JavaScript. A compiler (Babel or esbuild) turns `<h1>Hello</h1>` into a call like `jsx(\"h1\", { children: \"Hello\" })` that returns a plain object called a React element.\n\n### Rules you must remember\n\n- **One root element.** Return a single parent, or wrap in a **Fragment** `<>...</>` to avoid an extra DOM node.\n- **Close every tag.** Void elements are self-closing: `<img />`, `<input />`, `<br />`.\n- **camelCase attributes.** `className` instead of `class`, `htmlFor` instead of `for`, `onClick`, `tabIndex`.\n- **Expressions in braces.** `{user.name}`, `{a + b}`, `{items.length}`. Statements like `if` or `for` do not work inside braces.\n- **Style is an object.** `style={{ color: 'red', fontSize: 20 }}` - double braces are an object inside an expression.\n- **Comments** inside JSX use `{/* comment */}`.\n- **Booleans, null and undefined** render nothing.\n- JSX **escapes** values by default, which protects against XSS.\n\n### Components start with a capital letter\n\n`<Button />` is a component; `<button />` is a DOM tag. Lowercase names are treated as HTML elements.",
+   "keyPoints": [
+    "Return one root; use <>...</> fragments to avoid extra wrappers",
+    "Use className, htmlFor and camelCase event/attribute names",
+    "{} embeds JavaScript expressions, not statements",
+    "style takes an object: style={{ fontSize: 20 }}",
+    "Components must start with an uppercase letter"
+   ],
+   "pitfalls": [
+    "Writing class= or for= (React warns and uses className/htmlFor).",
+    "Putting if/for statements inside braces; use ternary, &&, or map instead.",
+    "Rendering an object directly, e.g. {user}, throws \"Objects are not valid as a React child\"."
+   ],
+   "examples": [
+    {
+     "title": "JSX rules in action",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }",
+     "code": "function App() {\n  const user = { name: \"Asha\", age: 24 };\n  const isAdult = user.age >= 18;\n  return (\n    <>\n      {/* This is a JSX comment */}\n      <h2 className=\"title\" style={{ color: \"teal\", fontSize: 22 }}>\n        Hello, {user.name.toUpperCase()}!\n      </h2>\n      <p>Next year you will be {user.age + 1}.</p>\n      <p>{isAdult ? \"Adult\" : \"Minor\"}</p>\n      <label htmlFor=\"n\">Name: </label>\n      <input id=\"n\" defaultValue={user.name} />\n      <br />\n    </>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does JSX use className?",
+     "a": "Because class is a reserved word in JavaScript. JSX attributes map to DOM property names, so className is used."
+    },
+    {
+     "q": "What is a Fragment and why use it?",
+     "a": "A Fragment (<>...</>) groups children without adding an extra DOM element, useful when a component must return multiple siblings."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-components-props",
+   "title": "Components and Props",
+   "level": "beginner",
+   "summary": "Components are functions that return UI; props are the read-only inputs you pass to them.",
+   "description": "A **component** is a JavaScript function that returns JSX. Components let you split the UI into independent pieces you can reuse and test. Modern React uses **function components**; class components still exist but are rarely written for new code.\n\n### Props\n\n**Props** (properties) are the arguments to a component. You pass them like HTML attributes and read them from the first function parameter, usually with destructuring.\n\n```jsx\nfunction Greeting({ name, age = 18 }) {\n  return <p>{name} is {age}</p>;\n}\n<Greeting name=\"Asha\" age={20} />\n```\n\n### Rules\n\n- Props are **read-only**. A component must never modify its own props (it is a pure function of props and state).\n- Pass strings in quotes, anything else in braces: `age={20}`, `active={true}`, `items={list}`.\n- Use **default values** in destructuring: `{ size = \"md\" }`.\n- Use the spread syntax to forward many props: `<Input {...rest} />`.\n- Pass **functions** as props to let children talk to parents (events go up).\n\n### Naming and file layout\n\nComponent names are PascalCase. One component per file is a good habit, with the file named after the component.",
+   "keyPoints": [
+    "A component is a function returning JSX",
+    "Props are read-only inputs; never mutate them",
+    "Destructure props and give defaults in the parameter list",
+    "Non-string props need braces: count={5}",
+    "Callbacks as props let children notify parents"
+   ],
+   "pitfalls": [
+    "Mutating props (props.items.push(x)) - treat props as immutable.",
+    "Defining a component inside another component; it gets recreated each render and loses state.",
+    "Forgetting braces: count=\"5\" passes a string, not a number."
+   ],
+   "examples": [
+    {
+     "title": "Reusable Card component",
+     "language": "react",
+     "css": ".card { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin: 8px 0; font-family: sans-serif; }",
+     "code": "function Card({ title, price, inStock = true, onBuy }) {\n  return (\n    <div className=\"card\">\n      <h3>{title}</h3>\n      <p>Price: Rs. {price}</p>\n      <p>{inStock ? \"In stock\" : \"Sold out\"}</p>\n      <button disabled={!inStock} onClick={() => onBuy(title)}>Buy</button>\n    </div>\n  );\n}\n\nfunction App() {\n  const [msg, setMsg] = useState(\"Nothing bought yet\");\n  return (\n    <div>\n      <p><b>{msg}</b></p>\n      <Card title=\"Keyboard\" price={1999} onBuy={(t) => setMsg(\"Bought \" + t)} />\n      <Card title=\"Mouse\" price={799} inStock={false} onBuy={(t) => setMsg(\"Bought \" + t)} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Can a component change its props?",
+     "a": "No. Props are read-only. If a component needs to change data, it should use state or ask the parent through a callback prop."
+    },
+    {
+     "q": "How do you set default prop values?",
+     "a": "Use default values in destructuring, like function Button({ size = \"md\" }). The old defaultProps on function components is deprecated."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-children",
+   "title": "The children Prop",
+   "level": "beginner",
+   "summary": "children is the content placed between a component's opening and closing tags.",
+   "description": "Whatever you put between `<Card>` and `</Card>` is passed to the component as the special prop **`children`**. This lets you build generic wrapper components (layouts, panels, modals, buttons) that do not know their content in advance.\n\n```jsx\nfunction Panel({ title, children }) {\n  return (\n    <section>\n      <h3>{title}</h3>\n      {children}\n    </section>\n  );\n}\n```\n\n### What can children be?\n\nText, a single element, an array of elements, a function (render prop), or nothing (`undefined`). Because the type varies, avoid assuming it is an array.\n\n### Children utilities\n\n`React.Children` has `map`, `count`, `toArray` and `only` helpers. They are useful but fragile, because they only see direct children and break when someone wraps them in a Fragment or another component. Prefer **composition** and explicit props (slots) for complex cases.\n\n### Multiple slots\n\nIf you need several areas, pass JSX as normal props: `<Layout header={<Nav />} sidebar={<Menu />}>...</Layout>`.\n\n### Why it matters\n\n`children` is the base of composition in React: instead of configuring a component with many flags, you hand it the content you want inside.",
+   "keyPoints": [
+    "children = whatever sits between opening and closing tags",
+    "Great for layouts, cards, modals and wrappers",
+    "Can be text, elements, arrays, functions or undefined",
+    "Named JSX props act as extra slots",
+    "Prefer composition over React.Children tricks"
+   ],
+   "pitfalls": [
+    "Assuming children is always an array; a single child is not wrapped.",
+    "Cloning children with cloneElement; it is brittle and hides data flow."
+   ],
+   "examples": [
+    {
+     "title": "Wrapper component with children and a slot",
+     "language": "react",
+     "css": ".panel { border: 2px solid #0ea5e9; border-radius: 8px; padding: 12px; font-family: sans-serif; max-width: 300px; }",
+     "code": "function Panel({ title, footer, children }) {\n  return (\n    <section className=\"panel\">\n      <h3>{title}</h3>\n      <div>{children}</div>\n      {footer && <small>{footer}</small>}\n    </section>\n  );\n}\n\nfunction App() {\n  return (\n    <Panel title=\"Profile\" footer=\"Last updated today\">\n      <p>Name: Asha</p>\n      <p>Role: Developer</p>\n    </Panel>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is props.children?",
+     "a": "The content nested between a component's opening and closing tags. It allows components to wrap arbitrary content."
+    },
+    {
+     "q": "Why avoid React.Children.map and cloneElement?",
+     "a": "They only work on direct children and break with fragments or wrapper components. Context or explicit props are more robust."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-conditional-rendering",
+   "title": "Conditional Rendering",
+   "level": "beginner",
+   "summary": "Show different UI based on state or props using if, ternary, && and early returns.",
+   "description": "In React, conditional rendering is just JavaScript. You choose what JSX to return using normal expressions.\n\n### Techniques\n\n- **`if` with early return** - best for loading/error/empty states.\n- **Ternary** `cond ? <A /> : <B />` - choose between two outputs inline.\n- **Logical AND** `cond && <A />` - render something or nothing.\n- **Variable assignment** - compute `let content;` using `if` / `switch`, then render `{content}`.\n- **Returning `null`** - render nothing from a component.\n- **Lookup object** - `const views = { a: <A/>, b: <B/> }; views[status]`.\n\n### The `0` gotcha\n\n`count && <List />` renders the number `0` when `count` is `0`, because React renders numbers. Convert to boolean: `count > 0 && <List />`.\n\n### Hiding vs removing\n\nReturning `null` *unmounts* the component and discards its state. If you want to keep state while hiding, use CSS (`display: none` or the `hidden` attribute).\n\n### Keep it readable\n\nNested ternaries get ugly. Extract small components or use early returns instead.",
+   "keyPoints": [
+    "Use early return for loading, error and empty states",
+    "cond && <X/> renders nothing for false/null/undefined",
+    "Ternary picks between two branches inline",
+    "null return unmounts and drops state",
+    "Beware 0 && <X/> rendering a literal 0"
+   ],
+   "pitfalls": [
+    "Using array.length && <List/> and seeing a stray 0 on screen.",
+    "Deeply nested ternaries; extract components instead."
+   ],
+   "examples": [
+    {
+     "title": "Login state with ternary, && and early return",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }",
+     "code": "function Status({ loading, error }) {\n  if (loading) return <p>Loading...</p>;\n  if (error) return <p style={{ color: \"crimson\" }}>Error: {error}</p>;\n  return <p>All good</p>;\n}\n\nfunction App() {\n  const [loggedIn, setLoggedIn] = useState(false);\n  const [items] = useState([]);\n  return (\n    <div>\n      <button onClick={() => setLoggedIn(!loggedIn)}>\n        {loggedIn ? \"Log out\" : \"Log in\"}\n      </button>\n      {loggedIn && <p>Welcome back!</p>}\n      {items.length > 0 && <ul><li>never shown</li></ul>}\n      <Status loading={false} error={loggedIn ? null : \"Please log in\"} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why can `{count && <Foo/>}` show a 0?",
+     "a": "Because when count is 0 the && expression returns 0, and React renders numbers. Use count > 0 && ... or a ternary."
+    },
+    {
+     "q": "Difference between returning null and hiding with CSS?",
+     "a": "Returning null unmounts the component and loses its state; CSS hiding keeps it mounted with state intact."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-lists-keys",
+   "title": "Rendering Lists and Keys",
+   "level": "beginner",
+   "summary": "Render arrays with map and give each item a stable, unique key.",
+   "description": "To render a list, use `Array.prototype.map` to turn data into JSX elements. Each element in the list needs a **`key`** prop.\n\n```jsx\n<ul>\n  {todos.map(t => <li key={t.id}>{t.text}</li>)}\n</ul>\n```\n\n### What keys do\n\nKeys tell React which item is which between renders. With stable keys React can reorder, insert and remove items correctly and keep each item's state (for example text typed in an input) attached to the right item.\n\n### Choosing a key\n\n- Best: a **stable unique id** from your data (database id, UUID).\n- OK: an index, **only** if the list is static and never reordered, filtered or edited.\n- Never: `Math.random()` or `Date.now()` during render - the key changes every time so React recreates every item.\n\n### Rules\n\n- Keys must be unique **among siblings**, not globally.\n- The `key` is not passed as a prop; read it separately if needed.\n- Put the key on the outermost element returned from `map`, e.g. on `<Fragment key=...>` when needed.\n\n### Filtering and sorting\n\nDo `filter`/`sort` before `map`. Sort a copy (`[...items].sort()`) because `sort` mutates the original array.",
+   "keyPoints": [
+    "Use map to render arrays of elements",
+    "Every list item needs a stable unique key",
+    "Prefer database ids; avoid index for dynamic lists",
+    "Never generate keys with Math.random() in render",
+    "Keys only need to be unique among siblings"
+   ],
+   "pitfalls": [
+    "Using index as key in a list that can be reordered or filtered - input state jumps to the wrong row.",
+    "Forgetting the key (console warning) or putting it on an inner element."
+   ],
+   "examples": [
+    {
+     "title": "Keyed list with local input state",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }\nli { margin: 6px 0; list-style: none; }",
+     "code": "function Row({ name }) {\n  return (\n    <li>\n      {name}: <input placeholder=\"note\" />\n    </li>\n  );\n}\n\nfunction App() {\n  const [people, setPeople] = useState([\n    { id: 1, name: \"Asha\" },\n    { id: 2, name: \"Ravi\" },\n    { id: 3, name: \"Meera\" },\n  ]);\n  return (\n    <div>\n      <button onClick={() => setPeople([...people].reverse())}>Reverse</button>\n      <ul>\n        {people.map((p) => (\n          <Row key={p.id} name={p.name} />\n        ))}\n      </ul>\n    </div>\n  );\n}",
+     "explanation": "Type in a row then press Reverse. With key=id the typed text moves with its row."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why are keys needed?",
+     "a": "They give list items a stable identity so React can efficiently match, reorder and preserve state for the right elements."
+    },
+    {
+     "q": "Is using the array index as key ever OK?",
+     "a": "Only for static lists that are never reordered, filtered or inserted into. Otherwise use a stable unique id."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-events",
+   "title": "Handling Events",
+   "level": "beginner",
+   "summary": "Attach event handlers with camelCase props and pass functions, not function calls.",
+   "description": "React wraps browser events in a **SyntheticEvent** that behaves the same across browsers. You attach handlers using camelCase props: `onClick`, `onChange`, `onSubmit`, `onKeyDown`, `onMouseEnter` and so on.\n\n### Pass a function, do not call it\n\n```jsx\n<button onClick={handleClick}>OK</button>       // correct\n<button onClick={() => remove(id)}>Delete</button> // pass args\n<button onClick={handleClick()}>Bad</button>    // runs during render!\n```\n\n### The event object\n\nHandlers receive an event: `e.target` (element that triggered it), `e.currentTarget` (element the handler is on), `e.preventDefault()` (stop default behavior such as form submit), `e.stopPropagation()` (stop bubbling).\n\n### Common handlers\n\n| Event | Use |\n| --- | --- |\n| `onClick` | buttons, links |\n| `onChange` | inputs, selects (fires on every keystroke) |\n| `onSubmit` | forms; call `e.preventDefault()` |\n| `onKeyDown` | keyboard shortcuts, Enter to submit |\n\n### Notes\n\n- Handler names: write `handleX` for the function, `onX` for the prop.\n- Events bubble; React attaches listeners at the root container.\n- Since React 17 there is no event pooling; you can read `e` asynchronously.\n- Capture phase is available with `onClickCapture`.",
+   "keyPoints": [
+    "Handlers are camelCase props: onClick, onChange, onSubmit",
+    "Pass the function reference, not its call result",
+    "Use arrow functions to pass arguments",
+    "e.preventDefault() stops form submit / link navigation",
+    "Events bubble; e.stopPropagation() stops them"
+   ],
+   "pitfalls": [
+    "onClick={doThing()} calls the function while rendering.",
+    "Forgetting e.preventDefault() in onSubmit, which reloads the page."
+   ],
+   "examples": [
+    {
+     "title": "Click, input and form events",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }",
+     "code": "function App() {\n  const [text, setText] = useState(\"\");\n  const [log, setLog] = useState([]);\n\n  function handleSubmit(e) {\n    e.preventDefault();\n    if (!text.trim()) return;\n    setLog([...log, text]);\n    setText(\"\");\n  }\n\n  return (\n    <div>\n      <form onSubmit={handleSubmit}>\n        <input\n          value={text}\n          onChange={(e) => setText(e.target.value)}\n          onKeyDown={(e) => e.key === \"Escape\" && setText(\"\")}\n          placeholder=\"Type, Enter to add, Esc clears\"\n        />\n        <button type=\"submit\">Add</button>\n      </form>\n      <ul>{log.map((l, i) => <li key={i}>{l}</li>)}</ul>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a SyntheticEvent?",
+     "a": "A cross-browser wrapper around the native event with the same interface (target, preventDefault, stopPropagation, etc.)."
+    },
+    {
+     "q": "Why does onClick={fn()} run immediately?",
+     "a": "Because fn() is evaluated during render and its return value is what gets passed. Pass fn or () => fn() instead."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-component-composition",
+   "title": "Component Composition and Thinking in React",
+   "level": "beginner",
+   "summary": "Break a UI into a tree of small components and decide where each piece of state lives.",
+   "description": "Building React apps is mostly about **composition**: assembling small components into bigger ones. The official \"Thinking in React\" process has five steps.\n\n### The 5 steps\n\n1. **Break the UI into a component hierarchy.** Draw boxes around each piece. A component should ideally do one thing (single responsibility).\n2. **Build a static version** using props only - no state yet.\n3. **Find the minimal state.** Keep only what changes and cannot be calculated from other data.\n4. **Decide where state lives.** Put it in the closest common parent of all components that need it.\n5. **Add inverse data flow.** Pass callbacks down so children can update parent state.\n\n### Composition patterns\n\n- **Containment** - use `children` for generic boxes.\n- **Specialization** - a `ConfirmDialog` renders a generic `Dialog` with specific props.\n- **Slots** - pass JSX via props like `header` or `icon`.\n\n### Why not inheritance?\n\nReact recommends composition for code reuse. You almost never need class inheritance between components.\n\n### Rules of thumb\n\n- If a component file grows beyond ~150 lines or does several jobs, split it.\n- Data flows one way: parent to child.\n- Avoid duplicating state; derive values during render.",
+   "keyPoints": [
+    "Split UI into small single-purpose components",
+    "Build static first (props), then add state",
+    "Keep minimal state; derive everything else",
+    "State lives in the closest common parent",
+    "Use children, props and slots for reuse, not inheritance"
+   ],
+   "pitfalls": [
+    "Putting all UI in one giant component.",
+    "Storing derived values in state, which later goes out of sync."
+   ],
+   "examples": [
+    {
+     "title": "A filterable product list built from small pieces",
+     "language": "react",
+     "css": "body { font-family: sans-serif; padding: 12px; }",
+     "code": "function SearchBar({ value, onChange }) {\n  return <input placeholder=\"Search...\" value={value} onChange={(e) => onChange(e.target.value)} />;\n}\nfunction ProductRow({ product }) {\n  return <li>{product.name} - Rs. {product.price}</li>;\n}\nfunction ProductList({ products }) {\n  if (products.length === 0) return <p>No products</p>;\n  return <ul>{products.map((p) => <ProductRow key={p.id} product={p} />)}</ul>;\n}\n\nconst DATA = [\n  { id: 1, name: \"Apple\", price: 120 },\n  { id: 2, name: \"Banana\", price: 40 },\n  { id: 3, name: \"Mango\", price: 90 },\n];\n\nfunction App() {\n  const [query, setQuery] = useState(\"\");\n  const visible = DATA.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()));\n  return (\n    <div>\n      <SearchBar value={query} onChange={setQuery} />\n      <ProductList products={visible} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What are the steps of Thinking in React?",
+     "a": "Split the UI into components, build a static version, identify minimal state, decide where state lives, and add inverse data flow with callbacks."
+    },
+    {
+     "q": "Why does React favor composition over inheritance?",
+     "a": "Composition via props and children is more flexible and explicit; inheritance couples components tightly and is rarely needed."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

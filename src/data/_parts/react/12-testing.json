@@ -1,0 +1,198 @@
+{
+ "id": "react-testing",
+ "title": "Testing React Apps",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-testing-setup",
+   "title": "Testing Strategy and Vitest/Jest Setup",
+   "level": "intermediate",
+   "summary": "Test behavior the way users see it; use Vitest (or Jest) with jsdom and React Testing Library.",
+   "description": "Good tests give confidence to change code. The popular React stack is:\n\n- **Test runner:** **Vitest** (fast, Vite-native, Jest-compatible API) or **Jest**.\n- **Environment:** `jsdom` (or `happy-dom`) to simulate a browser.\n- **Library:** **React Testing Library (RTL)** to render and query components.\n- **Helpers:** `@testing-library/user-event`, `@testing-library/jest-dom` (matchers like `toBeInTheDocument`), **MSW** for network mocks.\n\n### What to test\n\nFollow the **testing trophy**: mostly integration tests, some unit, few end-to-end.\n\n| Level | Example | Tools |\n| --- | --- | --- |\n| Unit | reducers, utils, hooks | Vitest/Jest |\n| Component / integration | form submit shows error | RTL |\n| End-to-end | login -> checkout | Playwright / Cypress |\n\n### Principle\n\n> The more your tests resemble the way your software is used, the more confidence they can give you.\n\nTest **what the user sees and does** (text, roles, labels, clicks), not implementation details (state variables, method names, CSS classes).\n\n### Vitest setup\n\n```js\n// vite.config.js\ntest: { environment: \"jsdom\", globals: true, setupFiles: \"./src/test/setup.js\" }\n```\n\n```js\n// src/test/setup.js\nimport \"@testing-library/jest-dom/vitest\";\nimport { afterEach } from \"vitest\";\nimport { cleanup } from \"@testing-library/react\";\nafterEach(cleanup);\n```\n\n### Tips\n\n- Keep tests independent and deterministic (fake timers, mocked network).\n- Name tests as behaviors: \"shows an error when email is invalid\".\n- Aim for meaningful coverage, not 100% numbers.",
+   "keyPoints": [
+    "Test behavior, not implementation details",
+    "Vitest + jsdom + RTL is the modern default",
+    "Mostly integration tests, few E2E",
+    "jest-dom adds readable matchers",
+    "Make tests deterministic and independent"
+   ],
+   "pitfalls": [
+    "Testing internal state or component instances.",
+    "Chasing 100% coverage with meaningless tests."
+   ],
+   "examples": [
+    {
+     "title": "Unit test a reducer with plain JS",
+     "language": "javascript",
+     "code": "function cartReducer(state, action) {\n  switch (action.type) {\n    case \"add\": {\n      const found = state.find((i) => i.id === action.item.id);\n      if (found) return state.map((i) => (i.id === found.id ? { ...i, qty: i.qty + 1 } : i));\n      return [...state, { ...action.item, qty: 1 }];\n    }\n    case \"remove\": return state.filter((i) => i.id !== action.id);\n    default: return state;\n  }\n}\n\nfunction assertEqual(actual, expected, name) {\n  const ok = JSON.stringify(actual) === JSON.stringify(expected);\n  console.log((ok ? \"PASS\" : \"FAIL\") + \" - \" + name);\n}\n\nassertEqual(cartReducer([], { type: \"add\", item: { id: 1, name: \"Pen\" } }), [{ id: 1, name: \"Pen\", qty: 1 }], \"adds a new item\");\nassertEqual(\n  cartReducer([{ id: 1, name: \"Pen\", qty: 1 }], { type: \"add\", item: { id: 1, name: \"Pen\" } }),\n  [{ id: 1, name: \"Pen\", qty: 2 }],\n  \"increments quantity for an existing item\"\n);\nassertEqual(cartReducer([{ id: 1, qty: 1 }], { type: \"remove\", id: 1 }), [], \"removes an item\");",
+     "explanation": "Pure functions need no framework to test."
+    },
+    {
+     "title": "vite.config.js test block and setup",
+     "language": "text",
+     "lang": "javascript",
+     "code": "// vite.config.js\nimport { defineConfig } from \"vitest/config\";\nimport react from \"@vitejs/plugin-react\";\n\nexport default defineConfig({\n  plugins: [react()],\n  test: {\n    environment: \"jsdom\",\n    globals: true,\n    setupFiles: \"./src/test/setup.js\",\n    css: true,\n  },\n});\n\n// src/test/setup.js\nimport \"@testing-library/jest-dom/vitest\";\nimport { afterEach } from \"vitest\";\nimport { cleanup } from \"@testing-library/react\";\n\nafterEach(() => cleanup());"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why test behavior instead of implementation?",
+     "a": "Behavior tests survive refactors and mirror real usage, while implementation-detail tests break whenever internals change though nothing is wrong for the user."
+    },
+    {
+     "q": "Vitest vs Jest?",
+     "a": "Both have similar APIs; Vitest reuses your Vite config and is faster with native ESM, while Jest has a longer history and wider legacy support."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-rtl-queries",
+   "title": "React Testing Library: Rendering and Queries",
+   "level": "intermediate",
+   "summary": "Render a component, find elements by role, label or text, and assert on what the user sees.",
+   "description": "RTL renders your component into jsdom and gives queries that mimic how users and assistive tech find things.\n\n### Query families\n\n| Prefix | Throws if missing? | Async? | Use for |\n| --- | --- | --- | --- |\n| `getBy...` | yes | no | element must exist now |\n| `queryBy...` | no (returns null) | no | assert element is absent |\n| `findBy...` | yes | yes (waits) | element appears later |\n| `getAllBy`, `queryAllBy`, `findAllBy` | | | multiple elements |\n\n### Query priority (best to worst)\n\n1. `getByRole(\"button\", { name: /save/i })` - what screen readers see.\n2. `getByLabelText(\"Email\")` - form fields.\n3. `getByPlaceholderText`, `getByText`, `getByDisplayValue`.\n4. `getByAltText`, `getByTitle`.\n5. `getByTestId` - last resort.\n\n### Matchers from jest-dom\n\n`toBeInTheDocument()`, `toBeVisible()`, `toBeDisabled()`, `toHaveTextContent()`, `toHaveValue()`, `toHaveAttribute()`, `toBeChecked()`.\n\n### Other helpers\n\n- `screen` - queries bound to `document.body`; prefer it over destructuring `render`.\n- `within(element)` - scope queries.\n- `waitFor(() => expect(...))` - retry an assertion until it passes.\n- `renderHook` - test custom hooks.\n- Wrap in providers via a custom `render` helper (Router, QueryClient, theme).\n\n### Debugging\n\n`screen.debug()` prints the DOM and `screen.logTestingPlaygroundURL()` suggests the best query.",
+   "keyPoints": [
+    "Use getByRole first; test ids last",
+    "getBy throws, queryBy returns null, findBy waits",
+    "screen is the preferred way to query",
+    "jest-dom gives readable assertions",
+    "Wrap providers in a custom render helper"
+   ],
+   "pitfalls": [
+    "Using getByTestId everywhere instead of accessible queries.",
+    "Using getBy to assert absence (it throws); use queryBy."
+   ],
+   "examples": [
+    {
+     "title": "Testing a Counter",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// Counter.jsx\nexport function Counter() {\n  const [count, setCount] = useState(0);\n  return (\n    <div>\n      <p>Count: {count}</p>\n      <button onClick={() => setCount(count + 1)}>Increment</button>\n    </div>\n  );\n}\n\n// Counter.test.jsx\nimport { render, screen } from \"@testing-library/react\";\nimport userEvent from \"@testing-library/user-event\";\nimport { describe, it, expect } from \"vitest\";\nimport { Counter } from \"./Counter\";\n\ndescribe(\"Counter\", () => {\n  it(\"starts at zero\", () => {\n    render(<Counter />);\n    expect(screen.getByText(\"Count: 0\")).toBeInTheDocument();\n  });\n\n  it(\"increments when the button is clicked\", async () => {\n    const user = userEvent.setup();\n    render(<Counter />);\n    await user.click(screen.getByRole(\"button\", { name: /increment/i }));\n    expect(screen.getByText(\"Count: 1\")).toBeInTheDocument();\n  });\n});"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between getBy, queryBy and findBy?",
+     "a": "getBy throws if not found, queryBy returns null (good for absence checks), and findBy returns a promise that waits for the element to appear."
+    },
+    {
+     "q": "Why prefer getByRole?",
+     "a": "It matches how users and assistive technology perceive the UI and also verifies the element is accessible."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-user-event",
+   "title": "user-event and Async Testing",
+   "level": "intermediate",
+   "summary": "Simulate realistic user interactions with user-event and wait for async updates correctly.",
+   "description": "`fireEvent` dispatches a single DOM event. **`@testing-library/user-event`** simulates what a real user does: typing triggers focus, keydown, input and keyup events for each character, clicking triggers hover, mouse down/up and click, and it respects disabled state and pointer rules.\n\n### Usage\n\n```js\nconst user = userEvent.setup();     // create once per test\nawait user.click(button);\nawait user.type(input, \"hello{enter}\");\nawait user.clear(input);\nawait user.selectOptions(select, \"red\");\nawait user.tab();\nawait user.keyboard(\"{Escape}\");\n```\n\nAll methods are **async** - always `await` them.\n\n### Async UI\n\nWhen something appears after a promise or timer:\n\n- **`await screen.findByText(...)`** - waits (default 1000 ms).\n- **`await waitFor(() => expect(fn).toHaveBeenCalled())`** - retries the callback.\n- **`await waitForElementToBeRemoved(() => screen.queryByText(\"Loading...\"))`**.\n\nDo not put side effects (clicks) in `waitFor`, and avoid arbitrary `sleep`.\n\n### Fake timers\n\nFor debounce/polling: `vi.useFakeTimers()` then `await vi.advanceTimersByTimeAsync(500)`. With user-event pass `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`.\n\n### Mock functions\n\n`const onSubmit = vi.fn()` and `expect(onSubmit).toHaveBeenCalledWith({ email: \"a@b.com\" })` test callbacks from props.\n\n### act warnings\n\nRTL wraps interactions in `act` for you. \"not wrapped in act\" warnings usually mean you forgot to `await` a user-event call or an async update after the test ended.",
+   "keyPoints": [
+    "user-event simulates realistic interaction sequences",
+    "Always await user-event calls",
+    "Use findBy / waitFor for async changes",
+    "vi.fn() / jest.fn() test callback props",
+    "Fake timers for debounce and polling"
+   ],
+   "pitfalls": [
+    "Forgetting await before user.click, causing flaky tests.",
+    "Using waitFor with side effects or large timeouts instead of findBy."
+   ],
+   "examples": [
+    {
+     "title": "Form submit test",
+     "language": "text",
+     "lang": "jsx",
+     "code": "import { render, screen } from \"@testing-library/react\";\nimport userEvent from \"@testing-library/user-event\";\nimport { vi, it, expect } from \"vitest\";\nimport { LoginForm } from \"./LoginForm\";\n\nit(\"submits email and password\", async () => {\n  const user = userEvent.setup();\n  const onSubmit = vi.fn();\n  render(<LoginForm onSubmit={onSubmit} />);\n\n  await user.type(screen.getByLabelText(/email/i), \"asha@example.com\");\n  await user.type(screen.getByLabelText(/password/i), \"secret123\");\n  await user.click(screen.getByRole(\"button\", { name: /log in/i }));\n\n  expect(onSubmit).toHaveBeenCalledWith({ email: \"asha@example.com\", password: \"secret123\" });\n});\n\nit(\"shows a validation error\", async () => {\n  const user = userEvent.setup();\n  render(<LoginForm onSubmit={vi.fn()} />);\n  await user.click(screen.getByRole(\"button\", { name: /log in/i }));\n  expect(await screen.findByRole(\"alert\")).toHaveTextContent(/email is required/i);\n});"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why prefer user-event over fireEvent?",
+     "a": "user-event reproduces the full sequence of events a real user triggers (focus, key presses, hover), catching more realistic behavior and bugs."
+    },
+    {
+     "q": "How do you test something that appears asynchronously?",
+     "a": "Use await screen.findBy... or waitFor so the test retries until the UI updates or times out."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-msw-mocking",
+   "title": "Mocking APIs: vi.fn, fetch mocks and MSW",
+   "level": "intermediate",
+   "summary": "Mock network requests at the network boundary with Mock Service Worker for realistic tests.",
+   "description": "Tests should not hit real servers: they are slow, flaky and may change data. There are three levels of mocking.\n\n### 1. Mock the function\n\n`vi.mock(\"./api\")` replaces a module, and `vi.spyOn(global, \"fetch\").mockResolvedValue(...)` replaces fetch. Quick, but tied to **how** you call the API.\n\n### 2. Mock the network with MSW\n\n**MSW (Mock Service Worker)** intercepts requests at the network level (in Node via `msw/node`; in the browser via a service worker). Your component code runs unchanged with `fetch` or axios.\n\n```js\nimport { http, HttpResponse } from \"msw\";\nimport { setupServer } from \"msw/node\";\n\nexport const server = setupServer(\n  http.get(\"/api/users\", () => HttpResponse.json([{ id: 1, name: \"Asha\" }]))\n);\n```\n\nLifecycle in the setup file:\n\n```js\nbeforeAll(() => server.listen({ onUnhandledRequest: \"error\" }));\nafterEach(() => server.resetHandlers());\nafterAll(() => server.close());\n```\n\nOverride per test: `server.use(http.get(\"/api/users\", () => new HttpResponse(null, { status: 500 })))` to test error states.\n\n### Why MSW\n\n- Same mocks for unit tests, Storybook and local development.\n- Tests exercise your real fetching code, including headers and error handling.\n- Refactoring from fetch to axios does not break tests.\n\n### Tips\n\n- Test loading, success, empty and error states.\n- With TanStack Query create a **new QueryClient per test** with `retry: false`.\n- Keep mock data factories (faker) in one place.",
+   "keyPoints": [
+    "Never call real APIs in tests",
+    "MSW intercepts at the network layer",
+    "Override handlers per test for errors",
+    "New QueryClient per test with retry disabled",
+    "Cover loading, success, empty and error"
+   ],
+   "pitfalls": [
+    "Sharing a QueryClient between tests, leaking cache.",
+    "Mocking internal modules so heavily the test proves nothing."
+   ],
+   "examples": [
+    {
+     "title": "Testing a list with MSW",
+     "language": "text",
+     "lang": "jsx",
+     "code": "// src/test/server.js\nimport { http, HttpResponse } from \"msw\";\nimport { setupServer } from \"msw/node\";\n\nexport const server = setupServer(\n  http.get(\"/api/users\", () => HttpResponse.json([{ id: 1, name: \"Asha\" }, { id: 2, name: \"Ravi\" }]))\n);\n\n// UserList.test.jsx\nimport { render, screen } from \"@testing-library/react\";\nimport { http, HttpResponse } from \"msw\";\nimport { server } from \"./test/server\";\nimport { UserList } from \"./UserList\";\n\nit(\"shows users from the API\", async () => {\n  render(<UserList />);\n  expect(screen.getByText(/loading/i)).toBeInTheDocument();\n  expect(await screen.findByText(\"Asha\")).toBeInTheDocument();\n  expect(screen.getByText(\"Ravi\")).toBeInTheDocument();\n});\n\nit(\"shows an error when the API fails\", async () => {\n  server.use(http.get(\"/api/users\", () => new HttpResponse(null, { status: 500 })));\n  render(<UserList />);\n  expect(await screen.findByRole(\"alert\")).toHaveTextContent(/failed/i);\n});"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is MSW and why use it?",
+     "a": "Mock Service Worker intercepts network requests so tests and development use realistic fake APIs without changing application code."
+    },
+    {
+     "q": "How do you test an API error state with MSW?",
+     "a": "Override the handler for that test with server.use(...) returning an error response, then assert the error UI."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-e2e-testing",
+   "title": "End-to-End Testing: Playwright and Cypress",
+   "level": "intermediate",
+   "summary": "E2E tools drive a real browser through complete user flows against a running app.",
+   "description": "Component tests run in a fake DOM. **End-to-end (E2E) tests** open a real browser, visit your running app and click through flows like signing up or paying. They find integration problems nothing else does, but are slower and more brittle, so keep them few and focused on **critical paths**.\n\n### Playwright\n\nMade by Microsoft. Supports Chromium, Firefox and WebKit, parallel runs, auto-waiting, tracing (a time-travel viewer), codegen (`npx playwright codegen`), API testing and component testing. Written in TypeScript/JavaScript, Python, Java and .NET.\n\n```js\ntest(\"user can add a todo\", async ({ page }) => {\n  await page.goto(\"/\");\n  await page.getByPlaceholder(\"What needs to be done?\").fill(\"Buy milk\");\n  await page.keyboard.press(\"Enter\");\n  await expect(page.getByText(\"Buy milk\")).toBeVisible();\n});\n```\n\n### Cypress\n\nRuns inside the browser with an interactive runner and great time-travel debugging, automatic retries and network stubbing (`cy.intercept`). Historically limited to Chromium/Firefox/Edge and single tab.\n\n```js\nit(\"adds a todo\", () => {\n  cy.visit(\"/\");\n  cy.findByPlaceholderText(\"What needs to be done?\").type(\"Buy milk{enter}\");\n  cy.contains(\"Buy milk\").should(\"be.visible\");\n});\n```\n\n### Choosing\n\n| | Playwright | Cypress |\n| --- | --- | --- |\n| Browsers | Chromium, Firefox, WebKit | Chromium family, Firefox, WebKit (experimental) |\n| Parallelism | built-in and free | paid cloud or CI splitting |\n| Multi-tab / origin | supported | limited |\n| DX | traces, codegen | interactive runner |\n\nBoth are good; Playwright is the more common choice for new projects.\n\n### Best practices\n\nUse user-facing locators (role, label, text), seed test data via API, mock third-party services, avoid fixed sleeps, and run E2E in CI on preview deployments.",
+   "keyPoints": [
+    "E2E drives a real browser through full flows",
+    "Keep E2E tests few and for critical paths",
+    "Playwright: multi-browser, parallel, traces",
+    "Cypress: interactive runner, cy.intercept",
+    "Use role/label locators and avoid fixed sleeps"
+   ],
+   "pitfalls": [
+    "Testing every detail through E2E, creating a slow, flaky suite.",
+    "Depending on shared mutable test data."
+   ],
+   "examples": [
+    {
+     "title": "Playwright test with a mocked API",
+     "language": "text",
+     "lang": "javascript",
+     "code": "import { test, expect } from \"@playwright/test\";\n\ntest(\"shows products and handles server error\", async ({ page }) => {\n  await page.route(\"**/api/products\", (route) =>\n    route.fulfill({ json: [{ id: 1, name: \"Keyboard\" }] })\n  );\n  await page.goto(\"http://localhost:5173/products\");\n  await expect(page.getByRole(\"heading\", { name: \"Products\" })).toBeVisible();\n  await expect(page.getByText(\"Keyboard\")).toBeVisible();\n\n  await page.route(\"**/api/products\", (route) => route.fulfill({ status: 500 }));\n  await page.reload();\n  await expect(page.getByRole(\"alert\")).toContainText(\"Something went wrong\");\n});"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When should you write E2E tests rather than component tests?",
+     "a": "For critical user journeys across pages and services (login, checkout) where the real browser and integration matter; component tests cover details faster."
+    },
+    {
+     "q": "Playwright or Cypress?",
+     "a": "Both work; Playwright offers cross-browser, parallel runs and multi-tab support out of the box, Cypress offers an interactive runner and simple API."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

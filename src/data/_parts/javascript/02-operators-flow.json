@@ -1,0 +1,270 @@
+{
+  "id": "js-operators-flow",
+  "title": "Operators and Control Flow",
+  "level": "beginner",
+  "topics": [
+    {
+      "id": "js-operators",
+      "title": "Arithmetic, Assignment and Unary Operators",
+      "level": "beginner",
+      "summary": "Operators combine values into expressions: math, assignment, increment/decrement and type conversion.",
+      "description": "An **expression** is any piece of code that produces a value. It is built from **operands** (the values) and **operators** (the symbols). For `5 + 3`, the operands are `5` and `3` and the operator is `+`.\n\n### Arithmetic\n`+ - * / % **` (add, subtract, multiply, divide, remainder, exponent). `%` gives the remainder (`17 % 5` is `2`) and is perfect for even/odd checks and wrapping around. `**` was added in ES2016 (`2 ** 5` is `32`).\n\n### Assignment\n`=` assigns. Compound forms update in place: `+=`, `-=`, `*=`, `/=`, `%=`, `**=`. Modern versions add logical assignment `||=`, `&&=` and `??=`.\n\n### Unary operators (one operand)\n- `+x` converts to number, `-x` negates.\n- `typeof x`, `!x`, `delete obj.key`, `void 0`.\n- `++x` / `--x` (**prefix**): change first, then return the new value.\n- `x++` / `x--` (**postfix**): return the old value, then change.\n\n```js\nlet x = 5;\nlet y = x++; // y = 5, x = 6\nlet z = ++x; // x = 7, z = 7\n```\n\n### Operator precedence\n`**` binds tighter than `* /`, which bind tighter than `+ -`. Use parentheses to make intent obvious: `(a + b) * c`.\n\n### Floating point precision\nNumbers are IEEE 754 doubles, so `0.1 + 0.2` is `0.30000000000000004`. For money, work in the smallest unit (paise/cents) or use `toFixed()` only for display.",
+      "keyPoints": [
+        "% returns remainder, ** is exponent",
+        "Prefix ++x returns the new value, postfix x++ returns the old one",
+        "Unary + converts to number: +\"5\" is 5",
+        "0.1 + 0.2 !== 0.3 because of floating point",
+        "Use parentheses instead of memorising precedence"
+      ],
+      "pitfalls": [
+        "\"hello\" / 2 gives NaN, not an error",
+        "Dividing by 0 gives Infinity, not an exception",
+        "toFixed returns a string, not a number"
+      ],
+      "examples": [
+        {
+          "title": "Prefix vs postfix",
+          "language": "javascript",
+          "explanation": "",
+          "code": "let x = 5;\nlet y = x++;\nconsole.log(\"y =\", y, \"x =\", x);\n\nlet a = 5;\nlet b = --a;\nconsole.log(\"b =\", b, \"a =\", a);\n\nconsole.log(17 % 5, 2 ** 5, 7 / 2, Math.trunc(7 / 2));\nconsole.log(0.1 + 0.2, (0.1 + 0.2).toFixed(2));\nconsole.log(\"hello\" / 2, 5 / 0, -5 / 0);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between x++ and ++x?",
+          "a": "Both add 1. x++ returns the value before the increment, ++x returns the value after the increment."
+        },
+        {
+          "q": "Why is 0.1 + 0.2 not equal to 0.3?",
+          "a": "Binary floating point cannot represent 0.1 and 0.2 exactly, so the sum is 0.30000000000000004. Compare with a tolerance (Math.abs(a - b) < Number.EPSILON) or use integers."
+        },
+        {
+          "q": "What does unary + do?",
+          "a": "It converts its operand to a number, so +\"5\" is 5, +true is 1 and +\"abc\" is NaN."
+        }
+      ],
+      "source": "JS-one-shot/3_expressions.js"
+    },
+    {
+      "id": "js-equality-comparison",
+      "title": "Comparison and Equality (== vs ===)",
+      "level": "beginner",
+      "summary": "Prefer === (strict equality); know exactly what == coerces and when Object.is differs.",
+      "description": "Comparison operators return a **boolean**: `<`, `>`, `<=`, `>=`, `==`, `!=`, `===`, `!==`.\n\n### Loose equality `==`\nConverts types before comparing, using a complicated set of rules. `5 == \"5\"` is `true`, `0 == false` is `true`, `null == undefined` is `true`.\n\n### Strict equality `===`\nCompares **type and value** with no conversion. `5 === \"5\"` is `false`. This is what you want almost always.\n\n### Special cases\n- `NaN === NaN` is `false`.\n- `+0 === -0` is `true`.\n- `Object.is(NaN, NaN)` is `true` and `Object.is(+0, -0)` is `false` - it is the \"same value\" check.\n- Objects, arrays and functions are compared by **reference**: `{} === {}` is `false`.\n- `null == 0` is `false` but `null >= 0` is `true` (relational operators convert null to 0, equality does not).\n\n### Relational comparisons\n- Strings compare **alphabetically** by UTF-16 code: `\"apple\" < \"banana\"` and `\"10\" < \"9\"` (string compare!).\n- Mixed string and number: the string is converted to a number.\n- Chained comparisons do not work like maths: `1 < 5 < 3` is `true` because `(1 < 5)` becomes `true`, then `true < 3` is `1 < 3`.\n\n### Rule of thumb\nUse `===` and `!==`. The only common use of `==` is `value == null`, which checks `null` or `undefined` together.",
+      "keyPoints": [
+        "=== checks type and value, == coerces first",
+        "Objects/arrays compare by reference",
+        "NaN is not equal to itself, use Number.isNaN or Object.is",
+        "value == null is true for both null and undefined",
+        "Strings compare alphabetically, not numerically"
+      ],
+      "pitfalls": [
+        "2 < 12 < 5 is true because of left-to-right evaluation",
+        "\"10\" > \"9\" is false (string comparison) but 10 > \"9\" is true",
+        "[] == false is true and [] is truthy at the same time"
+      ],
+      "examples": [
+        {
+          "title": "Equality gallery",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(5 == \"5\", 5 === \"5\");\nconsole.log(0 == false, 0 === false);\nconsole.log(null == undefined, null === undefined);\nconsole.log(NaN === NaN, Object.is(NaN, NaN));\nconsole.log(+0 === -0, Object.is(+0, -0));\nconsole.log({} === {}, [] == []);\nconsole.log(2 < 12 < 5, \"10\" < \"9\", 10 < \"9\");\nconst obj1 = { name: \"vinod\" }, obj3 = obj1;\nconsole.log(obj1 === obj3, obj1 === { name: \"vinod\" });"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between == and ===?",
+          "a": "== converts operands to a common type before comparing; === compares both type and value and never converts."
+        },
+        {
+          "q": "What is the output of console.log(2 < 12 < 5)?",
+          "a": "true. 2 < 12 is true, then true is coerced to 1 and 1 < 5 is true."
+        },
+        {
+          "q": "How are two objects compared in JavaScript?",
+          "a": "By reference. Two separate objects with the same content are not equal; only two variables pointing to the same object are equal."
+        }
+      ],
+      "source": "JS-one-shot/3_expressions.js"
+    },
+    {
+      "id": "js-logical-operators",
+      "title": "Logical Operators and Short-Circuiting",
+      "level": "beginner",
+      "summary": "&&, || and ! return one of their operands, which enables default values and guard patterns.",
+      "description": "The logical operators are `&&` (AND), `||` (OR) and `!` (NOT). With booleans they behave as in school logic, but with other types they have an important twist: **`&&` and `||` return one of the operands, not necessarily a boolean.**\n\n### Rules\n- `a || b` returns `a` if `a` is truthy, otherwise `b`.\n- `a && b` returns `a` if `a` is falsy, otherwise `b`.\n- `!a` always returns a boolean.\n\n### Short-circuit evaluation\nThe right side runs only when needed. That makes these patterns common:\n\n```js\nconst name = userInput || \"Guest\";        // default value\nuser && user.login();                     // run only if user exists\nconst isAdult = age >= 18 && hasId;       // combine conditions\n```\n\n### Nullish coalescing `??`\n`||` treats `0`, `\"\"` and `false` as \"missing\". `??` only treats `null` and `undefined` as missing, so it is safer for defaults:\n\n```js\nconst count = 0;\ncount || 10;   // 10 (wrong if 0 is valid)\ncount ?? 10;   // 0\n```\n\n### Logical assignment (ES2021)\n`a ||= b`, `a &&= b`, `a ??= b` assign only when the short-circuit rule says so.\n\n### Mixing\nYou cannot mix `??` with `||` or `&&` without parentheses. `&&` has higher precedence than `||`.",
+      "keyPoints": [
+        "&& and || return an operand, not always a boolean",
+        "|| gives the first truthy value, && gives the first falsy value",
+        "Use ?? when 0, \"\" or false are valid values",
+        "||=, &&= and ??= are logical assignment shortcuts",
+        "Short-circuit stops evaluation early"
+      ],
+      "pitfalls": [
+        "Using || for defaults breaks when 0 or \"\" is legitimate input",
+        "a ?? b || c is a syntax error without parentheses"
+      ],
+      "examples": [
+        {
+          "title": "Defaults and guards",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(null || \"default\", 0 || 10, 0 ?? 10);\nconsole.log(\"a\" && \"b\", \"\" && \"b\", 1 && 2 && 3);\nconsole.log(false || null || \"last\");\n\nlet settings = { volume: 0 };\nsettings.volume ||= 50;\nconsole.log(settings.volume);\nsettings.brightness ??= 70;\nconsole.log(settings);\n\nconst age = 19, hasLicense = false;\nconsole.log(\"can drive:\", age >= 18 && hasLicense);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does console.log(null || \"hi\" && 0) print?",
+          "a": "0. && runs first: \"hi\" && 0 is 0. Then null || 0 returns the last operand, 0."
+        },
+        {
+          "q": "Difference between || and ???",
+          "a": "|| falls back for any falsy value (0, \"\", false...). ?? falls back only for null and undefined."
+        },
+        {
+          "q": "What is short-circuit evaluation?",
+          "a": "The second operand of && or || is evaluated only if the first operand does not already decide the result."
+        }
+      ],
+      "source": "JS-one-shot/3_expressions.js"
+    },
+    {
+      "id": "js-conditionals",
+      "title": "Conditionals: if/else, switch and Ternary",
+      "level": "beginner",
+      "summary": "Choose which code runs using if/else chains, switch statements and the ternary operator.",
+      "description": "Conditional statements let a program take decisions.\n\n### if / else if / else\n```js\nif (temperature >= 30) { /* beach */ }\nelse if (temperature >= 20) { /* tv */ }\nelse { /* sleep */ }\n```\nThe condition is converted to a boolean, so any truthy value enters the block. Use early `return` to avoid deep nesting.\n\n### switch\nCompares one value against many `case` values using **strict equality** (`===`).\n```js\nswitch (day) {\n  case \"Monday\":\n    console.log(\"work\");\n    break;\n  case \"Saturday\":\n  case \"Sunday\":     // fall-through groups cases\n    console.log(\"weekend\");\n    break;\n  default:\n    console.log(\"normal day\");\n}\n```\nWithout `break`, execution **falls through** to the next case. Use `{}` around a case body if you declare `let/const` inside.\n\n### Ternary operator\n`condition ? valueIfTrue : valueIfFalse` is an expression (it returns a value), ideal for small choices:\n```js\nconst result = score >= 60 ? \"Pass\" : \"Fail\";\n```\nAvoid nesting more than one level.\n\n### Lookup object alternative\nFor many value-to-value mappings, an object or Map is shorter and faster to read than a long switch.",
+      "keyPoints": [
+        "if/else chains run the first truthy branch only",
+        "switch uses === and needs break to avoid fall-through",
+        "Ternary is an expression, if is a statement",
+        "default handles the no-match case",
+        "An object lookup can replace a big switch"
+      ],
+      "pitfalls": [
+        "Forgetting break causes fall-through to following cases",
+        "switch(true) tricks and deep nested ternaries hurt readability",
+        "Declaring let/const directly inside a case without braces shares one scope"
+      ],
+      "examples": [
+        {
+          "title": "Switch and ternary",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function areaOf(shape, a, b) {\n  switch (shape.toLowerCase()) {\n    case \"square\":\n      return a * a;\n    case \"rectangle\":\n      return a * b;\n    case \"circle\": {\n      const r = a;\n      return +(Math.PI * r * r).toFixed(2);\n    }\n    default:\n      return \"Sorry the shape is not available\";\n  }\n}\nconsole.log(areaOf(\"Square\", 5));\nconsole.log(areaOf(\"rectangle\", 5, 10));\nconsole.log(areaOf(\"circle\", 2));\nconsole.log(areaOf(\"triangle\", 1));\n\nconst score = 99;\nconsole.log(score >= 60 ? \"Pass\" : \"Fail\");"
+        },
+        {
+          "title": "Voting eligibility with early returns",
+          "language": "javascript",
+          "explanation": "",
+          "code": "function voteStatus(age, isCitizen, isRegistered) {\n  if (age < 18) return \"Not eligible (younger)\";\n  if (!isCitizen) return \"Not eligible due to citizenship status\";\n  if (!isRegistered) return \"Not eligible due to registration status\";\n  return \"You are eligible to vote\";\n}\nconsole.log(voteStatus(19, true, true));\nconsole.log(voteStatus(19, false, true));\nconsole.log(voteStatus(16, true, true));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Why do we write break in switch?",
+          "a": "Without break, execution continues into the next case (fall-through). break exits the switch after the matching case runs."
+        },
+        {
+          "q": "Which equality does switch use?",
+          "a": "Strict equality (===), so switch(\"5\") will not match case 5."
+        },
+        {
+          "q": "When should you use the ternary operator?",
+          "a": "For short two-way choices that produce a value, such as assigning or returning. Use if/else when you need multiple statements or complex logic."
+        }
+      ],
+      "source": "JS-one-shot/4_loops.js, JS-one-shot/3_expressions.js"
+    },
+    {
+      "id": "js-loops",
+      "title": "Loops: for, while, do-while, break and continue",
+      "level": "beginner",
+      "summary": "Repeat work with for, while and do...while and control the flow with break and continue.",
+      "description": "Loops execute a block of code repeatedly while a condition is true.\n\n### for\n```js\nfor (let i = 1; i <= 5; i++) { console.log(i); }\n```\nThree parts: **initialisation**, **condition** (checked before every run), **update** (after every run). Any part can be left empty; `for (;;) {}` is an infinite loop.\n\n### while\nUse when you do not know the number of iterations upfront:\n```js\nlet n = 1;\nwhile (n <= 10) { n++; }\n```\n\n### do...while\nRuns the body **at least once**, then checks the condition. Good for \"ask, then validate\" flows.\n\n### break, continue and labels\n- `break` leaves the loop completely.\n- `continue` skips to the next iteration.\n- A **label** lets you break out of nested loops: `outer: for (...) { for (...) { break outer; } }`.\n\n### Common practice problems\nTimes tables, sum 1 to N, prime check, leap year, star patterns. Use `let` in loops: each iteration gets its own binding, which matters for closures and callbacks.\n\n### Choosing a loop\n- Known count: `for`.\n- Unknown count / waiting for a condition: `while`.\n- Run once first: `do...while`.\n- Iterating arrays: `for...of`, `forEach` or `map` (see arrays).",
+      "keyPoints": [
+        "for = init; condition; update",
+        "do...while always runs at least once",
+        "break exits the loop, continue skips one iteration",
+        "Labels allow breaking out of nested loops",
+        "Always make sure the condition eventually becomes false"
+      ],
+      "pitfalls": [
+        "Infinite loops from forgetting to update the counter",
+        "Off-by-one errors with < vs <=",
+        "Using var in a loop with async callbacks shares one variable"
+      ],
+      "examples": [
+        {
+          "title": "Table, sum and prime",
+          "language": "javascript",
+          "explanation": "",
+          "code": "for (let i = 1; i <= 5; i++) console.log(`5 * ${i} = ${5 * i}`);\n\nlet sum = 0;\nfor (let n = 1; n <= 10; n++) sum += n;\nconsole.log(\"sum 1..10 =\", sum);\n\nfunction isPrime(num) {\n  if (num < 2) return false;\n  for (let i = 2; i * i <= num; i++) {\n    if (num % i === 0) return false;\n  }\n  return true;\n}\nconsole.log(isPrime(13), isPrime(15));"
+        },
+        {
+          "title": "Star pattern, break/continue and label",
+          "language": "javascript",
+          "explanation": "",
+          "code": "for (let i = 1; i <= 4; i++) {\n  let row = \"\";\n  for (let j = 1; j <= i; j++) row += \"* \";\n  console.log(row.trim());\n}\n\nfor (let i = 1; i <= 6; i++) {\n  if (i === 2) continue;\n  if (i === 5) break;\n  console.log(\"i =\", i);\n}\n\nouter: for (let a = 1; a <= 3; a++) {\n  for (let b = 1; b <= 3; b++) {\n    if (a * b === 4) break outer;\n    console.log(a, b);\n  }\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between while and do...while?",
+          "a": "while checks the condition before each iteration and may never run. do...while runs the body once first and checks the condition afterwards."
+        },
+        {
+          "q": "What is the difference between break and continue?",
+          "a": "break terminates the whole loop; continue stops only the current iteration and moves to the next one."
+        },
+        {
+          "q": "How do you exit from nested loops at once?",
+          "a": "Use a labelled break (break outer;), or put the loops in a function and return."
+        }
+      ],
+      "source": "JS-one-shot/4_loops.js"
+    },
+    {
+      "id": "js-for-in-for-of",
+      "title": "for...in vs for...of vs forEach",
+      "level": "beginner",
+      "summary": "for...of iterates values of iterables, for...in iterates enumerable keys of objects.",
+      "description": "Three similar-looking ways to loop over collections often confuse beginners.\n\n### for...of\nIterates over the **values** of any **iterable**: arrays, strings, Map, Set, NodeList, generators. You can use `break`, `continue` and `await` inside.\n\n```js\nfor (const fruit of [\"apple\", \"mango\"]) console.log(fruit);\nfor (const ch of \"JS\") console.log(ch);\n```\n\n### for...in\nIterates over the **enumerable property keys** (as strings) of an object, **including inherited ones**. Use it for plain objects, and prefer `Object.keys/entries` for arrays.\n\n```js\nfor (const key in { a: 1, b: 2 }) console.log(key);\n```\n\n### Array.prototype.forEach\nCalls a function for each element. It returns `undefined`, cannot be stopped with `break`, and does not wait for `async` callbacks.\n\n### Which one to use\n| Need | Use |\n|---|---|\n| values of an array/string/Map/Set | `for...of` |\n| keys of a plain object | `Object.keys` / `Object.entries` + `for...of` |\n| side effects for every item, no early exit | `forEach` |\n| early exit | `for...of` / `some` / `every` / classic `for` |\n| `await` inside | `for...of` |\n\n### Remember\nPlain objects are **not iterable**: `for (const x of {a:1})` throws a TypeError. Use `Object.entries(obj)` first.",
+      "keyPoints": [
+        "for...of gives values, for...in gives keys (strings)",
+        "for...in also walks the prototype chain",
+        "Plain objects are not iterable - use Object.entries",
+        "forEach cannot break or await properly",
+        "Use for...of when you need break or await"
+      ],
+      "pitfalls": [
+        "Using for...in on arrays gives string indexes and may include extra properties",
+        "forEach(async ...) does not wait for the promises",
+        "Adding to an array while iterating with for...of can cause endless loops"
+      ],
+      "examples": [
+        {
+          "title": "Compare the three loops",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const fruits = [\"apple\", \"orange\", \"mango\"];\nfor (const item of fruits) console.log(\"of:\", item);\nfor (const idx in fruits) console.log(\"in:\", idx, typeof idx);\nfruits.forEach((item, i) => console.log(\"forEach:\", i, item));\n\nconst person = { name: \"Asha\", age: 25 };\nfor (const key in person) console.log(key, \"=\", person[key]);\nfor (const [k, v] of Object.entries(person)) console.log(k, v);\n\ntry {\n  for (const x of person) console.log(x);\n} catch (e) {\n  console.log(e.constructor.name, \"-\", e.message);\n}"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between for...in and for...of?",
+          "a": "for...in loops over enumerable keys (including inherited ones) as strings. for...of loops over values of an iterable object."
+        },
+        {
+          "q": "Can you use break inside forEach?",
+          "a": "No. forEach cannot be stopped except by throwing. Use a for...of loop, or some()/every() for early exit."
+        },
+        {
+          "q": "Why does for...of fail on a plain object?",
+          "a": "Plain objects do not implement Symbol.iterator. Convert with Object.keys, Object.values or Object.entries."
+        }
+      ],
+      "source": "JS-one-shot/6_arrays.js"
+    }
+  ]
+}

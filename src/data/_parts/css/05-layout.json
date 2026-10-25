@@ -1,0 +1,591 @@
+{
+ "id": "css-layout",
+ "title": "Layout: Display, Position, Flexbox and Grid",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "css-display",
+   "title": "Display: block, inline, inline-block, none",
+   "level": "intermediate",
+   "summary": "How elements flow on the page and how display, visibility and opacity differ.",
+   "description": "The `display` property decides the **outer** behaviour (how the element sits among siblings) and the **inner** behaviour (how its children are laid out).\n\n### Core values\n| Value | Behaviour |\n|---|---|\n| `block` | starts on a new line, fills the width, accepts width/height/margin/padding |\n| `inline` | flows inside text, ignores width/height and vertical margin |\n| `inline-block` | flows like inline but accepts width/height/vertical spacing |\n| `none` | removed from layout and accessibility tree |\n| `flex` / `inline-flex` | flex container |\n| `grid` / `inline-grid` | grid container |\n| `flow-root` | block that contains floats and stops margin collapse |\n| `contents` | element's box disappears, children participate in parent layout |\n\n### Default displays\n- Block: `div`, `p`, `h1-h6`, `ul`, `section`, `header`...\n- Inline: `span`, `a`, `strong`, `em`, `img` (replaced inline).\n\n### Hiding things - three ways\n| Technique | Space kept? | Visible to screen readers? | Can animate? |\n|---|---|---|---|\n| `display: none` | no | no | no |\n| `visibility: hidden` | yes | no | yes (discrete) |\n| `opacity: 0` | yes | **yes** | yes |\n\nVisually-hidden but accessible text uses the \"sr-only\" pattern (position absolute, 1px size, clip).\n\n### Inline-block gap\nWhitespace between inline-block elements creates a small gap. Fix with flexbox, or `font-size: 0` on the parent.\n\n### Tip\nMaking links buttons: `a { display: inline-block; padding: 10px 32px; }` - exactly the technique in the source course demo.",
+   "keyPoints": [
+    "block = new line, full width; inline = in text flow; inline-block = both",
+    "inline ignores width/height and vertical margin",
+    "display: none removes the element; visibility: hidden keeps the space",
+    "flex/grid change how the children are laid out",
+    "flow-root creates a clean block formatting context"
+   ],
+   "pitfalls": [
+    "Setting width on <span> and wondering why nothing happens",
+    "Using display: none for content that should remain accessible",
+    "Unexpected 4px gap between inline-block items"
+   ],
+   "examples": [
+    {
+     "title": "block vs inline vs inline-block",
+     "language": "web",
+     "html": "<div class=\"p\">block (full width)</div>\n<span class=\"s\">inline</span><span class=\"s\">inline</span>\n<span class=\"s ib\">inline-block</span><span class=\"s ib\">inline-block</span>",
+     "css": "body { font-family: sans-serif; }\n.p { background: #4b6cb7; color: #fff; padding: 10px; margin-bottom: 10px; }\n.s { background: #24c6dc; color: #003; padding: 12px 14px; margin: 14px 6px; width: 200px; height: 60px; }\n.ib { display: inline-block; background: #93edc7; }",
+     "js": "",
+     "code": "",
+     "explanation": "The inline spans ignore width/height and vertical margin; inline-block spans respect them."
+    },
+    {
+     "title": "Hiding techniques",
+     "language": "web",
+     "html": "<div class=\"row\"><b>A</b><b class=\"none\">B</b><b>C</b></div>\n<div class=\"row\"><b>A</b><b class=\"vis\">B</b><b>C</b></div>\n<div class=\"row\"><b>A</b><b class=\"op\">B</b><b>C</b></div>",
+     "css": ".row { display: flex; gap: 8px; margin-bottom: 8px; font-family: sans-serif; }\nb { background: #fde68a; padding: 12px 18px; }\n.none { display: none; }\n.vis { visibility: hidden; }\n.op { opacity: 0; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "Main difference between display: block and inline?",
+     "a": "Block elements start on a new line and take the full width and accept width/height. Inline elements flow within text and ignore width/height and vertical margins."
+    },
+    {
+     "q": "display: none vs visibility: hidden?",
+     "a": "display: none removes the element from layout (no space) and from the accessibility tree; visibility: hidden hides it but keeps its space."
+    },
+    {
+     "q": "How do you make a link behave like a button?",
+     "a": "display: inline-block (or block) plus padding, background and border-radius."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/display/index.html, display/style.css"
+  },
+  {
+   "id": "css-position",
+   "title": "Position: static, relative, absolute, fixed, sticky",
+   "level": "intermediate",
+   "summary": "Move elements out of or relative to normal flow and know which ancestor they are measured from.",
+   "description": "`position` controls how an element is placed. Offsets (`top`, `right`, `bottom`, `left`, or `inset`) work on any value except `static`.\n\n| Value | Behaviour |\n|---|---|\n| `static` | default; normal flow; offsets and z-index ignored |\n| `relative` | stays in flow; offsets move it **from its own normal position**; becomes a reference for absolute children |\n| `absolute` | removed from flow; positioned against the nearest **positioned ancestor** (or the page) |\n| `fixed` | removed from flow; positioned against the **viewport**; stays during scroll |\n| `sticky` | acts relative until a scroll threshold, then sticks like fixed inside its container |\n\n### The golden pattern\n```css\n.parent { position: relative; }          /* reference box */\n.badge  { position: absolute; top: 0; right: 0; }\n```\n\n### Centering an absolute element\n```css\n.child { position: absolute; inset: 0; margin: auto; width: 200px; height: 100px; }\n/* or */\n.child { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }\n```\n\n### Fixed\nUsed for sticky headers, floating \"WhatsApp\" buttons and modals backdrops: `position: fixed; bottom: 20px; right: 20px;`.\n\n### Sticky\n```css\nheader { position: sticky; top: 0; }\n```\nNeeds a threshold (`top`), a scrolling ancestor and **no `overflow: hidden/auto` on ancestors** between it and the scroller. It never leaves its parent.\n\n### Notes\n- Absolute and fixed elements do not take space; neighbours collapse into the gap.\n- `inset: 0` is shorthand for top/right/bottom/left: 0.\n- Positioned elements can use `z-index`.",
+   "keyPoints": [
+    "static is default; relative offsets from own spot",
+    "absolute is measured from the nearest positioned ancestor",
+    "fixed is measured from the viewport",
+    "sticky = relative until threshold then fixed (within parent)",
+    "Use position: relative on the parent as the anchor"
+   ],
+   "pitfalls": [
+    "Absolute child flying to the page corner because no parent is positioned",
+    "sticky not working due to overflow on an ancestor or missing top value",
+    "Fixed elements overlapping content without adding body padding"
+   ],
+   "examples": [
+    {
+     "title": "Absolute inside relative",
+     "language": "web",
+     "html": "<div class=\"parent\">\n  <div class=\"c c1\">1</div><div class=\"c c2\">top right</div>\n  <div class=\"c c3\">bottom left</div><div class=\"c c5\">center</div>\n</div>",
+     "css": ".parent { position: relative; width: 300px; height: 220px; background: linear-gradient(to right,#514a9d,#24c6dc); border-radius: 12px; font-family: sans-serif; }\n.c { position: absolute; width: 80px; height: 60px; background: linear-gradient(to right,#93edc7,#1cd8d2); color: #003180; display: grid; place-items: center; font-size: 12px; }\n.c1 { top: 0; left: 0; }\n.c2 { top: 0; right: 0; }\n.c3 { bottom: 0; left: 0; }\n.c5 { left: 50%; top: 50%; transform: translate(-50%, -50%); }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Sticky header and fixed button",
+     "language": "web",
+     "html": "<div class=\"scroll\">\n  <header>Sticky header (scroll the box)</header>\n  <p>Content line 1</p><p>Content line 2</p><p>Content line 3</p><p>Content line 4</p><p>Content line 5</p><p>Content line 6</p><p>Content line 7</p><p>Content line 8</p>\n  <a class=\"fab\" href=\"#\">+</a>\n</div>",
+     "css": ".scroll { height: 180px; overflow: auto; border: 2px solid #94a3b8; position: relative; font-family: sans-serif; }\nheader { position: sticky; top: 0; background: #2965f1; color: #fff; padding: 10px; }\np { padding: 8px 12px; margin: 0; }\n.fab { position: sticky; bottom: 10px; float: right; margin-right: 10px; width: 36px; height: 36px; border-radius: 50%; background: #16a34a; color: #fff; display: grid; place-items: center; text-decoration: none; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the default position and what do top/left do on it?",
+     "a": "position: static. top/right/bottom/left and z-index have no effect on static elements."
+    },
+    {
+     "q": "How do you position an element relative to the viewport?",
+     "a": "position: fixed (an absolute element only does so if no ancestor is positioned)."
+    },
+    {
+     "q": "Why does position: sticky not work?",
+     "a": "Usually no top/bottom threshold was set, or an ancestor has overflow hidden/auto/scroll, or the parent is too short."
+    },
+    {
+     "q": "Absolute vs relative?",
+     "a": "Relative stays in flow and keeps its space; absolute leaves the flow and is placed against the nearest positioned ancestor."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/positions/static.html, fixed.html, positionabsolute/style.css"
+  },
+  {
+   "id": "css-z-index",
+   "title": "z-index and Stacking Contexts",
+   "level": "intermediate",
+   "summary": "Control which overlapping element is in front and learn why z-index sometimes seems ignored.",
+   "description": "`z-index` sets the stacking order of overlapping elements along the z-axis (towards the viewer).\n\n### Rules\n- Works on **positioned** elements (`relative`, `absolute`, `fixed`, `sticky`) and on flex/grid items.\n- Higher number = in front. Negative numbers go behind the parent's background content.\n- Equal values: the later element in the HTML is on top.\n- Default `auto` = 0 level.\n\n### Stacking context\nA **stacking context** is an isolated layer: children can never escape it. Inside a context their z-index values only compete with each other. A new context is created by:\n\n- root element\n- positioned element with z-index not auto\n- `opacity < 1`\n- `transform`, `filter`, `perspective`, `clip-path`, `mix-blend-mode`\n- `isolation: isolate`\n- flex/grid item with z-index\n- `will-change` for some properties\n\n### Why \"z-index: 9999\" fails\nIf an element sits inside a parent context with a lower rank, no value can lift it above elements of a higher sibling context. Fix by changing the **parent**, not the child.\n\n### Good practice\n- Keep a small scale with custom properties: `--z-dropdown: 100; --z-modal: 1000; --z-toast: 1100;`.\n- Add `isolation: isolate` to components to contain their own stacking.\n- Avoid random 99999 numbers.",
+   "keyPoints": [
+    "z-index needs a positioned element (or flex/grid item)",
+    "Higher wins; ties go to later source order",
+    "Stacking contexts isolate children",
+    "opacity, transform, filter create new stacking contexts",
+    "Use isolation: isolate and a z-index scale"
+   ],
+   "pitfalls": [
+    "z-index on a static element does nothing",
+    "Trying to out-number a different stacking context with 99999",
+    "Accidentally creating contexts with transform/opacity on a parent"
+   ],
+   "examples": [
+    {
+     "title": "Reorder with z-index",
+     "language": "web",
+     "html": "<div class=\"stack\">\n  <div class=\"box b1\">1 (z=3)</div>\n  <div class=\"box b2\">2 (z=1)</div>\n  <div class=\"box b3\">3 (z=2)</div>\n</div>",
+     "css": ".stack { position: relative; height: 170px; font-family: sans-serif; }\n.box { position: absolute; width: 120px; height: 100px; display: grid; place-items: center; color: #fff; font-weight: bold; border-radius: 8px; }\n.b1 { left: 0; top: 0; background: #ef4444; z-index: 3; }\n.b2 { left: 50px; top: 30px; background: #2965f1; z-index: 1; }\n.b3 { left: 100px; top: 60px; background: #16a34a; z-index: 2; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Stacking context trap",
+     "language": "web",
+     "html": "<div class=\"a\">A (z-index 1)<div class=\"inner\">inner z=9999</div></div>\n<div class=\"b\">B (z-index 2)</div>",
+     "css": "body { font-family: sans-serif; }\n.a { position: relative; z-index: 1; background: #fde68a; height: 90px; padding: 8px; }\n.inner { position: absolute; z-index: 9999; background: #ef4444; color: #fff; left: 80px; top: 50px; padding: 6px 10px; }\n.b { position: relative; z-index: 2; background: #93c5fd; height: 90px; margin-top: -40px; margin-left: 60px; padding: 8px; }",
+     "js": "",
+     "code": "",
+     "explanation": "The inner element has z-index 9999 but is trapped inside A (z-index 1), so B still covers it."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is z-index not working on my element?",
+     "a": "The element is probably position: static, or it is inside a stacking context whose own order is lower than the element you want to cover."
+    },
+    {
+     "q": "What creates a stacking context?",
+     "a": "Root, positioned elements with z-index, opacity below 1, transform, filter, perspective, isolation: isolate, will-change, and flex/grid items with z-index."
+    },
+    {
+     "q": "Can z-index be negative?",
+     "a": "Yes. The element is painted behind its parent's in-flow content, within the parent's stacking context."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/zindex/index.html, zindex/style.css"
+  },
+  {
+   "id": "css-float",
+   "title": "Float and Clearfix (Legacy Layout)",
+   "level": "intermediate",
+   "summary": "Floats wrap text around images and built pre-flexbox layouts; know how to clear them.",
+   "description": "`float` pushes an element to the left or right so that inline content (text) wraps around it. Before Flexbox and Grid, floats were used to build whole page layouts - you will meet them in old code and interviews.\n\n### Values\n- `float: left;` / `float: right;` / `float: none;`\n- `clear: left | right | both;` - make an element move below floats.\n\n### Original purpose: wrapping text\n```css\nimg.avatar { float: left; margin: 0 16px 8px 0; }\n```\n\n### Side effect: collapsed parent\nFloated children leave normal flow, so the parent may collapse to zero height. Fix it with one of:\n\n```css\n.parent { display: flow-root; }      /* modern, best */\n.parent::after { content: \"\"; display: block; clear: both; }  /* classic clearfix */\n.parent { overflow: auto; }          /* works but may clip */\n```\n\n### Float navbar (from the source course)\nA header with a logo floated left (30%) and navigation floated right (70%) with `display: inline-block` list items - a typical legacy pattern. Today, use `display: flex; justify-content: space-between;`.\n\n### When to still use float\n- Wrapping text around an image or shape (`shape-outside` for curved wrapping).\n- Drop caps.\n\n### Do not use float for\nPage layout, columns, centering. Use Flexbox or Grid.",
+   "keyPoints": [
+    "float removes the element from normal flow and wraps text around it",
+    "Parent collapses unless cleared (flow-root or clearfix)",
+    "clear: both pushes below previous floats",
+    "Flexbox/Grid replaced float for layout",
+    "shape-outside lets text wrap around shapes"
+   ],
+   "pitfalls": [
+    "Forgetting to clear floats so the footer jumps up",
+    "Using float and display: flex on the same child (float is ignored on flex items)",
+    "Using floats for centering"
+   ],
+   "examples": [
+    {
+     "title": "Wrap text around image",
+     "language": "web",
+     "html": "<div class=\"article\">\n  <div class=\"pic\">IMG</div>\n  <p>Float lets text wrap around the box on its left. This is the original purpose of float and it is still valid today for editorial layouts. Keep writing more text so that it wraps beneath the floated element as well, which shows how inline content flows around a floated box in CSS.</p>\n</div>",
+     "css": ".article { font-family: sans-serif; width: 380px; }\n.pic { float: left; width: 90px; height: 90px; margin: 0 12px 6px 0; background: linear-gradient(135deg,#f06,#48f); color: #fff; display: grid; place-items: center; border-radius: 8px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Legacy float header vs flex",
+     "language": "web",
+     "html": "<header class=\"old\"><div class=\"logo\">LOGO</div><nav><a href=\"#\">Home</a><a href=\"#\">About</a><a href=\"#\">Blog</a></nav></header>",
+     "css": ".old { background: #451952; color: #fff; font-family: sans-serif; display: flow-root; }\n.logo { float: left; width: 30%; line-height: 50px; text-align: center; }\nnav { float: right; width: 70%; line-height: 50px; text-align: right; }\nnav a { display: inline-block; padding: 0 20px; color: #fff; text-decoration: none; }",
+     "js": "",
+     "code": "",
+     "explanation": "flow-root on the header contains the floats, so the header keeps its height."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does a parent collapse when its children are floated?",
+     "a": "Floated elements are taken out of normal flow, so the parent no longer includes them in its height calculation."
+    },
+    {
+     "q": "How do you clear floats?",
+     "a": "Use display: flow-root on the parent (modern), the ::after clearfix with clear: both, or overflow: auto, or put clear: both on a following element."
+    },
+    {
+     "q": "Should you use float for layouts today?",
+     "a": "No. Use Flexbox or Grid; keep float for wrapping text around images."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/bonus/float/index.html"
+  },
+  {
+   "id": "css-flexbox",
+   "title": "Flexbox: The Container",
+   "level": "intermediate",
+   "summary": "One-dimensional layout: direction, wrapping, justify-content, align-items and gap.",
+   "description": "**Flexbox** lays out items in **one dimension** (a row or a column) and distributes space between them. Turn it on with `display: flex;` (or `inline-flex`). The direct children become **flex items**.\n\n### Axes\n- **Main axis**: the direction of `flex-direction` (row = horizontal).\n- **Cross axis**: perpendicular to the main axis.\n\n### Container properties\n| Property | Values | Effect |\n|---|---|---|\n| `flex-direction` | `row`, `row-reverse`, `column`, `column-reverse` | sets main axis |\n| `flex-wrap` | `nowrap`, `wrap`, `wrap-reverse` | allow multiple lines |\n| `flex-flow` | `row wrap` | shorthand of the two above |\n| `justify-content` | `flex-start`, `center`, `flex-end`, `space-between`, `space-around`, `space-evenly` | alignment on **main** axis |\n| `align-items` | `stretch`, `flex-start`, `center`, `flex-end`, `baseline` | alignment on **cross** axis (one line) |\n| `align-content` | same as justify-content | spacing of **multiple lines** (needs wrap) |\n| `gap` | `16px` or `row-gap column-gap` | space between items |\n\n### Quick recipes\n```css\n.center  { display: flex; justify-content: center; align-items: center; }\n.navbar  { display: flex; justify-content: space-between; align-items: center; }\n.cards   { display: flex; flex-wrap: wrap; gap: 20px; }\n.column  { display: flex; flex-direction: column; gap: 12px; }\n```\n\n### Remember\n- When `flex-direction: column`, **justify-content works vertically** and align-items horizontally.\n- `align-items` needs a container height to show vertical centering.\n- Use `gap` instead of margins between items.",
+   "keyPoints": [
+    "display: flex creates a container; direct children are items",
+    "justify-content = main axis; align-items = cross axis",
+    "flex-wrap lets items go to a new line; align-content spaces the lines",
+    "gap replaces margin hacks",
+    "Changing flex-direction swaps the roles of the axes"
+   ],
+   "pitfalls": [
+    "Using align-items without giving the container a height",
+    "Forgetting flex-wrap and getting overflow/squished items",
+    "Mixing up justify-content and align-items in column direction"
+   ],
+   "examples": [
+    {
+     "title": "Container playground",
+     "language": "web",
+     "html": "<div class=\"flex\"><div class=\"item\">1</div><div class=\"item\">2</div><div class=\"item\">3</div></div>",
+     "css": ".flex { display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 16px; height: 160px; padding: 10px; background: linear-gradient(to right,#514a9d,#24c6dc); border: 3px solid #333; font-family: sans-serif; }\n.item { width: 80px; height: 80px; background: linear-gradient(to right top,#004d7a,#00bf72,#a8eb12); display: grid; place-items: center; color: #fff; font-size: 24px; }\n/* try: justify-content: center | flex-end ; align-items: flex-start ; flex-direction: column */",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Wrap with gap",
+     "language": "web",
+     "html": "<div class=\"wrap\"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i></div>",
+     "css": ".wrap { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 320px; font-family: sans-serif; }\ni { font-style: normal; width: 90px; height: 60px; background: #2965f1; color: #fff; display: grid; place-items: center; border-radius: 8px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you center a div horizontally and vertically with Flexbox?",
+     "a": "On the parent: display: flex; justify-content: center; align-items: center; and give the parent a height."
+    },
+    {
+     "q": "Difference between justify-content and align-items?",
+     "a": "justify-content aligns items along the main axis; align-items aligns them along the cross axis."
+    },
+    {
+     "q": "What is the main axis if flex-direction is column?",
+     "a": "The vertical axis; justify-content then works vertically and align-items horizontally."
+    },
+    {
+     "q": "When does align-content have an effect?",
+     "a": "Only when there are multiple lines (flex-wrap: wrap) and extra space on the cross axis."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/flexbox/index.html, flexbox/style.css"
+  },
+  {
+   "id": "css-flex-items",
+   "title": "Flexbox: Item Properties (grow, shrink, basis, order)",
+   "level": "intermediate",
+   "summary": "Make items flexible with flex-grow, flex-shrink, flex-basis, the flex shorthand, order and align-self.",
+   "description": "Properties on the **flex items** decide how each one shares the container's space.\n\n| Property | Default | Meaning |\n|---|---|---|\n| `flex-grow` | 0 | share of the leftover space the item takes |\n| `flex-shrink` | 1 | how much it shrinks when space is short |\n| `flex-basis` | auto | starting size before growing/shrinking |\n| `order` | 0 | visual order (lower first) |\n| `align-self` | auto | override the container's align-items for one item |\n\n### The flex shorthand\n`flex: grow shrink basis` - common values:\n\n- `flex: 1;` = `1 1 0%` -> share space equally.\n- `flex: auto;` = `1 1 auto` -> grow from content size.\n- `flex: none;` = `0 0 auto` -> fixed, no flexibility.\n- `flex: 0 0 200px;` -> fixed 200px sidebar.\n\n### Typical layouts\n```css\n.sidebar { flex: 0 0 240px; }\n.main    { flex: 1; min-width: 0; }\n```\n\n### min-width: 0\nFlex items have `min-width: auto`, which stops them shrinking below their content - long text or code can overflow. Add `min-width: 0` (and `overflow: hidden` if needed).\n\n### Auto margins\n`margin-left: auto;` pushes an item (and everything after it) to the far end - a neat way to separate a logo from nav links.\n\n### Order and accessibility\n`order` changes only visual order; keyboard focus still follows the HTML order. Use it carefully.",
+   "keyPoints": [
+    "flex: 1 makes items share space equally",
+    "flex-basis sets the starting size; grow/shrink adjust it",
+    "align-self overrides align-items for a single item",
+    "margin: auto absorbs free space in flex layouts",
+    "Set min-width: 0 to allow text-heavy items to shrink"
+   ],
+   "pitfalls": [
+    "Expecting flex-basis to be a hard width (it can still shrink)",
+    "order breaking logical tab order",
+    "Long unbroken text making a flex item overflow its container"
+   ],
+   "examples": [
+    {
+     "title": "grow, basis, align-self",
+     "language": "web",
+     "html": "<div class=\"c\"><div class=\"i fixed\">flex: 0 0 100px</div><div class=\"i grow\">flex: 1</div><div class=\"i grow2\">flex: 2</div><div class=\"i self\">align-self: flex-end</div></div>",
+     "css": ".c { display: flex; gap: 8px; height: 140px; background: #e2e8f0; padding: 8px; font: 13px sans-serif; align-items: flex-start; }\n.i { background: #2965f1; color: #fff; padding: 10px; height: 60px; }\n.fixed { flex: 0 0 100px; }\n.grow { flex: 1; background: #16a34a; }\n.grow2 { flex: 2; background: #f59e0b; }\n.self { flex: 0 0 auto; align-self: flex-end; background: #ef4444; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Push item with auto margin",
+     "language": "web",
+     "html": "<nav class=\"n\"><b>LOGO</b><a href=\"#\">Home</a><a href=\"#\">About</a><a class=\"cta\" href=\"#\">Sign up</a></nav>",
+     "css": ".n { display: flex; align-items: center; gap: 16px; background: #0f172a; color: #fff; padding: 10px 16px; font-family: sans-serif; }\n.n a { color: #cbd5e1; text-decoration: none; }\n.n b { margin-right: auto; }\n.cta { background: #2965f1; color: #fff !important; padding: 6px 12px; border-radius: 6px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does flex: 1 mean?",
+     "a": "Shorthand for flex-grow: 1, flex-shrink: 1, flex-basis: 0%. The item takes an equal share of free space."
+    },
+    {
+     "q": "How do you reorder flex items without changing HTML?",
+     "a": "Use the order property; lower numbers appear first."
+    },
+    {
+     "q": "Why does my flex item overflow with long text?",
+     "a": "Flex items default to min-width: auto and cannot shrink below content size; set min-width: 0 (or overflow hidden) on the item."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/flexbox/style.css"
+  },
+  {
+   "id": "css-grid",
+   "title": "CSS Grid: Fundamentals",
+   "level": "intermediate",
+   "summary": "Two-dimensional layout with rows, columns, fr units, repeat(), minmax() and gap.",
+   "description": "**CSS Grid** is a **two-dimensional** layout system: it controls rows *and* columns at the same time. Activate it with `display: grid;`. Direct children become grid items.\n\n### Defining tracks\n```css\n.grid {\n  display: grid;\n  grid-template-columns: 1fr 2fr 1fr;      /* 3 columns */\n  grid-template-rows: 100px auto;          /* 2 rows */\n  gap: 20px;                               /* row-gap + column-gap */\n}\n```\n\n### Helpful units and functions\n| Syntax | Meaning |\n|---|---|\n| `fr` | fraction of free space |\n| `repeat(3, 1fr)` | three equal columns |\n| `minmax(250px, 1fr)` | at least 250px, at most 1fr |\n| `min-content` / `max-content` | shrink-wrap to content |\n| `auto` | fits content / takes remaining |\n\n### Responsive without media queries\n```css\n.cards { display: grid; gap: 24px;\n  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }\n```\n- **auto-fill**: creates as many tracks as fit, keeps empty ones.\n- **auto-fit**: same, but collapses empty tracks so items stretch.\n\n### Alignment\n- `justify-items` / `align-items`: align items inside their cells.\n- `justify-content` / `align-content`: align the whole grid inside the container.\n- `place-items: center;` is shorthand for centering content in cells.\n\n### Implicit grid\nItems beyond the defined tracks create implicit rows. Size them with `grid-auto-rows: 250px;` and flow direction with `grid-auto-flow`.\n\n### Terms\nGrid lines, tracks, cells, areas, explicit vs implicit grid.",
+   "keyPoints": [
+    "display: grid + grid-template-columns/rows defines the grid",
+    "fr, repeat() and minmax() are the core tools",
+    "repeat(auto-fit, minmax(250px,1fr)) = responsive grid with no media query",
+    "gap sets row and column spacing",
+    "place-items: center centers content in every cell"
+   ],
+   "pitfalls": [
+    "Confusing auto-fit and auto-fill",
+    "Using fixed pixel columns that overflow on mobile",
+    "Putting grid properties on the items instead of the container"
+   ],
+   "examples": [
+    {
+     "title": "Basic 3x2 grid",
+     "language": "web",
+     "html": "<div class=\"grid\"><div>1</div><div>2</div><div class=\"wide\">3 (span 2)</div><div>4</div><div>5</div></div>",
+     "css": ".grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 80px; gap: 12px; padding: 12px; background: #dcd7c9; font: bold 16px sans-serif; color: #fff; }\n.grid > div { display: grid; place-items: center; background: #662549; }\n.grid > div:nth-child(even) { background: #113946; }\n.wide { grid-column: span 2; background: #102c57 !important; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Responsive auto-fit",
+     "language": "web",
+     "html": "<div class=\"cards\"><i>1</i><i>2</i><i>3</i><i>4</i><i>5</i></div>",
+     "css": ".cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; font-family: sans-serif; }\ni { font-style: normal; background: #2965f1; color: #fff; height: 70px; display: grid; place-items: center; border-radius: 8px; }",
+     "js": "",
+     "code": "",
+     "explanation": "Resize the preview and columns re-flow automatically."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Flexbox vs Grid?",
+     "a": "Flexbox is one-dimensional (row or column) and content-driven; Grid is two-dimensional (rows and columns together) and layout-driven."
+    },
+    {
+     "q": "What does the fr unit do?",
+     "a": "It divides the available free space into fractions; 1fr 2fr gives the second track twice as much space as the first."
+    },
+    {
+     "q": "Difference between auto-fit and auto-fill?",
+     "a": "Both create as many columns as fit. auto-fill keeps empty tracks; auto-fit collapses them so existing items stretch."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/grid/index.html, grid/style.css"
+  },
+  {
+   "id": "css-grid-advanced",
+   "title": "CSS Grid: Placement, Areas and Alignment",
+   "level": "advanced",
+   "summary": "Position items with line numbers, span, named areas, dense flow and alignment properties.",
+   "description": "### Placing items by line\nGrid lines are numbered from 1. Negative numbers count from the end (`-1` is the last line).\n\n```css\n.item-1 { grid-column: 2 / 4; grid-row: 1 / 3; }\n.item-2 { grid-column: 1 / -1; }          /* full width */\n.item-3 { grid-column: span 2; }          /* span two tracks */\n.item-4 { grid-area: 2 / 2 / 3 / 3; }     /* row-start / col-start / row-end / col-end */\n```\n\n### Named template areas\nVisual and readable page layouts:\n\n```css\n.page {\n  display: grid;\n  grid-template-columns: 220px 1fr;\n  grid-template-areas:\n    \"header  header\"\n    \"sidebar main\"\n    \"footer  footer\";\n}\nheader  { grid-area: header; }\naside   { grid-area: sidebar; }\nmain    { grid-area: main; }\nfooter  { grid-area: footer; }\n```\nUse `.` for an empty cell. Redefine `grid-template-areas` in a media query to restructure the page.\n\n### Named lines\n`grid-template-columns: [full-start] 1fr [content-start] 960px [content-end] 1fr [full-end];`\n\n### Auto placement\n- `grid-auto-flow: row | column | dense` (dense backfills holes).\n- `grid-auto-rows` / `grid-auto-columns` size implicit tracks, e.g. `minmax(100px, auto)`.\n\n### Alignment cheat sheet\n| Target | Inline axis | Block axis | Both |\n|---|---|---|---|\n| items in cells | `justify-items` | `align-items` | `place-items` |\n| one item | `justify-self` | `align-self` | `place-self` |\n| whole grid | `justify-content` | `align-content` | `place-content` |\n\n### Overlap\nItems can share cells (same grid-area) and overlap; control with `z-index`.",
+   "keyPoints": [
+    "grid-column / grid-row with line numbers, span and -1",
+    "grid-template-areas gives readable page layouts",
+    "grid-area is shorthand for row-start / col-start / row-end / col-end",
+    "grid-auto-flow: dense fills gaps",
+    "place-items, place-self, place-content are two-axis shorthands"
+   ],
+   "pitfalls": [
+    "Off-by-one errors: n tracks have n+1 lines",
+    "Misspelled area names silently break the layout",
+    "dense flow changes visual order away from DOM order (a11y)"
+   ],
+   "examples": [
+    {
+     "title": "Holy grail with grid areas",
+     "language": "web",
+     "html": "<div class=\"page\"><header>Header</header><aside>Sidebar</aside><main>Main content</main><footer>Footer</footer></div>",
+     "css": ".page { display: grid; grid-template-columns: 120px 1fr; grid-template-rows: 50px 140px 40px; gap: 8px;\n  grid-template-areas: \"h h\" \"s m\" \"f f\"; font-family: sans-serif; color: #fff; }\nheader { grid-area: h; background: #451952; }\naside { grid-area: s; background: #662549; }\nmain { grid-area: m; background: #ae445a; }\nfooter { grid-area: f; background: #f39f5a; }\n.page > * { display: grid; place-items: center; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Placement by line numbers",
+     "language": "web",
+     "html": "<div class=\"g\"><div class=\"a\">A: col 1/3</div><div class=\"b\">B: row 2</div><div class=\"c\">C: col 2/4 row 2/4</div><div class=\"d\">D</div></div>",
+     "css": ".g { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 60px; gap: 8px; font: 13px sans-serif; color: #fff; }\n.g > div { display: grid; place-items: center; background: #2965f1; }\n.a { grid-column: 1 / 3; background: #16a34a !important; }\n.b { grid-row: 2; background: #f59e0b !important; }\n.c { grid-column: 2 / 4; grid-row: 2 / 4; background: #ef4444 !important; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you make an item span all columns?",
+     "a": "grid-column: 1 / -1; (from first line to the last line)."
+    },
+    {
+     "q": "What is grid-template-areas?",
+     "a": "A way to name regions in the grid with strings and assign elements to them with grid-area, making layouts readable and easy to rearrange."
+    },
+    {
+     "q": "Difference between justify-content and justify-items in grid?",
+     "a": "justify-items aligns each item inside its cell; justify-content aligns the whole set of tracks inside the container when there is extra space."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/grid/style.css"
+  },
+  {
+   "id": "css-column-layout",
+   "title": "Multi-column Layout",
+   "level": "intermediate",
+   "summary": "Flow text into newspaper-style columns with column-count, column-width, gap and rule.",
+   "description": "The **multi-column** module flows content from one column into the next, like a newspaper. Browsers balance the columns automatically.\n\n### Properties\n| Property | Purpose |\n|---|---|\n| `column-count` | exact number of columns |\n| `column-width` | ideal column width; the browser decides the count |\n| `columns` | shorthand: `columns: 3` or `columns: 15rem` |\n| `column-gap` | space between columns (default 1em) |\n| `column-rule` | a line between columns (like border) |\n| `column-span` | `all` makes a heading span every column |\n| `column-fill` | `balance` (default) or `auto` |\n\n### Example\n```css\narticle {\n  column-count: 3;\n  column-gap: 50px;\n  column-rule: 4px solid red;\n  text-align: justify;\n}\nh2 { column-span: all; }\n```\n\n### Preventing awkward breaks\n- `break-inside: avoid;` keeps cards/figures from splitting across columns.\n- `break-before: column;` forces a new column.\n\n### Responsive behaviour\nPrefer `column-width: 18rem;` so the number of columns adapts to the available width without media queries.\n\n### When to use\nLong text articles, tag lists, masonry-like card collections (with `break-inside: avoid`). For two-dimensional app layouts use Grid instead.",
+   "keyPoints": [
+    "column-count or column-width creates columns",
+    "column-gap and column-rule style the gutter",
+    "column-span: all lets headings cross all columns",
+    "break-inside: avoid keeps items whole",
+    "Prefer column-width for responsive columns"
+   ],
+   "pitfalls": [
+    "Fixed column-count making unreadably narrow columns on mobile",
+    "Cards splitting between columns (add break-inside: avoid)",
+    "Needing a fixed height for column-fill auto to work as expected"
+   ],
+   "examples": [
+    {
+     "title": "Three column text",
+     "language": "web",
+     "html": "<h2>Best CSS Course Ever Created</h2>\n<p class=\"cols\">Discover a world of possibilities with a comprehensive CSS course. Dive into over 50 real-world interview questions to boost your job prospects. Unlock the secrets of CSS with 30+ invaluable tips and tricks. Engage in dynamic learning with animated presentations. Showcase your creativity with 10+ captivating animation projects. Take on the ultimate challenge with a mega, fully multipage responsive website project. Elevate your web presence with SEO insights and website performance testing.</p>",
+     "css": "body { font-family: sans-serif; }\n.cols { column-count: 3; column-gap: 30px; column-rule: 3px solid #ef4444; text-align: justify; line-height: 1.6; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "column-width + break-inside",
+     "language": "web",
+     "html": "<div class=\"m\"><div>One short card</div><div>A taller card<br>with two lines<br>of text</div><div>Card three</div><div>Card four<br>two lines</div><div>Card five</div><div>Card six<br>x<br>y</div></div>",
+     "css": ".m { column-width: 120px; column-gap: 10px; font-family: sans-serif; }\n.m > div { background: #dbeafe; border: 1px solid #93c5fd; padding: 10px; margin-bottom: 10px; break-inside: avoid; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you create a newspaper-style text layout?",
+     "a": "Use column-count (or column-width) on the container, plus column-gap and column-rule for styling."
+    },
+    {
+     "q": "How do you make a heading span across all columns?",
+     "a": "column-span: all; on the heading inside the multi-column container."
+    },
+    {
+     "q": "How do you stop an element from breaking across columns?",
+     "a": "break-inside: avoid; (or page-break-inside: avoid; for older browsers)."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/columnlayout/index.html, columnlayout/style.css"
+  },
+  {
+   "id": "css-centering",
+   "title": "Centering Cheat Sheet",
+   "level": "intermediate",
+   "summary": "Every reliable way to center horizontally, vertically or both, with when to use each.",
+   "description": "\"How do you center a div?\" is the most famous CSS interview question. Know several methods.\n\n### 1. Grid (shortest)\n```css\n.parent { display: grid; place-items: center; }\n```\n\n### 2. Flexbox\n```css\n.parent { display: flex; justify-content: center; align-items: center; }\n```\n\n### 3. Flex + auto margin\n```css\n.parent { display: flex; }\n.child  { margin: auto; }\n```\n\n### 4. Absolute + transform\n```css\n.parent { position: relative; }\n.child  { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }\n```\n\n### 5. Absolute + inset + margin auto (fixed size child)\n```css\n.child { position: absolute; inset: 0; margin: auto; width: 200px; height: 100px; }\n```\n\n### Other cases\n| Need | Solution |\n|---|---|\n| Center text horizontally | `text-align: center;` on the parent |\n| Center a block horizontally | `margin-inline: auto;` + width |\n| Center inline-block in a line | `text-align: center;` on parent |\n| Center single line vertically | `line-height` = container height |\n| Center in viewport | `display:grid; place-items:center; min-height: 100dvh;` |\n\n### Which one to pick?\n- Layout containers: **grid** or **flex**.\n- Overlays, modals, badges: **absolute + transform** or `inset: 0; margin: auto;`.\n- Remember the parent needs a **height** for vertical centering.",
+   "keyPoints": [
+    "Grid: display: grid; place-items: center is the shortest",
+    "Flex: justify-content + align-items center",
+    "Absolute: top/left 50% + translate(-50%, -50%)",
+    "Horizontal block centering: margin-inline: auto with a width",
+    "The parent needs height for vertical centering"
+   ],
+   "pitfalls": [
+    "Parent has no height, so vertical centering seems broken",
+    "translate(-50%, -50%) with an element that is also animated with transform",
+    "Using margin: auto without width on a block (it already fills the line)"
+   ],
+   "examples": [
+    {
+     "title": "Grid vs Flex vs Absolute",
+     "language": "web",
+     "html": "<div class=\"row\">\n<div class=\"p grid\"><span>grid</span></div>\n<div class=\"p flex\"><span>flex</span></div>\n<div class=\"p abs\"><span>absolute</span></div>\n<div class=\"p auto\"><span>auto margin</span></div>\n</div>",
+     "css": ".row { display: flex; gap: 10px; font: 13px sans-serif; color: #fff; }\n.p { width: 110px; height: 110px; background: #191825; }\nspan { background: #865dff; padding: 8px; }\n.grid { display: grid; place-items: center; }\n.flex { display: flex; justify-content: center; align-items: center; }\n.abs { position: relative; }\n.abs span { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); white-space: nowrap; }\n.auto { display: flex; }\n.auto span { margin: auto; }",
+     "js": "",
+     "code": "",
+     "explanation": "Four different ways to produce the same centered result."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you center a div horizontally and vertically?",
+     "a": "Parent: display: grid; place-items: center; (or flex with justify-content and align-items center). The parent needs a height."
+    },
+    {
+     "q": "How do you center a block element horizontally only?",
+     "a": "Give it a width/max-width and margin-inline: auto."
+    },
+    {
+     "q": "Why does top: 50% not fully center an absolute element?",
+     "a": "top: 50% aligns the element's top edge to the middle; translateY(-50%) is needed to shift it up by half its own height."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/project/centerdiv/index.html, positions/positionabsolute/style.css"
+  },
+  {
+   "id": "css-flex-vs-grid",
+   "title": "Flexbox vs Grid: Decision Guide",
+   "level": "intermediate",
+   "summary": "A practical checklist to choose between Flexbox, Grid, or combining both.",
+   "description": "Flexbox and Grid are **complementary**, not competitors. Use this guide.\n\n### Core difference\n| | Flexbox | Grid |\n|---|---|---|\n| Dimension | one (row **or** column) | two (rows **and** columns) |\n| Driven by | content (items decide size) | layout (container defines tracks) |\n| Wrapping | wrapped lines are independent | all rows share the same column tracks |\n| Overlap | hard | easy |\n| Best for | components | page and section layouts |\n\n### Choose Flexbox when\n- laying out a **row of items**: navbar, toolbar, button group, tags;\n- items should **size by content** and share leftover space;\n- you need to **center** one thing or push an item with auto margins;\n- vertical stacking of a card's inner parts (title, text, button at bottom).\n\n### Choose Grid when\n- you need **rows and columns aligned together**: card gallery, dashboards, forms with labels;\n- you define the **page skeleton** (header, sidebar, main, footer);\n- items must **span** multiple tracks or overlap;\n- you want responsive columns via `repeat(auto-fit, minmax())`.\n\n### Combine them\nA Grid page layout where each card is a Flex column, and the nav inside the header is a Flex row. Both can be nested freely.\n\n### Quick questions\n1. Do I care about both axes? -> Grid.\n2. Is the content size deciding the layout? -> Flex.\n3. Is it a single line of things with gaps? -> Flex.\n4. Do I need an aligned table-like layout? -> Grid.",
+   "keyPoints": [
+    "Flex = 1D, content-first; Grid = 2D, layout-first",
+    "Navbar/toolbar/centering -> Flexbox",
+    "Page skeleton/galleries/dashboards -> Grid",
+    "They nest well: Grid for the page, Flex for components",
+    "Both support gap, alignment and wrapping"
+   ],
+   "pitfalls": [
+    "Using Flexbox wrap and expecting columns to line up across rows",
+    "Using fixed-width Grid tracks that break on small screens",
+    "Forcing one tool everywhere instead of mixing"
+   ],
+   "examples": [
+    {
+     "title": "Grid page with flex components",
+     "language": "web",
+     "html": "<div class=\"page\">\n  <header><b>Logo</b><nav><a>Home</a><a>Docs</a></nav></header>\n  <section class=\"cards\">\n    <article><h4>Card A</h4><p>Short text</p><button>Open</button></article>\n    <article><h4>Card B</h4><p>A longer text which makes this card taller than the others.</p><button>Open</button></article>\n    <article><h4>Card C</h4><p>Medium text here</p><button>Open</button></article>\n  </section>\n</div>",
+     "css": "body { font-family: sans-serif; }\nheader { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0f172a; color: #fff; }\nnav { display: flex; gap: 14px; }\n.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 10px; }\narticle { display: flex; flex-direction: column; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px; }\narticle p { flex: 1; margin: 4px 0 8px; font-size: 14px; }\nbutton { align-self: flex-start; border: 0; background: #2965f1; color: #fff; padding: 6px 12px; border-radius: 6px; }",
+     "js": "",
+     "code": "",
+     "explanation": "Grid builds the card gallery; Flexbox keeps each button at the bottom of its card and lays out the header."
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you pick Grid over Flexbox?",
+     "a": "When you need control over rows and columns together - page layouts, galleries, dashboards, overlapping or spanning items."
+    },
+    {
+     "q": "Can you use Flexbox and Grid together?",
+     "a": "Yes. A common approach is Grid for the overall page and Flexbox inside components such as navbars and cards."
+    },
+    {
+     "q": "Which is better for a single row of buttons?",
+     "a": "Flexbox, because it is a one-dimensional, content-driven layout."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

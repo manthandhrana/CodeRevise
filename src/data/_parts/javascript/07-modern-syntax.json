@@ -1,0 +1,299 @@
+{
+  "id": "js-modern-syntax",
+  "title": "Modern JavaScript (ES2015+)",
+  "level": "intermediate",
+  "topics": [
+    {
+      "id": "js-destructuring",
+      "title": "Destructuring",
+      "level": "intermediate",
+      "summary": "Unpack values from arrays and properties from objects into variables in one line.",
+      "description": "**Destructuring** extracts values from arrays or objects into separate variables with a short, readable syntax.\n\n### Array destructuring (by position)\n```js\nconst [first, second, , fourth] = [10, 20, 30, 40];\nconst [a, b = 5, ...rest] = [1, undefined, 3, 4];\n[x, y] = [y, x];     // swap without a temp variable\n```\n\n### Object destructuring (by name)\n```js\nconst user = { name: \"Vinod\", age: 30, address: { city: \"Pune\" } };\nconst { name, age } = user;\nconst { name: fullName } = user;           // rename\nconst { role = \"guest\" } = user;           // default\nconst { address: { city } } = user;        // nested\nconst { name: n, ...others } = user;       // rest\n```\n\n### In function parameters\n```js\nfunction show({ name, age = 18 } = {}) {}\nconst total = ({ price, qty }) => price * qty;\n```\nThis is the standard way to receive props in React components and options objects.\n\n### In loops and imports\n```js\nfor (const [key, value] of Object.entries(obj)) {}\nimport { useState } from \"react\";\n```\n\n### Rules and tips\n- Object patterns match **names**; array patterns match **positions**.\n- Destructuring `null` or `undefined` throws a `TypeError`; give a default `= {}`.\n- Defaults apply only for `undefined`.\n- Computed names are allowed: `const { [key]: value } = obj`.\n- When assigning to existing variables in an object pattern, wrap in parentheses: `({ a, b } = obj);`.\n\n### Why it matters\nLess repetition (`user.name`, `user.age`), clearer function signatures and elegant swapping or returning multiple values from a function.",
+      "keyPoints": [
+        "Arrays match by position, objects match by key name",
+        "Rename with a colon and default with =",
+        "Rest collects the remaining items or properties",
+        "Works in parameters, loops and imports",
+        "Destructuring null/undefined throws"
+      ],
+      "pitfalls": [
+        "Order matters for arrays but not for objects",
+        "Forgetting parentheses around an assignment pattern at statement start",
+        "A default is not used for null values"
+      ],
+      "examples": [
+        {
+          "title": "Arrays and objects",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const numbers = [10, 20, 30];\nconst [first, , third] = numbers;\nconsole.log(first, third);\n\nlet a = 10, b = 30;\n[a, b] = [b, a];\nconsole.log(a, b);\n\nconst user = { name: \"Vinod\", age: 30, address: { city: \"Pune\", zip: 411001 } };\nconst { name: fullName, age, address: { city }, role = \"guest\", ...others } = user;\nconsole.log(fullName, age, city, role);\nconsole.log(others);\n\nconst printUser = ({ name, age = 18 } = {}) => `${name ?? \"anon\"} (${age})`;\nconsole.log(printUser(user), printUser());\n\nconst [x = 1, y = 2] = [undefined, null];\nconsole.log(x, y);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "How do you swap two variables without a third variable?",
+          "a": "Use array destructuring: [a, b] = [b, a]."
+        },
+        {
+          "q": "How do you rename a property while destructuring?",
+          "a": "Use a colon: const { name: fullName } = user."
+        },
+        {
+          "q": "What happens when you destructure undefined?",
+          "a": "It throws a TypeError. Provide a default value (= {}) for parameters that may be missing."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2015.js"
+    },
+    {
+      "id": "js-spread-rest",
+      "title": "Spread and Rest Operators",
+      "level": "intermediate",
+      "summary": "The three dots expand iterables or objects (spread) and collect leftovers (rest).",
+      "description": "The `...` syntax has two roles depending on where it appears.\n\n### Spread - expand\nUsed in **calls, array literals and object literals**.\n\n```js\n// arrays\nconst all = [...numbers1, ...numbers2];\nconst copy = [...fruits];\nconst chars = [...\"INDIA\"];\n// function calls\nMath.max(...nums);\nfruits.push(...[\"guava\", \"grapes\"]);\n// objects (ES2018)\nconst merged = { ...defaults, ...options };    // later keys win\nconst updated = { ...user, age: 31 };\n```\n\n### Rest - collect\nUsed in **parameters and destructuring patterns**.\n\n```js\nfunction sum(...nums) {}             // all arguments as an array\nconst [head, ...tail] = [1, 2, 3];\nconst { id, ...others } = obj;       // others = remaining props\n```\nRest must always be the **last** element, and there can be only one.\n\n### Spread vs rest\n| | Spread | Rest |\n|---|---|---|\n| Position | right side / call | left side / parameter |\n| Action | expands one value into many | gathers many into one |\n\n### Shallow copy\nSpread copies only the first level. Nested objects and arrays are shared between the copy and the original.\n\n### Common patterns\n- Immutable updates in React/Redux: `{ ...state, loading: true }`.\n- Merging config with defaults.\n- Removing a key: `const { password, ...safeUser } = user`.\n- Converting a `Set` or `NodeList` to an array: `[...set]`.",
+      "keyPoints": [
+        "Spread expands arrays, strings, sets and objects",
+        "Rest collects remaining items into an array/object",
+        "Rest must be last",
+        "Spread makes shallow copies",
+        "Later spread properties override earlier ones"
+      ],
+      "pitfalls": [
+        "Spreading a plain object into an array throws (objects are not iterable)",
+        "Nested data is still shared after spreading",
+        "Large arrays in function-call spread can overflow the stack"
+      ],
+      "examples": [
+        {
+          "title": "Spread and rest in practice",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const a = [1, 2, 3, 4], b = [4, 5, 6];\nconsole.log([...a, ...b], [...new Set([...a, ...b])]);\nconsole.log([...\"INDIA\"]);\n\nconst defaults = { theme: \"light\", size: 12 };\nconsole.log({ ...defaults, size: 16, extra: true });\n\nconst user = { id: 1, name: \"Asha\", password: \"secret\" };\nconst { password, ...safeUser } = user;\nconsole.log(safeUser);\n\nconst sum = (a, b, ...numbers) => numbers.reduce((acc, n) => acc + n, 0);\nconsole.log(sum(1, 2, 3, 4));\n\nconst state = { todos: [{ id: 1 }], loading: false };\nconst next = { ...state, loading: true };\nconsole.log(next.todos === state.todos);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is the difference between spread and rest?",
+          "a": "Spread expands an iterable/object into individual elements; rest collects multiple elements into a single array or object. Same syntax, different position."
+        },
+        {
+          "q": "How do you merge two objects?",
+          "a": "{ ...obj1, ...obj2 } or Object.assign({}, obj1, obj2). Properties of the later object win."
+        },
+        {
+          "q": "Is spread a deep copy?",
+          "a": "No, it is shallow. Nested objects are copied by reference."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2015.js, JS-one-shot/ecmascripts/es2018.js"
+    },
+    {
+      "id": "js-optional-chaining-nullish",
+      "title": "Optional Chaining (?.) and Nullish Coalescing (??)",
+      "level": "intermediate",
+      "summary": "Safely read deep properties and apply defaults only for null or undefined.",
+      "description": "### Optional chaining `?.` (ES2020)\nStops evaluation and returns `undefined` if the value before `?.` is `null` or `undefined`, instead of throwing a `TypeError`.\n\n```js\nuser?.address?.city        // property\nuser.getName?.()           // method that may not exist\nitems?.[0]                 // array / dynamic key\n```\nWithout it you would write `user && user.address && user.address.city`.\n\nImportant: `?.` short-circuits the **entire chain**, and it only guards the part immediately before it. Do not overuse it - if a value must exist, let the error surface.\n\n### Nullish coalescing `??` (ES2020)\nReturns the right side only when the left is `null` or `undefined`:\n```js\nconst count = 0;\ncount || 10;   // 10  (0 is falsy)\ncount ?? 10;   // 0   (0 is valid)\n```\n\n### Together\n```js\nconst city = person.address?.city ?? \"city is not present\";\n```\n\n### Logical assignment (ES2021)\n```js\nuser.nickname ??= \"friend\";   // assign if null/undefined\nsettings.volume ||= 50;       // assign if falsy\nisOn &&= toggle();            // assign if truthy\n```\n\n### Differences\n| Operator | Falls back when left is |\n|---|---|\n| `\\|\\|` | any falsy value |\n| `??` | only `null` or `undefined` |\n\n### Notes\n- `?.` cannot be used on the left of an assignment (`a?.b = 1` is invalid).\n- Combining `??` with `||` or `&&` requires parentheses.",
+      "keyPoints": [
+        "?. returns undefined if the left side is null or undefined",
+        "Works for properties, methods and indexes",
+        "?? treats only null and undefined as missing",
+        "??= ||= &&= assign conditionally",
+        "Prefer ?? over || for defaults"
+      ],
+      "pitfalls": [
+        "Overusing ?. hides real bugs",
+        "Mixing ?? with || without parentheses is a syntax error",
+        "?. does not protect against a value that is not null but not an object either"
+      ],
+      "examples": [
+        {
+          "title": "Safe access and defaults",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const person = {\n  name: \"John\",\n  address: { city: 0, coordinates: { latitude: 40.7128 } },\n  greet() { return \"hi\"; },\n};\nconsole.log(person.address?.city ?? \"city is not present\");\nconsole.log(person.address?.zip ?? \"no zip\");\nconsole.log(person.contact?.phone, person.contact?.phone ?? \"no phone\");\nconsole.log(person.address?.coordinates?.latitude);\nconsole.log(person.greet?.(), person.fly?.());\n\nconst list = null;\nconsole.log(list?.[0], list?.length);\n\nlet favNum = 0;\nconsole.log(favNum || 10, favNum ?? 10);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does optional chaining do?",
+          "a": "It short-circuits and returns undefined when the part before ?. is null or undefined, instead of throwing an error."
+        },
+        {
+          "q": "Difference between || and ???",
+          "a": "|| uses the right side for every falsy value; ?? uses it only for null and undefined, so 0, \"\" and false are preserved."
+        },
+        {
+          "q": "Can you write user?.name = \"x\"?",
+          "a": "No. Optional chaining is not allowed on the left side of an assignment."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2020.js"
+    },
+    {
+      "id": "js-es-feature-tour-1",
+      "title": "ES2015 to ES2019 Feature Tour",
+      "level": "intermediate",
+      "summary": "A year-by-year list of the features that shaped modern JavaScript between ES2015 and ES2019.",
+      "description": "ECMAScript releases a new version every year. These are the features you must know.\n\n### ES2015 (ES6) - the big one\n- `let`, `const`, block scope\n- Arrow functions, default / rest parameters, spread\n- Template literals, destructuring, shorthand properties\n- Classes, modules (`import`/`export`)\n- Promises, `Symbol`, iterators and generators\n- `Map`, `Set`, `WeakMap`, `WeakSet`\n- `for...of`, `Array.from`, `Object.assign`, `String.includes/startsWith`, `Math.trunc`\n\n### ES2016\n- `**` exponent operator\n- `Array.prototype.includes()`\n\n### ES2017\n- `async` / `await`\n- `Object.values()`, `Object.entries()`\n- `padStart()`, `padEnd()`\n- Trailing commas in function parameter lists\n- `Object.getOwnPropertyDescriptors`\n\n### ES2018\n- Object **rest / spread** properties\n- `Promise.prototype.finally()`\n- Async iteration (`for await...of`)\n- Regex: named groups, lookbehind, `s` flag\n\n### ES2019\n- `Array.prototype.flat()` and `flatMap()`\n- `Object.fromEntries()`\n- `trimStart()`, `trimEnd()`\n- Optional catch binding: `catch { }`\n- `Symbol.prototype.description`\n- Stable `Array.prototype.sort`\n\n### How to use this list\nCheck support in your target browsers (caniuse.com or MDN) and let a build tool such as Babel or esbuild transpile when you must support old ones.",
+      "keyPoints": [
+        "ES2015 introduced let/const, classes, modules, promises, arrow functions",
+        "ES2017 gave us async/await and Object.entries/values",
+        "ES2018 brought object spread and Promise.finally",
+        "ES2019 added flat, flatMap and Object.fromEntries",
+        "A new ECMAScript version ships every year"
+      ],
+      "pitfalls": [
+        "ES versions are not browser versions - check actual support",
+        "Features like top-level await need modules"
+      ],
+      "examples": [
+        {
+          "title": "Features from ES2016-ES2019",
+          "language": "javascript",
+          "explanation": "",
+          "code": "console.log(2 ** 8, [1, 2, 3].includes(2));                       // ES2016\nconsole.log(\"5\".padStart(3, \"0\"), Object.values({ a: 1, b: 2 }));  // ES2017\nconst { age, ...others } = { age: 10, name: \"vinod\", isStudent: true }; // ES2018\nconsole.log(others, { ...others, extra: 1 });\nconsole.log([1, [2, [3]]].flat(Infinity), [\"a b\", \"c\"].flatMap((s) => s.split(\" \"))); // ES2019\nconsole.log(Object.fromEntries([[\"x\", 1], [\"y\", 2]]), \"  hi \".trimStart() + \"|\");\ntry { JSON.parse(\"{\"); } catch { console.log(\"optional catch binding\"); }\nPromise.reject(new Error(\"x\")).catch(() => {}).finally(() => console.log(\"finally runs\"));"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What was the biggest change in ES2015?",
+          "a": "It modernised the language: let/const, arrow functions, classes, modules, promises, template literals, destructuring, spread/rest, Map/Set, symbols and generators."
+        },
+        {
+          "q": "Which ES version introduced async/await?",
+          "a": "ES2017 (ES8)."
+        },
+        {
+          "q": "What does Object.fromEntries do?",
+          "a": "It converts an iterable of [key, value] pairs (such as Object.entries output or a Map) into an object."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2015.js ... es2019.js"
+    },
+    {
+      "id": "js-es-feature-tour-2",
+      "title": "ES2020 to ES2024 Feature Tour",
+      "level": "intermediate",
+      "summary": "The newest features: optional chaining, BigInt, at(), hasOwn, immutable array methods, groupBy and more.",
+      "description": "### ES2020\n- Optional chaining `?.` and nullish coalescing `??`\n- `BigInt` (`123n`)\n- `Promise.allSettled()`\n- `globalThis`, dynamic `import()`\n- `String.prototype.matchAll()`\n\n### ES2021\n- `String.prototype.replaceAll()`\n- Logical assignment `||=`, `&&=`, `??=`\n- Numeric separators `1_000_000`\n- `Promise.any()` and `AggregateError`\n- `WeakRef`\n\n### ES2022\n- `Array.prototype.at()` and `String.prototype.at()`\n- `Object.hasOwn()`\n- Class fields and **private** `#fields`, static blocks\n- **Top-level await** in modules\n- `Error` `cause` option\n\n### ES2023\n- `findLast()`, `findLastIndex()`\n- `toSorted()`, `toReversed()`, `toSpliced()`, `with()`\n- Hashbang `#!` support\n\n### ES2024\n- `Object.groupBy()` and `Map.groupBy()`\n- `Promise.withResolvers()`\n- `Array.fromAsync()`\n- `String.prototype.isWellFormed()`\n- Regex `v` flag, resizable `ArrayBuffer`\n\n### Looking ahead\nTemporal API (a modern replacement for `Date`), iterator helpers (`map`, `filter`, `take` on iterators), `Set` methods (`union`, `intersection`) and decorators are being rolled out.\n\nAlways check runtime support before relying on the newest features.",
+      "keyPoints": [
+        "ES2020: ?. ?? BigInt allSettled",
+        "ES2021: replaceAll, logical assignment, Promise.any",
+        "ES2022: at, hasOwn, class private fields, top-level await",
+        "ES2023: toSorted/toReversed/with and findLast",
+        "ES2024: Object.groupBy, Promise.withResolvers"
+      ],
+      "pitfalls": [
+        "Very new features may be missing in older browsers or Node versions",
+        "toSorted and friends need Node 20+"
+      ],
+      "examples": [
+        {
+          "title": "Features from ES2020-ES2024",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const settings = { volume: 0 };\nconsole.log(settings.volume ?? 50, settings.theme?.name);       // ES2020\nconsole.log(\"a-b-c\".replaceAll(\"-\", \"+\"), 1_000_000);            // ES2021\nconsole.log([1, 2, 3].at(-1), Object.hasOwn(settings, \"volume\")); // ES2022\nconsole.log([3, 1, 2].toSorted(), [1, 2, 3].with(0, 9));          // ES2023\n\nconst items = [{ t: \"fruit\", n: \"apple\" }, { t: \"veg\", n: \"kale\" }, { t: \"fruit\", n: \"kiwi\" }];\nconsole.log(Object.groupBy(items, (i) => i.t));                    // ES2024\n\nPromise.any([Promise.reject(1), Promise.resolve(\"any wins\")]).then(console.log);\nPromise.allSettled([Promise.resolve(1), Promise.reject(\"no\")]).then((r) =>\n  console.log(r.map((x) => x.status))\n);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What does Promise.any do and how is it different from Promise.race?",
+          "a": "Promise.any resolves with the first fulfilled promise and ignores rejections (rejecting with AggregateError only if all reject). Promise.race settles with the first promise to settle, fulfilled or rejected."
+        },
+        {
+          "q": "What is top-level await?",
+          "a": "Using await outside an async function at the top of an ES module (ES2022)."
+        },
+        {
+          "q": "Name the non-mutating array methods added in ES2023.",
+          "a": "toSorted, toReversed, toSpliced and with (plus findLast and findLastIndex for searching)."
+        }
+      ],
+      "source": "JS-one-shot/ecmascripts/es2020.js ... es2023.js"
+    },
+    {
+      "id": "js-iterators-generators",
+      "title": "Iterators and Generators",
+      "level": "advanced",
+      "summary": "Iterables produce values one by one; generator functions make writing them easy with yield.",
+      "description": "### The iteration protocol\nAn object is **iterable** if it has a `[Symbol.iterator]()` method returning an **iterator**: an object with `next()` that returns `{ value, done }`. Arrays, strings, Map, Set and NodeList are iterable, which is why `for...of`, spread and destructuring work with them.\n\n```js\nconst it = [10, 20][Symbol.iterator]();\nit.next(); // { value: 10, done: false }\nit.next(); // { value: 20, done: false }\nit.next(); // { value: undefined, done: true }\n```\n\n### Making your own iterable\n```js\nconst range = {\n  from: 1, to: 3,\n  [Symbol.iterator]() {\n    let cur = this.from, end = this.to;\n    return { next: () => cur <= end ? { value: cur++, done: false } : { value: undefined, done: true } };\n  },\n};\n[...range]; // [1, 2, 3]\n```\n\n### Generators\nA function declared with `function*` that can **pause** at `yield` and resume later. Calling it returns an iterator without running the body.\n```js\nfunction* idMaker() {\n  let id = 1;\n  while (true) yield id++;   // infinite but lazy\n}\n```\n- `yield value` pauses and outputs a value.\n- `next(x)` can send a value **into** the generator.\n- `yield*` delegates to another iterable.\n- `return()` and `throw()` end it or inject an error.\n\n### Use cases\nLazy sequences, pagination, unique ID generators, custom iteration, state machines, and the basis of **async generators** (`async function*` with `for await...of`) for streaming data.",
+      "keyPoints": [
+        "Iterable has Symbol.iterator; iterator has next() returning {value, done}",
+        "for...of, spread and destructuring use the iteration protocol",
+        "function* and yield create pausable functions",
+        "Generators are lazy and can be infinite",
+        "Async generators power for await...of"
+      ],
+      "pitfalls": [
+        "Spreading an infinite generator hangs the program",
+        "A generator can be consumed only once",
+        "Plain objects are not iterable by default"
+      ],
+      "examples": [
+        {
+          "title": "Custom iterable and generator",
+          "language": "javascript",
+          "explanation": "",
+          "code": "const range = {\n  from: 1,\n  to: 4,\n  *[Symbol.iterator]() {\n    for (let i = this.from; i <= this.to; i++) yield i;\n  },\n};\nconsole.log([...range], Math.max(...range));\n\nfunction* idMaker(prefix) {\n  let id = 1;\n  while (true) yield `${prefix}-${id++}`;\n}\nconst ids = idMaker(\"user\");\nconsole.log(ids.next().value, ids.next().value, ids.next());\n\nfunction* take(iterable, n) {\n  let i = 0;\n  for (const v of iterable) {\n    if (i++ >= n) return;\n    yield v;\n  }\n}\nconsole.log([...take(idMaker(\"item\"), 3)]);"
+        }
+      ],
+      "interview": [
+        {
+          "q": "What is an iterator?",
+          "a": "An object with a next() method that returns { value, done }. Iterables expose one through [Symbol.iterator]()."
+        },
+        {
+          "q": "What is a generator function?",
+          "a": "A function declared with function* that can pause with yield and resume later; it returns an iterator and produces values lazily."
+        },
+        {
+          "q": "Why are generators useful?",
+          "a": "They produce values on demand (memory efficient, can be infinite), simplify writing iterators and underpin async iteration."
+        }
+      ],
+      "source": ""
+    },
+    {
+      "id": "js-modules",
+      "title": "ES Modules: import and export",
+      "level": "intermediate",
+      "summary": "Split code into files with export and import; each module has its own scope.",
+      "description": "**ES modules** (ES2015) are the standard way to split JavaScript into reusable files. Each file is a module with its **own scope**; nothing is global unless exported.\n\n### Exporting\n```js\n// math.js\nexport const PI = 3.14159;                 // named exports\nexport function add(a, b) { return a + b; }\nexport default function multiply(a, b) { return a * b; } // one default per file\n```\n\n### Importing\n```js\nimport multiply, { PI, add } from \"./math.js\";\nimport { add as sum } from \"./math.js\";     // rename\nimport * as math from \"./math.js\";          // namespace object\n```\n\n### Using modules in the browser\n```html\n<script type=\"module\" src=\"main.js\"></script>\n```\nModules are deferred by default, run in **strict mode**, and need a server (they do not work with `file://` due to CORS).\n\n### Key properties\n- Imports are **live read-only bindings**, not copies.\n- Modules run **once** and are cached.\n- Static `import` statements are hoisted and analysed at build time, which enables **tree-shaking** (removing unused exports).\n- **Dynamic import**: `const mod = await import(\"./heavy.js\")` loads on demand (code splitting).\n- **Top-level await** works in modules.\n\n### CommonJS vs ES modules\n| | CommonJS | ES modules |\n|---|---|---|\n| Syntax | `require` / `module.exports` | `import` / `export` |\n| Loading | sync | async, static |\n| Default in | older Node | browsers, modern tooling |\n\nIn Node.js use `\"type\": \"module\"` in package.json or the `.mjs` extension.",
+      "keyPoints": [
+        "Named exports use braces, default exports do not",
+        "Each module has its own scope and runs once",
+        "Imports are live bindings and read-only",
+        "Dynamic import() loads code lazily",
+        "Browsers need type=\"module\" and a server"
+      ],
+      "pitfalls": [
+        "Forgetting the file extension or ./ in browser imports",
+        "Circular dependencies can produce undefined values",
+        "Mixing require and import in the same file"
+      ],
+      "examples": [
+        {
+          "title": "Module syntax (view only)",
+          "language": "text",
+          "explanation": "This file layout cannot run in one snippet but shows the full syntax.",
+          "code": "// ---- utils/math.js ----\nexport const PI = 3.14159;\nexport function add(a, b) {\n  return a + b;\n}\nexport default function multiply(a, b) {\n  return a * b;\n}\n\n// ---- main.js ----\nimport multiply, { PI, add as sum } from \"./utils/math.js\";\nimport * as math from \"./utils/math.js\";\n\nconsole.log(sum(2, 3), multiply(2, 3), PI);\nconsole.log(math.add(1, 1));\n\n// lazy loading\nbutton.addEventListener(\"click\", async () => {\n  const { default: heavy } = await import(\"./heavy.js\");\n  heavy();\n});"
+        }
+      ],
+      "interview": [
+        {
+          "q": "Difference between named and default exports?",
+          "a": "A module can have many named exports (imported with braces and the exact name) but only one default export, which can be imported under any name."
+        },
+        {
+          "q": "What is tree shaking?",
+          "a": "A build optimisation that removes unused exports from the bundle; it works because ES module imports and exports are static."
+        },
+        {
+          "q": "Difference between CommonJS and ES modules?",
+          "a": "CommonJS uses require/module.exports and loads synchronously. ES modules use import/export, are statically analysable, asynchronous and the official standard."
+        }
+      ],
+      "source": ""
+    }
+  ]
+}

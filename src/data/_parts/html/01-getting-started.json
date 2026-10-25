@@ -1,0 +1,234 @@
+{
+ "id": "html-getting-started",
+ "title": "Getting Started",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "html-what-is-html",
+   "title": "What is HTML & How the Web Works",
+   "level": "beginner",
+   "summary": "HTML is the markup language that gives every web page its structure and meaning.",
+   "description": "**HTML** stands for **HyperText Markup Language**. It is not a programming language – it is a *markup* language. You wrap content in tags to tell the browser *what that content is*: a heading, a paragraph, a link, an image, a form and so on.\n\n### Hypertext and markup\n- **Hypertext** means text that links to other text. When you click a word and land on another page, that word is a *hyperlink*. This idea was invented by **Tim Berners-Lee**, who also built the first website.\n- **Markup** means annotating content with tags like `<p>` and `<h1>` so software can understand its structure.\n\n### The three layers of a web page\n| Layer | Language | Job |\n|---|---|---|\n| Structure | HTML | What is on the page |\n| Presentation | CSS | How it looks |\n| Behaviour | JavaScript | What it does |\n\nYou cannot build a real website using only CSS and JavaScript – HTML is the foundation you must master first.\n\n### How a page reaches your screen\n1. You type a URL or click a link.\n2. The browser sends an HTTP request to a server.\n3. The server answers with an HTML file (usually `index.html`).\n4. The browser **parses** the HTML into a tree called the **DOM**, downloads linked CSS/JS/images, and paints the page.\n\n### File basics\n- Use the `.html` extension (`.htm` is the old 3-letter form from DOS days; both work).\n- A file named `index.html` is the default page of a folder, so the URL `example.com/` and `example.com/index.html` show the same page.\n- A site built only with HTML/CSS/JS is *static*. Adding a backend and a database makes it a *full-stack* (dynamic) site.",
+   "keyPoints": [
+    "HTML = HyperText Markup Language; it describes structure and meaning, not logic.",
+    "HTML (structure) + CSS (style) + JavaScript (behaviour) make a web page.",
+    "The browser turns HTML into a DOM tree and renders it.",
+    "index.html is the default page served for a folder URL.",
+    "HTML is not case sensitive for tag names, but lowercase is the convention."
+   ],
+   "pitfalls": [
+    "Calling HTML a programming language - it has no variables, loops or logic.",
+    "Using spaces or capital letters in file names - prefer lowercase-with-dashes like about-us.html."
+   ],
+   "examples": [
+    {
+     "title": "HTML + CSS + JS in one tiny page",
+     "language": "web",
+     "html": "<h1 id=\"title\">Hello, Web!</h1>\n<p>HTML gives this text its structure.</p>\n<button id=\"btn\">Click me</button>\n<p id=\"out\"></p>",
+     "css": "h1 { color: #e34c26; }\np { font-family: sans-serif; }\nbutton { padding: 6px 12px; }",
+     "js": "document.getElementById('btn').addEventListener('click', function () {\n  document.getElementById('out').textContent = 'JavaScript changed me!';\n});",
+     "explanation": "HTML builds the elements, CSS colours the heading, JS reacts to the click."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does HTML stand for and what does it do?",
+     "a": "HyperText Markup Language. It defines the structure and meaning of web content using elements and tags."
+    },
+    {
+     "q": "Is HTML a programming language?",
+     "a": "No. It is a markup language: it describes content but has no logic such as loops or conditions."
+    },
+    {
+     "q": "Why is the first page of a site usually named index.html?",
+     "a": "Web servers serve index.html by default when a folder URL is requested, so the file name need not appear in the URL."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/index.html"
+  },
+  {
+   "id": "html-document-structure",
+   "title": "Document Structure: doctype, html, head, body",
+   "level": "beginner",
+   "summary": "Every HTML page follows the same skeleton: doctype, html root, head for metadata, body for content.",
+   "description": "Every HTML page, no matter how big, is built on the same skeleton. Learning it once means you can write any page from memory.\n\n### The parts\n- **`<!DOCTYPE html>`** - tells the browser \"this is an HTML5 document\". It has no closing tag and must be the very first line. Without it browsers switch to *quirks mode* and render in an old, inconsistent way.\n- **`<html lang=\"en\">`** - the root element. The `lang` attribute states the language of the content; it helps screen readers pick the right voice, helps translation tools and search engines.\n- **`<head>`** - information *about* the page: title, character set, viewport, CSS links, SEO meta tags. Nothing in it is shown on the page itself (except the title in the tab).\n- **`<body>`** - everything the visitor actually sees: text, images, forms, buttons.\n\n### Important head items\n- `<meta charset=\"UTF-8\">` - the character encoding; put it first so special characters and emoji display correctly.\n- `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">` - makes the page responsive on phones.\n- `<title>` - text shown in the browser tab, bookmarks and search results.\n\n### Rules to remember\n- There is exactly **one** `<html>`, one `<head>` and one `<body>`.\n- `<head>` comes before `<body>`, both inside `<html>`.\n- Indent nested elements so the structure is easy to read.\n\nEditors such as VS Code create this skeleton when you type `!` and press Tab (Emmet).",
+   "keyPoints": [
+    "<!DOCTYPE html> must be the first line - it enables standards mode.",
+    "<html lang=\"...\"> is the single root element.",
+    "<head> holds metadata; <body> holds visible content.",
+    "Always add meta charset and meta viewport.",
+    "Type ! then Tab in VS Code to generate the boilerplate."
+   ],
+   "pitfalls": [
+    "Forgetting the doctype - the page renders in quirks mode.",
+    "Putting visible content inside <head> - the browser moves or ignores it.",
+    "Forgetting the lang attribute - hurts accessibility and SEO."
+   ],
+   "examples": [
+    {
+     "title": "The standard HTML5 boilerplate",
+     "language": "text",
+     "code": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>My First Page</title>\n  </head>\n  <body>\n    <h1>Hello World</h1>\n    <p>This is my first web page.</p>\n  </body>\n</html>",
+     "explanation": "Save this as index.html and open it in a browser."
+    },
+    {
+     "title": "Inspect the document from JavaScript",
+     "language": "web",
+     "html": "<h2>Document facts</h2>\n<ul id=\"facts\"></ul>",
+     "css": "body { font-family: sans-serif; } li { margin: 4px 0; }",
+     "js": "var facts = [\n  'compatMode: ' + document.compatMode + ' (CSS1Compat = standards mode)',\n  'doctype: ' + (document.doctype ? document.doctype.name : 'none'),\n  'charset: ' + document.characterSet,\n  'html lang: ' + document.documentElement.lang,\n  'head child count: ' + document.head.children.length\n];\nvar ul = document.getElementById('facts');\nfacts.forEach(function (f) { var li = document.createElement('li'); li.textContent = f; ul.appendChild(li); });",
+     "explanation": "The preview page has a doctype, so it runs in standards mode."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the purpose of <!DOCTYPE html>?",
+     "a": "It tells the browser to render the page in standards mode as an HTML5 document. Without it browsers fall back to quirks mode."
+    },
+    {
+     "q": "What is the difference between <head> and <body>?",
+     "a": "The head holds metadata (title, charset, links to CSS/JS, SEO tags). The body holds the visible content."
+    },
+    {
+     "q": "Why set the lang attribute on <html>?",
+     "a": "It tells screen readers, translators and search engines which language the content is in."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/index.html"
+  },
+  {
+   "id": "html-elements-attributes",
+   "title": "Elements, Tags & Attributes",
+   "level": "beginner",
+   "summary": "Learn the vocabulary: tag vs element, attributes, boolean attributes, quoting and nesting.",
+   "description": "### Tag vs element\nA **tag** is the piece in angle brackets: `<h1>` is an opening tag and `</h1>` is a closing tag. An **element** is the whole thing: opening tag + content + closing tag.\n\n```html\n<h1>Best HTML Course</h1>   <!-- the full line is the h1 ELEMENT -->\n```\n\nElement names are case-insensitive (`<H1>` works) but write them in lowercase by convention.\n\n### Attributes\nAttributes give extra information to an element. They always sit in the opening tag as `name=\"value\"`:\n\n```html\n<a href=\"https://example.com\" target=\"_blank\" title=\"Visit\">Link</a>\n```\n\n### Boolean attributes\nSome attributes have no value; their presence means *true*. Examples: `disabled`, `required`, `checked`, `autoplay`. `<input disabled>` and `<input disabled=\"disabled\">` are the same.\n\n### Quotes\nAlways quote attribute values. Without quotes a value containing a space breaks:\n\n```html\n<a href=https://mozilla.org title=The Mozilla homepage>x</a>  <!-- title becomes \"The\" -->\n```\n\nSingle or double quotes both work, but do not mix them. To put a quote inside a value use the other quote type or an entity: `title=\"An &quot;interesting&quot; link\"`.\n\n### Nesting\nElements can contain other elements, but they must be closed in the reverse order they were opened.\n\n```html\n<p>My cat is <strong>very</strong> grumpy.</p>   ✅\n<p>My cat is <strong>very grumpy.</p></strong>   ❌ mismatched\n```",
+   "keyPoints": [
+    "Element = opening tag + content + closing tag.",
+    "Attributes live in the opening tag as name=\"value\".",
+    "Boolean attributes (disabled, required...) are true when present.",
+    "Always quote attribute values; double quotes are the convention.",
+    "Close nested elements in reverse order (no overlapping)."
+   ],
+   "pitfalls": [
+    "Unquoted values containing spaces silently break the attribute.",
+    "Overlapping tags like <b><i></b></i> produce unpredictable DOM trees.",
+    "Writing disabled=\"false\" - the attribute is still present, so it is still disabled."
+   ],
+   "examples": [
+    {
+     "title": "Attributes and boolean attributes",
+     "language": "web",
+     "html": "<p><a href=\"#top\" title=\"I am a tooltip\">Hover me (title attribute)</a></p>\n<input type=\"text\" value=\"I am enabled\">\n<input type=\"text\" value=\"I am disabled\" disabled>\n<input type=\"text\" value=\"disabled=false is STILL disabled\" disabled=\"false\">\n<label><input type=\"checkbox\" checked> checked is a boolean attribute</label>",
+     "css": "body{font-family:sans-serif} input{display:block;margin:6px 0;padding:4px}",
+     "js": "",
+     "explanation": "The third input is disabled even though the value says false - presence is what counts."
+    },
+    {
+     "title": "Quotes and entities in attribute values",
+     "language": "web",
+     "html": "<a href=\"#\" title=\"An &quot;interesting&quot; reference\">Double quotes via entity</a><br><br>\n<a href=\"#\" title='Single quotes: \"double\" inside'>Single outer quotes</a>",
+     "css": "body{font-family:sans-serif}",
+     "js": "",
+     "explanation": "Hover each link to see its title."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between a tag and an element?",
+     "a": "A tag is the markup such as <p> or </p>. An element is the complete unit: opening tag, content and closing tag."
+    },
+    {
+     "q": "What are boolean attributes?",
+     "a": "Attributes whose presence means true and absence means false, for example disabled, checked, required, autoplay."
+    },
+    {
+     "q": "Are HTML tags case sensitive?",
+     "a": "No. <P> and <p> are the same, but lowercase is the standard."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/index.html"
+  },
+  {
+   "id": "html-void-elements",
+   "title": "Void (Empty) Elements",
+   "level": "beginner",
+   "summary": "Some elements have no content and no closing tag: br, hr, img, input, meta, link and friends.",
+   "description": "Most elements follow the pattern *opening tag + content + closing tag*. **Void elements** (also called empty elements) cannot have any content, so they have only one tag and never a closing tag.\n\n### The full list in HTML5\n`<area>`, `<base>`, `<br>`, `<col>`, `<embed>`, `<hr>`, `<img>`, `<input>`, `<link>`, `<meta>`, `<source>`, `<track>`, `<wbr>` (and the obsolete `<param>`).\n\n### What each is for\n| Element | Purpose |\n|---|---|\n| `<br>` | Line break inside text |\n| `<hr>` | Thematic break (horizontal rule) |\n| `<img>` | Embeds an image (`src` + `alt`) |\n| `<input>` | A form control |\n| `<meta>` | Page metadata |\n| `<link>` | Connects external resources such as CSS or icons |\n| `<source>`, `<track>` | Media sources and subtitles inside video/audio/picture |\n\n### Slash or no slash?\nIn HTML5 `<br>` and `<br />` are both valid. The trailing slash is a leftover from XHTML; it is ignored. Pick one style and stay consistent. Never write `<br></br>` – the browser treats the closing tag as an extra `<br>`.\n\n### Why they have no content\nIt would make no sense to put text *inside* an image or a line break. The information of a void element is carried entirely by its **attributes** (`src`, `alt`, `type`, `name`...).",
+   "keyPoints": [
+    "Void elements have no content and no end tag.",
+    "Common ones: br, hr, img, input, meta, link.",
+    "The trailing slash (<br />) is optional in HTML5.",
+    "Their data is carried by attributes."
+   ],
+   "pitfalls": [
+    "Writing </br> or <br></br> - creates two line breaks.",
+    "Trying to put text between <input> tags - it is ignored."
+   ],
+   "examples": [
+    {
+     "title": "br, hr and img in action",
+     "language": "web",
+     "html": "<p>Roses are red,<br>Violets are blue,<br>HTML is fun,<br>And so are you.</p>\n<hr>\n<img src=\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='120'><rect width='100%' height='100%' fill='%2390e0ef'/><text x='120' y='80' font-size='60' text-anchor='middle'>🌍</text></svg>\" alt=\"A globe on a blue background\" width=\"240\" height=\"120\">",
+     "css": "body{font-family:sans-serif} img{border-radius:8px}",
+     "js": "",
+     "explanation": "None of these elements has a closing tag."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a void element? Name five.",
+     "a": "An element with no content and no closing tag, e.g. br, hr, img, input, meta, link."
+    },
+    {
+     "q": "Is <br/> different from <br>?",
+     "a": "No. In HTML5 the slash is optional and ignored; both produce a line break."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/void.html"
+  },
+  {
+   "id": "html-block-inline",
+   "title": "Block vs Inline, div & span, id vs class",
+   "level": "beginner",
+   "summary": "Understand how elements flow on the page and the two generic containers div and span.",
+   "description": "Every element has a default **display type** that decides how it flows on the page.\n\n### Block-level elements\nStart on a **new line** and stretch across the full available width. Examples: `<div>`, `<p>`, `<h1>`-`<h6>`, `<ul>`, `<section>`, `<form>`.\n\n### Inline elements\nStay **inside the line** of text and only take as much width as their content. Examples: `<span>`, `<a>`, `<strong>`, `<em>`, `<img>` (inline-replaced).\n\n### div vs span\n| | `<div>` | `<span>` |\n|---|---|---|\n| Display | block | inline |\n| Use for | grouping sections / layout blocks | styling a *part* of a sentence |\n| Meaning | none (generic) | none (generic) |\n\nBoth have **no semantic meaning**. Prefer a semantic element (`<section>`, `<nav>`, `<strong>`...) when one fits, and use div/span only as a last resort or as a styling hook.\n\n### id vs class\n- **id** - must be **unique** in the page. Used for one element, fragment links (`#contact`) and JavaScript lookups.\n- **class** - can be reused on many elements, and one element can have several classes (`class=\"btn btn-primary\"`). The main styling hook.\n\n### Nesting rules\nInline elements may sit inside block elements, not the other way around. For example a `<p>` cannot contain a `<div>` or a heading - the browser will close the paragraph early.",
+   "keyPoints": [
+    "Block elements start a new line and take full width; inline elements flow within text.",
+    "div = generic block container, span = generic inline container.",
+    "id must be unique; class can be repeated and combined.",
+    "Prefer semantic elements over div/span when possible.",
+    "CSS display can change how any element behaves."
+   ],
+   "pitfalls": [
+    "Using the same id on several elements - invalid and breaks anchors/JS.",
+    "Putting block elements inside <p> or <span> - the HTML parser rearranges them.",
+    "Div soup: dozens of nested divs with no semantic meaning."
+   ],
+   "examples": [
+    {
+     "title": "Block and inline side by side",
+     "language": "web",
+     "html": "<div class=\"box\">I am a div (block)</div>\n<div class=\"box\">Another div: I start on a new line</div>\n<p>This sentence has <span class=\"hl\">a highlighted span</span> inside it, and it does not break the line.</p>\n<p class=\"note big\">Two classes: note + big</p>\n<p id=\"only-one\">Unique id: only-one</p>",
+     "css": "body{font-family:sans-serif}\n.box{background:#e9f5ff;border:1px solid #7ab;padding:6px;margin:4px 0}\n.hl{background:yellow;font-weight:bold}\n.note{color:#0a6}\n.big{font-size:20px}\n#only-one{border-left:4px solid tomato;padding-left:8px}",
+     "js": "",
+     "explanation": "Divs stack vertically; the span stays inline. A class can be shared, an id cannot."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between div and span?",
+     "a": "div is a block-level container that starts on a new line; span is an inline container used to wrap part of text. Neither has semantic meaning."
+    },
+    {
+     "q": "Difference between id and class?",
+     "a": "An id must be unique in the document; a class can be used on many elements and an element can have multiple classes."
+    },
+    {
+     "q": "Can a <p> contain a <div>?",
+     "a": "No. p only allows phrasing (inline) content; a div inside it closes the paragraph implicitly."
+    }
+   ],
+   "source": "HTML-one-shot/BEST_HTML_COURSE_ThapaTechnical/form/attr.html"
+  }
+ ]
+}

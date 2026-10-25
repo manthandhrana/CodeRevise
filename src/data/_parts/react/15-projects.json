@@ -1,0 +1,562 @@
+{
+ "id": "react-projects",
+ "title": "Mini Projects",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "react-project-todo",
+   "title": "Project: Todo App",
+   "level": "beginner",
+   "summary": "The classic first React project: add, toggle, edit, delete and filter todos.",
+   "description": "A Todo app exercises almost every beginner concept: state, lists with keys, controlled inputs, events, derived data and conditional rendering.\n\n### Features to build\n\n- Add a todo with Enter or the Add button (ignore blank text).\n- Toggle done, delete, and edit text inline.\n- Filter: **All / Active / Done**.\n- Show the count of remaining items and a **Clear completed** button.\n\n### Design decisions\n\n- State: `todos` array of `{ id, text, done }`, plus `filter` string and the input `text`. The **visible list** and **remaining count** are *derived*, not stored.\n- Use stable ids (`crypto.randomUUID()` or an incrementing counter), never the array index as key.\n- Update immutably with `map` and `filter`.\n- Extract `TodoItem` to keep the main component small.\n\n### Next steps\n\n1. Persist to `localStorage` with the `useLocalStorage` hook.\n2. Move logic into `useReducer`.\n3. Add drag-and-drop ordering.\n4. Sync with a backend using TanStack Query.\n5. Write RTL tests for add, toggle and filter.",
+   "keyPoints": [
+    "State: todos, filter, input text",
+    "Derive visible list and counts",
+    "Use stable ids as keys",
+    "Immutable updates with map/filter",
+    "Extract TodoItem; persist as a next step"
+   ],
+   "pitfalls": [
+    "Using the array index as id after deletions.",
+    "Storing remaining count in state."
+   ],
+   "examples": [
+    {
+     "title": "Todo app",
+     "language": "react",
+     "css": ".todo { font-family: sans-serif; max-width: 320px; padding: 12px; }\n.todo ul { list-style: none; padding: 0; }\n.item { display: flex; gap: 8px; align-items: center; padding: 4px 0; }\n.item span { flex: 1; cursor: text; }\n.done { text-decoration: line-through; color: #888; }\n.filters button { margin-right: 4px; }\n.filters .on { background: #0ea5e9; color: #fff; border: 0; padding: 3px 8px; border-radius: 4px; }\n.muted { color: #666; font-size: 14px; }",
+     "code": "function TodoItem({ todo, onToggle, onDelete, onEdit }) {\n  const [editing, setEditing] = useState(false);\n  const [draft, setDraft] = useState(todo.text);\n  function save() {\n    const t = draft.trim();\n    if (t) onEdit(todo.id, t);\n    else setDraft(todo.text);\n    setEditing(false);\n  }\n  return (\n    <li className=\"item\">\n      <input type=\"checkbox\" checked={todo.done} onChange={() => onToggle(todo.id)} aria-label={\"Toggle \" + todo.text} />\n      {editing ? (\n        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={save}\n          onKeyDown={(e) => e.key === \"Enter\" && save()} />\n      ) : (\n        <span className={todo.done ? \"done\" : \"\"} onDoubleClick={() => setEditing(true)} title=\"Double-click to edit\">\n          {todo.text}\n        </span>\n      )}\n      <button onClick={() => onDelete(todo.id)} aria-label={\"Delete \" + todo.text}>x</button>\n    </li>\n  );\n}\n\nfunction App() {\n  const [todos, setTodos] = useState([\n    { id: 1, text: \"Learn React\", done: true },\n    { id: 2, text: \"Build a todo app\", done: false },\n  ]);\n  const [nextId, setNextId] = useState(3);\n  const [text, setText] = useState(\"\");\n  const [filter, setFilter] = useState(\"all\");\n\n  const visible = todos.filter((t) => filter === \"all\" || (filter === \"done\" ? t.done : !t.done));\n  const remaining = todos.filter((t) => !t.done).length;\n\n  function add(e) {\n    e.preventDefault();\n    const t = text.trim();\n    if (!t) return;\n    setTodos([...todos, { id: nextId, text: t, done: false }]);\n    setNextId(nextId + 1);\n    setText(\"\");\n  }\n  const toggle = (id) => setTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));\n  const del = (id) => setTodos(todos.filter((t) => t.id !== id));\n  const edit = (id, text) => setTodos(todos.map((t) => (t.id === id ? { ...t, text } : t)));\n\n  return (\n    <div className=\"todo\">\n      <h3>Todos</h3>\n      <form onSubmit={add}>\n        <input value={text} onChange={(e) => setText(e.target.value)} placeholder=\"What needs doing?\" />\n        <button>Add</button>\n      </form>\n      <div className=\"filters\">\n        {[\"all\", \"active\", \"done\"].map((f) => (\n          <button key={f} className={f === filter ? \"on\" : \"\"} onClick={() => setFilter(f)}>{f}</button>\n        ))}\n      </div>\n      <ul>\n        {visible.map((t) => <TodoItem key={t.id} todo={t} onToggle={toggle} onDelete={del} onEdit={edit} />)}\n      </ul>\n      {visible.length === 0 && <p className=\"muted\">Nothing to show.</p>}\n      <p className=\"muted\">\n        {remaining} left{\" \"}\n        <button onClick={() => setTodos(todos.filter((t) => !t.done))}>Clear completed</button>\n      </p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Which parts of the todo app should not be stored in state?",
+     "a": "The filtered list and the remaining count, because they can be derived from the todos and filter during render."
+    },
+    {
+     "q": "How would you persist todos across reloads?",
+     "a": "Initialize state lazily from localStorage and write it back in an effect when todos change, ideally through a useLocalStorage hook."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-counter-reducer",
+   "title": "Project: Counter with Undo/Redo (useReducer)",
+   "level": "intermediate",
+   "summary": "Build a counter whose history is managed by a reducer, enabling undo and redo.",
+   "description": "A plain counter is easy; adding **undo/redo** shows why `useReducer` shines: all transitions live in one pure function, and history is just data.\n\n### The history shape\n\n```js\n{ past: [0, 1, 2], present: 3, future: [] }\n```\n\n- **Change** (`inc`, `dec`, `set`): push `present` onto `past`, set the new `present`, **clear `future`**.\n- **Undo**: move the last item of `past` into `present`, and push the old `present` onto the front of `future`.\n- **Redo**: the reverse of undo.\n- **Reset**: back to the initial state (and clear history).\n\n### Why this works\n\nState is immutable and each action returns a new object, so snapshots are cheap and safe. The same pattern powers text editors, drawing apps, and form builders. Libraries like `use-undo` and Redux's `redux-undo` implement it.\n\n### UI details\n\n- Disable Undo when `past` is empty, Redo when `future` is empty.\n- Show history length for learning purposes.\n- Keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z) can be added with an effect.\n\n### Extension ideas\n\nLimit history to 20 steps, add a step size, or persist the reducer state.",
+   "keyPoints": [
+    "History = { past, present, future }",
+    "Any new change clears the future",
+    "Undo/redo just move values between lists",
+    "Pure reducers make time travel easy",
+    "Disable buttons when stacks are empty"
+   ],
+   "pitfalls": [
+    "Mutating the past array with push.",
+    "Forgetting to clear future after a new change."
+   ],
+   "examples": [
+    {
+     "title": "Counter with undo/redo",
+     "language": "react",
+     "css": "",
+     "code": "const initial = { past: [], present: 0, future: [] };\n\nfunction reducer(state, action) {\n  const { past, present, future } = state;\n  switch (action.type) {\n    case \"inc\":\n    case \"dec\": {\n      const next = present + (action.type === \"inc\" ? 1 : -1);\n      return { past: [...past, present], present: next, future: [] };\n    }\n    case \"undo\":\n      if (past.length === 0) return state;\n      return { past: past.slice(0, -1), present: past[past.length - 1], future: [present, ...future] };\n    case \"redo\":\n      if (future.length === 0) return state;\n      return { past: [...past, present], present: future[0], future: future.slice(1) };\n    case \"reset\":\n      return initial;\n    default:\n      throw new Error(\"Unknown action \" + action.type);\n  }\n}\n\nfunction App() {\n  const [state, dispatch] = useReducer(reducer, initial);\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <h2>{state.present}</h2>\n      <button onClick={() => dispatch({ type: \"dec\" })}>-1</button>{\" \"}\n      <button onClick={() => dispatch({ type: \"inc\" })}>+1</button>{\" \"}\n      <button onClick={() => dispatch({ type: \"undo\" })} disabled={state.past.length === 0}>Undo</button>{\" \"}\n      <button onClick={() => dispatch({ type: \"redo\" })} disabled={state.future.length === 0}>Redo</button>{\" \"}\n      <button onClick={() => dispatch({ type: \"reset\" })}>Reset</button>\n      <p style={{ color: \"#666\" }}>past: [{state.past.join(\", \")}] | future: [{state.future.join(\", \")}]</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is a reducer a good fit for undo/redo?",
+     "a": "Each action returns a new immutable state, so keeping past and future snapshots is simple and all transitions are in one testable function."
+    },
+    {
+     "q": "What happens to the future stack after a new change?",
+     "a": "It is cleared, because the redo history no longer applies once the timeline branches."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-tabs",
+   "title": "Project: Accessible Tabs",
+   "level": "beginner",
+   "summary": "Build a tab component with ARIA roles and keyboard navigation.",
+   "description": "Tabs are a staple UI widget. A good implementation is also a lesson in accessibility.\n\n### Structure\n\n- A container with `role=\"tablist\"` holding buttons with `role=\"tab\"`.\n- Each tab has `aria-selected` and `aria-controls` (id of its panel).\n- Each panel has `role=\"tabpanel\"` and `aria-labelledby` pointing to its tab.\n- Only the active tab is in the **tab order** (`tabIndex={0}`); the others use `-1` (the \"roving tabindex\").\n\n### Keyboard behavior (WAI-ARIA pattern)\n\n- **ArrowRight / ArrowLeft** move to the next/previous tab (wrapping around) and activate it.\n- **Home / End** jump to the first/last tab.\n- **Tab** moves focus from the tab list into the panel.\n\n### State\n\nA single piece of state: `active` index (or id). Render only the active panel, or render all and hide with `hidden` if you want to preserve inner state.\n\n### Make it data-driven\n\nPass an array of `{ id, label, content }` so adding a tab needs no new JSX. Later convert to the compound component pattern (`Tabs.List`, `Tabs.Tab`).\n\n### Styling\n\nUse an underline or background to show the active tab; keep a visible focus ring.",
+   "keyPoints": [
+    "State is the active tab index",
+    "roles: tablist, tab, tabpanel with aria-selected/controls",
+    "Roving tabindex: only the active tab is tabbable",
+    "Arrow keys, Home, End move between tabs",
+    "Data-driven array of tabs"
+   ],
+   "pitfalls": [
+    "Using only mouse handlers so keyboard users are blocked.",
+    "Unmounting panels when you need to preserve their form state."
+   ],
+   "examples": [
+    {
+     "title": "Tabs with keyboard navigation",
+     "language": "react",
+     "css": ".tabs { font-family: sans-serif; padding: 12px; max-width: 360px; }\n[role=tablist] { display: flex; border-bottom: 1px solid #ccc; }\n.tab { border: 0; background: none; padding: 8px 14px; cursor: pointer; border-bottom: 3px solid transparent; }\n.tab.on { border-bottom-color: #0ea5e9; font-weight: bold; }\n.tab:focus-visible { outline: 2px solid #0ea5e9; }\n.panel { padding: 12px 4px; }",
+     "code": "const TABS = [\n  { id: \"overview\", label: \"Overview\", content: \"React is a library for building UIs.\" },\n  { id: \"props\", label: \"Props\", content: \"Props are read-only inputs to components.\" },\n  { id: \"state\", label: \"State\", content: \"State is memory that triggers re-renders.\" },\n];\n\nfunction App() {\n  const [active, setActive] = useState(0);\n  const refs = useRef([]);\n  const baseId = useId();\n\n  function onKeyDown(e) {\n    let next = active;\n    if (e.key === \"ArrowRight\") next = (active + 1) % TABS.length;\n    else if (e.key === \"ArrowLeft\") next = (active - 1 + TABS.length) % TABS.length;\n    else if (e.key === \"Home\") next = 0;\n    else if (e.key === \"End\") next = TABS.length - 1;\n    else return;\n    e.preventDefault();\n    setActive(next);\n    refs.current[next].focus();\n  }\n\n  return (\n    <div className=\"tabs\">\n      <div role=\"tablist\" aria-label=\"Topics\" onKeyDown={onKeyDown}>\n        {TABS.map((t, i) => (\n          <button key={t.id} role=\"tab\" id={baseId + t.id} ref={(el) => (refs.current[i] = el)}\n            aria-selected={i === active} aria-controls={baseId + t.id + \"-panel\"}\n            tabIndex={i === active ? 0 : -1} onClick={() => setActive(i)}\n            className={i === active ? \"tab on\" : \"tab\"}>\n            {t.label}\n          </button>\n        ))}\n      </div>\n      <div role=\"tabpanel\" id={baseId + TABS[active].id + \"-panel\"} aria-labelledby={baseId + TABS[active].id} className=\"panel\">\n        {TABS[active].content}\n      </div>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a roving tabindex?",
+     "a": "Only the active item has tabIndex 0 and the others -1, so Tab enters the widget once and arrow keys move among its items."
+    },
+    {
+     "q": "Which ARIA roles make a tab widget accessible?",
+     "a": "tablist for the container, tab for each tab and tabpanel for each panel, linked by aria-controls and aria-labelledby."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-accordion",
+   "title": "Project: Accordion",
+   "level": "beginner",
+   "summary": "Build a collapsible FAQ where one or many sections can be open at a time.",
+   "description": "An accordion shows a list of headings; clicking one reveals its content. It is a perfect lesson in lifted state and accessibility.\n\n### State design\n\n- **Single-open mode:** `openId` (or `null`). Clicking the open one closes it.\n- **Multi-open mode:** a `Set`/array of open ids, or a boolean per item.\n- Keep the state in the **parent** `Accordion` so it can enforce \"only one open\".\n\n### Accessibility\n\n- Each header is a real `<button>` inside a heading (`<h3>`).\n- `aria-expanded` on the button; `aria-controls` points to the panel id.\n- The panel has `role=\"region\"` and `aria-labelledby`.\n- Hide closed panels with the `hidden` attribute (removes from the tab order and accessibility tree).\n\n### Animation\n\nAnimating height needs care: use CSS grid trick `grid-template-rows: 0fr -> 1fr` with a transition, or the native `<details>`/`<summary>` element, which gives toggling and keyboard support for free (and `name` attribute for exclusive groups).\n\n### Design as data\n\nRender from an array: `items.map(item => <AccordionItem ... />)`.\n\n### Extension ideas\n\nControlled/uncontrolled modes, icons that rotate, deep linking via the URL hash.",
+   "keyPoints": [
+    "State: openId (single) or a set of ids (multiple)",
+    "Use buttons inside headings with aria-expanded",
+    "hidden attribute keeps closed panels out of tab order",
+    "Render from a data array",
+    "Native <details> is a good alternative"
+   ],
+   "pitfalls": [
+    "Making the header a div with onClick.",
+    "Keeping state in every item so the group cannot enforce one-open."
+   ],
+   "examples": [
+    {
+     "title": "FAQ accordion with single/multiple modes",
+     "language": "react",
+     "css": ".acc { font-family: sans-serif; max-width: 340px; padding: 12px; }\n.item { border-bottom: 1px solid #ddd; }\n.item h3 { margin: 0; }\n.item button { width: 100%; display: flex; justify-content: space-between; padding: 10px 4px; background: none; border: 0; font-size: 15px; cursor: pointer; text-align: left; }\n.body { padding: 0 4px 10px; color: #444; }",
+     "code": "const ITEMS = [\n  { id: \"a\", q: \"What is JSX?\", a: \"A syntax extension that looks like HTML inside JavaScript.\" },\n  { id: \"b\", q: \"What are hooks?\", a: \"Functions like useState that let components use React features.\" },\n  { id: \"c\", q: \"What is a key?\", a: \"A stable identity for list items so React can track them.\" },\n];\n\nfunction App() {\n  const [multiple, setMultiple] = useState(false);\n  const [open, setOpen] = useState([]);\n  const base = useId();\n\n  function toggle(id) {\n    setOpen((cur) => {\n      if (cur.includes(id)) return cur.filter((x) => x !== id);\n      return multiple ? [...cur, id] : [id];\n    });\n  }\n\n  return (\n    <div className=\"acc\">\n      <label>\n        <input type=\"checkbox\" checked={multiple}\n          onChange={(e) => { setMultiple(e.target.checked); setOpen([]); }} /> Allow multiple open\n      </label>\n      {ITEMS.map((it) => {\n        const isOpen = open.includes(it.id);\n        return (\n          <div key={it.id} className=\"item\">\n            <h3>\n              <button id={base + it.id} aria-expanded={isOpen} aria-controls={base + it.id + \"-p\"} onClick={() => toggle(it.id)}>\n                <span>{it.q}</span><span>{isOpen ? \"-\" : \"+\"}</span>\n              </button>\n            </h3>\n            <div id={base + it.id + \"-p\"} role=\"region\" aria-labelledby={base + it.id} hidden={!isOpen} className=\"body\">\n              {it.a}\n            </div>\n          </div>\n        );\n      })}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you make an accordion accessible?",
+     "a": "Use buttons for the headers with aria-expanded and aria-controls, give panels role region with aria-labelledby, and hide closed panels with the hidden attribute."
+    },
+    {
+     "q": "Where should the open state live for a one-at-a-time accordion?",
+     "a": "In the parent Accordion, so it can close other items when one opens."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-modal",
+   "title": "Project: Accessible Modal Dialog",
+   "level": "intermediate",
+   "summary": "A modal rendered in a portal with Escape to close, focus trap, scroll lock and focus restoration.",
+   "description": "A production-quality modal is more than a centered div. It must:\n\n1. **Render in a portal** (`createPortal` to `document.body`) to avoid clipping and z-index problems.\n2. Have `role=\"dialog\"`, `aria-modal=\"true\"` and a label (`aria-labelledby` the title).\n3. **Move focus** into the dialog when it opens.\n4. **Trap focus**: Tab and Shift+Tab cycle within the dialog.\n5. Close on **Escape** and on **backdrop click**.\n6. **Lock page scroll** while open.\n7. **Restore focus** to the element that opened it on close.\n\n### Implementation tips\n\n- Remember the previously focused element (`document.activeElement`) in a ref when opening.\n- Store the `onClose` callback in a ref (or `useCallback` in the parent). Otherwise an inline arrow function changes every render, the effect re-runs and **steals focus again**.\n- Clean up everything in the effect cleanup (listener, body overflow, focus).\n- `backdrop onClick` closes, but `dialog onClick` calls `stopPropagation`.\n\n### Native alternative\n\nThe HTML `<dialog>` element with `showModal()` provides focus trapping, Escape handling, backdrop and top-layer rendering built in. In React, call `ref.current.showModal()` in an effect. Many libraries (Radix Dialog, Headless UI) wrap these concerns for you.",
+   "keyPoints": [
+    "Portal + role=\"dialog\" + aria-modal",
+    "Focus in on open, trapped inside, restored on close",
+    "Escape and backdrop click close it",
+    "Lock body scroll while open",
+    "Keep callbacks in refs to avoid re-running effects"
+   ],
+   "pitfalls": [
+    "Not restoring focus to the trigger button.",
+    "An effect depending on an inline onClose that re-focuses on every render."
+   ],
+   "examples": [
+    {
+     "title": "Modal with focus trap and focus restore",
+     "language": "react",
+     "css": ".backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: grid; place-items: center; font-family: sans-serif; }\n.modal { background: #fff; padding: 16px 20px; border-radius: 10px; min-width: 260px; }\n.modal:focus { outline: none; }",
+     "code": "function Modal({ open, onClose, title, children }) {\n  const dialogRef = useRef(null);\n  const lastFocused = useRef(null);\n  const onCloseRef = useRef(onClose);\n  const titleId = useId();\n  onCloseRef.current = onClose;\n\n  useEffect(() => {\n    if (!open) return;\n    lastFocused.current = document.activeElement;\n    const dialog = dialogRef.current;\n    const focusables = () =>\n      [...dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])')];\n    (focusables()[0] || dialog).focus();\n\n    function onKey(e) {\n      if (e.key === \"Escape\") { onCloseRef.current(); return; }\n      if (e.key !== \"Tab\") return;\n      const f = focusables();\n      if (!f.length) { e.preventDefault(); return; }\n      const first = f[0], last = f[f.length - 1];\n      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }\n      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }\n    }\n    document.addEventListener(\"keydown\", onKey);\n    const prevOverflow = document.body.style.overflow;\n    document.body.style.overflow = \"hidden\";\n    return () => {\n      document.removeEventListener(\"keydown\", onKey);\n      document.body.style.overflow = prevOverflow;\n      if (lastFocused.current && lastFocused.current.focus) lastFocused.current.focus();\n    };\n  }, [open]);\n\n  if (!open) return null;\n  return ReactDOM.createPortal(\n    <div className=\"backdrop\" onClick={() => onClose()}>\n      <div ref={dialogRef} className=\"modal\" role=\"dialog\" aria-modal=\"true\" aria-labelledby={titleId}\n        tabIndex={-1} onClick={(e) => e.stopPropagation()}>\n        <h3 id={titleId}>{title}</h3>\n        {children}\n        <div style={{ marginTop: 12 }}><button onClick={() => onClose()}>Close</button></div>\n      </div>\n    </div>,\n    document.body\n  );\n}\n\nfunction App() {\n  const [open, setOpen] = useState(false);\n  const [name, setName] = useState(\"\");\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <button onClick={() => setOpen(true)}>Open dialog</button>\n      <p>Hello {name || \"stranger\"}</p>\n      <Modal open={open} onClose={() => setOpen(false)} title=\"What is your name?\">\n        <input value={name} onChange={(e) => setName(e.target.value)} placeholder=\"Name\" />\n        <button onClick={() => setOpen(false)}>Save</button>\n      </Modal>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What makes a modal accessible?",
+     "a": "role=dialog with aria-modal and a label, focus moved in and trapped, Escape to close, scroll lock, and focus restored to the trigger on close."
+    },
+    {
+     "q": "Why use a portal for modals?",
+     "a": "It renders the modal at the top level of the DOM so parent overflow, transforms or z-index cannot clip or hide it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-search-filter",
+   "title": "Project: Search, Filter and Sort a List",
+   "level": "beginner",
+   "summary": "Filter a list by text and category, sort it, and highlight results using derived data.",
+   "description": "Search UIs are everywhere: product lists, user directories, docs. The key lesson is **derived state**: keep the *inputs* in state and compute the *result* during render.\n\n### State\n\n- `query` (string)\n- `category` (string)\n- `sort` (\"name\" | \"price\")\n\n### Derived result\n\n```js\nconst results = useMemo(() => {\n  const q = query.trim().toLowerCase();\n  return PRODUCTS\n    .filter(p => (category === \"all\" || p.category === category))\n    .filter(p => p.name.toLowerCase().includes(q))\n    .sort(sortFns[sort]);          // sort a copy or after filter (filter makes a new array)\n}, [query, category, sort]);\n```\n\n### UX details\n\n- Show the **result count** and an **empty state** (\"No products match 'xyz'\") with a Clear button.\n- Normalize text: lowercase, trim; for accent-insensitive search use `normalize(\"NFD\")`.\n- Highlight matches by splitting the text on the query.\n- For very large lists debounce the query (next projects) or use `useDeferredValue`.\n- Keep filters in the **URL** (`useSearchParams`) so results are shareable.\n\n### Performance\n\nFor a few thousand items plain filtering is fine. Use `useMemo` only when it is measurably slow. For huge data, filter on the server.",
+   "keyPoints": [
+    "Inputs in state; results are derived",
+    "Normalize text for matching",
+    "Show count and an empty state",
+    "Highlight matches with a small helper",
+    "Consider URL state and debouncing"
+   ],
+   "pitfalls": [
+    "Storing the filtered list in state and trying to keep it synced.",
+    "Sorting the original array in place with sort()."
+   ],
+   "examples": [
+    {
+     "title": "Product search with category and sort",
+     "language": "react",
+     "css": "",
+     "code": "const PRODUCTS = [\n  { id: 1, name: \"Mechanical Keyboard\", category: \"tech\", price: 4500 },\n  { id: 2, name: \"Wireless Mouse\", category: \"tech\", price: 1200 },\n  { id: 3, name: \"Notebook\", category: \"stationery\", price: 150 },\n  { id: 4, name: \"Gel Pen Set\", category: \"stationery\", price: 220 },\n  { id: 5, name: \"USB-C Cable\", category: \"tech\", price: 399 },\n  { id: 6, name: \"Desk Lamp\", category: \"home\", price: 899 },\n];\n\nfunction Highlight({ text, query }) {\n  const q = query.trim();\n  if (!q) return text;\n  const i = text.toLowerCase().indexOf(q.toLowerCase());\n  if (i === -1) return text;\n  return (\n    <>\n      {text.slice(0, i)}<mark>{text.slice(i, i + q.length)}</mark>{text.slice(i + q.length)}\n    </>\n  );\n}\n\nfunction App() {\n  const [query, setQuery] = useState(\"\");\n  const [category, setCategory] = useState(\"all\");\n  const [sort, setSort] = useState(\"name\");\n\n  const results = PRODUCTS\n    .filter((p) => category === \"all\" || p.category === category)\n    .filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()))\n    .sort((a, b) => (sort === \"name\" ? a.name.localeCompare(b.name) : a.price - b.price));\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12, maxWidth: 360 }}>\n      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder=\"Search products...\" />{\" \"}\n      <select value={category} onChange={(e) => setCategory(e.target.value)}>\n        <option value=\"all\">All</option><option value=\"tech\">Tech</option>\n        <option value=\"stationery\">Stationery</option><option value=\"home\">Home</option>\n      </select>{\" \"}\n      <select value={sort} onChange={(e) => setSort(e.target.value)}>\n        <option value=\"name\">Name</option><option value=\"price\">Price</option>\n      </select>\n      <p aria-live=\"polite\">{results.length} result(s)</p>\n      <ul>\n        {results.map((p) => (\n          <li key={p.id}><Highlight text={p.name} query={query} /> - Rs. {p.price}</li>\n        ))}\n      </ul>\n      {results.length === 0 && <button onClick={() => { setQuery(\"\"); setCategory(\"all\"); }}>Clear filters</button>}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why compute the filtered list instead of storing it in state?",
+     "a": "It is derived from the query, category and data; storing it would duplicate data and risk it getting out of sync."
+    },
+    {
+     "q": "Why is calling sort directly on a state array a bug?",
+     "a": "sort mutates the array in place, violating immutability; sort a copy or a freshly filtered array."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-pagination",
+   "title": "Project: Pagination Component",
+   "level": "intermediate",
+   "summary": "A reusable pagination control with page numbers, ellipses and a page-size selector.",
+   "description": "Build pagination as a **reusable, presentational component** driven by props, with the page state kept in the parent.\n\n### Props\n\n`page`, `pageSize`, `total`, `onPageChange`, optionally `siblings` (how many neighbors to show).\n\n### The math\n\n```js\nconst totalPages = Math.max(1, Math.ceil(total / pageSize));\nconst start = (page - 1) * pageSize;\nconst slice = items.slice(start, start + pageSize);\n```\n\n### Page number window with ellipsis\n\nFor 20 pages, with the current page 10, show: `1 ... 9 10 11 ... 20`. A helper generates an array of numbers and `\"...\"` markers: always show first and last page, the current page, its siblings, and an ellipsis when there is a gap.\n\n### Edge cases to handle\n\n- Clamp `page` when `pageSize` or `total` changes (if you change page size to 50 while on page 9, jump back to a valid page - often page 1).\n- Disable Prev on page 1 and Next on the last page.\n- Mark the current page with `aria-current=\"page\"` and wrap the buttons in a `<nav aria-label=\"Pagination\">`.\n\n### Server-side\n\nWith an API, send `page` and `limit`, and read `total` from the response. Put `page` in the URL for shareable links and back-button support.",
+   "keyPoints": [
+    "Compute totalPages with Math.ceil",
+    "Slice data with (page - 1) * pageSize",
+    "Generate numbers with ellipses around the current page",
+    "Reset or clamp page when page size changes",
+    "aria-current=\"page\" and a nav landmark"
+   ],
+   "pitfalls": [
+    "Staying on page 9 after changing the page size, showing an empty page.",
+    "Off-by-one errors in the start index."
+   ],
+   "examples": [
+    {
+     "title": "Pagination with ellipsis and page size",
+     "language": "react",
+     "css": ".pg { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }\n.pg button { min-width: 30px; padding: 4px 6px; cursor: pointer; }\n.pg .on { background: #0ea5e9; color: #fff; border: 0; border-radius: 4px; }",
+     "code": "function range(a, b) { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; }\n\nfunction getPages(page, totalPages, siblings = 1) {\n  const first = 1, last = totalPages;\n  const left = Math.max(page - siblings, first);\n  const right = Math.min(page + siblings, last);\n  const pages = [];\n  if (left > first) { pages.push(first); if (left > first + 1) pages.push(\"...\"); }\n  pages.push(...range(left, right));\n  if (right < last) { if (right < last - 1) pages.push(\"...\"); pages.push(last); }\n  return pages;\n}\n\nfunction Pagination({ page, totalPages, onChange }) {\n  const pages = getPages(page, totalPages);\n  return (\n    <nav aria-label=\"Pagination\" className=\"pg\">\n      <button onClick={() => onChange(page - 1)} disabled={page === 1}>Prev</button>\n      {pages.map((p, i) =>\n        p === \"...\" ? <span key={\"e\" + i}>...</span> : (\n          <button key={p} onClick={() => onChange(p)} aria-current={p === page ? \"page\" : undefined} className={p === page ? \"on\" : \"\"}>{p}</button>\n        )\n      )}\n      <button onClick={() => onChange(page + 1)} disabled={page === totalPages}>Next</button>\n    </nav>\n  );\n}\n\nconst ALL = Array.from({ length: 237 }, (_, i) => \"Record \" + (i + 1));\n\nfunction App() {\n  const [page, setPage] = useState(1);\n  const [pageSize, setPageSize] = useState(10);\n  const totalPages = Math.ceil(ALL.length / pageSize);\n  const start = (page - 1) * pageSize;\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <label>Per page: {\" \"}\n        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>\n          <option>5</option><option>10</option><option>25</option>\n        </select>\n      </label>\n      <ul>{ALL.slice(start, start + pageSize).map((r) => <li key={r}>{r}</li>)}</ul>\n      <Pagination page={page} totalPages={totalPages} onChange={setPage} />\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you calculate the items for page N?",
+     "a": "start = (N - 1) * pageSize and take items.slice(start, start + pageSize); totalPages = Math.ceil(total / pageSize)."
+    },
+    {
+     "q": "What should happen when the page size changes?",
+     "a": "Reset or clamp the current page so it still exists, typically setting page to 1."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-star-rating",
+   "title": "Project: Star Rating",
+   "level": "beginner",
+   "summary": "An interactive rating widget with hover preview, click to set, and keyboard accessibility.",
+   "description": "A star rating shows how to combine **two pieces of state** (the saved value and the hover preview) and derive what to display.\n\n### State\n\n- `rating` - the committed value (0 means none).\n- `hover` - the value being previewed while the mouse is over a star (0 when not hovering).\n- Display value: `const shown = hover || rating;`\n\n### Interactions\n\n- `onMouseEnter` on star `n` -> `setHover(n)`.\n- `onMouseLeave` on the container -> `setHover(0)`.\n- `onClick` -> `setRating(n)`; clicking the same star again can clear the rating.\n- **Keyboard & a11y:** use real buttons (focusable), `role=\"radiogroup\"` with `role=\"radio\"` and `aria-checked`, `aria-label=\"3 stars\"`. Arrow keys can change the value.\n\n### Rendering stars\n\n`Array.from({ length: max }, (_, i) => i + 1).map(n => ...)`. A star is filled if `n <= shown`. Use a text star (`★` / `☆`) or inline SVG; no images are needed.\n\n### Make it reusable\n\nProps: `value`, `onChange`, `max`, `size`, `readOnly`. Support **controlled** use so a form can own the value, and a read-only mode to display average ratings (with partial fill using a clipped overlay width like `width: (rating / 5) * 100 + \"%\"`).\n\n### Extension ideas\n\nHalf stars, labels (\"Poor\" to \"Excellent\"), submit to an API.",
+   "keyPoints": [
+    "Two states: committed rating and hover preview",
+    "shown = hover || rating",
+    "Use buttons and radio roles for accessibility",
+    "Make it controlled via value/onChange",
+    "Read-only variant for displaying averages"
+   ],
+   "pitfalls": [
+    "Using divs for stars, so keyboard users can't set a rating.",
+    "Forgetting to reset hover on mouse leave."
+   ],
+   "examples": [
+    {
+     "title": "Star rating",
+     "language": "react",
+     "css": ".star { background: none; border: 0; font-size: 30px; line-height: 1; cursor: pointer; color: #cbd5e1; padding: 0 2px; }\n.star.on { color: #f59e0b; }\n.star:focus-visible { outline: 2px solid #0ea5e9; border-radius: 4px; }",
+     "code": "function StarRating({ value, onChange, max = 5 }) {\n  const [hover, setHover] = useState(0);\n  const shown = hover || value;\n  return (\n    <div role=\"radiogroup\" aria-label=\"Rating\" onMouseLeave={() => setHover(0)} className=\"stars\">\n      {Array.from({ length: max }, (_, i) => i + 1).map((n) => (\n        <button\n          key={n}\n          type=\"button\"\n          role=\"radio\"\n          aria-checked={value === n}\n          aria-label={n + (n === 1 ? \" star\" : \" stars\")}\n          className={n <= shown ? \"star on\" : \"star\"}\n          onMouseEnter={() => setHover(n)}\n          onFocus={() => setHover(n)}\n          onBlur={() => setHover(0)}\n          onClick={() => onChange(value === n ? 0 : n)}\n        >\n          {n <= shown ? \"★\" : \"☆\"}\n        </button>\n      ))}\n    </div>\n  );\n}\n\nfunction App() {\n  const [rating, setRating] = useState(3);\n  const labels = [\"No rating\", \"Poor\", \"Fair\", \"Good\", \"Very good\", \"Excellent\"];\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <StarRating value={rating} onChange={setRating} />\n      <p>{labels[rating]} ({rating}/5)</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why keep a separate hover state in a star rating?",
+     "a": "So the preview changes while hovering without losing the committed rating; the UI shows hover || rating."
+    },
+    {
+     "q": "How do you make the stars accessible?",
+     "a": "Use focusable buttons inside a radiogroup with role=radio, aria-checked and descriptive aria-labels, so keyboard and screen reader users can set the value."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-theme-switcher",
+   "title": "Project: Theme Switcher with Context",
+   "level": "intermediate",
+   "summary": "A light/dark/system theme provider that persists the choice and follows the OS preference.",
+   "description": "This project combines **Context**, **custom hooks**, **effects**, **localStorage** and **CSS variables**.\n\n### Requirements\n\n- Three modes: `light`, `dark`, `system`.\n- The `system` mode follows `prefers-color-scheme` and updates live when the OS setting changes.\n- The choice is saved in `localStorage`.\n- Any component can read or change the theme via `useTheme()`.\n\n### Design\n\n1. `ThemeProvider` holds `mode` state (initialized lazily from storage, default `system`).\n2. A derived `resolved` value (`light` or `dark`) is computed: if mode is `system`, use the `matchMedia` result.\n3. An effect subscribes to the media query (`mq.addEventListener(\"change\", ...)`) and cleans up.\n4. Another effect writes the choice to storage and sets `data-theme` on an element (or `document.documentElement`).\n5. `useTheme()` throws if used outside the provider.\n\n### CSS\n\nDefine colors as CSS variables under `[data-theme=\"dark\"]`. All components just use `var(--bg)`, so changing the attribute restyles everything without re-rendering them.\n\n### Pitfalls to avoid\n\n- Flash of the wrong theme at page load: set the attribute with a tiny inline script in `index.html`.\n- Memoize the context value so consumers do not re-render needlessly.\n- Guard `localStorage` and `matchMedia` access (SSR, private mode).",
+   "keyPoints": [
+    "Context shares mode and setMode",
+    "Resolve system mode with matchMedia and listen to changes",
+    "Persist the user's choice",
+    "CSS variables + data-theme do the styling",
+    "Memoize value; guard storage access"
+   ],
+   "pitfalls": [
+    "Not removing the matchMedia listener.",
+    "Reading localStorage during server rendering."
+   ],
+   "examples": [
+    {
+     "title": "Light, dark and system themes",
+     "language": "react",
+     "css": ".shell { --bg: #fff; --text: #0f172a; --card: #f1f5f9; --accent: #0ea5e9;\n  background: var(--bg); color: var(--text); padding: 14px; border-radius: 8px; font-family: sans-serif; transition: .2s; }\n.shell[data-theme=\"dark\"] { --bg: #0f172a; --text: #e2e8f0; --card: #1e293b; --accent: #38bdf8; }\nbutton { background: var(--card); color: var(--text); border: 1px solid var(--accent); padding: 5px 12px; border-radius: 6px; margin-right: 6px; cursor: pointer; }\nbutton.on { background: var(--accent); color: #fff; }\n.card { background: var(--card); padding: 10px; border-radius: 8px; }",
+     "code": "const ThemeCtx = createContext(null);\n\nfunction getSystem() {\n  try { return window.matchMedia(\"(prefers-color-scheme: dark)\").matches ? \"dark\" : \"light\"; }\n  catch (e) { return \"light\"; }\n}\n\nfunction ThemeProvider({ children }) {\n  const [mode, setMode] = useState(() => {\n    try { return localStorage.getItem(\"demo-theme-mode\") || \"system\"; } catch (e) { return \"system\"; }\n  });\n  const [system, setSystem] = useState(getSystem);\n\n  useEffect(() => {\n    let mq;\n    try { mq = window.matchMedia(\"(prefers-color-scheme: dark)\"); } catch (e) { return; }\n    const onChange = () => setSystem(mq.matches ? \"dark\" : \"light\");\n    mq.addEventListener(\"change\", onChange);\n    return () => mq.removeEventListener(\"change\", onChange);\n  }, []);\n\n  useEffect(() => {\n    try { localStorage.setItem(\"demo-theme-mode\", mode); } catch (e) {}\n  }, [mode]);\n\n  const resolved = mode === \"system\" ? system : mode;\n  const value = useMemo(() => ({ mode, setMode, resolved }), [mode, resolved]);\n\n  return (\n    <ThemeCtx.Provider value={value}>\n      <div className=\"shell\" data-theme={resolved}>{children}</div>\n    </ThemeCtx.Provider>\n  );\n}\nfunction useTheme() {\n  const ctx = useContext(ThemeCtx);\n  if (!ctx) throw new Error(\"useTheme must be used within ThemeProvider\");\n  return ctx;\n}\n\nfunction ThemeSwitcher() {\n  const { mode, setMode, resolved } = useTheme();\n  return (\n    <div role=\"group\" aria-label=\"Theme\">\n      {[\"light\", \"dark\", \"system\"].map((m) => (\n        <button key={m} aria-pressed={mode === m} onClick={() => setMode(m)} className={mode === m ? \"on\" : \"\"}>{m}</button>\n      ))}\n      <p>Mode: <b>{mode}</b> | Applied: <b>{resolved}</b></p>\n    </div>\n  );\n}\n\nfunction App() {\n  return (\n    <ThemeProvider>\n      <h3>Theme switcher</h3>\n      <ThemeSwitcher />\n      <div className=\"card\">Everything below the provider follows the theme.</div>\n    </ThemeProvider>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you implement a \"system\" theme option?",
+     "a": "Read prefers-color-scheme via matchMedia, store it in state, and subscribe to its change event so the applied theme updates when the OS setting changes."
+    },
+    {
+     "q": "Why memoize the context value?",
+     "a": "A new object each render would re-render every consumer; useMemo keeps the reference stable until mode or resolved changes."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-shopping-cart",
+   "title": "Project: Shopping Cart with useReducer",
+   "level": "intermediate",
+   "summary": "A cart with add, increment, decrement, remove and totals, managed by a reducer.",
+   "description": "A cart is the textbook case for `useReducer`: several actions, each with clear rules, operating on the same list.\n\n### State shape\n\n```js\nitems: [{ id, name, price, qty }]\n```\n\nStore **ids and quantities**, and derive totals. Never store `total` in state.\n\n### Actions\n\n| Action | Rule |\n| --- | --- |\n| `add` | if the product exists, qty + 1; otherwise append with qty 1 |\n| `inc` / `dec` | change qty; when qty reaches 0 remove the item |\n| `remove` | delete the line |\n| `clear` | empty the cart |\n\n### Derived values\n\n```js\nconst count = items.reduce((n, i) => n + i.qty, 0);\nconst total = items.reduce((sum, i) => sum + i.price * i.qty, 0);\n```\n\n### Real-world considerations\n\n- **Money:** store prices in the smallest unit (paise/cents as integers) to avoid floating-point errors (`0.1 + 0.2`). Format with `Intl.NumberFormat`.\n- **Context:** expose the cart via `CartProvider` + `useCart()` so the header badge and product list share it.\n- **Persistence:** save to `localStorage` or the server for logged-in users.\n- **Validation:** the server must recompute prices; never trust client totals.\n- **Stock limits:** cap qty at available stock.",
+   "keyPoints": [
+    "Reducer with add, inc, dec, remove, clear",
+    "Store ids and quantities; derive count and total",
+    "Use integer minor units for money",
+    "Expose via context for header badge and cart page",
+    "Server must recompute prices at checkout"
+   ],
+   "pitfalls": [
+    "Floating point money arithmetic.",
+    "Trusting a client-calculated total on the server."
+   ],
+   "examples": [
+    {
+     "title": "Shopping cart",
+     "language": "react",
+     "css": ".shop { font-family: sans-serif; padding: 12px; max-width: 420px; }\n.row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid #eee; }\n.muted { color: #777; }",
+     "code": "const PRODUCTS = [\n  { id: 1, name: \"T-Shirt\", price: 49900 },\n  { id: 2, name: \"Sneakers\", price: 249900 },\n  { id: 3, name: \"Cap\", price: 19900 },\n];\nconst money = (paise) => new Intl.NumberFormat(\"en-IN\", { style: \"currency\", currency: \"INR\" }).format(paise / 100);\n\nfunction cartReducer(items, action) {\n  switch (action.type) {\n    case \"add\": {\n      const found = items.find((i) => i.id === action.product.id);\n      if (found) return items.map((i) => (i.id === found.id ? { ...i, qty: i.qty + 1 } : i));\n      return [...items, { ...action.product, qty: 1 }];\n    }\n    case \"inc\":\n      return items.map((i) => (i.id === action.id ? { ...i, qty: i.qty + 1 } : i));\n    case \"dec\":\n      return items.map((i) => (i.id === action.id ? { ...i, qty: i.qty - 1 } : i)).filter((i) => i.qty > 0);\n    case \"remove\":\n      return items.filter((i) => i.id !== action.id);\n    case \"clear\":\n      return [];\n    default:\n      throw new Error(\"Unknown action \" + action.type);\n  }\n}\n\nfunction App() {\n  const [items, dispatch] = useReducer(cartReducer, []);\n  const count = items.reduce((n, i) => n + i.qty, 0);\n  const total = items.reduce((s, i) => s + i.price * i.qty, 0);\n  return (\n    <div className=\"shop\">\n      <h3>Products</h3>\n      {PRODUCTS.map((p) => (\n        <div key={p.id} className=\"row\">\n          <span>{p.name} - {money(p.price)}</span>\n          <button onClick={() => dispatch({ type: \"add\", product: p })}>Add</button>\n        </div>\n      ))}\n      <h3>Cart ({count})</h3>\n      {items.length === 0 && <p className=\"muted\">Your cart is empty.</p>}\n      {items.map((i) => (\n        <div key={i.id} className=\"row\">\n          <span>{i.name}</span>\n          <span>\n            <button onClick={() => dispatch({ type: \"dec\", id: i.id })} aria-label={\"Decrease \" + i.name}>-</button>\n            {\" \"}{i.qty}{\" \"}\n            <button onClick={() => dispatch({ type: \"inc\", id: i.id })} aria-label={\"Increase \" + i.name}>+</button>\n            {\" \"}{money(i.price * i.qty)}{\" \"}\n            <button onClick={() => dispatch({ type: \"remove\", id: i.id })}>x</button>\n          </span>\n        </div>\n      ))}\n      <p><b>Total: {money(total)}</b> {items.length > 0 && <button onClick={() => dispatch({ type: \"clear\" })}>Clear</button>}</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why store money as integers?",
+     "a": "Floating point numbers cannot represent many decimals exactly, so use the smallest currency unit (cents or paise) and format only for display."
+    },
+    {
+     "q": "Why derive total and count instead of storing them?",
+     "a": "They can be computed from the items, so storing them would duplicate data and risk inconsistency."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-stopwatch",
+   "title": "Project: Stopwatch with Laps",
+   "level": "intermediate",
+   "summary": "A stopwatch using setInterval, refs for timer ids and Date.now for accuracy.",
+   "description": "A stopwatch teaches timers, cleanup and why refs are useful.\n\n### Naive vs accurate\n\nCounting `+10ms` every 10 ms tick drifts because `setInterval` is not precise (tabs in the background are throttled to 1 s or more). The accurate way is to store a **start timestamp** and compute elapsed time from the clock on every tick:\n\n```js\nelapsed = accumulated + (Date.now() - startedAt)\n```\n\n`performance.now()` is better for monotonic time.\n\n### State and refs\n\n- `running` (boolean) and `elapsed` (ms) are **state** because they affect the UI.\n- The interval id and `startedAt` live in a **ref** (changing them should not re-render).\n- `laps` array in state.\n\n### Start / Stop / Reset\n\n- **Start:** record `startedAt = Date.now() - elapsed`, create the interval that sets `elapsed`.\n- **Stop:** clear the interval.\n- **Reset:** stop, set elapsed to 0, clear laps.\n- **Lap:** push the current elapsed time (and delta from the previous lap).\n\n### Cleanup\n\nReturn `clearInterval` from the effect so the timer stops when the component unmounts or `running` becomes false. Run the interval from a `useEffect` that depends on `running`.\n\n### Formatting\n\n`mm:ss.cs` using `padStart(2, \"0\")`. Use tabular numbers (`font-variant-numeric: tabular-nums`) so digits do not jitter.",
+   "keyPoints": [
+    "Compute elapsed from timestamps, not tick counts",
+    "Interval id in a ref; running/elapsed in state",
+    "Effect depends on running and clears the interval",
+    "Format time with padStart",
+    "Tabular numbers prevent layout jitter"
+   ],
+   "pitfalls": [
+    "Incrementing state by a fixed amount each tick, causing drift.",
+    "Not clearing the interval on unmount."
+   ],
+   "examples": [
+    {
+     "title": "Stopwatch with laps",
+     "language": "react",
+     "css": ".sw { font-family: sans-serif; padding: 12px; }\n.time { font-size: 40px; font-variant-numeric: tabular-nums; margin-bottom: 8px; }",
+     "code": "function format(ms) {\n  const cs = Math.floor((ms % 1000) / 10);\n  const s = Math.floor(ms / 1000) % 60;\n  const m = Math.floor(ms / 60000);\n  return String(m).padStart(2, \"0\") + \":\" + String(s).padStart(2, \"0\") + \".\" + String(cs).padStart(2, \"0\");\n}\n\nfunction App() {\n  const [running, setRunning] = useState(false);\n  const [elapsed, setElapsed] = useState(0);\n  const [laps, setLaps] = useState([]);\n  const startRef = useRef(0);\n\n  useEffect(() => {\n    if (!running) return;\n    startRef.current = Date.now() - elapsed;\n    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 30);\n    return () => clearInterval(id);\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [running]);\n\n  function lap() {\n    setLaps((l) => [{ n: l.length + 1, at: elapsed, delta: elapsed - (l.length ? l[0].at : 0) }, ...l]);\n  }\n  function reset() {\n    setRunning(false);\n    setElapsed(0);\n    setLaps([]);\n  }\n\n  return (\n    <div className=\"sw\">\n      <div className=\"time\">{format(elapsed)}</div>\n      <button onClick={() => setRunning(!running)}>{running ? \"Stop\" : \"Start\"}</button>{\" \"}\n      <button onClick={lap} disabled={!running}>Lap</button>{\" \"}\n      <button onClick={reset} disabled={elapsed === 0}>Reset</button>\n      <ol reversed>\n        {laps.map((l) => <li key={l.n}>Lap {l.n}: {format(l.at)} (+{format(l.delta)})</li>)}\n      </ol>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why compute elapsed time from timestamps?",
+     "a": "setInterval is imprecise and throttled in background tabs, so counting ticks drifts; comparing Date.now() with a start time is accurate."
+    },
+    {
+     "q": "Why keep the interval id in a ref?",
+     "a": "It is not displayed, so it should not trigger re-renders, but it must persist between renders to be cleared later."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-form-wizard",
+   "title": "Project: Multi-step Form Wizard",
+   "level": "intermediate",
+   "summary": "A step-by-step form with per-step validation, back/next navigation and a review step.",
+   "description": "Long forms are friendlier as wizards. The challenge is **state across steps** and **validation per step**.\n\n### Architecture\n\n- One parent `Wizard` owns the **entire form data** object and the `step` index.\n- Each step component receives `data`, `onChange` and `errors` (presentational).\n- The parent validates only the **current step** on Next; a final submit validates everything again.\n\n### Key decisions\n\n- **Keep all data in the parent** so going Back does not lose input.\n- A `steps` array describing `{ title, fields, validate }` keeps the navigation generic.\n- Show a **progress indicator** (Step 2 of 4) and mark completed steps.\n- Last step is a **review/summary** with edit links that jump to a step.\n- Disable the submit button while submitting; show success/failure state.\n\n### Accessibility and UX\n\n- Move focus to the step heading (or the first error) when the step changes.\n- Announce errors with `role=\"alert\"`.\n- Use proper labels, `autocomplete` attributes and input types (`email`, `tel`).\n\n### Going further\n\n- Persist drafts in `localStorage` so users can resume.\n- Put the step in the URL (`/signup/step-2`) so refresh and browser back work.\n- For big forms use React Hook Form with a single `useForm` across steps and `trigger([\"fieldA\"])` for step validation.\n- Model the flow as a state machine (XState) for branching steps.",
+   "keyPoints": [
+    "Parent owns all data and the current step",
+    "Validate the current step before moving on",
+    "Presentational step components",
+    "Progress indicator and review step",
+    "Manage focus and announce errors"
+   ],
+   "pitfalls": [
+    "Storing data inside each step, losing it on Back.",
+    "Validating only at the very end."
+   ],
+   "examples": [
+    {
+     "title": "Three-step sign-up wizard",
+     "language": "react",
+     "css": ".wiz { font-family: sans-serif; padding: 12px; max-width: 300px; }\n.f { margin: 10px 0; }\n.f input, .f select { display: block; width: 100%; padding: 6px; box-sizing: border-box; }\n.err { color: crimson; font-size: 13px; }\n.nav button { margin-right: 8px; padding: 6px 14px; }\nprogress { width: 100%; }",
+     "code": "const STEPS = [\"Account\", \"Profile\", \"Review\"];\n\nfunction validate(step, d) {\n  const e = {};\n  if (step === 0) {\n    if (!/^\\S+@\\S+\\.\\S+$/.test(d.email)) e.email = \"Enter a valid email\";\n    if (d.password.length < 6) e.password = \"Min 6 characters\";\n  }\n  if (step === 1) {\n    if (!d.name.trim()) e.name = \"Name is required\";\n    if (!d.city) e.city = \"Choose a city\";\n  }\n  return e;\n}\n\nfunction Field({ label, name, type = \"text\", data, errors, onChange, children }) {\n  return (\n    <div className=\"f\">\n      <label>{label}{\" \"}\n        {children || <input name={name} type={type} value={data[name]} onChange={onChange} />}\n      </label>\n      {errors[name] && <div role=\"alert\" className=\"err\">{errors[name]}</div>}\n    </div>\n  );\n}\n\nfunction App() {\n  const [step, setStep] = useState(0);\n  const [data, setData] = useState({ email: \"\", password: \"\", name: \"\", city: \"\" });\n  const [errors, setErrors] = useState({});\n  const [done, setDone] = useState(false);\n\n  const onChange = (e) => setData({ ...data, [e.target.name]: e.target.value });\n\n  function next() {\n    const errs = validate(step, data);\n    setErrors(errs);\n    if (Object.keys(errs).length === 0) setStep(step + 1);\n  }\n  function back() { setErrors({}); setStep(step - 1); }\n\n  if (done) return <div className=\"wiz\"><h3>Welcome, {data.name}!</h3><p>Account created for {data.email}.</p></div>;\n\n  return (\n    <div className=\"wiz\">\n      <p className=\"prog\">Step {step + 1} of {STEPS.length}: <b>{STEPS[step]}</b></p>\n      <progress value={step + 1} max={STEPS.length} />\n      {step === 0 && (\n        <>\n          <Field label=\"Email\" name=\"email\" data={data} errors={errors} onChange={onChange} />\n          <Field label=\"Password\" name=\"password\" type=\"password\" data={data} errors={errors} onChange={onChange} />\n        </>\n      )}\n      {step === 1 && (\n        <>\n          <Field label=\"Name\" name=\"name\" data={data} errors={errors} onChange={onChange} />\n          <Field label=\"City\" name=\"city\" data={data} errors={errors} onChange={onChange}>\n            <select name=\"city\" value={data.city} onChange={onChange}>\n              <option value=\"\">Choose...</option><option>Pune</option><option>Delhi</option><option>Chennai</option>\n            </select>\n          </Field>\n        </>\n      )}\n      {step === 2 && (\n        <dl>\n          <dt>Email</dt><dd>{data.email}</dd>\n          <dt>Name</dt><dd>{data.name}</dd>\n          <dt>City</dt><dd>{data.city}</dd>\n        </dl>\n      )}\n      <div className=\"nav\">\n        {step > 0 && <button onClick={back}>Back</button>}\n        {step < STEPS.length - 1 && <button onClick={next}>Next</button>}\n        {step === STEPS.length - 1 && <button onClick={() => setDone(true)}>Submit</button>}\n      </div>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Where should multi-step form data live?",
+     "a": "In the parent wizard component (or a form library instance), so data persists when moving between steps."
+    },
+    {
+     "q": "How do you validate a wizard?",
+     "a": "Validate only the current step's fields on Next, then validate everything again (and on the server) at submit."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-debounced-search",
+   "title": "Project: Debounced Search with Race Protection",
+   "level": "intermediate",
+   "summary": "Combine useDebounce, simulated async search, loading states and stale-response protection.",
+   "description": "This project ties together custom hooks, effects, cleanup and async states - a typical interview task.\n\n### Flow\n\n1. User types -> `query` updates instantly (controlled input).\n2. `useDebounce(query, 400)` produces `debouncedQuery`.\n3. An effect depends on `debouncedQuery`: if empty, clear results; otherwise start a request.\n4. The effect cleanup marks the request as stale (`ignore = true` or `AbortController`).\n5. UI shows **idle**, **loading**, **error**, **empty**, and **results** states.\n\n### Why both debounce and cancellation\n\n- **Debounce** reduces the number of requests.\n- **Cancellation/ignore** guarantees a slow earlier response never overwrites a newer one.\n\n### Details\n\n- Trim the query and ignore queries shorter than 2 characters.\n- Keep previous results visible while loading a new query (less flicker).\n- Show the number of requests made to see debouncing working.\n- Cache results by query in a `useRef(new Map())` to avoid repeated calls.\n- Handle errors with a retry option; surface them with `role=\"alert\"`.\n\n### Production\n\nIn real apps use TanStack Query: `useQuery({ queryKey: [\"search\", debounced], queryFn, enabled: debounced.length > 1 })` gives caching, cancellation and states for free.",
+   "keyPoints": [
+    "Instant input state, debounced value for requests",
+    "Cleanup flag prevents stale responses winning",
+    "Model idle/loading/error/success states",
+    "Ignore too-short queries",
+    "TanStack Query replaces the manual work in production"
+   ],
+   "pitfalls": [
+    "Firing a request for every keystroke.",
+    "Letting a slow old response replace newer results."
+   ],
+   "examples": [
+    {
+     "title": "Debounced search with a fake API",
+     "language": "react",
+     "css": "",
+     "code": "const DATA = [\"apple\", \"apricot\", \"banana\", \"blueberry\", \"cherry\", \"grape\", \"grapefruit\", \"mango\", \"orange\", \"papaya\", \"peach\", \"pear\", \"pineapple\", \"plum\"];\n\nlet requests = 0;\nfunction fakeSearch(q) {\n  requests += 1;\n  const delay = q.length % 2 === 0 ? 700 : 250; // sometimes slow, sometimes fast\n  return new Promise((resolve) =>\n    setTimeout(() => resolve(DATA.filter((x) => x.includes(q.toLowerCase()))), delay)\n  );\n}\n\nfunction useDebounce(value, delay) {\n  const [v, setV] = useState(value);\n  useEffect(() => {\n    const id = setTimeout(() => setV(value), delay);\n    return () => clearTimeout(id);\n  }, [value, delay]);\n  return v;\n}\n\nfunction App() {\n  const [query, setQuery] = useState(\"\");\n  const debounced = useDebounce(query.trim(), 400);\n  const [state, setState] = useState({ status: \"idle\", results: [] });\n\n  useEffect(() => {\n    if (debounced.length < 2) { setState({ status: \"idle\", results: [] }); return; }\n    let ignore = false;\n    setState((s) => ({ ...s, status: \"loading\" }));\n    fakeSearch(debounced).then((results) => {\n      if (!ignore) setState({ status: \"success\", results });\n    });\n    return () => { ignore = true; };\n  }, [debounced]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12, maxWidth: 320 }}>\n      <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder=\"Search fruits (min 2 chars)\" style={{ width: \"100%\" }} />\n      <p style={{ color: \"#666\", fontSize: 13 }}>Requests made: {requests}</p>\n      {state.status === \"idle\" && <p>Type at least 2 characters.</p>}\n      {state.status === \"loading\" && <p>Searching...</p>}\n      {state.status === \"success\" && state.results.length === 0 && <p>No results for \"{debounced}\".</p>}\n      <ul>{state.results.map((r) => <li key={r}>{r}</li>)}</ul>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why do you need both debouncing and cancellation?",
+     "a": "Debouncing limits how many requests are sent; cancellation or an ignore flag ensures an older, slower response cannot overwrite the latest results."
+    },
+    {
+     "q": "How would you do this with TanStack Query?",
+     "a": "Use useQuery with the debounced term in the queryKey and enabled set to false for short terms; it handles caching, cancellation and loading states."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-infinite-scroll",
+   "title": "Project: Infinite Scroll with IntersectionObserver",
+   "level": "intermediate",
+   "summary": "Load more items automatically when a sentinel element scrolls into view.",
+   "description": "Infinite scroll appends content as the user nears the bottom. The modern way uses **`IntersectionObserver`** instead of listening to every scroll event.\n\n### The idea\n\n1. Render the list and a small **sentinel** element after the last item.\n2. Observe the sentinel with `IntersectionObserver`.\n3. When it intersects the viewport (or the scroll container, via `root`), call `loadMore()`.\n4. Append the new page; the sentinel moves down and the cycle repeats.\n\n### Implementation details\n\n- Store `items`, `loading`, and `hasMore` in state.\n- Create the observer in a `useEffect` that depends on `loading` and `hasMore`; **disconnect** it in cleanup. Re-creating the observer after each load also re-checks visibility when the new page is short.\n- Use `rootMargin: \"200px\"` to start loading before the user hits the bottom.\n- Prevent duplicate loads with the `loading` guard.\n- When there is no more data, stop observing and show \"You reached the end\".\n\n### Accessibility and UX\n\n- Provide a **Load more** button as a fallback (also helps keyboard users and reaching the footer).\n- Announce loaded content with `aria-live=\"polite\"`.\n- For thousands of items combine with virtualization.\n- Preserve scroll position when navigating back (store pages in a cache like TanStack Query's `useInfiniteQuery`).\n\n### Production note\n\n`useInfiniteQuery` from TanStack Query manages pages, cursors and `fetchNextPage` for you, leaving only the observer to write.",
+   "keyPoints": [
+    "Sentinel element + IntersectionObserver",
+    "Guard against duplicate loads with loading flag",
+    "Disconnect observer in cleanup",
+    "rootMargin loads earlier",
+    "Provide a Load more button fallback"
+   ],
+   "pitfalls": [
+    "Observing without disconnecting, leaking observers.",
+    "Infinite scroll with no way to reach the footer."
+   ],
+   "examples": [
+    {
+     "title": "Infinite list inside a scroll container",
+     "language": "react",
+     "css": "",
+     "code": "const TOTAL = 60, PAGE = 12;\nconst makePage = (start) =>\n  Array.from({ length: Math.min(PAGE, TOTAL - start) }, (_, i) => \"Item \" + (start + i + 1));\n\nfunction App() {\n  const [items, setItems] = useState(() => makePage(0));\n  const [loading, setLoading] = useState(false);\n  const rootRef = useRef(null);\n  const sentinelRef = useRef(null);\n  const hasMore = items.length < TOTAL;\n\n  const loadMore = useCallback(() => {\n    setLoading(true);\n    setTimeout(() => {\n      setItems((prev) => (prev.length >= TOTAL ? prev : [...prev, ...makePage(prev.length)]));\n      setLoading(false);\n    }, 500);\n  }, []);\n\n  useEffect(() => {\n    if (!hasMore || loading || !sentinelRef.current) return;\n    const io = new IntersectionObserver(\n      (entries) => { if (entries[0].isIntersecting) loadMore(); },\n      { root: rootRef.current, rootMargin: \"60px\" }\n    );\n    io.observe(sentinelRef.current);\n    return () => io.disconnect();\n  }, [hasMore, loading, loadMore]);\n\n  return (\n    <div style={{ fontFamily: \"sans-serif\", padding: 12 }}>\n      <div ref={rootRef} style={{ height: 180, overflow: \"auto\", border: \"1px solid #ccc\", borderRadius: 6 }}>\n        <ul aria-live=\"polite\" style={{ margin: 0, padding: 0, listStyle: \"none\" }}>\n          {items.map((it) => <li key={it} style={{ padding: \"8px 10px\", borderBottom: \"1px solid #eee\" }}>{it}</li>)}\n        </ul>\n        <div ref={sentinelRef} style={{ padding: 8, textAlign: \"center\", color: \"#666\" }}>\n          {loading ? \"Loading...\" : hasMore ? \"Scroll for more\" : \"You reached the end\"}\n        </div>\n      </div>\n      {hasMore && !loading && <button onClick={loadMore} style={{ marginTop: 8 }}>Load more</button>}\n      <p>{items.length} / {TOTAL} loaded</p>\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use IntersectionObserver instead of a scroll listener?",
+     "a": "It reports visibility changes efficiently off the main scroll path, without calling handlers on every scroll event or measuring layout manually."
+    },
+    {
+     "q": "Why re-create the observer when loading changes?",
+     "a": "Re-observing re-checks visibility after new items load, so another page loads if the sentinel is still on screen."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "react-project-kanban",
+   "title": "Project: Kanban-lite Board",
+   "level": "advanced",
+   "summary": "A small Trello-style board: columns, cards, adding, moving and deleting with a reducer.",
+   "description": "A kanban board combines normalized state, a reducer, composition and (optionally) drag and drop.\n\n### Data model (normalized)\n\n```js\n{\n  columns: [{ id: \"todo\", title: \"To do\", cardIds: [1, 2] }, ...],\n  cards: { 1: { id: 1, title: \"Design\" }, 2: { id: 2, title: \"Build\" } }\n}\n```\n\nStoring cards in a dictionary and columns as lists of ids makes **moving a card** a simple array operation, and editing a card touches only one object.\n\n### Actions\n\n- `addCard(columnId, title)`\n- `moveCard(cardId, fromColumn, toColumn)` - remove id from the source list, append to the target list.\n- `deleteCard(cardId)`\n- Optionally `renameCard`, `reorder` inside a column.\n\n### Component tree\n\n`Board` -> `Column` (title, list, add form) -> `Card` (title, actions). Pass `dispatch` down (or use context).\n\n### Moving cards\n\nThis example uses accessible **Move left/right buttons**, which is the keyboard-friendly baseline. To add drag and drop use the native HTML5 DnD API (`draggable`, `onDragStart`, `onDrop`) or libraries: **dnd-kit** (recommended, accessible), `@hello-pangea/dnd`, or `react-beautiful-dnd` (deprecated). Always keep a non-drag alternative.\n\n### Persistence\n\nSave the board to `localStorage` or an API. With optimistic updates, send the move to the server and roll back on failure.",
+   "keyPoints": [
+    "Normalize: cards by id, columns hold id lists",
+    "Reducer actions: add, move, delete",
+    "Board -> Column -> Card composition",
+    "Keep keyboard-friendly move buttons",
+    "dnd-kit for drag and drop"
+   ],
+   "pitfalls": [
+    "Nesting full card objects in columns, making moves clumsy.",
+    "Drag and drop only, excluding keyboard users."
+   ],
+   "examples": [
+    {
+     "title": "Kanban-lite",
+     "language": "react",
+     "css": ".board { display: flex; gap: 10px; font-family: sans-serif; padding: 10px; overflow-x: auto; }\n.col { background: #f1f5f9; border-radius: 8px; padding: 8px; min-width: 150px; flex: 1; }\n.col h4 { margin: 0 0 8px; }\n.card { background: #fff; border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.15); font-size: 14px; }\n.card button { padding: 1px 6px; margin-right: 2px; font-size: 12px; }\n.col input { width: 100%; box-sizing: border-box; padding: 4px; }",
+     "code": "const initial = {\n  nextId: 4,\n  columns: [\n    { id: \"todo\", title: \"To do\", cardIds: [1, 2] },\n    { id: \"doing\", title: \"Doing\", cardIds: [3] },\n    { id: \"done\", title: \"Done\", cardIds: [] },\n  ],\n  cards: { 1: { id: 1, title: \"Design UI\" }, 2: { id: 2, title: \"Write tests\" }, 3: { id: 3, title: \"Build API\" } },\n};\n\nfunction reducer(state, action) {\n  switch (action.type) {\n    case \"add\": {\n      const id = state.nextId;\n      return {\n        ...state,\n        nextId: id + 1,\n        cards: { ...state.cards, [id]: { id, title: action.title } },\n        columns: state.columns.map((c) => (c.id === action.columnId ? { ...c, cardIds: [...c.cardIds, id] } : c)),\n      };\n    }\n    case \"move\": {\n      const from = state.columns.findIndex((c) => c.cardIds.includes(action.cardId));\n      const to = from + action.dir;\n      if (from === -1 || to < 0 || to >= state.columns.length) return state;\n      return {\n        ...state,\n        columns: state.columns.map((c, i) => {\n          if (i === from) return { ...c, cardIds: c.cardIds.filter((id) => id !== action.cardId) };\n          if (i === to) return { ...c, cardIds: [...c.cardIds, action.cardId] };\n          return c;\n        }),\n      };\n    }\n    case \"delete\": {\n      const { [action.cardId]: removed, ...rest } = state.cards;\n      return {\n        ...state,\n        cards: rest,\n        columns: state.columns.map((c) => ({ ...c, cardIds: c.cardIds.filter((id) => id !== action.cardId) })),\n      };\n    }\n    default:\n      return state;\n  }\n}\n\nfunction Column({ column, cards, dispatch }) {\n  const [title, setTitle] = useState(\"\");\n  return (\n    <section className=\"col\" aria-label={column.title}>\n      <h4>{column.title} ({cards.length})</h4>\n      {cards.map((card) => (\n        <div key={card.id} className=\"card\">\n          <span>{card.title}</span>\n          <div>\n            <button aria-label={\"Move \" + card.title + \" left\"} onClick={() => dispatch({ type: \"move\", cardId: card.id, dir: -1 })}>&lt;</button>\n            <button aria-label={\"Move \" + card.title + \" right\"} onClick={() => dispatch({ type: \"move\", cardId: card.id, dir: 1 })}>&gt;</button>\n            <button aria-label={\"Delete \" + card.title} onClick={() => dispatch({ type: \"delete\", cardId: card.id })}>x</button>\n          </div>\n        </div>\n      ))}\n      <form onSubmit={(e) => { e.preventDefault(); if (title.trim()) dispatch({ type: \"add\", columnId: column.id, title: title.trim() }); setTitle(\"\"); }}>\n        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder=\"+ Add card\" />\n      </form>\n    </section>\n  );\n}\n\nfunction App() {\n  const [state, dispatch] = useReducer(reducer, initial);\n  return (\n    <div className=\"board\">\n      {state.columns.map((col) => (\n        <Column key={col.id} column={col} cards={col.cardIds.map((id) => state.cards[id])} dispatch={dispatch} />\n      ))}\n    </div>\n  );\n}"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why normalize state in a kanban board?",
+     "a": "Keeping cards in a dictionary and columns as id lists makes moves and edits simple, avoids duplicated data and deeply nested updates."
+    },
+    {
+     "q": "How do you keep drag and drop accessible?",
+     "a": "Offer keyboard-operable alternatives like move buttons, or use an accessible library such as dnd-kit that supports keyboard sensors and announcements."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

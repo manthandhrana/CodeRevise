@@ -1,0 +1,237 @@
+{
+ "id": "devnotes-git",
+ "title": "Git & Version Control",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "dev-git-workflow",
+   "title": "Daily Git Workflow & Core Commands",
+   "level": "beginner",
+   "summary": "The handful of commands and the three areas (working tree, staging, repository) that cover 90% of daily Git use.",
+   "description": "Git tracks snapshots of your project. Every change travels through **three areas**:\n\n### The three areas\n* **Working tree** - the files you edit.\n* **Staging area (index)** - the changes you selected for the next commit.\n* **Repository** - the permanent history of commits (local), which you can share with a **remote** such as GitHub.\n\n### The daily loop\n1. `git status` - see what changed.\n2. `git add <file>` (or `git add -p` to pick hunks) - stage.\n3. `git commit -m \"message\"` - record a snapshot.\n4. `git pull` - get teammates' work.\n5. `git push` - publish yours.\n\n### Inspecting history\n* `git log --oneline --graph --decorate` - compact visual history.\n* `git diff` (unstaged), `git diff --staged` (staged), `git show <commit>`.\n* `git blame <file>` - who changed each line.\n\n### Good commit messages\nWrite in the imperative mood, short subject (about 50 characters), blank line, then the **why** if needed: `feat: add login form validation`. Small, focused commits make review, revert and bisect easy.",
+   "keyPoints": [
+    "Working tree -> staging (`git add`) -> repository (`git commit`) -> remote (`git push`)",
+    "`git status` is the command to run most often",
+    "Commit small and often with clear imperative messages",
+    "`git diff --staged` shows what the next commit will contain",
+    "`git pull` = `git fetch` + merge (or rebase)"
+   ],
+   "pitfalls": [
+    "Using `git add .` blindly and committing secrets or build output - use `.gitignore`",
+    "Committing directly to `main` on a shared project",
+    "Vague messages like \"fix\" or \"changes\""
+   ],
+   "examples": [
+    {
+     "title": "Everyday command cycle",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "git status\ngit add src/app.js            # stage one file\ngit add -p                    # or choose hunks interactively\ngit commit -m \"feat: add search bar\"\ngit pull --rebase             # get others' work first\ngit push                      # publish",
+     "explanation": "The core loop: inspect, stage, commit, sync."
+    },
+    {
+     "title": "Working tree vs staging vs repository",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "  edit            git add          git commit        git push\n -------> Working  -------->  Staging  --------->  Local   --------->  Remote\n          tree                (index)              repo               (GitHub)",
+     "explanation": "Each arrow is one command; changes only move forward when you tell Git to."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the staging area for?",
+     "a": "It lets you build a commit deliberately: stage only the changes that belong together, even if the working tree contains more edits."
+    },
+    {
+     "q": "Difference between git fetch and git pull?",
+     "a": "`fetch` downloads remote commits without touching your branch. `pull` is `fetch` followed by a merge (or rebase) into the current branch."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-git-branching",
+   "title": "Branching & Feature-Branch Flow",
+   "level": "beginner",
+   "summary": "Branches are cheap pointers to commits; use one per feature or fix and merge back through a pull request.",
+   "description": "A **branch** is just a movable pointer to a commit - creating one is instant and costs almost nothing. That is why Git workflows are built around many short-lived branches.\n\n### Commands\n* `git branch` - list branches; `git branch -d name` - delete a merged one.\n* `git switch -c feature/login` - create and move to a new branch (modern replacement for `git checkout -b`).\n* `git switch main` - go back.\n* `git push -u origin feature/login` - publish and set upstream.\n\n### Feature-branch flow\n1. Update `main`: `git switch main && git pull`.\n2. Create a branch from it: `git switch -c feature/short-name`.\n3. Commit work, push the branch.\n4. Open a **pull request**; teammates review; CI runs.\n5. Merge (merge commit, squash or rebase) and delete the branch.\n\n### Naming\nUse prefixes: `feature/`, `fix/`, `hotfix/`, `chore/`, `docs/` followed by a short kebab-case description, optionally with a ticket id (`fix/ABC-123-null-cart`).\n\n### Keep branches small\nLong-living branches diverge and cause painful conflicts. Merge or rebase from `main` frequently.",
+   "keyPoints": [
+    "A branch is only a pointer to a commit",
+    "`git switch -c` creates and switches",
+    "One branch per feature/fix; merge through pull requests",
+    "Name branches with a type prefix",
+    "Delete branches after merging"
+   ],
+   "pitfalls": [
+    "Working on `main` directly",
+    "Never syncing a long feature branch with `main`",
+    "Switching branches with uncommitted changes and getting confused - commit or `git stash` first"
+   ],
+   "examples": [
+    {
+     "title": "Start and finish a feature",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "git switch main\ngit pull\ngit switch -c feature/dark-mode\n# ...work and commit...\ngit push -u origin feature/dark-mode\n# open Pull Request on GitHub, review, merge\ngit switch main && git pull\ngit branch -d feature/dark-mode",
+     "explanation": "A complete life cycle of a feature branch."
+    },
+    {
+     "title": "Branch picture",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "          A---B---C   feature/dark-mode\n         /\n --o---o---D---E   main",
+     "explanation": "The feature branch started at commit D... and diverged while main moved on."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is HEAD?",
+     "a": "A pointer to the commit (usually via a branch) you currently have checked out."
+    },
+    {
+     "q": "Why prefer short-lived branches?",
+     "a": "They stay close to main, reviews stay small and merge conflicts stay rare."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-git-merge-vs-rebase",
+   "title": "Merge vs Rebase",
+   "level": "intermediate",
+   "summary": "Merge keeps true history with a merge commit; rebase replays your commits for a linear history - never rebase shared commits.",
+   "description": "Both commands integrate changes from one branch into another; they differ in the **history** they produce.\n\n### Merge\n`git merge main` (while on your feature branch) creates a **merge commit** with two parents. History is preserved exactly as it happened, but graphs can get busy.\n\n### Rebase\n`git rebase main` takes your commits, temporarily sets them aside, moves the branch to the tip of `main` and **replays** your commits on top. History becomes linear and clean, but the commits get **new hashes** (they are rewritten).\n\n### The golden rule\n**Never rebase commits that other people already have** (public/shared branches). Rewriting shared history forces everybody else to repair their clones. Rebase your own local/feature branch before opening a pull request; use merge for shared branches.\n\n### Related tools\n* `git merge --squash` - turn all branch commits into one.\n* `git rebase -i HEAD~3` - interactive: reorder, squash, edit, drop recent commits.\n* `git pull --rebase` - rebase your local commits on top of the remote ones instead of creating a merge commit.\n* Conflicts: fix the files, `git add` them, then `git merge --continue` / `git rebase --continue` (or `--abort`).",
+   "keyPoints": [
+    "Merge preserves history and adds a merge commit",
+    "Rebase rewrites commits to get a linear history",
+    "Never rebase shared/public commits",
+    "`git rebase -i` cleans up local history before a PR",
+    "`--abort` safely cancels a messy merge or rebase"
+   ],
+   "pitfalls": [
+    "Force-pushing a rebased shared branch",
+    "Resolving the same conflict repeatedly in a long rebase - consider merge",
+    "Assuming rebase \"loses\" work - the old commits still live in the reflog"
+   ],
+   "examples": [
+    {
+     "title": "Rebase a feature branch",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "git switch feature/search\ngit fetch origin\ngit rebase origin/main\n# fix conflicts -> git add . -> git rebase --continue\ngit push --force-with-lease   # only because it is YOUR branch",
+     "explanation": "`--force-with-lease` is a safer force push: it fails if someone else pushed in the meantime."
+    },
+    {
+     "title": "History shape",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "MERGE                          REBASE\n      A---B---C  feature             A'--B'--C'  feature\n     /         \\                    /\n D--E---F---G---M  main         D--E---F---G  main\n (M = merge commit)             (linear, A' B' C' are new commits)",
+     "explanation": "Same changes, different history."
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you use merge instead of rebase?",
+     "a": "For shared branches or when you want to keep the exact history of how work was integrated."
+    },
+    {
+     "q": "What does rebase actually do?",
+     "a": "It finds the common ancestor, saves your commits as patches, moves your branch to the new base and re-applies the patches, creating new commits."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-git-undo-recipes",
+   "title": "Undoing Things: Restore, Reset, Revert, Reflog",
+   "level": "intermediate",
+   "summary": "A cheat sheet of safe ways to undo changes at every stage - from unsaved edits to a pushed commit.",
+   "description": "Almost everything in Git can be undone - you only need the right tool for the stage you are at.\n\n| Situation | Command |\n|---|---|\n| Discard edits in a file | `git restore <file>` |\n| Unstage a file (keep edits) | `git restore --staged <file>` |\n| Fix the last commit message / add a forgotten file | `git commit --amend` |\n| Undo last commit, keep changes staged | `git reset --soft HEAD~1` |\n| Undo last commit, keep changes unstaged | `git reset HEAD~1` (mixed) |\n| Undo last commit **and** delete changes | `git reset --hard HEAD~1` |\n| Undo a **pushed** commit safely | `git revert <hash>` |\n| Lost a commit after a hard reset | `git reflog` then `git reset --hard <hash>` |\n\n### reset vs revert\n* **reset** moves the branch pointer backwards - it rewrites history. Use it only on local commits.\n* **revert** adds a *new* commit that cancels an older one - safe for shared history.\n\n### Reflog - the safety net\n`git reflog` lists every place HEAD has pointed to in the last weeks. Even \"deleted\" commits can be found and restored from it.\n\n### Stash\n`git stash` parks uncommitted work, `git stash pop` brings it back.",
+   "keyPoints": [
+    "`restore` for files, `reset` for moving branches, `revert` for pushed commits",
+    "`--soft` keeps staged, mixed keeps unstaged, `--hard` deletes changes",
+    "`git reflog` rescues \"lost\" commits",
+    "`git stash` parks work in progress"
+   ],
+   "pitfalls": [
+    "`git reset --hard` on uncommitted work - that data is gone",
+    "Resetting and force-pushing a shared branch",
+    "Using `git checkout .` habitually - it silently discards edits"
+   ],
+   "examples": [
+    {
+     "title": "Common undo recipes",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "git restore app.js                 # throw away edits in app.js\ngit restore --staged app.js         # unstage\ngit reset --soft HEAD~1             # undo commit, keep changes staged\ngit revert 3f2a9c1                  # new commit that undoes 3f2a9c1\ngit reflog                          # find a lost commit\ngit reset --hard HEAD@{2}           # go back to where HEAD was",
+     "explanation": "Pick the least destructive command that solves the problem."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between git reset and git revert?",
+     "a": "`reset` rewrites history by moving the branch pointer; `revert` creates a new commit that undoes a previous one and is safe on pushed branches."
+    },
+    {
+     "q": "How do you recover a commit after a hard reset?",
+     "a": "Find its hash with `git reflog` and run `git reset --hard <hash>` or create a branch at it."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "dev-git-checkout-commit",
+   "title": "Jump to a Specific Commit & Reset a Branch to It",
+   "level": "intermediate",
+   "summary": "How `git switch -C main <hash>` moves a branch to an exact commit and how to verify with `git log -1 --oneline`.",
+   "description": "Sometimes you must make your working copy match an **exact commit** - for example when a teammate says \"use the code from commit 8148a37\" or a deployment needs a known good version.\n\n### The command\n```\ngit switch -C main 8148a37d5c177b19a5d005b8ff6622e9e8cb925a\n```\n\nMeaning: *check out commit 8148a37 and (re)create the local branch **main** pointing to it.* The capital **-C** means \"create the branch, or **reset** it if it already exists\".\n\n### Verify\n```\ngit log -1 --oneline\n```\n\nThis prints only the commit you are on, e.g. `8148a37 feat : 120 design screen add`. If the hash and message match, you have the correct code.\n\n### Related options\n* `git switch --detach <hash>` - look at an old commit without moving any branch (detached HEAD, safe for exploring).\n* `git switch -c fix/old-state <hash>` - start a **new** branch from an old commit (does not touch main).\n* Make sure you have the commit first: `git fetch --all`.\n\n### Careful\n`switch -C main <hash>` moves your local `main` - local commits that were only on `main` become unreachable (still in `git reflog`). Commit or stash your work first.",
+   "keyPoints": [
+    "`git switch -C <branch> <hash>` = create/reset branch at that commit",
+    "`git log -1 --oneline` confirms the current commit",
+    "`--detach` is for read-only exploration",
+    "Old commits stay recoverable via reflog"
+   ],
+   "pitfalls": [
+    "Running it with uncommitted changes you care about",
+    "Forgetting `git fetch` so the hash is not known locally",
+    "Confusing lowercase `-c` (create, fails if exists) with `-C` (force reset)"
+   ],
+   "examples": [
+    {
+     "title": "Reset local main to a known commit",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "git fetch --all\ngit switch -C main 8148a37d5c177b19a5d005b8ff6622e9e8cb925a\ngit log -1 --oneline\n# 8148a37 feat : 120 design screen add   <- expected output",
+     "explanation": "After this your code is exactly the code of that commit."
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a detached HEAD?",
+     "a": "HEAD points directly at a commit instead of a branch. New commits made there are not on any branch and can be lost unless you create a branch."
+    },
+    {
+     "q": "Difference between -c and -C in git switch?",
+     "a": "`-c` creates a new branch and fails if it exists; `-C` creates it or resets an existing branch to the given start point."
+    }
+   ],
+   "source": "Git Docs.txt"
+  }
+ ]
+}

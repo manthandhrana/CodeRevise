@@ -1,0 +1,548 @@
+{
+ "id": "node-http",
+ "title": "HTTP from Scratch",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-http-server",
+   "title": "Your First HTTP Server",
+   "level": "beginner",
+   "summary": "Create a server with http.createServer, understand the request and response objects and the listening lifecycle.",
+   "description": "Frameworks like Express are built on Node's **`http`** module. Learning it first makes everything else clear.\n\n### The smallest server\n`http.createServer((req, res) => { ... })` returns a server. The callback runs **once per request**. `server.listen(port)` starts it.\n\n### The two objects\n* **`req`** (`http.IncomingMessage`, a Readable stream): `req.method`, `req.url`, `req.headers`, `req.httpVersion`, `req.socket.remoteAddress`\n* **`res`** (`http.ServerResponse`, a Writable stream): `res.statusCode`, `res.setHeader()`, `res.writeHead()`, `res.write()`, `res.end()`\n\nYou **must** call `res.end()` for every request, otherwise the client waits until a timeout.\n\n### The lifecycle\n1. Client connects (TCP), sends the request line, headers and optional body\n2. Node parses the head and calls your handler\n3. You write status, headers and body\n4. `res.end()` completes the response; the connection is kept alive for reuse\n\n### Server events\n`'listening'`, `'request'`, `'connection'`, `'error'` (for example `EADDRINUSE` when the port is taken), `'close'`.\n\n### Useful settings\n* `server.listen(port, host)`: use `'0.0.0.0'` in containers, `'127.0.0.1'` to accept only local connections\n* `server.keepAliveTimeout`, `server.requestTimeout`, `server.headersTimeout`\n* `process.env.PORT ?? 3000`: hosts such as Render and Railway tell you the port\n\n### Try it\nRun `node server.js`, open `http://localhost:3000` or run `curl -i http://localhost:3000`.",
+   "keyPoints": [
+    "createServer's callback receives req (readable) and res (writable)",
+    "Always end the response with res.end()",
+    "listen(port) starts the server; read PORT from the environment",
+    "Handle the server error event for EADDRINUSE"
+   ],
+   "pitfalls": [
+    "Forgetting res.end() so the request hangs",
+    "Hard-coding the port instead of reading process.env.PORT",
+    "Setting headers after the body has started (ERR_HTTP_HEADERS_SENT)"
+   ],
+   "examples": [
+    {
+     "title": "Hello server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// server.js\nimport http from 'node:http';\n\nconst server = http.createServer((req, res) => {\n  console.log(req.method, req.url);\n  res.statusCode = 200;\n  res.setHeader('Content-Type', 'text/plain; charset=utf-8');\n  res.end('Hello from Node!\\n');\n});\n\nserver.on('error', (err) => {\n  if (err.code === 'EADDRINUSE') console.error('Port already in use');\n  else throw err;\n});\n\nconst PORT = process.env.PORT ?? 3000;\nserver.listen(PORT, () => console.log(`http://localhost:${PORT}`));",
+     "explanation": "Visit the URL in a browser; the terminal logs every request, including /favicon.ico.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Try it",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ node server.js\nhttp://localhost:3000\nGET /\n\n$ curl -i http://localhost:3000\nHTTP/1.1 200 OK\nContent-Type: text/plain; charset=utf-8\nDate: Fri, 16 Oct 2026 10:00:00 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\nContent-Length: 17\n\nHello from Node!",
+     "explanation": "Node adds Content-Length automatically when you call end() with a body.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What happens if you never call res.end()?",
+     "a": "The response never completes, so the client keeps waiting until it times out, and the socket stays occupied on the server."
+    },
+    {
+     "q": "How do you handle \"EADDRINUSE\"?",
+     "a": "It means another process uses that port. Listen for the server error event, then pick a different port, stop the other process or show a clear message."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-http-routing",
+   "title": "Routing by Hand",
+   "level": "beginner",
+   "summary": "Dispatch requests by method and URL path using plain Node: the idea behind every router.",
+   "description": "A **router** maps `(method, path)` to a handler function. Express does this for you, but writing a tiny one shows there is no magic.\n\n### Steps\n1. Parse the URL: `const { pathname, searchParams } = new URL(req.url, 'http://localhost')`\n2. Look at `req.method` (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`)\n3. Pick the handler; if none matches, return **404**; if the path exists but the method does not, return **405** with an `Allow` header\n\n### A route table\nStore routes in an array or Map: `{ method, pattern, handler }`. For parameters like `/users/42` turn the pattern into a regular expression with named groups: `/users/:id` → `^/users/(?<id>[^/]+)$`.\n\n### Trailing slashes and case\nDecide a policy: normally `/users/` and `/users` are the same. Normalise before matching.\n\n### Not found and errors\nWrap handler calls in try/catch so a thrown error becomes a 500 response instead of crashing the server. Log the real error, send a generic message.\n\n### Why use a framework later\nReal routers add: middleware, route groups, parameter parsing, body parsing, validation, error pipelines and speed (radix tree matching). Frameworks: Express, Fastify, Hono, Koa.\n\n### URLPattern\nNewer Node versions include the web `URLPattern` API (`new URLPattern({ pathname: '/users/:id' })`) which does the matching for you.",
+   "keyPoints": [
+    "A router maps method + path to a handler",
+    "Return 404 for unknown paths and 405 for wrong methods",
+    "Convert /users/:id patterns to regex with named groups",
+    "Wrap handlers in try/catch to answer 500 instead of crashing"
+   ],
+   "pitfalls": [
+    "Matching on req.url without removing the query string",
+    "Using startsWith for paths so /users matches /usersecret",
+    "Leaving errors uncaught inside handlers"
+   ],
+   "examples": [
+    {
+     "title": "A tiny router",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nconst routes = [];\nconst route = (method, path, handler) => {\n  const pattern = new RegExp('^' + path.replace(/:(\\w+)/g, '(?<$1>[^/]+)') + '/?$');\n  routes.push({ method, pattern, handler });\n};\n\nconst send = (res, status, data) => {\n  res.writeHead(status, { 'Content-Type': 'application/json' });\n  res.end(JSON.stringify(data));\n};\n\nroute('GET', '/', (req, res) => send(res, 200, { hello: 'world' }));\nroute('GET', '/users/:id', (req, res, params) => send(res, 200, { id: params.id }));\n\nconst server = http.createServer(async (req, res) => {\n  const { pathname } = new URL(req.url, 'http://localhost');\n  const matches = routes.filter((r) => r.pattern.test(pathname));\n\n  if (matches.length === 0) return send(res, 404, { error: 'Not found' });\n  const r = matches.find((m) => m.method === req.method);\n  if (!r) {\n    res.setHeader('Allow', matches.map((m) => m.method).join(', '));\n    return send(res, 405, { error: 'Method not allowed' });\n  }\n  try {\n    await r.handler(req, res, pathname.match(r.pattern).groups);\n  } catch (err) {\n    console.error(err);\n    send(res, 500, { error: 'Internal error' });\n  }\n});\n\nserver.listen(3000);",
+     "explanation": "GET /users/42 returns {\"id\":\"42\"}; POST /users/42 returns 405.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the difference between 404 and 405?",
+     "a": "404 Not Found means no resource exists at that path. 405 Method Not Allowed means the path exists but not for that HTTP method, and the response should list allowed methods in the Allow header."
+    },
+    {
+     "q": "How does a router extract :id from /users/42?",
+     "a": "It compiles the pattern into a regular expression with a capture group for each parameter (for example (?<id>[^/]+)), matches the URL against it and reads the named groups."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-http-headers-status",
+   "title": "Headers and Status Codes",
+   "level": "beginner",
+   "summary": "Set and read headers, choose correct status codes and know the important ones: Content-Type, Cache-Control, Location, CORS and cookies.",
+   "description": "### Reading request headers\n`req.headers` is an object with **lower-cased** names: `req.headers['content-type']`, `req.headers.authorization`, `req.headers['user-agent']`. Repeated headers are joined; `req.rawHeaders` keeps the original.\n\n### Writing response headers\n* `res.setHeader(name, value)` before the body is sent\n* `res.writeHead(status, { headers })` sets status and headers together\n* `res.getHeader`, `res.removeHeader`, `res.hasHeader`\n* Headers must be set **before** `res.write()` / `res.end()`; later calls throw `ERR_HTTP_HEADERS_SENT`\n\n### Headers you will use constantly\n| Header | Purpose |\n|---|---|\n| `Content-Type` | `application/json`, `text/html; charset=utf-8` |\n| `Content-Length` | Body size in bytes (usually automatic) |\n| `Cache-Control` | `no-store`, `public, max-age=3600` |\n| `ETag` / `If-None-Match` | Conditional requests (304) |\n| `Location` | Target of redirects and created resources |\n| `Set-Cookie` | Create cookies (HttpOnly, Secure, SameSite) |\n| `Authorization` | `Bearer <token>` |\n| `Access-Control-Allow-Origin` | CORS |\n| `Content-Disposition` | Force a download with a file name |\n| `Retry-After` | With 429 and 503 |\n\n### Status codes to know\n| Range | Meaning | Common codes |\n|---|---|---|\n| 2xx | Success | 200 OK, 201 Created, 204 No Content |\n| 3xx | Redirect | 301 permanent, 302/307 temporary, 304 Not Modified |\n| 4xx | Client error | 400 Bad Request, 401 Unauthenticated, 403 Forbidden, 404, 409 Conflict, 422 Unprocessable, 429 Too Many Requests |\n| 5xx | Server error | 500, 502 Bad Gateway, 503 Unavailable, 504 Gateway Timeout |\n\n401 means \"who are you?\", 403 means \"I know you, but no\".",
+   "keyPoints": [
+    "req.headers keys are lower-case",
+    "Set headers before writing the body",
+    "Content-Type tells clients how to parse the body",
+    "Pick precise status codes: 201 for create, 204 for empty, 401 vs 403",
+    "Cache-Control and ETag control caching"
+   ],
+   "pitfalls": [
+    "Sending 200 for errors",
+    "Missing charset or wrong Content-Type for JSON/HTML",
+    "Setting headers after calling res.end()"
+   ],
+   "examples": [
+    {
+     "title": "Reading and writing headers",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nhttp.createServer((req, res) => {\n  const auth = req.headers.authorization;        // \"Bearer abc\"\n  if (!auth?.startsWith('Bearer ')) {\n    res.writeHead(401, {\n      'Content-Type': 'application/json',\n      'WWW-Authenticate': 'Bearer',\n    });\n    return res.end(JSON.stringify({ error: 'Token required' }));\n  }\n\n  res.writeHead(201, {\n    'Content-Type': 'application/json',\n    'Location': '/items/17',\n    'Cache-Control': 'no-store',\n  });\n  res.end(JSON.stringify({ id: 17 }));\n}).listen(3000);",
+     "explanation": "The Location header tells the client where the new resource lives.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "401 vs 403?",
+     "a": "401 Unauthorized really means unauthenticated: credentials are missing or invalid. 403 Forbidden means the user is known but is not allowed to do this action."
+    },
+    {
+     "q": "Which status code do you return after successfully creating a resource?",
+     "a": "201 Created, ideally with a Location header pointing to the new resource and the created object in the body."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-json-body-parsing",
+   "title": "Reading and Parsing Request Bodies",
+   "level": "intermediate",
+   "summary": "Collect the request stream, enforce size limits, parse JSON safely and answer bad input with 400/413/415.",
+   "description": "The request body is a **stream**. Plain Node does not parse it: you collect the chunks yourself.\n\n### Steps\n1. Check `Content-Type` (`application/json`); otherwise return **415**\n2. Collect chunks with `for await (const chunk of req)`\n3. Enforce a maximum size (for example 1 MB) and return **413** when exceeded\n4. `Buffer.concat(chunks).toString('utf8')`, then `JSON.parse` inside try/catch and return **400** on failure\n5. Validate the shape (zod, joi or hand-written checks)\n\n### Other body types\n| Type | How |\n|---|---|\n| `application/x-www-form-urlencoded` | `new URLSearchParams(text)` |\n| `multipart/form-data` (uploads) | stream parsers: busboy, formidable, multer |\n| `text/plain`, binary | read raw Buffer |\n\n### Why limit size\nWithout a limit one client can send gigabytes and exhaust your memory. Check `Content-Length` early and keep counting bytes while reading.\n\n### Always send a response\nOn invalid input respond with a clear JSON error. On unexpected failures return 500 and log the details.\n\n### Frameworks\nExpress: `app.use(express.json({ limit: '1mb' }))`. Fastify parses JSON automatically. Node 18+ also has `req.json()` equivalent through the Fetch API `Request` in frameworks like Hono.\n\n### GET with body?\nDo not rely on bodies for GET/DELETE requests; some proxies drop them.",
+   "keyPoints": [
+    "The body is a stream: gather chunks, then parse",
+    "Limit body size and answer 413 when too large",
+    "JSON.parse can throw: respond 400",
+    "Check Content-Type; use 415 for unsupported types",
+    "Use busboy/multer for multipart uploads"
+   ],
+   "pitfalls": [
+    "Parsing without a size limit",
+    "Crashing on malformed JSON (unhandled exception in the handler)",
+    "Trusting the parsed body without validation"
+   ],
+   "examples": [
+    {
+     "title": "readJson helper",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nclass HttpError extends Error {\n  constructor(status, message) { super(message); this.status = status; }\n}\n\nasync function readJson(req, limit = 1_000_000) {\n  if (!req.headers['content-type']?.includes('application/json')) {\n    throw new HttpError(415, 'Content-Type must be application/json');\n  }\n  const chunks = [];\n  let size = 0;\n  for await (const chunk of req) {\n    size += chunk.length;\n    if (size > limit) throw new HttpError(413, 'Payload too large');\n    chunks.push(chunk);\n  }\n  try {\n    return JSON.parse(Buffer.concat(chunks).toString('utf8'));\n  } catch {\n    throw new HttpError(400, 'Invalid JSON');\n  }\n}\n\nhttp.createServer(async (req, res) => {\n  try {\n    if (req.method === 'POST' && req.url === '/users') {\n      const { name, email } = await readJson(req);\n      if (!name || !email) throw new HttpError(422, 'name and email are required');\n      res.writeHead(201, { 'Content-Type': 'application/json' });\n      return res.end(JSON.stringify({ id: 1, name, email }));\n    }\n    throw new HttpError(404, 'Not found');\n  } catch (err) {\n    res.writeHead(err.status ?? 500, { 'Content-Type': 'application/json' });\n    res.end(JSON.stringify({ error: err.status ? err.message : 'Internal error' }));\n  }\n}).listen(3000);",
+     "explanation": "One catch block converts every thrown HttpError into a JSON response.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Test with curl",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "$ curl -X POST localhost:3000/users -H \"Content-Type: application/json\" -d '{\"name\":\"Ann\",\"email\":\"ann@x.com\"}'\n{\"id\":1,\"name\":\"Ann\",\"email\":\"ann@x.com\"}\n\n$ curl -X POST localhost:3000/users -H \"Content-Type: application/json\" -d '{bad'\n{\"error\":\"Invalid JSON\"}\n\n$ curl -X POST localhost:3000/users -d 'a=b'\n{\"error\":\"Content-Type must be application/json\"}",
+     "explanation": "Each failure has the right status code (400, 415, 422).",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why is the request body a stream in Node?",
+     "a": "Bodies can be very large or arrive slowly. Streaming lets Node process or reject them without buffering everything, so one request cannot exhaust memory unless your code collects the chunks."
+    },
+    {
+     "q": "How do you protect a JSON endpoint against huge payloads?",
+     "a": "Enforce a maximum size while reading the stream (and check Content-Length), respond with 413 and stop reading. In Express use express.json({ limit })."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-static-file-server",
+   "title": "Building a Static File Server",
+   "level": "intermediate",
+   "summary": "Serve files from disk with correct MIME types, streaming, safe paths, caching headers and 404 handling.",
+   "description": "Serving HTML, CSS, JS and images is the oldest web server job. Writing one shows how streams, headers and security fit together.\n\n### Algorithm\n1. Parse and **decode** the path: `decodeURIComponent(new URL(req.url, base).pathname)`\n2. Map `/` to `index.html`\n3. Resolve against a root folder and **verify the result stays inside the root** (path traversal protection)\n4. `stat` the file; if missing, return 404; if it is a directory, try `index.html`\n5. Set `Content-Type` from the extension (a small map, or the `mime-types` package)\n6. Stream the file with `pipeline(createReadStream(file), res)`\n\n### Better responses\n* `Content-Length` from `stat.size`\n* `Last-Modified` and `ETag`; respond **304** if the browser's `If-None-Match` matches\n* `Cache-Control: public, max-age=31536000, immutable` for hashed assets, `no-cache` for HTML\n* Range requests (`206 Partial Content`) for video seeking\n* Compression with `zlib` for text types\n\n### Single page apps\nIf no file matches and the client wants HTML, serve `index.html` so the client router works.\n\n### In production\nLet nginx, a CDN or a platform static hosting serve files. Node is fine for development tools and small apps. Express has `express.static(dir)`, and `npx serve` is a one-line option.",
+   "keyPoints": [
+    "Decode the URL and map it into a root directory safely",
+    "Stream files with pipeline instead of reading them fully",
+    "Set Content-Type from the file extension",
+    "Block ../ traversal by checking the resolved path",
+    "Add caching headers; consider nginx or a CDN for production"
+   ],
+   "pitfalls": [
+    "Path traversal: serving /etc/passwd through ../",
+    "Reading whole files into memory",
+    "Missing MIME types, so browsers refuse to run scripts or CSS"
+   ],
+   "examples": [
+    {
+     "title": "static.js",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\nimport path from 'node:path';\nimport { stat } from 'node:fs/promises';\nimport { createReadStream } from 'node:fs';\nimport { pipeline } from 'node:stream/promises';\n\nconst ROOT = path.resolve('public');\nconst TYPES = {\n  '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript',\n  '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',\n  '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',\n};\n\nhttp.createServer(async (req, res) => {\n  try {\n    let pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname);\n    let file = path.join(ROOT, pathname);\n    if (file !== ROOT && !file.startsWith(ROOT + path.sep)) {\n      res.writeHead(403); return res.end('Forbidden');\n    }\n    let info = await stat(file);\n    if (info.isDirectory()) { file = path.join(file, 'index.html'); info = await stat(file); }\n\n    res.writeHead(200, {\n      'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream',\n      'Content-Length': info.size,\n      'Cache-Control': 'public, max-age=3600',\n    });\n    await pipeline(createReadStream(file), res);\n  } catch (err) {\n    if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {\n      res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found');\n    } else if (!res.headersSent) {\n      res.writeHead(500); res.end('Server error');\n    }\n  }\n}).listen(3000, () => console.log('serving ./public on http://localhost:3000'));",
+     "explanation": "Put an index.html in a public folder and open the page.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you prevent directory traversal in a static server?",
+     "a": "Decode the path, join it with the root, then check that the resolved absolute path still begins with the root directory (plus a separator). Reject anything else with 403 or 404."
+    },
+    {
+     "q": "Why stream files instead of reading them?",
+     "a": "Streaming starts sending bytes immediately, uses constant memory for any file size, and handles slow clients with backpressure."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-https-tls",
+   "title": "HTTPS and TLS",
+   "level": "intermediate",
+   "summary": "Create an HTTPS server with a certificate, and know why production normally terminates TLS at a proxy.",
+   "description": "**HTTPS** is HTTP over TLS. It encrypts traffic and proves the server's identity using a certificate.\n\n### The Node API\n`https.createServer({ key, cert }, handler)` has the same handler as `http`. You read the private key and certificate (PEM files) with `fs.readFileSync`. Options also include `ca`, `passphrase`, `minVersion: 'TLSv1.2'`, `ciphers`, and `requestCert` for mutual TLS.\n\n### Certificates\n* **Development**: `mkcert` creates trusted local certificates; `openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 365 -subj \"/CN=localhost\"` creates a self-signed one (browsers warn).\n* **Production**: free certificates from **Let's Encrypt** (via certbot, Caddy or your hosting platform), renewed every 90 days.\n\n### Where TLS usually ends\nMost deployments put **nginx, Caddy, a cloud load balancer or a platform router** in front of Node. They handle TLS, certificate renewal, HTTP/2 and compression, then forward plain HTTP to your app. Behind such a proxy:\n* Trust the proxy headers: `X-Forwarded-Proto`, `X-Forwarded-For` (`app.set('trust proxy', 1)` in Express)\n* Redirect HTTP to HTTPS at the proxy\n* Send HSTS (`Strict-Transport-Security`) so browsers keep using HTTPS\n\n### HTTPS client\n`https.get(url)` or `fetch('https://...')` verify certificates by default. Never disable verification (`rejectUnauthorized: false` or `NODE_TLS_REJECT_UNAUTHORIZED=0`) outside quick local experiments.\n\n### Secure cookies\n`Secure` cookies are only sent over HTTPS, which requires correct proxy configuration to detect HTTPS.",
+   "keyPoints": [
+    "https.createServer takes key and cert options",
+    "Use mkcert for dev, Let's Encrypt for production",
+    "Usually terminate TLS at nginx/Caddy/load balancer",
+    "Trust proxy headers when behind a proxy",
+    "Never disable certificate verification in production"
+   ],
+   "pitfalls": [
+    "Committing private keys to git",
+    "Setting NODE_TLS_REJECT_UNAUTHORIZED=0 permanently",
+    "Secure cookies not working because the app does not trust the proxy"
+   ],
+   "examples": [
+    {
+     "title": "HTTPS server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import https from 'node:https';\nimport { readFileSync } from 'node:fs';\n\nconst options = {\n  key: readFileSync('key.pem'),\n  cert: readFileSync('cert.pem'),\n  minVersion: 'TLSv1.2',\n};\n\nhttps.createServer(options, (req, res) => {\n  res.writeHead(200, { 'Strict-Transport-Security': 'max-age=63072000' });\n  res.end('secure hello\\n');\n}).listen(8443, () => console.log('https://localhost:8443'));",
+     "explanation": "Create a self-signed key.pem and cert.pem first (see the next example).",
+     "lang": "javascript"
+    },
+    {
+     "title": "Make a dev certificate",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "openssl req -x509 -newkey rsa:2048 -nodes -days 365 \\\n  -keyout key.pem -out cert.pem -subj \"/CN=localhost\"\n\ncurl -k https://localhost:8443      # -k accepts the self-signed cert",
+     "explanation": "Only use -k for local testing.",
+     "lang": "bash"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why not terminate TLS in Node itself in production?",
+     "a": "A reverse proxy or load balancer renews and manages certificates, offloads encryption, supports HTTP/2 and caching, and lets Node focus on application logic. Node can still do TLS when needed (internal mTLS)."
+    },
+    {
+     "q": "What does HSTS do?",
+     "a": "The Strict-Transport-Security header tells browsers to use only HTTPS for that domain for a given time, preventing downgrade and cookie hijacking attacks."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-fetch-undici",
+   "title": "fetch in Node (undici)",
+   "level": "intermediate",
+   "summary": "Use the built-in fetch for API calls: JSON, headers, timeouts, errors, streaming and connection reuse with undici.",
+   "description": "Since Node 18, `fetch`, `Request`, `Response`, `Headers` and `FormData` are **global**, powered by the **undici** HTTP client. No `node-fetch` or `axios` is needed for most cases.\n\n### Basic use\n`const res = await fetch(url); const data = await res.json();`\n\n### Important details\n* `fetch` rejects only on **network failures**. HTTP 404 or 500 still resolve; check `res.ok` or `res.status`.\n* Body readers: `res.json()`, `res.text()`, `res.arrayBuffer()`, `res.blob()`, `res.body` (a web stream). A body can be read **once**.\n* Send JSON: `method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(obj)`\n* Timeouts: `signal: AbortSignal.timeout(5000)`\n* Query strings: build with `new URL()` and `searchParams`\n\n### Streaming a download\n`await pipeline(Readable.fromWeb(res.body), createWriteStream('file.zip'))`.\n\n### Retries and robustness\nRetry idempotent requests (GET) on network errors and 502/503/504 with exponential backoff. Honour `Retry-After`. Never retry non-idempotent POSTs blindly.\n\n### undici directly\n`import { request, Agent, setGlobalDispatcher } from 'undici'` is faster than fetch for heavy workloads, supports connection pools, proxies, `pipelining` and mocking (`MockAgent`) for tests. Keep-alive and pooling reuse TCP connections between calls.\n\n### Concurrency\nFire multiple requests with `Promise.all`, but cap concurrency so you do not exhaust sockets or get rate limited.\n\n### Security\nValidate and restrict user-supplied URLs (SSRF): block internal IPs such as `169.254.169.254` and `localhost`.",
+   "keyPoints": [
+    "fetch is global in modern Node and built on undici",
+    "Check res.ok: HTTP errors do not reject",
+    "Use AbortSignal.timeout for timeouts",
+    "Response bodies can only be consumed once",
+    "Validate user-provided URLs to avoid SSRF"
+   ],
+   "pitfalls": [
+    "Assuming fetch throws on 404/500",
+    "Calling res.json() twice",
+    "No timeout, so a hanging upstream hangs your request"
+   ],
+   "examples": [
+    {
+     "title": "A resilient JSON client",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { setTimeout as sleep } from 'node:timers/promises';\n\nexport async function getJson(url, { retries = 2 } = {}) {\n  for (let attempt = 0; ; attempt++) {\n    try {\n      const res = await fetch(url, {\n        headers: { Accept: 'application/json' },\n        signal: AbortSignal.timeout(5000),\n      });\n      if (!res.ok) throw new Error(`HTTP ${res.status}`);\n      return await res.json();\n    } catch (err) {\n      if (attempt >= retries) throw err;\n      await sleep(200 * 2 ** attempt);\n    }\n  }\n}\n\nconst post = await getJson('https://jsonplaceholder.typicode.com/posts/1');\nconsole.log(post.title);\n\nconst created = await fetch('https://jsonplaceholder.typicode.com/posts', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ title: 'hi', body: 'there', userId: 1 }),\n});\nconsole.log(created.status, await created.json());   // 201 { title: 'hi', ... id: 101 }",
+     "explanation": "Retries use exponential backoff: 200 ms, then 400 ms.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Does fetch reject on a 404 response?",
+     "a": "No. fetch only rejects on network-level failures or aborts. For HTTP errors it resolves with res.ok === false, so you must check the status yourself."
+    },
+    {
+     "q": "What is undici?",
+     "a": "The modern HTTP/1.1 client written for Node.js that powers the global fetch. It offers connection pooling, keep-alive, pipelining, proxies and a lower-level request API with better performance."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-http2-overview",
+   "title": "HTTP/2 Overview",
+   "level": "advanced",
+   "summary": "What HTTP/2 improves (multiplexing, header compression, push) and how to use node:http2.",
+   "description": "**HTTP/2** keeps the HTTP semantics (methods, status codes, headers) but changes how data travels on the wire.\n\n### Improvements over HTTP/1.1\n| Feature | Benefit |\n|---|---|\n| **Multiplexing** | Many requests/responses share **one TCP connection** simultaneously, no head-of-line blocking at HTTP level |\n| **Binary framing** | Faster, less error-prone parsing than text |\n| **Header compression (HPACK)** | Repeated headers cost almost nothing |\n| **Stream prioritisation** | Important resources first |\n| **Server push** | Largely abandoned and removed from browsers |\n\nBrowsers speak HTTP/2 only over TLS (**h2**). HTTP/3 (QUIC over UDP) is the next step and is usually enabled at the CDN or proxy.\n\n### Node API\n`node:http2` provides `createSecureServer({ key, cert }, handler)` and a compatibility layer: the same `req` and `res` objects. `allowHTTP1: true` lets old clients fall back. The core API uses `'stream'` events: `stream.respond({ ':status': 200 })`, `stream.end(body)`.\n\nClients: `http2.connect('https://host')` and `session.request({ ':path': '/' })`.\n\n### Do you need it in Node?\nUsually **no**: nginx, Caddy or a CDN speak HTTP/2 (and HTTP/3) to browsers and HTTP/1.1 to Node. Use `http2` directly for gRPC-like internal services or when you need end-to-end h2.\n\n### What changes for you\n* Domain sharding and file bundling tricks become unnecessary\n* Fewer connections, so lower latency on pages with many assets\n* Pseudo-headers (`:method`, `:path`, `:status`) replace the request/status line",
+   "keyPoints": [
+    "HTTP/2 multiplexes many requests over one connection",
+    "Same semantics as HTTP/1.1, different framing and header compression",
+    "Browsers require TLS for HTTP/2",
+    "Node supports it via node:http2, but proxies usually terminate it",
+    "Server push is effectively obsolete"
+   ],
+   "pitfalls": [
+    "Setting up HTTP/2 in Node when a reverse proxy would do it for free",
+    "Forgetting allowHTTP1 for older clients"
+   ],
+   "examples": [
+    {
+     "title": "HTTP/2 server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http2 from 'node:http2';\nimport { readFileSync } from 'node:fs';\n\nconst server = http2.createSecureServer({\n  key: readFileSync('key.pem'),\n  cert: readFileSync('cert.pem'),\n  allowHTTP1: true,\n});\n\nserver.on('request', (req, res) => {\n  res.writeHead(200, { 'Content-Type': 'text/plain' });\n  res.end(`hello over HTTP/${req.httpVersion}\\n`);\n});\n\nserver.listen(8443);\n// curl -k --http2 -i https://localhost:8443",
+     "explanation": "The compatibility API is identical to http, so existing handlers work unchanged.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Main benefit of HTTP/2 over HTTP/1.1?",
+     "a": "Multiplexing: many concurrent requests share one TCP connection, together with header compression, which reduces latency and removes the need for tricks such as spritesheets and domain sharding."
+    },
+    {
+     "q": "Do you usually implement HTTP/2 inside Node?",
+     "a": "Normally no. A reverse proxy or CDN terminates TLS and speaks HTTP/2 or HTTP/3 to browsers, then forwards HTTP/1.1 to the Node app."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-sse-streaming",
+   "title": "Server-Sent Events and Streaming Responses",
+   "level": "intermediate",
+   "summary": "Push live updates over a plain HTTP response with text/event-stream, with reconnects and heartbeats built in.",
+   "description": "**Server-Sent Events (SSE)** let a server push messages to a browser over a single long-lived HTTP response. They are simpler than WebSockets when data flows **one way** (notifications, live scores, progress bars, AI token streaming).\n\n### Protocol\nRespond with `Content-Type: text/event-stream`, `Cache-Control: no-cache` and `Connection: keep-alive`. Then write messages in this text format, each ending with a blank line:\n\n`event: price\\ndata: {\"btc\":65000}\\nid: 12\\n\\n`\n\n* `data:` is the payload (multiple `data:` lines allowed)\n* `event:` is an optional name (default `message`)\n* `id:` lets the browser resume with `Last-Event-ID` after a reconnect\n* `retry:` sets the reconnect delay\n* Lines beginning with `:` are comments, useful as **heartbeats**\n\n### Browser client\n`const es = new EventSource('/events'); es.onmessage = e => ...; es.addEventListener('price', ...)`. Reconnection is automatic.\n\n### Server details\n* Remove the request timeout for these connections\n* Send a heartbeat comment every 15-30 seconds so proxies do not close idle connections\n* Listen for `req.on('close')` to clean up when the client leaves\n* Disable proxy buffering (nginx `proxy_buffering off;`)\n\n### SSE vs WebSocket\n| | SSE | WebSocket |\n|---|---|---|\n| Direction | Server to client | Both |\n| Transport | Plain HTTP | Upgraded protocol |\n| Reconnect | Automatic | Manual |\n| Binary | No | Yes |\n\n### Scaling\nEach client holds a connection. Use Redis pub/sub to broadcast across multiple Node instances.",
+   "keyPoints": [
+    "SSE is one-way push over a normal HTTP response",
+    "Use text/event-stream and blank-line-terminated messages",
+    "EventSource reconnects automatically and supports Last-Event-ID",
+    "Send heartbeats and clean up on req close",
+    "Disable proxy buffering"
+   ],
+   "pitfalls": [
+    "Proxy or compression buffering that delays events",
+    "Not removing clients on disconnect (memory leak)",
+    "Using SSE when you need bidirectional or binary communication"
+   ],
+   "examples": [
+    {
+     "title": "SSE clock",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import http from 'node:http';\n\nconst clients = new Set();\n\nhttp.createServer((req, res) => {\n  if (req.url === '/events') {\n    res.writeHead(200, {\n      'Content-Type': 'text/event-stream',\n      'Cache-Control': 'no-cache',\n      'Connection': 'keep-alive',\n    });\n    res.write('retry: 3000\\n\\n');\n    clients.add(res);\n    req.on('close', () => clients.delete(res));\n    return;\n  }\n  res.writeHead(200, { 'Content-Type': 'text/html' });\n  res.end(`<h1 id=\"t\"></h1>\n<script>\n  const es = new EventSource('/events');\n  es.addEventListener('tick', (e) => t.textContent = JSON.parse(e.data).time);\n</script>`);\n}).listen(3000);\n\nsetInterval(() => {\n  const msg = `event: tick\\ndata: ${JSON.stringify({ time: new Date().toLocaleTimeString() })}\\n\\n`;\n  for (const res of clients) res.write(msg);\n}, 1000);",
+     "explanation": "Open http://localhost:3000 and watch the clock update every second without polling.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When would you pick SSE over WebSockets?",
+     "a": "When only the server needs to push data (notifications, feeds, progress, streamed AI text). SSE works over plain HTTP, auto-reconnects, and is simpler to scale and proxy."
+    },
+    {
+     "q": "How does SSE resume after a dropped connection?",
+     "a": "The browser reconnects automatically and sends the Last-Event-ID header with the last id it saw, so the server can replay missed events."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-websockets-ws",
+   "title": "WebSockets with ws and socket.io",
+   "level": "intermediate",
+   "summary": "Full-duplex real-time communication: the ws library, broadcasting, heartbeats, and what socket.io adds.",
+   "description": "**WebSocket** is a protocol that upgrades an HTTP connection into a persistent, two-way channel. Both sides can send messages at any time with very little overhead. Use it for chat, collaborative editing, games and live dashboards.\n\n### The handshake\nThe browser sends `Upgrade: websocket` and a key. The server answers `101 Switching Protocols`. After that, no more HTTP: just small frames (text or binary).\n\n### The `ws` library\nNode has no built-in server (a client was added recently), so use the standard **`ws`** package: `npm i ws`.\n* `new WebSocketServer({ port })` or `{ server }` to share an HTTP server\n* `wss.on('connection', (socket, req) => ...)`\n* `socket.on('message', (data, isBinary) => ...)`; data is a Buffer, call `.toString()`\n* `socket.send(text)`; check `socket.readyState === WebSocket.OPEN`\n* `wss.clients` is the set of connected sockets, used for **broadcasts**\n* `socket.on('close')` and `socket.on('error')`\n\n### Heartbeats\nDead connections (closed laptop, lost wifi) do not always trigger `close`. Send `socket.ping()` every 30 s, mark `isAlive` on `'pong'` and `terminate()` sockets that did not answer.\n\n### Authentication\nValidate a token during the HTTP upgrade (query string, cookie or `Sec-WebSocket-Protocol`), not after connection.\n\n### socket.io\nA higher-level library with its own protocol. Adds **rooms**, namespaces, automatic reconnection, acknowledgements, fallback to long polling and a Redis adapter for multiple servers. It is not interoperable with plain WebSocket clients.\n\n### Scaling\nConnections are stateful. Behind a load balancer use sticky sessions (socket.io) or a pub/sub backbone (Redis) so a message reaches clients on other instances.",
+   "keyPoints": [
+    "WebSocket upgrades HTTP to a persistent two-way channel",
+    "ws is the de facto Node library; wss.clients enables broadcast",
+    "Use ping/pong heartbeats to detect dead connections",
+    "Authenticate during the upgrade",
+    "socket.io adds rooms, reconnection and fallbacks but a custom protocol"
+   ],
+   "pitfalls": [
+    "Sending to sockets that are not in the OPEN state",
+    "No heartbeat, so ghost connections pile up",
+    "Scaling to several servers without a shared pub/sub"
+   ],
+   "examples": [
+    {
+     "title": "Echo and broadcast server",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i ws\nimport { WebSocketServer, WebSocket } from 'ws';\n\nconst wss = new WebSocketServer({ port: 8080 });\n\nwss.on('connection', (socket) => {\n  socket.isAlive = true;\n  socket.on('pong', () => { socket.isAlive = true; });\n\n  socket.on('message', (data, isBinary) => {\n    for (const client of wss.clients) {\n      if (client !== socket && client.readyState === WebSocket.OPEN) {\n        client.send(data, { binary: isBinary });\n      }\n    }\n  });\n});\n\nsetInterval(() => {\n  for (const socket of wss.clients) {\n    if (!socket.isAlive) { socket.terminate(); continue; }\n    socket.isAlive = false;\n    socket.ping();\n  }\n}, 30_000);\n\nconsole.log('ws://localhost:8080');",
+     "explanation": "Each message is relayed to every other connected client.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Browser client",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const ws = new WebSocket('ws://localhost:8080');\nws.onopen = () => ws.send('hello everyone');\nws.onmessage = (e) => console.log('received:', e.data);\nws.onclose = () => console.log('disconnected');",
+     "explanation": "The browser WebSocket class is built in. Run it in two tabs to chat.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "How does a WebSocket connection start?",
+     "a": "With an HTTP request carrying Upgrade: websocket and Sec-WebSocket-Key headers. The server replies 101 Switching Protocols, and the same TCP connection then carries WebSocket frames."
+    },
+    {
+     "q": "What does socket.io add on top of WebSockets?",
+     "a": "Automatic reconnection, rooms and namespaces, acknowledgements, broadcasting helpers, HTTP long-polling fallback and adapters (Redis) for scaling across servers, all with its own protocol."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-express-basics",
+   "title": "Express Basics",
+   "level": "beginner",
+   "summary": "The most popular Node web framework: routes, params, query, JSON responses, and the request lifecycle.",
+   "description": "**Express** is a minimal framework on top of `http`. It gives you a router, middleware and helpers while staying close to Node.\n\n### Setup\n`npm i express`, then:\n\n`const app = express(); app.listen(3000)`\n\n### Routing\n`app.METHOD(path, ...handlers)` where METHOD is `get`, `post`, `put`, `patch`, `delete`. Handlers receive `(req, res, next)`.\n\n### The request\n* `req.params`: URL parameters (`/users/:id`)\n* `req.query`: query string already parsed\n* `req.body`: parsed body (requires `express.json()`)\n* `req.headers`, `req.cookies` (with cookie-parser), `req.ip`\n\n### The response\n`res.json(obj)`, `res.status(201).json(obj)`, `res.send(text)`, `res.redirect(url)`, `res.sendFile(path)`, `res.set(header, value)`, `res.cookie(...)`, `res.sendStatus(204)`.\n\n### Routers\nSplit routes into files with `express.Router()` and mount: `app.use('/api/users', usersRouter)`.\n\n### Express 5\nExpress 5 is the current major version: async handler rejections go to the error handler automatically, path syntax is stricter and `req.query` is read-only getters. Check the migration guide when upgrading from 4.\n\n### Alternatives\n**Fastify** (fast, schema based), **Hono** (tiny, runs everywhere), **Koa**, **NestJS** (structured, TypeScript). Everything you learned about `http` applies.",
+   "keyPoints": [
+    "Express adds routing, middleware and helpers on top of http",
+    "app.METHOD(path, handler) defines routes",
+    "req.params, req.query and req.body hold input",
+    "res.json and res.status build responses",
+    "Use express.Router to modularise routes"
+   ],
+   "pitfalls": [
+    "Forgetting express.json(), so req.body is undefined",
+    "Defining a catch-all route before specific routes",
+    "Sending two responses for one request"
+   ],
+   "examples": [
+    {
+     "title": "Small REST API",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// npm i express\nimport express from 'express';\n\nconst app = express();\napp.use(express.json());\n\nconst users = [{ id: 1, name: 'Ann' }];\n\napp.get('/api/users', (req, res) => {\n  const { q } = req.query;\n  res.json(q ? users.filter((u) => u.name.includes(q)) : users);\n});\n\napp.get('/api/users/:id', (req, res) => {\n  const user = users.find((u) => u.id === Number(req.params.id));\n  if (!user) return res.status(404).json({ error: 'Not found' });\n  res.json(user);\n});\n\napp.post('/api/users', (req, res) => {\n  const user = { id: users.length + 1, name: req.body.name };\n  users.push(user);\n  res.status(201).json(user);\n});\n\napp.listen(3000, () => console.log('API on :3000'));",
+     "explanation": "A complete CRUD-style skeleton; compare how short it is against the hand-written router.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does Express add over the raw http module?",
+     "a": "A routing layer, a middleware pipeline, helpers like res.json/req.params/req.query, static file serving and a large ecosystem, while keeping the same req/res objects underneath."
+    },
+    {
+     "q": "How do you get the request body in Express?",
+     "a": "Register a body parser middleware such as app.use(express.json()) (or express.urlencoded for forms). Then req.body contains the parsed data."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-express-middleware",
+   "title": "Express Middleware and Error Handling",
+   "level": "intermediate",
+   "summary": "Middleware are functions (req, res, next) run in order; learn ordering, custom middleware and the 4-argument error handler.",
+   "description": "**Middleware** is a function `(req, res, next)` that sits between the request and the final handler. It can read or change `req` and `res`, end the response, or call `next()` to pass control on. The app is a pipeline of such functions.\n\n### Kinds\n* **Application level**: `app.use(fn)` runs for all requests\n* **Route level**: `app.get('/x', auth, handler)`\n* **Router level**: `router.use(fn)`\n* **Built-in**: `express.json()`, `express.urlencoded()`, `express.static()`\n* **Third-party**: `helmet`, `cors`, `morgan`, `compression`, `cookie-parser`, `express-rate-limit`\n* **Error handling**: four arguments `(err, req, res, next)`\n\n### Order matters\nMiddleware runs in the order registered. Typical order: logging, security headers, CORS, body parsing, routes, 404 handler, **error handler last**.\n\n### Rules\n1. Either send a response **or** call `next()`, never both and never neither\n2. `next(err)` skips to the error handler\n3. In Express 4, async errors need try/catch with `next(err)` or a wrapper; Express 5 forwards rejected promises automatically\n\n### Custom middleware ideas\nRequest id, timing, authentication (`req.user = ...`), permission checks, validation, per-request context.\n\n### Central error handler\nConvert errors to JSON: use `err.status ?? 500`, hide stack traces in production and log the details.",
+   "keyPoints": [
+    "Middleware has (req, res, next) and runs in registration order",
+    "Call next() or end the response, not both",
+    "next(err) jumps to error-handling middleware",
+    "Error handlers have four parameters and go last",
+    "Use helmet, cors, morgan and rate limiters in front of routes"
+   ],
+   "pitfalls": [
+    "Registering body parsers after the routes",
+    "Forgetting next() so requests hang",
+    "Leaking stack traces to clients in production"
+   ],
+   "examples": [
+    {
+     "title": "Custom middleware and error handler",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import express from 'express';\n\nconst app = express();\n\n// 1. timing + logging middleware\napp.use((req, res, next) => {\n  const start = performance.now();\n  res.on('finish', () => {\n    console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${(performance.now() - start).toFixed(1)}ms`);\n  });\n  next();\n});\n\napp.use(express.json());\n\n// 2. route-level auth middleware\nconst requireKey = (req, res, next) => {\n  const expected = process.env.API_KEY;\n  if (!expected || req.get('x-api-key') !== expected) {      // fail closed when the key is not configured\n    return next(Object.assign(new Error('Invalid API key'), { status: 401 }));\n  }\n  next();\n};\n\napp.get('/secret', requireKey, (req, res) => res.json({ ok: true }));\napp.get('/boom', () => { throw new Error('unexpected'); });\n\n// 3. 404 then error handler (last)\napp.use((req, res) => res.status(404).json({ error: 'Not found' }));\napp.use((err, req, res, next) => {\n  const status = err.status ?? 500;\n  if (status >= 500) console.error(err);\n  res.status(status).json({ error: status >= 500 ? 'Internal error' : err.message });\n});\n\napp.listen(3000);",
+     "explanation": "Express recognises the error handler by its four parameters.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is middleware in Express?",
+     "a": "A function with access to req, res and next that runs during the request cycle. It can modify the request or response, end the response, or call next() to continue to the next middleware or route."
+    },
+    {
+     "q": "How does Express identify an error-handling middleware?",
+     "a": "By its signature with four parameters (err, req, res, next). It is only invoked when next(err) is called or a handler throws, and it should be registered after all other routes."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

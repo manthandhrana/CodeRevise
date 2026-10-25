@@ -1,0 +1,331 @@
+{
+ "id": "css-text-styling",
+ "title": "Text, Backgrounds and Content Styling",
+ "level": "beginner",
+ "topics": [
+  {
+   "id": "css-text",
+   "title": "Text Properties",
+   "level": "beginner",
+   "summary": "Align, decorate, transform and space text; shadows, white-space and drop caps.",
+   "description": "CSS has many properties dedicated to how text looks and flows.\n\n### Alignment and decoration\n- `text-align`: `left`, `right`, `center`, `justify`.\n- `text-decoration`: shorthand for `-line` (underline, overline, line-through), `-color`, `-style` (solid, double, dotted, wavy) and `-thickness`. `text-decoration: none` removes link underlines.\n- `text-underline-offset` moves the underline away from the text.\n- `text-transform`: `uppercase`, `lowercase`, `capitalize`.\n- `text-indent` indents the first line.\n\n### Spacing\n| Property | Controls |\n|---|---|\n| `letter-spacing` | space between characters |\n| `word-spacing` | space between words |\n| `line-height` | distance between lines - use a unitless number like `1.6` |\n\n### white-space and wrapping\n- `white-space: nowrap` keeps text on one line.\n- `white-space: pre-wrap` preserves line breaks and spaces.\n- `overflow-wrap: anywhere` / `word-break: break-word` break long words.\n- `text-wrap: balance` (modern) evens out heading lines.\n\n### text-shadow\n`text-shadow: x y blur color;` e.g. `text-shadow: 2px 2px 5px rgba(0,0,0,0.3);`. Multiple shadows are comma separated (useful for glow).\n\n### Gradient text\n```css\n.gradient { background: linear-gradient(90deg,#f06,#48f); -webkit-background-clip: text; background-clip: text; color: transparent; }\n```\n\n### Readability tips\n- Line length around 45-75 characters (`max-width: 65ch`).\n- `line-height` 1.5 to 1.7 for body text.\n- Do not justify text on narrow columns (it creates rivers of white space).",
+   "keyPoints": [
+    "text-align, text-decoration, text-transform are the everyday trio",
+    "Use unitless line-height (1.5) so it scales with font-size",
+    "letter-spacing and word-spacing tune the density",
+    "text-shadow takes x y blur color and can be stacked",
+    "overflow-wrap/white-space control wrapping"
+   ],
+   "pitfalls": [
+    "Setting line-height in px on a parent - children inherit the fixed pixel value",
+    "Using text-decoration: none on links without another focus/hover clue",
+    "Justified text on narrow columns"
+   ],
+   "examples": [
+    {
+     "title": "Text toolbox",
+     "language": "web",
+     "html": "<h1>css text styling</h1>\n<p class=\"lead\">The quick brown fox jumps over the lazy dog. Spacing and line height change readability a lot.</p>\n<a href=\"#\">link without underline</a>",
+     "css": "body { font-family: Georgia, serif; width: 420px; background: hsl(0 0% 94%); padding: 16px; }\nh1 { font-size: 40px; text-transform: capitalize; text-decoration: underline double #61677a; text-decoration-thickness: 2px; text-shadow: -2px -2px 5px rgba(255,0,0,.25); letter-spacing: 2px; }\n.lead { line-height: 1.7; letter-spacing: 0.5px; word-spacing: 2px; text-align: justify; }\na { color: crimson; text-decoration: none; }\na:hover { text-decoration: underline wavy; text-underline-offset: 4px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Drop cap and gradient text",
+     "language": "web",
+     "html": "<h2 class=\"grad\">Gradient Heading</h2>\n<p class=\"drop\">Drop caps are created with the first-letter pseudo-element. This keeps the HTML clean while the first character becomes large and colorful.</p>",
+     "css": "body { font-family: sans-serif; width: 420px; }\n.grad { font-size: 36px; background: linear-gradient(90deg,#f06,#48f); -webkit-background-clip: text; background-clip: text; color: transparent; }\n.drop::first-letter { font-size: 56px; float: left; line-height: 0.9; padding-right: 8px; color: #ae445a; font-weight: bold; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you control spacing between lines of text?",
+     "a": "With line-height. A unitless value like 1.5 is a multiplier of the element's font-size and is inherited correctly."
+    },
+    {
+     "q": "How do you create a drop cap?",
+     "a": "Use the ::first-letter pseudo-element, make it larger and often float it left."
+    },
+    {
+     "q": "What is the difference between letter-spacing and word-spacing?",
+     "a": "letter-spacing changes the gap between characters, word-spacing changes the gap between words."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/text/index.html, text/style.css"
+  },
+  {
+   "id": "css-fonts",
+   "title": "Fonts and Font Properties",
+   "level": "beginner",
+   "summary": "font-family stacks, size, weight, style, shorthand and web-safe fallbacks.",
+   "description": "### Main font properties\n| Property | Example | Notes |\n|---|---|---|\n| `font-family` | `\"Urbanist\", Arial, sans-serif` | list of fonts, last should be a generic family |\n| `font-size` | `1.125rem` | prefer rem |\n| `font-weight` | `400`, `700`, `bold` | numeric 100-900 |\n| `font-style` | `normal` / `italic` / `oblique` | |\n| `font-variant` | `small-caps` | |\n| `line-height` | `1.5` | |\n\n### Font stack and fallbacks\nIf the first font is missing, the browser tries the next. Always end with a **generic family**: `serif`, `sans-serif`, `monospace`, `cursive`, `system-ui`.\n\n```css\nbody {\n  font-family: \"Urbanist\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif;\n}\n```\n\nQuote font names that contain spaces.\n\n### Shorthand\n`font: italic small-caps 700 1.25rem/1.5 \"Poppins\", sans-serif;` - order: style, variant, weight, size/line-height, family. Size and family are **required**.\n\n### Loading fonts\n- **Google Fonts**: `<link>` in head (or `@import` - slower).\n- **Self hosted**: `@font-face` (see the Fonts and Variable Fonts topic).\n- Use `font-display: swap;` to avoid invisible text while the font loads.\n\n### Good practice\n- 1-2 font families per site.\n- Use a system font stack for speed.\n- Set `font-family` once on `body` and let it inherit. Form controls do not inherit by default, so add `button, input { font: inherit; }`.",
+   "keyPoints": [
+    "font-family is a stack that ends with a generic family",
+    "font-weight uses 100-900 or keywords normal/bold",
+    "font shorthand needs at least size and family",
+    "Use rem for size and unitless line-height",
+    "Set font on body; make controls inherit with font: inherit"
+   ],
+   "pitfalls": [
+    "Not providing fallback fonts - layout shifts or ugly default font",
+    "Loading too many weights/families (slow)",
+    "Expecting buttons and inputs to inherit the body font automatically"
+   ],
+   "examples": [
+    {
+     "title": "Weights, styles and variants",
+     "language": "web",
+     "html": "<p class=\"w1\">Weight 300 light</p>\n<p class=\"w4\">Weight 400 regular</p>\n<p class=\"w7\">Weight 700 bold</p>\n<p class=\"it\">Italic style</p>\n<p class=\"sc\">Small caps variant</p>\n<p class=\"mono\">monospace stack</p>",
+     "css": "p { font-family: system-ui, \"Segoe UI\", Arial, sans-serif; font-size: 1.1rem; margin: 6px 0; }\n.w1 { font-weight: 300; } .w4 { font-weight: 400; } .w7 { font-weight: 700; }\n.it { font-style: italic; }\n.sc { font-variant: small-caps; }\n.mono { font-family: \"Courier New\", monospace; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Shorthand",
+     "language": "web",
+     "html": "<p class=\"s\">font shorthand: italic small-caps 700 20px/1.6</p>",
+     "css": ".s { font: italic small-caps 700 20px/1.6 Georgia, serif; width: 360px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is a fallback font and why is it important?",
+     "a": "It is the next font in the font-family list used when the preferred one fails to load. It keeps text readable and prevents layout breakage."
+    },
+    {
+     "q": "How do you add a custom font?",
+     "a": "Define it with @font-face (src url + format) or link a hosted font service, then use its name in font-family."
+    },
+    {
+     "q": "What does font-display: swap do?",
+     "a": "It shows fallback text immediately and swaps in the custom font when it is ready, avoiding invisible text."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/font/index.html, font/style.css"
+  },
+  {
+   "id": "css-backgrounds",
+   "title": "Backgrounds",
+   "level": "beginner",
+   "summary": "background-color, image, repeat, position, size, attachment, clip and multiple backgrounds.",
+   "description": "The background layer paints behind the content, padding and border.\n\n### Longhand properties\n| Property | Common values |\n|---|---|\n| `background-color` | any color |\n| `background-image` | `url(...)`, gradients; comma-separated for multiple layers |\n| `background-repeat` | `repeat`, `no-repeat`, `repeat-x`, `repeat-y`, `space`, `round` |\n| `background-position` | `center`, `top left`, `50% 20%`, `right 10px bottom 10px` |\n| `background-size` | `auto`, `cover`, `contain`, `100% 100%` |\n| `background-attachment` | `scroll`, `fixed`, `local` |\n| `background-clip` | `border-box`, `padding-box`, `content-box`, `text` |\n| `background-origin` | where the position box starts |\n\n### cover vs contain\n- `cover`: scale so the image fills the box completely (may crop).\n- `contain`: scale so the whole image is visible (may leave gaps).\n\n### Multiple backgrounds\nLayers are comma separated and the **first one is on top**:\n\n```css\nbackground:\n  linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)),  /* overlay on top */\n  url(\"photo.jpg\") center / cover no-repeat;\n```\n\n### Shorthand\n`background: color image repeat position / size attachment;` - note the slash between position and size.\n\n### Parallax-like effect\n`background-attachment: fixed;` keeps the image still while the page scrolls (used in the project in this course). It is not supported well on mobile.\n\n### Blend modes\n`background-blend-mode: multiply;` mixes layers with each other and with the background color.",
+   "keyPoints": [
+    "background-size: cover fills the box; contain fits the whole image",
+    "Multiple backgrounds are comma separated; first is on top",
+    "Shorthand writes position / size with a slash",
+    "background-attachment: fixed creates a simple parallax",
+    "background-clip: text enables gradient text"
+   ],
+   "pitfalls": [
+    "Using only background-image without a fallback background-color for contrast",
+    "Forgetting that the element needs a height to show a background",
+    "Overwriting earlier background-* properties with the shorthand later in the rule"
+   ],
+   "examples": [
+    {
+     "title": "Overlay on image-like gradient",
+     "language": "web",
+     "html": "<div class=\"hero\"><h2>Hero Section</h2><p>Gradient overlay on top of a pattern</p></div>",
+     "css": ".hero { height: 180px; display: grid; place-items: center; text-align: center; color: #fff; font-family: sans-serif;\n  background:\n    linear-gradient(to right top, rgba(5,25,55,.8), rgba(0,191,114,.6)),\n    repeating-linear-gradient(45deg, #334 0 10px, #556 10px 20px);\n  background-size: cover; border-radius: 10px; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "repeat, position and size",
+     "language": "web",
+     "html": "<div class=\"tile\"></div>",
+     "css": ".tile { width: 300px; height: 150px; border: 2px solid #333;\n  background-color: #fef3c7;\n  background-image: radial-gradient(circle, #f59e0b 6px, transparent 7px);\n  background-size: 30px 30px;\n  background-repeat: repeat;\n  background-position: 5px 5px; }",
+     "js": "",
+     "code": "",
+     "explanation": "A dotted pattern created with a radial-gradient tile (no image needed)."
+    }
+   ],
+   "interview": [
+    {
+     "q": "How can you make a background image cover the entire element without distortion?",
+     "a": "background-size: cover; it scales the image preserving aspect ratio until it fills the element (cropping the overflow)."
+    },
+    {
+     "q": "How do you apply multiple background images?",
+     "a": "Separate them by commas in background-image (or background). The first layer is the top-most."
+    },
+    {
+     "q": "Which property controls whether the background scrolls with the page?",
+     "a": "background-attachment: scroll | fixed | local."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/background/index.html, bg-style.css, project.html"
+  },
+  {
+   "id": "css-gradients",
+   "title": "Gradients",
+   "level": "beginner",
+   "summary": "linear, radial, conic and repeating gradients, color stops and overlays.",
+   "description": "A **gradient** is an image generated by CSS, used with `background-image` (or `background`). No image file is needed and it scales perfectly.\n\n### linear-gradient\n```css\nbackground: linear-gradient(to right, red, yellow);\nbackground: linear-gradient(135deg, #004d7a, #00bf72, #a8eb12);\nbackground: linear-gradient(to bottom right, #004d7a 0%, #a8eb12 100%);\n```\nDirection can be a keyword (`to top left`) or an angle (`90deg` = to right, `0deg` = to top).\n\n### radial-gradient\nStarts at a center point and spreads outward.\n```css\nbackground: radial-gradient(circle at center, #ff5733 0%, #ffc300 40%, #2980b9 100%);\n```\nShape: `circle` or `ellipse` (default). Size keywords: `closest-side`, `farthest-corner`.\n\n### conic-gradient\nColors rotate around a center - great for pie charts and color wheels:\n```css\nbackground: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);\n```\n\n### Color stops\n- Add positions: `red 20%, blue 60%`.\n- Two stops at the same position make a **hard edge**: `red 50%, blue 50%`.\n- Use transparency (`rgba(255,0,0,0)`) for fades.\n\n### Repeating gradients\n`repeating-linear-gradient(45deg, #d2e0fb 0 10px, #79ac78 10px 20px)` makes stripes.\n\n### Overlay trick\nPut a semi-transparent gradient above an image to darken it for readable text:\n`background-image: linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url(photo.jpg);`\n\n### Tips\n- Gradients are images: use `background-size` to make patterns.\n- Use `in oklch` (e.g. `linear-gradient(in oklch, blue, red)`) for smoother mixes in modern browsers.",
+   "keyPoints": [
+    "Gradients are generated images used in background-image",
+    "linear (direction/angle), radial (center), conic (around a point)",
+    "Same position for two stops creates a hard edge",
+    "repeating-* variants make stripes and patterns",
+    "Layer a transparent gradient over an image for overlays"
+   ],
+   "pitfalls": [
+    "Using gradient with the color property (use background-clip: text)",
+    "Forgetting that 0deg points up, not right",
+    "Gradient to transparent looking gray in older browsers (use the same color with alpha 0)"
+   ],
+   "examples": [
+    {
+     "title": "Linear, radial, conic",
+     "language": "web",
+     "html": "<div class=\"g lin\"></div><div class=\"g rad\"></div><div class=\"g con\"></div>",
+     "css": "body { display: flex; gap: 12px; }\n.g { width: 120px; height: 120px; border-radius: 12px; }\n.lin { background: linear-gradient(to right top, #051937, #004d7a, #008793, #00bf72, #a8eb12); }\n.rad { background: radial-gradient(circle at center, #ff5733 0%, #ffc300 25%, #2980b9 60%, #33ff57 100%); }\n.con { background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red); border-radius: 50%; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Stripes and hard stops",
+     "language": "web",
+     "html": "<div class=\"stripe\"></div><div class=\"flag\"></div>",
+     "css": ".stripe { height: 70px; background: repeating-linear-gradient(45deg, #d2e0fb 0 20px, #79ac78 20px 40px); margin-bottom: 12px; }\n.flag { height: 90px; background: linear-gradient(#ff9933 33.3%, #fff 33.3% 66.6%, #138808 66.6%); }",
+     "js": "",
+     "code": "",
+     "explanation": "Repeating gradient stripes and a hard-stop flag."
+    }
+   ],
+   "interview": [
+    {
+     "q": "Difference between linear and radial gradients?",
+     "a": "Linear transitions along a straight line; radial radiates outward from a center point in a circle or ellipse."
+    },
+    {
+     "q": "How do you create a hard color edge in a gradient?",
+     "a": "Give two adjacent color stops the same position, e.g. red 50%, blue 50%."
+    },
+    {
+     "q": "How do you put a color overlay on an image?",
+     "a": "Use multiple backgrounds: a semi-transparent linear-gradient first, then the url() image."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/gradients/linear-style.css, radial-style.css"
+  },
+  {
+   "id": "css-lists-links",
+   "title": "Lists and Links",
+   "level": "beginner",
+   "summary": "Style bullets with list-style and links with :link, :visited, :hover, :active (LVHA order).",
+   "description": "### Lists\n- `list-style-type`: `disc`, `circle`, `square`, `decimal`, `lower-alpha`, `none`...\n- `list-style-position`: `outside` (default) or `inside`.\n- `list-style-image`: use an image as a marker.\n- `list-style`: shorthand, e.g. `list-style: square inside;`.\n\nRemove bullets for navigation menus: `ul { list-style: none; margin: 0; padding: 0; }`. Custom markers are best done with `li::marker` or `li::before`.\n\n### Counters\nCSS counters number any element: `counter-reset`, `counter-increment`, `content: counter(name)`.\n\n### Links and states\nAnchors have several states. Style them in **LVHA** order so later ones override earlier ones:\n\n1. `a:link` - unvisited\n2. `a:visited` - already visited (only color-like properties allowed for privacy)\n3. `a:hover` - mouse over\n4. `a:active` - while being clicked\n\nAlso remember `:focus` and `:focus-visible` for keyboard users.\n\n### Making a link look like a button\nAnchors are inline, so set `display: inline-block;` before giving padding/width:\n\n```css\na.btn { display: inline-block; padding: 10px 32px; border-radius: 5px; text-decoration: none; }\n```\n\n### Tips\n- Keep underlines on links inside text; users rely on them.\n- Provide at least 3:1 contrast between link and surrounding text if you remove underlines.",
+   "keyPoints": [
+    "list-style controls type, position and image of markers",
+    "list-style: none + reset margin/padding for menus",
+    "Link states order: link, visited, hover, active (LVHA)",
+    "Use display: inline-block to size anchors",
+    "Always style :focus-visible for keyboard users"
+   ],
+   "pitfalls": [
+    "Writing a:hover before a:link/a:visited so hover never applies",
+    "Removing list bullets but leaving default padding-left",
+    "Removing underlines and focus outlines together (inaccessible links)"
+   ],
+   "examples": [
+    {
+     "title": "Link states LVHA",
+     "language": "web",
+     "html": "<a href=\"#\" class=\"link\">Hover, click and focus me</a>",
+     "css": ".link { display: inline-block; background: #fff; padding: 10px 32px; border-radius: 5px; font: bold 22px sans-serif; text-decoration: none; border: 2px solid #080a0c; }\n.link:link { color: #080a0c; }\n.link:visited { color: #d67e03; }\n.link:hover { color: #0062ff; border-color: #0062ff; }\n.link:active { color: #f31559; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "Custom list markers and counters",
+     "language": "web",
+     "html": "<ol class=\"steps\"><li>Install</li><li>Write CSS</li><li>Ship</li></ol>\n<ul class=\"check\"><li>HTML</li><li>CSS</li><li>JavaScript</li></ul>",
+     "css": "body { font-family: sans-serif; }\n.steps { list-style: none; counter-reset: step; padding: 0; }\n.steps li { counter-increment: step; margin: 6px 0; }\n.steps li::before { content: counter(step); display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #2965f1; color: #fff; font-size: 13px; }\n.check { padding-left: 20px; }\n.check li::marker { content: \"\\2714  \"; color: seagreen; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does LVHA stand for?",
+     "a": "Link, Visited, Hover, Active - the order in which link pseudo-classes should be written so specificity ties resolve correctly."
+    },
+    {
+     "q": "How do you remove bullets from a list?",
+     "a": "list-style: none; and usually reset padding-left/margin on the ul."
+    },
+    {
+     "q": "How do you make an <a> accept width, height and vertical padding?",
+     "a": "Make it display: inline-block (or block/flex), because inline elements ignore those."
+    }
+   ],
+   "source": "CSS-one-shot/CSS_complete_code/lists/style.css, anchor/style.css"
+  },
+  {
+   "id": "css-images-aspect-ratio",
+   "title": "Images, object-fit and aspect-ratio",
+   "level": "beginner",
+   "summary": "Make images responsive, crop them with object-fit and keep proportions with aspect-ratio.",
+   "description": "### Responsive images\nThe simplest rule for fluid images:\n\n```css\nimg { max-width: 100%; height: auto; display: block; }\n```\n- `max-width: 100%` stops overflow.\n- `height: auto` keeps the proportions.\n- `display: block` removes the tiny gap below inline images.\n\nAlways set `width` and `height` attributes in HTML so the browser reserves space and avoids layout shift (CLS).\n\n### object-fit\nWhen an image (or video) has a fixed box, `object-fit` decides how it fills it:\n\n| Value | Behaviour |\n|---|---|\n| `fill` | stretches (default) |\n| `contain` | fits entirely, may letterbox |\n| `cover` | fills and crops, keeps ratio |\n| `none` | natural size |\n| `scale-down` | smaller of none or contain |\n\n`object-position` chooses the focal point, e.g. `object-position: top;` for portraits.\n\n### aspect-ratio\n`aspect-ratio: 16 / 9;` makes a box keep a ratio without padding hacks. Use `aspect-ratio: 1;` for squares/avatars. If both width and height are set, the ratio is ignored.\n\n### Related\n- `border-radius: 50%` + `object-fit: cover` = perfect circular avatar.\n- `loading=\"lazy\"` and `srcset` / `<picture>` for performance (HTML side).\n- `filter` and `clip-path` for effects (see the Visual Effects section).",
+   "keyPoints": [
+    "img { max-width: 100%; height: auto } is the responsive baseline",
+    "object-fit cover/contain crops or fits media inside a fixed box",
+    "aspect-ratio replaces the padding-top hack",
+    "Set width/height attributes to prevent layout shift",
+    "object-position sets the focal point"
+   ],
+   "pitfalls": [
+    "Setting both width and height with different ratio and distorting the image",
+    "Using background-image for meaningful content (no alt text)",
+    "Forgetting aspect-ratio is ignored when width and height are both fixed"
+   ],
+   "examples": [
+    {
+     "title": "object-fit comparison",
+     "language": "web",
+     "html": "<div class=\"row\">\n  <figure><img class=\"a\" alt=\"\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%23f06'/%3E%3Cstop offset='1' stop-color='%2348f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='300' height='150' fill='url(%23g)'/%3E%3Ccircle cx='150' cy='75' r='45' fill='white'/%3E%3C/svg%3E\"><figcaption>fill</figcaption></figure>\n  <figure><img class=\"b\" alt=\"\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%23f06'/%3E%3Cstop offset='1' stop-color='%2348f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='300' height='150' fill='url(%23g)'/%3E%3Ccircle cx='150' cy='75' r='45' fill='white'/%3E%3C/svg%3E\"><figcaption>contain</figcaption></figure>\n  <figure><img class=\"c\" alt=\"\" src=\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150'%3E%3Cdefs%3E%3ClinearGradient id='g'%3E%3Cstop offset='0' stop-color='%23f06'/%3E%3Cstop offset='1' stop-color='%2348f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='300' height='150' fill='url(%23g)'/%3E%3Ccircle cx='150' cy='75' r='45' fill='white'/%3E%3C/svg%3E\"><figcaption>cover</figcaption></figure>\n</div>",
+     "css": ".row { display: flex; gap: 12px; font-family: sans-serif; font-size: 13px; text-align: center; }\nfigure { margin: 0; }\nimg { width: 100px; height: 100px; background: #ddd; border: 1px solid #999; display: block; }\n.a { object-fit: fill; }\n.b { object-fit: contain; }\n.c { object-fit: cover; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    },
+    {
+     "title": "aspect-ratio cards",
+     "language": "web",
+     "html": "<div class=\"card video\">16 / 9</div><div class=\"card square\">1 / 1</div>",
+     "css": "body { font-family: sans-serif; display: flex; gap: 12px; align-items: flex-start; }\n.card { background: linear-gradient(135deg,#6a11cb,#2575fc); color: #fff; display: grid; place-items: center; border-radius: 10px; }\n.video { width: 220px; aspect-ratio: 16 / 9; }\n.square { width: 120px; aspect-ratio: 1; }",
+     "js": "",
+     "code": "",
+     "explanation": ""
+    }
+   ],
+   "interview": [
+    {
+     "q": "How do you make an image responsive?",
+     "a": "max-width: 100%; height: auto; (and set width/height attributes for layout stability)."
+    },
+    {
+     "q": "What does object-fit: cover do?",
+     "a": "It scales the image to fill the box while keeping the aspect ratio, cropping what does not fit."
+    },
+    {
+     "q": "How do you keep a 16:9 box without JavaScript?",
+     "a": "aspect-ratio: 16 / 9; (older approach: padding-top: 56.25% on a wrapper)."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}

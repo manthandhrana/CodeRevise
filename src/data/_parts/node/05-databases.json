@@ -1,0 +1,531 @@
+{
+ "id": "node-databases",
+ "title": "Databases",
+ "level": "intermediate",
+ "topics": [
+  {
+   "id": "node-db-overview",
+   "title": "Choosing a Database and Access Layer",
+   "level": "beginner",
+   "summary": "SQL vs document stores, drivers vs query builders vs ORMs, and how Node talks to a database.",
+   "description": "Almost every backend stores data. In Node you pick a **database** and an **access style**.\n\n### Database families\n| Type | Examples | Good for |\n|---|---|---|\n| Relational (SQL) | PostgreSQL, MySQL, SQLite | Structured data, relations, transactions, reports |\n| Document | MongoDB | Flexible JSON-like documents, fast iteration |\n| Key-value / cache | Redis, Valkey | Caching, sessions, rate limits, queues |\n| Search | Elasticsearch, Meilisearch | Full-text search |\n| Time-series, graph, vector | InfluxDB, Neo4j, pgvector | Specialised workloads |\n\nWhen unsure, **PostgreSQL** is a safe default. Use MongoDB when your data really is document shaped and the schema changes often. Add Redis when you need speed or ephemeral data.\n\n### Access styles\n1. **Driver** (`pg`, `mongodb`, `node:sqlite`): you write raw queries; maximum control.\n2. **Query builder** (Knex, Kysely, Drizzle): composable, typed SQL.\n3. **ORM / ODM** (Prisma, Sequelize, TypeORM, Mongoose): models, relations, migrations, validation; less boilerplate, some abstraction cost.\n\n### Common concerns to learn\n* **Connection management**: open once at start-up and reuse, with a pool\n* **Async everything**: all drivers return promises\n* **Migrations**: versioned schema changes (Prisma Migrate, Knex migrations)\n* **Indexes** for query speed\n* **Transactions** for multi-step consistency\n* **Security**: parameterised queries, never string-built SQL\n* **Config**: connection strings in environment variables (`DATABASE_URL`)\n\n### Typical layering\nRoute handler → service (business rules) → repository/model (database calls). This keeps database code replaceable and testable.",
+   "keyPoints": [
+    "PostgreSQL is a great default; MongoDB fits flexible documents; Redis is for cache and ephemeral data",
+    "Drivers give control, ORMs give productivity",
+    "Connect once, reuse connections with a pool",
+    "Use parameterised queries and migrations",
+    "Keep DB access in a repository or model layer"
+   ],
+   "pitfalls": [
+    "Opening a new connection for every request",
+    "Building SQL by string concatenation",
+    "Hard-coding credentials in source code"
+   ],
+   "examples": [
+    {
+     "title": "Environment-driven connection",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// db.js - one place that owns the connection\nimport { MongoClient } from 'mongodb';\n\nconst url = process.env.DATABASE_URL ?? 'mongodb://127.0.0.1:27017';\nconst client = new MongoClient(url);\n\nexport async function connect() {\n  await client.connect();\n  return client.db('shop');\n}\n\nexport const close = () => client.close();",
+     "explanation": "All modules import this file, so the connection is created once thanks to module caching.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "SQL or NoSQL?",
+     "a": "Choose SQL when data is relational and consistency, joins and transactions matter. Choose a document database when records are self-contained and the schema evolves quickly. Many apps use both, plus Redis for caching."
+    },
+    {
+     "q": "ORM vs raw driver?",
+     "a": "An ORM speeds development with models, relations and migrations but hides SQL and can generate inefficient queries. A raw driver gives full control and performance but needs more code and discipline."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mongodb-native",
+   "title": "MongoDB with the Native Driver",
+   "level": "beginner",
+   "summary": "Connect with MongoClient and use insertOne, find, updateOne and deleteOne on collections of JSON-like documents.",
+   "description": "**MongoDB** stores data as BSON documents (JSON with extra types) in **collections** inside **databases**. No fixed schema is required: two documents in one collection can have different fields.\n\n### Setup\n`npm i mongodb`. A connection string looks like `mongodb://127.0.0.1:27017` locally or `mongodb+srv://user:pass@cluster.mongodb.net/shop` for Atlas (the free cloud service).\n\n### Core API\n`MongoClient` → `client.db(name)` → `db.collection(name)`:\n* `insertOne(doc)`, `insertMany(docs)` returns `insertedId`\n* `find(filter, { projection, sort, limit, skip })` returns a cursor: `.toArray()` or iterate with `for await`\n* `findOne(filter)`\n* `updateOne(filter, { $set: {...} })`, `updateMany`, `replaceOne`\n* `deleteOne`, `deleteMany`\n* `countDocuments(filter)`\n* `findOneAndUpdate(filter, update, { returnDocument: 'after' })`\n\n### Query and update operators\n`$eq $gt $gte $lt $lte $in $nin $ne $and $or $not $exists $regex` for filters; `$set $unset $inc $push $pull $addToSet` for updates.\n\n### ObjectId\nEach document gets an `_id` of type `ObjectId` (12 bytes: timestamp, random, counter). Convert incoming strings: `new ObjectId(id)`. It sorts roughly by creation time. Invalid strings throw, so validate with `ObjectId.isValid(id)`.\n\n### Habits\n* Create one client for the app lifetime\n* Create **indexes** for fields you query\n* Use projections to return only what you need\n* Always paginate large queries\n* Validate input before inserting; MongoDB itself will accept anything",
+   "keyPoints": [
+    "Hierarchy: client, database, collection, document",
+    "insertOne/find/updateOne/deleteOne are the core CRUD calls",
+    "Update operators like $set and $inc avoid overwriting whole documents",
+    "_id is an ObjectId; convert string ids before querying",
+    "One MongoClient per app"
+   ],
+   "pitfalls": [
+    "Updating without $set, which replaces the whole document",
+    "Querying _id with a string instead of ObjectId",
+    "Creating a client per request"
+   ],
+   "examples": [
+    {
+     "title": "CRUD with the driver",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { MongoClient, ObjectId } from 'mongodb';\n\nconst client = new MongoClient('mongodb://127.0.0.1:27017');\nawait client.connect();\nconst products = client.db('shop').collection('products');\n\nconst { insertedId } = await products.insertOne({ name: 'Keyboard', price: 49, tags: ['usb'] });\nawait products.insertMany([{ name: 'Mouse', price: 19 }, { name: 'Monitor', price: 199 }]);\n\nconst cheap = await products\n  .find({ price: { $lt: 100 } }, { projection: { _id: 0, name: 1, price: 1 } })\n  .sort({ price: 1 })\n  .limit(10)\n  .toArray();\nconsole.log(cheap);     // [ { name: 'Mouse', price: 19 }, { name: 'Keyboard', price: 49 } ]\n\nawait products.updateOne({ _id: insertedId }, { $inc: { price: -5 }, $push: { tags: 'sale' } });\nconsole.log(await products.findOne({ _id: new ObjectId(insertedId) }));\n\nawait products.deleteMany({ price: { $gt: 150 } });\nawait client.close();",
+     "explanation": "find returns a cursor; call toArray or iterate it to get documents.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is an ObjectId?",
+     "a": "A 12-byte unique identifier automatically assigned as _id in MongoDB, made from a timestamp, random value and counter, so ids are unique across servers and roughly time ordered."
+    },
+    {
+     "q": "How do you update only one field of a document?",
+     "a": "Use an update operator such as { $set: { field: value } }. Passing a plain object without an operator would replace the entire document (with replaceOne) or be rejected by updateOne."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mongoose-models",
+   "title": "Mongoose: Schemas and Models",
+   "level": "intermediate",
+   "summary": "Mongoose adds schemas, types, defaults, validation, virtuals and middleware on top of MongoDB.",
+   "description": "**Mongoose** is an ODM (Object Document Mapper). It gives structure and validation to MongoDB collections.\n\n### Connect\n`await mongoose.connect(process.env.MONGO_URL)`. Mongoose buffers commands until connected, but always `await` the connection at start-up so failure is visible.\n\n### Schema → Model → Document\n1. A **Schema** defines fields, types, defaults and rules\n2. A **Model** (`mongoose.model('User', schema)`) represents a collection (`users`, pluralised and lower-cased automatically)\n3. A **Document** is an instance of a model with methods like `save()`\n\n### Schema types and options\n`String`, `Number`, `Date`, `Boolean`, `Buffer`, `ObjectId`, `Array`, `Map`, nested objects and subdocuments. Options per field: `required`, `default`, `unique`, `lowercase`, `trim`, `min`, `max`, `minLength`, `enum`, `match`, `select: false`, `immutable`, `validate`.\n\n### Schema-level features\n* `timestamps: true` adds `createdAt` and `updatedAt`\n* **Virtuals**: computed fields not stored (`fullName`)\n* **Instance methods** and **statics**: `schema.methods.checkPassword`, `schema.statics.findByEmail`\n* **Middleware (hooks)**: `schema.pre('save', fn)` for hashing passwords, `post` hooks for side effects\n* `toJSON` transforms hide internals like `__v` and password hashes\n* `strict` mode drops unknown fields\n\n### Notes\n`unique: true` is **not a validator**, it creates a unique index; duplicates throw an error with `code: 11000`. Reuse models safely in dev with `mongoose.models.User || mongoose.model('User', schema)`.",
+   "keyPoints": [
+    "Schema defines shape, Model is the collection API, Document is one record",
+    "timestamps, virtuals, methods, statics and hooks keep logic with the data",
+    "unique creates an index; duplicate key errors have code 11000",
+    "select: false hides sensitive fields by default",
+    "Await the connection at start-up"
+   ],
+   "pitfalls": [
+    "Thinking unique is validation (it is an index)",
+    "Returning documents with password hashes to the client",
+    "Defining the model twice (OverwriteModelError in watch mode)"
+   ],
+   "examples": [
+    {
+     "title": "User model",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// models/User.js\nimport mongoose from 'mongoose';\nimport bcrypt from 'bcrypt';\n\nconst userSchema = new mongoose.Schema(\n  {\n    name: { type: String, required: [true, 'Name is required'], trim: true, minLength: 2 },\n    email: { type: String, required: true, unique: true, lowercase: true, match: /^\\S+@\\S+\\.\\S+$/ },\n    password: { type: String, required: true, minLength: 8, select: false },\n    role: { type: String, enum: ['user', 'admin'], default: 'user' },\n    age: { type: Number, min: 13, max: 120 },\n  },\n  { timestamps: true },\n);\n\nuserSchema.virtual('initials').get(function () {\n  return this.name.split(' ').map((p) => p[0]).join('').toUpperCase();\n});\n\nuserSchema.pre('save', async function () {\n  if (this.isModified('password')) this.password = await bcrypt.hash(this.password, 12);\n});\n\nuserSchema.methods.checkPassword = function (plain) {\n  return bcrypt.compare(plain, this.password);\n};\n\nuserSchema.set('toJSON', { virtuals: true, transform: (_doc, ret) => { delete ret.__v; delete ret.password; return ret; } });\n\nexport default mongoose.models.User || mongoose.model('User', userSchema);",
+     "explanation": "The pre-save hook hashes only when the password changed. Fetch the hash with .select('+password') during login.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Schema vs Model in Mongoose?",
+     "a": "A schema describes the structure, types, validation and behaviour of documents. A model is the compiled class created from a schema that talks to one collection (find, create, update) and creates documents."
+    },
+    {
+     "q": "Does unique: true validate uniqueness?",
+     "a": "No. It builds a unique index in MongoDB. Violations raise an E11000 duplicate key error from the database, which you should catch and convert to a 409 response."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mongoose-crud-validation",
+   "title": "Mongoose CRUD and Validation",
+   "level": "intermediate",
+   "summary": "Create, read, update and delete with Mongoose, plus validation errors, lean queries, pagination and updates that skip validators.",
+   "description": "### Create\n`await User.create({ ... })` or `new User({...}).save()`. `insertMany` for bulk. Validation runs automatically and throws `ValidationError` listing each failing field in `err.errors`.\n\n### Read\n* `User.find(filter).select('name email').sort('-createdAt').limit(20).skip(40)`\n* `User.findById(id)`, `User.findOne({ email })`\n* `User.countDocuments(filter)`, `User.exists(filter)`\n* **`.lean()`** returns plain objects instead of full documents: faster and lighter for read-only responses\n\nQueries are thenables: `await` them (or call `.exec()`).\n\n### Update\n* `User.findByIdAndUpdate(id, { $set: {...} }, { new: true, runValidators: true })`\n* `updateOne`, `updateMany`\n* **Gotcha**: update queries do **not** run validators or `save` hooks unless you pass `runValidators: true`. Loading a document, changing it and calling `save()` runs everything.\n\n### Delete\n`findByIdAndDelete`, `deleteOne`, `deleteMany`. Consider **soft delete** (`deletedAt`) for recoverable data.\n\n### Error handling\n| Error | Cause | HTTP |\n|---|---|---|\n| `ValidationError` | Rule violated | 400/422 |\n| `CastError` | Invalid ObjectId or wrong type | 400 |\n| `code 11000` | Duplicate unique value | 409 |\n\n### Pagination\nPage/limit with `skip` is simple but slow on large offsets; for big collections page by a cursor (`_id > lastId`).\n\n### Custom validators\n`validate: { validator: (v) => v.length >= 3, message: 'Too short' }`. Async validators are allowed.",
+   "keyPoints": [
+    "create/save run validators; update queries need runValidators: true",
+    "lean() returns plain objects for faster reads",
+    "Handle ValidationError, CastError and E11000",
+    "Prefer cursor pagination for large collections",
+    "Use select to avoid over-fetching"
+   ],
+   "pitfalls": [
+    "Assuming findByIdAndUpdate runs schema validators and pre-save hooks",
+    "Forgetting { new: true } and receiving the old document",
+    "Large skip values on big collections"
+   ],
+   "examples": [
+    {
+     "title": "Express handlers with error mapping",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import express from 'express';\nimport User from './models/User.js';\n\nconst router = express.Router();\n\nrouter.post('/', async (req, res, next) => {\n  try {\n    const user = await User.create(req.body);\n    res.status(201).json(user);\n  } catch (err) {\n    next(err);\n  }\n});\n\nrouter.get('/', async (req, res) => {\n  const page = Math.max(1, Number(req.query.page) || 1);\n  const limit = 20;\n  const [items, total] = await Promise.all([\n    User.find().sort('-createdAt').skip((page - 1) * limit).limit(limit).lean(),\n    User.countDocuments(),\n  ]);\n  res.json({ items, total, page, pages: Math.ceil(total / limit) });\n});\n\nrouter.patch('/:id', async (req, res) => {\n  const user = await User.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });\n  if (!user) return res.status(404).json({ error: 'Not found' });\n  res.json(user);\n});\n\nexport const mongooseErrors = (err, req, res, next) => {\n  if (err.name === 'ValidationError') return res.status(422).json({ errors: Object.fromEntries(Object.entries(err.errors).map(([k, v]) => [k, v.message])) });\n  if (err.name === 'CastError') return res.status(400).json({ error: 'Invalid id' });\n  if (err.code === 11000) return res.status(409).json({ error: 'Already exists', fields: Object.keys(err.keyPattern) });\n  next(err);\n};\n\nexport default router;",
+     "explanation": "Register mongooseErrors after the routers as an error middleware. Never pass req.body straight into $set in real code; whitelist the fields.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why does findByIdAndUpdate not validate by default?",
+     "a": "It sends an update operation directly to MongoDB without loading a document, so schema validators and save hooks are skipped. Pass runValidators: true or load the document and call save()."
+    },
+    {
+     "q": "What does lean() do?",
+     "a": "It skips creating Mongoose document objects and returns plain JavaScript objects, which is faster and uses less memory but removes virtuals, methods and change tracking."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mongoose-indexes-populate",
+   "title": "Indexes and populate",
+   "level": "intermediate",
+   "summary": "Speed up queries with indexes and join referenced collections with populate (and know its cost).",
+   "description": "### Indexes\nWithout an index MongoDB scans every document (**COLLSCAN**). An index is a sorted structure that makes lookups fast but slows writes slightly and uses memory.\n\nDefine them in the schema:\n* Field level: `email: { type: String, unique: true, index: true }`\n* Compound: `schema.index({ userId: 1, createdAt: -1 })`; order matters (leftmost prefix rule)\n* Text: `schema.index({ title: 'text', body: 'text' })`\n* TTL: `schema.index({ createdAt: 1 }, { expireAfterSeconds: 3600 })` deletes old documents automatically (sessions, tokens)\n* Partial and sparse indexes for subsets\n\nCheck queries with `.explain('executionStats')` and look for `IXSCAN` rather than `COLLSCAN`. In production build indexes deliberately (migrations), not through `autoIndex`.\n\n### References and populate\nStore another document's id: `author: { type: Schema.Types.ObjectId, ref: 'User' }`. Then:\n\n`Post.find().populate('author', 'name avatar')`\n\nreplaces the id with the document (selecting only some fields). Options: nested populate, `match`, `options`, populate on arrays.\n\n### Cost of populate\n`populate` is **not a database join**. Mongoose issues an extra query per populated path. Use it for small result sets, select few fields, or use `$lookup` in aggregation.\n\n### Embed or reference?\n| Embed | Reference |\n|---|---|\n| Data read together, bounded size (address, order items) | Large or unbounded lists (comments of a viral post) |\n| Rarely shared with other documents | Many-to-many, shared, frequently changing |\n\nDocument size limit is 16 MB.",
+   "keyPoints": [
+    "Indexes turn collection scans into index scans",
+    "Compound index order follows the leftmost prefix rule",
+    "TTL indexes expire documents automatically",
+    "populate issues extra queries, it is not a SQL join",
+    "Embed bounded data read together; reference unbounded or shared data"
+   ],
+   "pitfalls": [
+    "Querying large collections on unindexed fields",
+    "Populating huge arrays or whole documents",
+    "Embedding unbounded arrays that approach the 16 MB limit"
+   ],
+   "examples": [
+    {
+     "title": "Schema with indexes and references",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import mongoose from 'mongoose';\nconst { Schema, model } = mongoose;\n\nconst postSchema = new Schema(\n  {\n    title: { type: String, required: true },\n    body: String,\n    author: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },\n    tags: [String],\n    comments: [{ user: { type: Schema.Types.ObjectId, ref: 'User' }, text: String }],\n  },\n  { timestamps: true },\n);\n\npostSchema.index({ author: 1, createdAt: -1 });\npostSchema.index({ title: 'text', body: 'text' });\nconst Post = model('Post', postSchema);\n\nconst feed = await Post.find({ tags: 'node' })\n  .sort('-createdAt')\n  .limit(10)\n  .populate('author', 'name -_id')\n  .populate({ path: 'comments.user', select: 'name' })\n  .lean();\n\nconst plan = await Post.find({ author: someId }).explain('executionStats');\nconsole.log(plan.executionStats.totalDocsExamined, plan.queryPlanner.winningPlan.stage);",
+     "explanation": "A good plan examines few documents and uses an index scan on the winning plan.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does populate do?",
+     "a": "It replaces stored ObjectId references with the referenced documents by running additional queries, giving a join-like result in application code."
+    },
+    {
+     "q": "How do you know whether a MongoDB query uses an index?",
+     "a": "Run explain('executionStats') and check that the winning plan uses IXSCAN and that totalDocsExamined is close to the number of documents returned; COLLSCAN means a full collection scan."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-mongodb-aggregation",
+   "title": "Aggregation Pipeline",
+   "level": "advanced",
+   "summary": "Transform and summarise data in MongoDB with pipeline stages like $match, $group, $lookup, $sort and $project.",
+   "description": "The **aggregation pipeline** processes documents through a sequence of stages; each stage receives the output of the previous one. It is MongoDB's tool for reports, joins and analytics.\n\n### Common stages\n| Stage | Purpose |\n|---|---|\n| `$match` | Filter (use **early** so indexes help) |\n| `$group` | Group by `_id` and compute `$sum`, `$avg`, `$min`, `$max`, `$push`, `$addToSet`, `$count` |\n| `$sort`, `$limit`, `$skip` | Order and page |\n| `$project` / `$addFields` | Shape or add fields |\n| `$lookup` | Left outer join with another collection |\n| `$unwind` | One output document per array element |\n| `$facet` | Several sub-pipelines at once (e.g. results + total) |\n| `$bucket`, `$count`, `$set`, `$unset`, `$replaceRoot` | More shaping |\n| `$out` / `$merge` | Write results into a collection |\n\n### Expression operators\n`$sum`, `$multiply`, `$cond`, `$dateToString`, `$concat`, `$size`, `$ifNull`, `$toObjectId`. Field references use a dollar sign: `\"$price\"`.\n\n### Performance tips\n1. `$match` and `$sort` first so they can use indexes\n2. `$project` only needed fields before heavy stages\n3. `$lookup` against indexed fields in the foreign collection\n4. Memory limit per stage is 100 MB; use `{ allowDiskUse: true }` when needed\n5. Use `explain` to inspect\n\n### With Mongoose\n`Model.aggregate([...])` returns plain objects (no casting: convert strings to `ObjectId` yourself).\n\n### When to use\nDashboards, sales reports, leaderboards, top-N, grouping by day, joins when populate is too slow.",
+   "keyPoints": [
+    "Stages run in order and feed the next stage",
+    "$match early; $group for totals and counts",
+    "$lookup performs a join, $unwind flattens arrays",
+    "Mongoose aggregate does not cast types for you",
+    "allowDiskUse helps with large groups"
+   ],
+   "pitfalls": [
+    "Putting $match after $group so every document is processed",
+    "Passing string ids to $match against ObjectId fields in aggregate",
+    "Using $lookup with unindexed foreign fields"
+   ],
+   "examples": [
+    {
+     "title": "Revenue per customer",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const report = await Order.aggregate([\n  { $match: { status: 'paid', createdAt: { $gte: new Date('2026-01-01') } } },\n  { $group: {\n      _id: '$customerId',\n      orders: { $sum: 1 },\n      revenue: { $sum: { $multiply: ['$qty', '$price'] } },\n      lastOrder: { $max: '$createdAt' },\n  } },\n  { $sort: { revenue: -1 } },\n  { $limit: 5 },\n  { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'customer' } },\n  { $unwind: '$customer' },\n  { $project: { _id: 0, name: '$customer.name', orders: 1, revenue: 1 } },\n]);\nconsole.log(report);\n// [ { orders: 12, revenue: 4820, name: 'Ann' }, ... ]",
+     "explanation": "Filter, group, sort, take the top 5, join the user names, then reshape.",
+     "lang": "javascript"
+    },
+    {
+     "title": "Sales per day with $facet pagination",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const [result] = await Order.aggregate([\n  { $match: { status: 'paid' } },\n  { $facet: {\n      perDay: [\n        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, total: { $sum: '$total' } } },\n        { $sort: { _id: 1 } },\n      ],\n      count: [{ $count: 'orders' }],\n  } },\n]);\nconsole.log(result.perDay, result.count[0]?.orders);",
+     "explanation": "$facet runs several pipelines over the same input in one query.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why put $match as early as possible?",
+     "a": "It reduces the number of documents flowing through later stages, and a leading $match (and $sort) can use indexes, which makes the whole pipeline much faster."
+    },
+    {
+     "q": "Aggregation $lookup vs Mongoose populate?",
+     "a": "$lookup is a server-side join executed in one aggregation query. populate runs separate queries and merges the results in Node, which is simpler but may need more round trips."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-postgres-pg",
+   "title": "PostgreSQL with pg",
+   "level": "intermediate",
+   "summary": "Use the pg library with a Pool, parameterised queries ($1, $2) and RETURNING; avoid SQL injection.",
+   "description": "**PostgreSQL** is a powerful open source relational database: strong SQL support, JSONB, full-text search, extensions (PostGIS, pgvector) and excellent transactions. The standard Node driver is **`pg`** (`npm i pg`).\n\n### Pool, not Client\n`new Pool({ connectionString: process.env.DATABASE_URL, max: 10 })` keeps a set of reusable connections.\n* `pool.query(text, values)` borrows a connection, runs the query and returns it\n* `pool.connect()` gives a dedicated client for multi-statement transactions (**release it** with `client.release()`)\n\n### Parameterised queries\n`pool.query('SELECT * FROM users WHERE email = $1', [email])`. Values are sent separately from the SQL text, which prevents **SQL injection**. Never write `` `... WHERE email = '${email}'` ``. Table and column names cannot be parameters: whitelist them.\n\n### Results\n`result.rows` (array of objects), `result.rowCount`, `result.fields`. Use **`RETURNING`** to get inserted or updated rows in one round trip:\n`INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *`\n\n### Types\n`pg` returns `bigint`/`numeric` as strings (to avoid precision loss) and `timestamptz` as `Date`. Convert as needed.\n\n### Schema management\nUse migrations (node-pg-migrate, Knex, Prisma Migrate, Drizzle Kit) rather than running ad hoc SQL.\n\n### Handy SQL features\n`ON CONFLICT (email) DO UPDATE`, `JSONB` columns with `->>` operators, `LIMIT/OFFSET`, window functions, CTEs (`WITH`), `EXPLAIN ANALYZE`.\n\n### Errors\n`err.code` is the SQLSTATE: `23505` unique violation, `23503` foreign key violation, `42P01` missing table.",
+   "keyPoints": [
+    "Use Pool and pool.query for normal queries",
+    "Always pass values as parameters ($1, $2)",
+    "RETURNING returns the changed rows",
+    "Release clients obtained with pool.connect()",
+    "SQLSTATE codes such as 23505 identify constraint errors"
+   ],
+   "pitfalls": [
+    "Building SQL strings from user input (SQL injection)",
+    "Forgetting client.release() and exhausting the pool",
+    "Treating bigint/numeric values as JavaScript numbers"
+   ],
+   "examples": [
+    {
+     "title": "Pool and queries",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import pg from 'pg';\n\nconst pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 10 });\n\nawait pool.query(`\n  CREATE TABLE IF NOT EXISTS users (\n    id SERIAL PRIMARY KEY,\n    name TEXT NOT NULL,\n    email TEXT UNIQUE NOT NULL,\n    created_at TIMESTAMPTZ DEFAULT now()\n  )`);\n\nexport async function createUser(name, email) {\n  try {\n    const { rows } = await pool.query(\n      'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *',\n      [name, email],\n    );\n    return rows[0];\n  } catch (err) {\n    if (err.code === '23505') throw new Error('Email already registered');\n    throw err;\n  }\n}\n\nexport async function findByEmail(email) {\n  const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);\n  return rows[0] ?? null;\n}\n\nprocess.on('SIGTERM', () => pool.end());",
+     "explanation": "Parameters are never concatenated into the SQL string.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use parameterised queries?",
+     "a": "The database receives SQL and values separately, so user input can never change the query structure. This is the primary defence against SQL injection."
+    },
+    {
+     "q": "Pool vs Client in pg?",
+     "a": "A Client is a single connection. A Pool manages many clients, handing them out per query and reusing them, which avoids the cost of opening connections and limits total connections to the database."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-prisma-overview",
+   "title": "Prisma ORM Overview",
+   "level": "intermediate",
+   "summary": "Prisma gives a typed client generated from a schema file, plus migrations and a studio UI.",
+   "description": "**Prisma** is a popular ORM for Node and TypeScript that supports PostgreSQL, MySQL, SQLite, SQL Server, MongoDB and CockroachDB.\n\n### Workflow\n1. Describe your data in `prisma/schema.prisma`\n2. `npx prisma migrate dev --name init` creates SQL migrations and applies them\n3. `npx prisma generate` builds a **type-safe client** (also run by migrate)\n4. Use `PrismaClient` in code with auto-completion for models, fields and relations\n5. `npx prisma studio` opens a browser GUI for your data\n\n### The schema language\nModels, fields, attributes such as `@id`, `@default(autoincrement())`, `@unique`, `@relation`, enums, composite indexes `@@index([a, b])`. Relations are declared on both sides.\n\n### Client API\n`findMany`, `findUnique`, `findFirst`, `create`, `update`, `upsert`, `delete`, `count`, `aggregate`, `groupBy`. Options: `where`, `select`, `include` (load relations), `orderBy`, `skip`, `take`, cursor pagination.\n\n### Transactions\nNested writes are atomic automatically. For multiple operations use `prisma.$transaction([ ... ])` or an interactive `$transaction(async (tx) => { ... })`.\n\n### Raw SQL\n`prisma.$queryRaw` with tagged templates is parameterised: `` prisma.$queryRaw`SELECT * FROM \"User\" WHERE id = ${id}` ``.\n\n### Good practice\n* Create **one** `PrismaClient` per process (it manages a pool); in dev avoid creating many when hot reloading\n* Use `select` to fetch only what you need\n* Watch for N+1 queries; use `include` or batch\n* Commit the `migrations` folder; run `prisma migrate deploy` in production\n\n### Alternatives\nDrizzle (SQL-like, light), TypeORM, Sequelize, Kysely, MikroORM.",
+   "keyPoints": [
+    "schema.prisma is the single source of truth",
+    "migrate dev creates migrations, generate builds the typed client",
+    "include/select control relations and returned fields",
+    "$transaction groups operations atomically",
+    "One PrismaClient per process; use migrate deploy in production"
+   ],
+   "pitfalls": [
+    "Instantiating PrismaClient inside every request",
+    "Forgetting to regenerate the client after schema changes",
+    "Using migrate dev against a production database"
+   ],
+   "examples": [
+    {
+     "title": "schema.prisma and usage",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "// prisma/schema.prisma\n// datasource db { provider = \"postgresql\"; url = env(\"DATABASE_URL\") }\n// generator client { provider = \"prisma-client-js\" }\n//\n// model User {\n//   id    Int     @id @default(autoincrement())\n//   email String  @unique\n//   name  String?\n//   posts Post[]\n// }\n// model Post {\n//   id       Int    @id @default(autoincrement())\n//   title    String\n//   author   User   @relation(fields: [authorId], references: [id])\n//   authorId Int\n// }\n\nimport { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\n\nconst user = await prisma.user.create({\n  data: { email: 'ann@example.com', name: 'Ann', posts: { create: [{ title: 'Hello' }] } },\n  include: { posts: true },\n});\n\nconst recent = await prisma.post.findMany({\n  where: { author: { email: 'ann@example.com' } },\n  select: { id: true, title: true },\n  orderBy: { id: 'desc' },\n  take: 10,\n});\nconsole.log(user.id, recent);\n\nawait prisma.$disconnect();",
+     "explanation": "The nested create inserts the user and its post in one atomic operation.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does Prisma Migrate do?",
+     "a": "It compares your schema.prisma with the database, generates versioned SQL migration files and applies them, so schema changes are tracked in git and repeatable in every environment."
+    },
+    {
+     "q": "ORM downside to mention in interviews?",
+     "a": "Abstraction can hide inefficient SQL (N+1 queries, over-fetching), and complex queries sometimes need raw SQL. You must still understand indexes and the generated queries."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-sqlite",
+   "title": "SQLite with node:sqlite",
+   "level": "beginner",
+   "summary": "Use the built-in node:sqlite module for zero-install embedded SQL storage: prepared statements, transactions and in-memory databases.",
+   "description": "**SQLite** is a serverless SQL database stored in a single file (or in memory). It is perfect for prototypes, CLIs, desktop tools, tests and small production apps. Node includes a synchronous binding, **`node:sqlite`** (still marked experimental or release candidate in many versions, so check the docs for your Node version). Popular alternatives are **better-sqlite3** and Turso/libSQL.\n\n### API\n* `new DatabaseSync(':memory:' | 'app.db')`\n* `db.exec(sql)` runs one or more statements without results (create tables, BEGIN/COMMIT)\n* `db.prepare(sql)` returns a **StatementSync**: `.run(...params)` (returns `{ changes, lastInsertRowid }`), `.get()` (one row), `.all()` (array of rows), `.iterate()`\n* Parameters: positional `?` or named `:name` / `$name`\n* `db.close()`\n\n### Why synchronous is fine here\nSQLite is in-process and queries take microseconds. No network round trip means sync calls are fast; for heavy queries use a worker thread.\n\n### Good practice\n* Always use **prepared statements with parameters**\n* Enable `PRAGMA journal_mode = WAL` for better read/write concurrency\n* Wrap many inserts in a transaction: it can speed them up by 100x\n* Enable foreign keys: `PRAGMA foreign_keys = ON`\n* Back up by copying the file while no writes are in progress, or use `VACUUM INTO`\n\n### Limits\nOne writer at a time, no built-in network access. For multi-server deployments choose PostgreSQL or a service such as Turso.\n\n### Types\nSQLite is dynamically typed: `INTEGER`, `REAL`, `TEXT`, `BLOB`, `NULL`. Booleans are 0 and 1. Dates are stored as text or numbers by your convention.",
+   "keyPoints": [
+    "node:sqlite is a built-in synchronous SQLite client",
+    "exec for DDL, prepare + run/get/all for queries",
+    "Use ? or :name parameters, never string concatenation",
+    "Wrap bulk inserts in a transaction and enable WAL",
+    "Great for local apps and tests, not for many concurrent writers"
+   ],
+   "pitfalls": [
+    "Assuming the module is stable in every Node version",
+    "Concatenating user values into SQL",
+    "Many separate inserts outside a transaction (very slow)"
+   ],
+   "examples": [
+    {
+     "title": "Todo store",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { DatabaseSync } from 'node:sqlite';\n\nconst db = new DatabaseSync(':memory:');      // or 'todos.db'\ndb.exec(`\n  PRAGMA journal_mode = WAL;\n  CREATE TABLE todos (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    title TEXT NOT NULL,\n    done INTEGER DEFAULT 0\n  );\n`);\n\nconst insert = db.prepare('INSERT INTO todos (title) VALUES (?)');\nconsole.log(insert.run('learn node'));       // { changes: 1, lastInsertRowid: 1 }\n\ndb.exec('BEGIN');\ntry {\n  for (const t of ['build api', 'deploy']) insert.run(t);\n  db.exec('COMMIT');\n} catch (err) {\n  db.exec('ROLLBACK');\n  throw err;\n}\n\ndb.prepare('UPDATE todos SET done = 1 WHERE id = :id').run({ id: 1 });\nconsole.log(db.prepare('SELECT * FROM todos WHERE done = ?').all(0));\n// [ { id: 2, title: 'build api', done: 0 }, { id: 3, title: 'deploy', done: 0 } ]\nconsole.log(db.prepare('SELECT count(*) AS n FROM todos').get());   // { n: 3 }\ndb.close();",
+     "explanation": "Rows are returned as null-prototype objects, which console.log prints with a note in Node.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "When is SQLite a good production choice?",
+     "a": "For read-heavy apps with a single server, embedded and desktop software, CLIs and small services. It has no server to run, but only one writer at a time and no network access."
+    },
+    {
+     "q": "Why wrap many inserts in a transaction?",
+     "a": "Without a transaction each statement commits and syncs to disk separately. One transaction commits once, making bulk inserts dramatically faster and atomic."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-redis-cache",
+   "title": "Redis for Caching and Sessions",
+   "level": "intermediate",
+   "summary": "Use Redis as an in-memory store for caching, sessions, rate limits and pub/sub with TTLs.",
+   "description": "**Redis** is an in-memory key-value store with rich data types. Reads take well under a millisecond. In Node apps it commonly serves as a **cache**, **session store**, **rate limiter**, **queue backend** (BullMQ) and **pub/sub** bus.\n\n### Client\n`npm i redis` (node-redis) or `ioredis`. `const client = createClient({ url: process.env.REDIS_URL }); await client.connect();`\n\n### Data types and commands\n| Type | Commands | Use |\n|---|---|---|\n| String | `SET key value EX 60`, `GET`, `INCR` | Cached JSON, counters |\n| Hash | `HSET`, `HGETALL` | Objects |\n| List | `LPUSH`, `RPOP` | Simple queues |\n| Set / Sorted set | `SADD`, `ZADD`, `ZRANGE` | Unique items, leaderboards |\n| Pub/Sub, Streams | `PUBLISH`, `SUBSCRIBE`, `XADD` | Messaging |\n\n### TTL\nAlways give cache entries an expiry (`EX seconds`). Otherwise memory fills up and stale data lives forever.\n\n### Cache-aside pattern\n1. Look in Redis\n2. On a **miss**, query the database\n3. Store the result with a TTL\n4. On writes, **delete** (invalidate) the cached key\n\n### Problems to know\n* **Stale data**: invalidate on update or use short TTLs\n* **Cache stampede**: many requests rebuild the same missing key; use a lock or randomised TTL\n* **Serialization**: Redis stores strings/bytes; use `JSON.stringify`\n* Memory limits and eviction policy (`maxmemory-policy allkeys-lru`)\n\n### Persistence\nRedis can persist (RDB snapshots, AOF) but treat it as a cache unless you configured it as a database.",
+   "keyPoints": [
+    "Redis is a fast in-memory store for cache, sessions, counters and pub/sub",
+    "Cache-aside: read cache, fall back to DB, store with TTL",
+    "Always set expirations and invalidate on writes",
+    "Watch for stale data and cache stampedes",
+    "Serialize objects as JSON strings or hashes"
+   ],
+   "pitfalls": [
+    "Caching without TTL or invalidation",
+    "Treating Redis as the only copy of important data",
+    "Storing huge values in a single key"
+   ],
+   "examples": [
+    {
+     "title": "Cache-aside helper",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import { createClient } from 'redis';\n\nconst redis = createClient({ url: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379' });\nredis.on('error', (err) => console.error('redis error', err));\nawait redis.connect();\n\nexport async function cached(key, ttlSeconds, loader) {\n  const hit = await redis.get(key);\n  if (hit) return JSON.parse(hit);                 // cache hit\n\n  const value = await loader();                    // cache miss -> database\n  await redis.set(key, JSON.stringify(value), { EX: ttlSeconds });\n  return value;\n}\n\napp.get('/products/:id', async (req, res) => {\n  const product = await cached(`product:${req.params.id}`, 60, () => db.products.findById(req.params.id));\n  res.json(product);\n});\n\nexport const invalidateProduct = (id) => redis.del(`product:${id}`);\n\n// rate limit: max 100 requests per minute per IP\nexport async function hit(ip) {\n  const key = `rl:${ip}`;\n  const n = await redis.incr(key);\n  if (n === 1) await redis.expire(key, 60);\n  return n <= 100;\n}",
+     "explanation": "INCR plus EXPIRE gives a simple fixed-window rate limiter that works across several Node instances.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What is the cache-aside pattern?",
+     "a": "The application checks the cache first; on a miss it loads from the database, stores the value in the cache with a TTL and returns it. Writes update the database and invalidate the cached key."
+    },
+    {
+     "q": "What is a cache stampede?",
+     "a": "When a popular key expires and many concurrent requests all miss and hit the database at once to rebuild it. Mitigate with locks, request coalescing, stale-while-revalidate or jittered TTLs."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-connection-pooling",
+   "title": "Connection Pooling",
+   "level": "intermediate",
+   "summary": "Why you reuse a limited set of database connections, how to size a pool and how to detect leaks.",
+   "description": "Opening a database connection is expensive: TCP, TLS, authentication. And databases accept only a limited number (PostgreSQL defaults to 100). A **connection pool** keeps a set of open connections and lends them out.\n\n### How a pool works\n1. Request needs the database → takes an idle connection (or waits, or opens a new one up to `max`)\n2. Runs the query\n3. Returns the connection to the pool for the next request\n\n### Where pools live\n| Library | Pool |\n|---|---|\n| `pg` | `new Pool({ max: 10 })` |\n| `mysql2` | `createPool({ connectionLimit: 10 })` |\n| `mongodb` / Mongoose | built in: `maxPoolSize` (default 100) |\n| Prisma | built into the engine; `connection_limit` in the URL |\n\n### Sizing\nStart small. A pool of 10-20 per Node process is enough for most apps because queries are fast. The total is `pool size x number of processes/instances`; keep it under the database limit. More connections do not make a database faster; past a point they make it slower.\n\n### Settings to know\n* `idleTimeoutMillis`: close idle connections\n* `connectionTimeoutMillis`: fail rather than wait forever\n* `statement_timeout`: stop runaway queries\n\n### Leaks\nIf you do `const client = await pool.connect()` and forget `client.release()` (especially on errors), the pool slowly empties and requests hang. Always use `try { ... } finally { client.release() }`.\n\n### Serverless and PgBouncer\nServerless functions can open thousands of short-lived connections. Use an external pooler (PgBouncer, Supabase pooler, Prisma Accelerate) in transaction mode.\n\n### Monitoring\n`pool.totalCount`, `pool.idleCount`, `pool.waitingCount` show saturation.",
+   "keyPoints": [
+    "Pools reuse connections to avoid expensive setup",
+    "Total connections = pool size x instances",
+    "Smaller pools are often better",
+    "Always release borrowed clients in finally",
+    "Use PgBouncer or poolers for serverless"
+   ],
+   "pitfalls": [
+    "Not releasing a client after an error",
+    "Sizing a pool of 100 per process across many instances",
+    "Creating a new pool per request"
+   ],
+   "examples": [
+    {
+     "title": "Safe borrow and monitoring",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "import pg from 'pg';\n\nconst pool = new pg.Pool({\n  connectionString: process.env.DATABASE_URL,\n  max: 10,\n  idleTimeoutMillis: 30_000,\n  connectionTimeoutMillis: 2_000,\n});\n\nexport async function withClient(fn) {\n  const client = await pool.connect();\n  try {\n    return await fn(client);\n  } finally {\n    client.release();          // always, even when fn throws\n  }\n}\n\nsetInterval(() => {\n  console.log({ total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount });\n}, 10_000).unref();",
+     "explanation": "A growing waitingCount signals saturation or leaked clients.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "Why use a connection pool?",
+     "a": "It avoids the cost of opening a connection for each request, bounds the number of connections to the database and improves throughput by reusing established connections."
+    },
+    {
+     "q": "How can you leak connections?",
+     "a": "By borrowing a client with pool.connect() and not releasing it (for example when an exception occurs before release). Always release in a finally block."
+    }
+   ],
+   "source": ""
+  },
+  {
+   "id": "node-db-transactions",
+   "title": "Transactions",
+   "level": "advanced",
+   "summary": "Group multiple database operations into an all-or-nothing unit in PostgreSQL, SQLite and MongoDB.",
+   "description": "A **transaction** makes several operations succeed or fail together. The classic example is transferring money: subtract from account A and add to account B. If the second step fails, the first must be undone.\n\n### ACID\n* **Atomicity**: all or nothing\n* **Consistency**: constraints stay valid\n* **Isolation**: concurrent transactions do not see each other's half-finished work (levels: read committed, repeatable read, serializable)\n* **Durability**: committed data survives crashes\n\n### PostgreSQL with pg\nUse **one client** for the whole transaction (not `pool.query`, which may use different connections):\n`BEGIN` → statements → `COMMIT`, and `ROLLBACK` in the catch block. Release the client in `finally`.\n\n### Prisma\n`prisma.$transaction(async (tx) => { ... })`, or an array of operations.\n\n### MongoDB\nSingle-document operations are already atomic. For multiple documents you need a replica set (or Atlas) and `session.withTransaction(async () => { ... })`, passing `{ session }` to every operation.\n\n### Concurrency problems\n* **Lost update**: two requests read then write the same row. Fix with atomic updates (`UPDATE ... SET balance = balance - $1`), row locks (`SELECT ... FOR UPDATE`) or optimistic versioning.\n* **Deadlocks**: two transactions lock rows in opposite order. Keep transactions short and lock in a consistent order; retry on deadlock errors.\n* **Idempotency**: make retries safe with unique keys.\n\n### Keep them short\nNever call slow external APIs (payments, email) inside a transaction: locks are held while you wait. Commit, then perform side effects (or use an outbox table).",
+   "keyPoints": [
+    "A transaction is atomic: commit everything or roll everything back",
+    "Use one dedicated client/session for the whole transaction",
+    "Rollback in catch, release in finally",
+    "Prefer atomic updates and locks to avoid lost updates",
+    "Keep transactions short; no network calls inside them"
+   ],
+   "pitfalls": [
+    "Running transaction statements through pool.query (different connections)",
+    "Forgetting ROLLBACK on error",
+    "Holding a transaction open during slow external calls"
+   ],
+   "examples": [
+    {
+     "title": "Money transfer with pg",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "export async function transfer(pool, fromId, toId, amount) {\n  const client = await pool.connect();\n  try {\n    await client.query('BEGIN');\n\n    const { rows } = await client.query(\n      'UPDATE accounts SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',\n      [amount, fromId],\n    );\n    if (rows.length === 0) throw new Error('Insufficient funds');\n\n    await client.query('UPDATE accounts SET balance = balance + $1 WHERE id = $2', [amount, toId]);\n    await client.query('INSERT INTO transfers (from_id, to_id, amount) VALUES ($1, $2, $3)', [fromId, toId, amount]);\n\n    await client.query('COMMIT');\n  } catch (err) {\n    await client.query('ROLLBACK');\n    throw err;\n  } finally {\n    client.release();\n  }\n}",
+     "explanation": "The conditional UPDATE is atomic, so two simultaneous transfers cannot overdraw the account.",
+     "lang": "javascript"
+    },
+    {
+     "title": "MongoDB transaction",
+     "language": "text",
+     "html": "",
+     "css": "",
+     "js": "",
+     "code": "const session = client.startSession();\ntry {\n  await session.withTransaction(async () => {\n    await accounts.updateOne({ _id: a }, { $inc: { balance: -50 } }, { session });\n    await accounts.updateOne({ _id: b }, { $inc: { balance: 50 } }, { session });\n  });\n} finally {\n  await session.endSession();\n}",
+     "explanation": "Requires a replica set. withTransaction retries transient errors automatically.",
+     "lang": "javascript"
+    }
+   ],
+   "interview": [
+    {
+     "q": "What does ACID stand for?",
+     "a": "Atomicity, Consistency, Isolation and Durability: guarantees that a transaction is all-or-nothing, keeps data valid, is isolated from concurrent work and survives crashes once committed."
+    },
+    {
+     "q": "Why must a pg transaction use a single client?",
+     "a": "Transactions belong to a connection. pool.query may use a different connection for each statement, so BEGIN, the changes and COMMIT would not be part of the same transaction."
+    }
+   ],
+   "source": ""
+  }
+ ]
+}
